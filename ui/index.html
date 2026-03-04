@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trophy Navigator Desktop</title>
+<link rel="stylesheet" href="leaflet.css"/>
+<script src="leaflet.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ─── Убрать attribution Leaflet ─── */
+  .leaflet-control-attribution { display: none !important; }
+
+  /* ─── ТУЛБАР ─── */
+  #toolbar {
+    background: #16213e;
+    border-bottom: 1px solid #0f3460;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+    height: 82px;
+    user-select: none;
+  }
+  .tb-sep { width: 1px; background: #0f3460; height: 62px; margin: 0 7px; flex-shrink: 0; }
+  .tb-btn {
+    background: #1a2a4a;
+    border: 1px solid #2a4a7a;
+    border-radius: 6px;
+    color: #c0d8ff;
+    padding: 5px 11px;
+    cursor: pointer;
+    font-size: 13px;
+    white-space: nowrap;
+    display: flex; align-items: center; gap: 5px;
+    transition: all 0.15s;
+    height: 38px;
+  }
+  .tb-btn:hover { background: #2a4a7a; border-color: #4a8adf; color: #fff; }
+  .tb-btn.active { background: #0f3460; border-color: #4a8adf; color: #7ec8ff; box-shadow: 0 0 8px rgba(74,138,223,0.4); }
+  .tb-btn.settings-btn { background: #1e3a1e; border-color: #2a6a2a; color: #a0d8a0; }
+  .tb-btn.settings-btn:hover { background: #2a5a2a; border-color: #4aaa4a; }
+  .tb-btn.list-btn { background: #2a2a1a; border-color: #5a5a2a; color: #d8d8a0; }
+  .tb-btn.list-btn:hover { background: #3a3a1a; }
+  .tb-btn.sync-btn { background: #2a1a3a; border-color: #6a3a9a; color: #d0a0ff; }
+  .tb-btn.sync-btn:hover { background: #3a2a5a; border-color: #9a6adf; }
+  #btn-map-layer {
+    background: #1a3a5a;
+    border: 1px solid #2a6a9a;
+    color: #a0d8ff;
+    min-width: 180px;
+    justify-content: space-between;
+    font-size: 12px;
+  }
+  #btn-map-layer:hover { background: #2a5a8a; border-color: #4a8adf; }
+  #btn-map-layer .layer-name { font-weight: 500; }
+  .tb-label { font-size: 10px; color: #5a7aaa; text-transform: uppercase; letter-spacing: 0.5px; padding: 0 4px; }
+
+  /* ─── Группы инструментов ─── */
+  .tb-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .tb-group-label {
+    font-size: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6a9aba;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: color 0.15s;
+  }
+  .tb-group-label:hover { color: #fff; }
+  .tb-group-btns {
+    display: flex;
+    gap: 2px;
+    background: rgba(15,52,96,0.35);
+    border: 1px solid #1a3a6a;
+    border-radius: 7px;
+    padding: 3px 4px;
+  }
+  .tb-group.primary .tb-group-label { color: #7ec8ff; }
+  .tb-group.primary .tb-group-label:hover { color: #fff; }
+  .tb-group.primary .tb-group-btns { border-color: #2a5a9a; background: rgba(15,52,96,0.5); }
+
+  /* ─── КАРТА ─── */
+  #map { flex: 1; }
+
+  /* ─── Плашка бренда в углу карты ─── */
+  .brand-control {
+    background: rgba(22,33,62,0.88) !important;
+    border: 1px solid #0f3460 !important;
+    border-radius: 6px !important;
+    padding: 5px 10px !important;
+    color: #7ec8ff !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.3px !important;
+    pointer-events: none;
+  }
+  /* ─── Дисплей зума ─── */
+  .zoom-display-ctrl {
+    background: #16213e;
+    border: 2px solid #0f3460;
+    border-radius: 4px;
+    color: #7ec8ff;
+    font-size: 14px;
+    font-weight: bold;
+    width: 34px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+  }
+
+  /* ─── СТРОКА СТАТУСА ─── */
+  #statusbar {
+    background: #16213e;
+    border-top: 1px solid #0f3460;
+    padding: 4px 12px;
+    display: flex;
+    gap: 20px;
+    font-size: 11px;
+    color: #7a9aba;
+    flex-shrink: 0;
+    height: 26px;
+    align-items: center;
+  }
+  #statusbar span { display: flex; align-items: center; gap: 4px; }
+  #statusbar .highlight { color: #a0c8e0; }
+
+  /* ─── МОДАЛЬНЫЕ ОКНА ─── */
+  .modal-overlay { display: none; position: fixed; inset: 0; z-index: 1000; pointer-events: none; }
+  .modal-overlay.open { display: block; }
+  .modal {
+    position: absolute;
+    background: #16213e;
+    border: 1px solid #0f3460;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    min-width: 320px;
+    pointer-events: all;
+    display: flex;
+    flex-direction: column;
+    max-height: 80vh;
+  }
+  .modal-header {
+    background: #0f3460;
+    padding: 8px 12px;
+    border-radius: 7px 7px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: move;
+    font-size: 13px;
+    font-weight: 600;
+    color: #c0d8ff;
+    flex-shrink: 0;
+  }
+  .modal-close { cursor: pointer; color: #7a9aba; font-size: 16px; line-height: 1; padding: 2px 6px; border-radius: 4px; }
+  .modal-close:hover { background: #1a3a6a; color: #fff; }
+  .modal-body { padding: 12px; overflow-y: auto; flex: 1; }
+  .modal-footer {
+    padding: 8px 12px;
+    border-top: 1px solid #0f3460;
+    background: #0d1e38;
+    border-radius: 0 0 7px 7px;
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .modal-footer .save-btn {
+    background: #1a3a1a; border: 1px solid #2a6a2a; color: #a0d8a0;
+    border-radius: 5px; padding: 5px 10px; cursor: pointer; font-size: 11px;
+    white-space: nowrap;
+  }
+  .modal-footer .save-btn:hover { background: #2a5a2a; }
+  .modal-footer .open-btn {
+    background: #1a2a4a; border: 1px solid #2a5a8a; color: #a0c8e0;
+    border-radius: 5px; padding: 5px 10px; cursor: pointer; font-size: 11px;
+    white-space: nowrap;
+  }
+  .modal-footer .open-btn:hover { background: #2a4a7a; }
+
+  /* ─── ТАБЛИЦА ТОЧЕК ─── */
+  .wpt-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .wpt-table th { background: #0f3460; color: #7abadf; padding: 6px 8px; text-align: left; font-weight: 500; border-bottom: 1px solid #1a4a7a; }
+  .wpt-table td { padding: 5px 8px; border-bottom: 1px solid #1a2a4a; color: #c0d8ff; }
+  .wpt-table tr:hover td { background: #1a3a6a; cursor: pointer; }
+  .wpt-table tr.selected td { background: #0f3460; }
+  .wpt-icon { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: middle; }
+
+  /* ─── СПИСОК МАРШРУТОВ ─── */
+  .route-item { background: #1a2a4a; border: 1px solid #2a4a7a; border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
+  .route-header { padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+  .route-header:hover { background: #2a4a7a; }
+  .route-kp-list { padding: 4px 10px 8px; font-size: 11px; color: #7a9aba; }
+  .route-kp { padding: 3px 0; display: flex; gap: 8px; }
+  .route-kp-num { color: #4a8adf; font-weight: bold; min-width: 24px; }
+  .route-dist { color: #5a9a5a; margin-left: auto; }
+  .route-color-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+
+  /* ─── НАСТРОЙКИ ─── */
+  .settings-tabs { display: flex; gap: 2px; margin-bottom: 12px; }
+  .tab-btn { background: #1a2a4a; border: 1px solid #2a4a7a; border-radius: 4px 4px 0 0; padding: 5px 12px; cursor: pointer; font-size: 12px; color: #7a9aba; }
+  .tab-btn.active { background: #0f3460; color: #c0d8ff; border-bottom-color: #0f3460; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #1a2a4a; }
+  .setting-label { font-size: 12px; color: #a0c0e0; }
+  .setting-control { display: flex; align-items: center; gap: 6px; }
+  .setting-control input[type=number], .setting-control select {
+    background: #0f3460; border: 1px solid #2a4a7a; color: #c0d8ff;
+    border-radius: 4px; padding: 3px 6px; width: 80px; font-size: 12px;
+  }
+  .setting-control input[type=range] { width: 100px; accent-color: #4a8adf; }
+  .color-swatch { width: 28px; height: 20px; border-radius: 3px; border: 1px solid #2a4a7a; cursor: pointer; }
+  .save-section { margin-top: 14px; }
+  .save-section h4 { font-size: 11px; color: #5a7aaa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .save-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .save-btn-grid {
+    background: #1a3a1a; border: 1px solid #2a6a2a; color: #a0d8a0;
+    border-radius: 5px; padding: 6px 8px; cursor: pointer; font-size: 11px; text-align: center;
+  }
+  .save-btn-grid:hover { background: #2a5a2a; }
+
+  /* ─── СЛОИ ─── */
+  .layer-section-title { font-size: 10px; text-transform: uppercase; color: #5a7aaa; letter-spacing: 0.5px; padding: 6px 0 4px; }
+  .base-layer { padding: 5px 4px; display: flex; align-items: center; gap: 8px; cursor: pointer; border-radius: 4px; font-size: 12px; }
+  .base-layer:hover { background: #1a3a6a; }
+  .base-layer input[type=radio] { accent-color: #4a8adf; }
+  .overlay-layer { padding: 5px 4px; display: flex; align-items: center; gap: 8px; border-radius: 4px; font-size: 12px; }
+  .overlay-layer:hover { background: #1a3a6a; }
+  .overlay-layer input[type=checkbox] { accent-color: #4a8adf; }
+  .overlay-name { flex: 1; color: #c0d8ff; }
+  .opacity-slider { width: 75px; accent-color: #4a8adf; }
+  .opacity-val { font-size: 11px; color: #5a7aaa; min-width: 32px; text-align: right; }
+
+  /* ─── КОНТЕКСТНОЕ МЕНЮ ─── */
+  #ctx-menu {
+    display: none; position: fixed;
+    background: #16213e; border: 1px solid #0f3460; border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5); z-index: 2000; min-width: 160px; overflow: hidden;
+  }
+  #ctx-menu.open { display: block; }
+  .ctx-item { padding: 7px 14px; font-size: 12px; cursor: pointer; color: #c0d8ff; }
+  .ctx-item:hover { background: #1a3a6a; }
+  .ctx-item.danger { color: #e07070; }
+  .ctx-item.danger:hover { background: #3a1a1a; }
+  .ctx-sep { height: 1px; background: #0f3460; margin: 2px 0; }
+
+  /* ─── СВОЙСТВА ТОЧКИ ─── */
+  .prop-field { margin-bottom: 10px; }
+  .prop-field label { font-size: 11px; color: #7a9aba; display: block; margin-bottom: 3px; }
+  .prop-field input, .prop-field textarea, .prop-field select {
+    width: 100%; background: #0f3460; border: 1px solid #2a4a7a;
+    color: #c0d8ff; border-radius: 4px; padding: 5px 8px; font-size: 12px;
+  }
+  .prop-field input:focus, .prop-field textarea:focus { outline: none; border-color: #4a8adf; }
+  .icon-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-top: 4px; }
+  .icon-cell { width: 28px; height: 28px; border: 1px solid #2a4a7a; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+  .icon-cell:hover { background: #2a4a7a; border-color: #4a8adf; }
+  .icon-cell.selected { background: #0f3460; border-color: #4a8adf; box-shadow: 0 0 0 2px rgba(74,138,223,0.3); }
+  .prop-coords { display: flex; gap: 6px; }
+  .prop-coords input { flex: 1; }
+  .btn-row { display: flex; gap: 6px; margin-top: 12px; justify-content: flex-end; }
+  .btn-primary { background: #0f4a8a; border: 1px solid #1a6adf; color: #c0d8ff; border-radius: 5px; padding: 6px 14px; cursor: pointer; font-size: 12px; }
+  .btn-primary:hover { background: #1a6adf; }
+  .btn-secondary { background: #1a2a4a; border: 1px solid #2a4a7a; color: #7a9aba; border-radius: 5px; padding: 6px 14px; cursor: pointer; font-size: 12px; }
+  .btn-secondary:hover { background: #2a4a7a; }
+
+  /* ─── ТРЕК ОКНО ─── */
+  .track-item { background: #1a2a4a; border: 1px solid #2a4a7a; border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+  .track-item:hover { background: #2a4a7a; }
+  .track-color { width: 4px; height: 36px; border-radius: 2px; flex-shrink: 0; }
+  .track-info { flex: 1; }
+  .track-name { font-size: 13px; color: #c0d8ff; }
+  .track-meta { font-size: 11px; color: #5a7aaa; margin-top: 2px; }
+  .track-controls { margin-top: 10px; padding-top: 10px; border-top: 1px solid #1a2a4a; }
+  .ctrl-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; color: #7a9aba; }
+  .ctrl-row input[type=range] { flex: 1; accent-color: #4a8adf; }
+
+  /* ─── СИНХРОНИЗАЦИЯ ─── */
+  .sync-status { display: flex; align-items: center; gap: 8px; padding: 10px; background: #0d1e38; border-radius: 6px; margin-bottom: 12px; }
+  .sync-dot { width: 10px; height: 10px; border-radius: 50%; background: #4adf7a; box-shadow: 0 0 6px #4adf7a; }
+  .sync-dot.offline { background: #df7a4a; box-shadow: 0 0 6px #df7a4a; }
+  .sync-info { font-size: 12px; }
+  .sync-info .sync-label { color: #7a9aba; }
+  .sync-info .sync-val { color: #c0d8ff; font-weight: 500; }
+  .sync-section-title { font-size: 11px; text-transform: uppercase; color: #5a7aaa; letter-spacing: 0.5px; margin: 12px 0 6px; }
+
+  /* ─── TOAST ─── */
+  #toast {
+    position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+    background: #0f3460; border: 1px solid #4a8adf; border-radius: 6px;
+    padding: 8px 18px; font-size: 12px; color: #7ec8ff; z-index: 5000; display: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     ТУЛБАР
+════════════════════════════════════════════ -->
+<div id="toolbar">
+  <!-- Настройки -->
+  <button class="tb-btn settings-btn" onclick="openModal('modal-settings')" title="Настройки программы">⚙ Настройки</button>
+
+  <div class="tb-sep"></div>
+
+  <!-- Рука -->
+  <button class="tb-btn active" id="btn-hand" onclick="setMode('hand')" title="Режим навигации (пробел)">✋ Рука</button>
+
+  <div class="tb-sep"></div>
+
+  <!-- ТОЧКИ — основная группа -->
+  <div class="tb-group primary">
+    <span class="tb-group-label" onclick="openModal('modal-wpts')" title="Открыть список точек">Точки</span>
+    <div class="tb-group-btns">
+      <button class="tb-btn" id="btn-wpt" onclick="setMode('waypoint')" title="Добавить точку кликом на карту">• Добавить</button>
+    </div>
+  </div>
+
+  <div class="tb-sep"></div>
+
+  <!-- ТРЕКИ — основная группа -->
+  <div class="tb-group primary">
+    <span class="tb-group-label" onclick="openModal('modal-tracks')" title="Открыть список треков">Треки</span>
+    <div class="tb-group-btns">
+      <button class="tb-btn" id="btn-trk" onclick="setMode('track')" title="Рисовать трек кликами (ESC — завершить)">〜 Рисовать</button>
+    </div>
+  </div>
+
+  <div class="tb-sep"></div>
+
+  <!-- МАРШРУТЫ — основная группа -->
+  <div class="tb-group primary">
+    <span class="tb-group-label" onclick="openModal('modal-routes')" title="Открыть список маршрутов">Маршруты</span>
+    <div class="tb-group-btns">
+      <button class="tb-btn" id="btn-rte" onclick="setMode('route')" title="Создать маршрут: клик по КП на карте">⚑ Создать</button>
+    </div>
+  </div>
+
+  <div class="tb-sep"></div>
+
+  <!-- Инструменты -->
+  <button class="tb-btn" id="btn-ruler" onclick="setMode('ruler')" title="Линейка">📐 Линейка</button>
+  <button class="tb-btn" onclick="showToast('Выделите область: прямоугольник или полигон')" title="Скачать тайлы в .sqlitedb">⬇ Скачать</button>
+
+  <div class="tb-sep"></div>
+
+  <!-- Офлайн карты -->
+  <button class="tb-btn" style="background:#1a2a3a;border-color:#2a5a7a;color:#a0d8ff" onclick="openModal('modal-offline')" title="Офлайн карты — скачать и загрузить">📦 Офлайн карты</button>
+
+  <div class="tb-sep"></div>
+
+  <!-- Синхронизация -->
+  <button class="tb-btn sync-btn" onclick="openModal('modal-sync')" title="Синхронизация с планшетом">⟲ Синхронизация</button>
+
+  <!-- Карта — справа, широкая, показывает текущий слой -->
+  <div style="margin-left:auto"></div>
+  <button class="tb-btn" id="btn-map-layer" onclick="openModal('modal-layers')" title="Выбор карты и слоёв">
+    🗺 <span class="layer-name" id="current-layer-name">OpenStreetMap</span> ▾
+  </button>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     КАРТА
+════════════════════════════════════════════ -->
+<div id="map"></div>
+
+<!-- ═══════════════════════════════════════════
+     СТРОКА СОСТОЯНИЯ
+════════════════════════════════════════════ -->
+<div id="statusbar">
+  <span>📍 <span class="highlight" id="sb-coords">—</span></span>
+  <span>🔍 z<span class="highlight" id="sb-zoom">—</span></span>
+  <span>🖱 <span class="highlight" id="sb-mode">Навигация</span></span>
+  <span>🗺 <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
+  <span style="margin-left:auto;color:#3a5a7a;">Trophy Navigator Desktop · UI Preview</span>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     КОНТЕКСТНОЕ МЕНЮ
+════════════════════════════════════════════ -->
+<div id="ctx-menu">
+  <div class="ctx-item" onclick="ctxAction('props')">✏️ Свойства</div>
+  <div class="ctx-item" onclick="ctxAction('center')">🎯 Центрировать</div>
+  <div class="ctx-item" onclick="ctxAction('copy')">📋 Копировать координаты</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" onclick="ctxAction('delete')">🗑 Удалить</div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     МОДАЛЬНОЕ ОКНО: СПИСОК ТОЧЕК
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-wpts">
+  <div class="modal" id="modal-wpts-win" style="top:60px;left:20px;width:460px">
+    <div class="modal-header" onmousedown="startDrag(event,'modal-wpts-win')">
+      📍 Список точек (Waypoints)
+      <span class="modal-close" onclick="closeModal('modal-wpts')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:8px;display:flex;gap:6px;align-items:center">
+        <input placeholder="🔍 Поиск по названию..." style="flex:1;background:#0f3460;border:1px solid #2a4a7a;color:#c0d8ff;border-radius:4px;padding:4px 8px;font-size:12px">
+        <button class="btn-secondary" style="padding:4px 8px;font-size:11px" onclick="showToast('Выделены все точки')">Все</button>
+        <button class="btn-secondary" style="padding:4px 8px;font-size:11px;color:#e07070;border-color:#6a2a2a" onclick="showToast('Выбранные точки удалены')">Удалить</button>
+      </div>
+      <table class="wpt-table">
+        <thead><tr><th></th><th>#</th><th>Название</th><th>Координаты</th><th>Радиус</th></tr></thead>
+        <tbody id="wpt-tbody"></tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-right:4px">Сохранить:</span>
+      <div class="save-btn" onclick="showToast('Сохраняем точки в .wpt (OziExplorer)...')">💾 .wpt</div>
+      <div class="save-btn" onclick="showToast('Сохраняем точки в .gpx...')">💾 .gpx</div>
+      <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Открыть:</span>
+      <div class="open-btn" onclick="showToast('Открываем .wpt...')">📂 .wpt</div>
+      <div class="open-btn" onclick="showToast('Открываем .gpx...')">📂 .gpx</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     МОДАЛЬНОЕ ОКНО: СВОЙСТВА ТОЧКИ
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-wpt-props">
+  <div class="modal" id="modal-wpt-props-win" style="top:80px;left:500px;width:340px">
+    <div class="modal-header" onmousedown="startDrag(event,'modal-wpt-props-win')">
+      ✏️ Свойства точки
+      <span class="modal-close" onclick="closeModal('modal-wpt-props')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="prop-field">
+        <label>Название (до 16 символов)</label>
+        <input id="prop-name" maxlength="16" value="wp1">
+      </div>
+      <div class="prop-field">
+        <label>Описание</label>
+        <textarea rows="2" style="resize:none">Брод через реку</textarea>
+      </div>
+      <div class="prop-field">
+        <label>Иконка</label>
+        <div class="icon-grid">
+          <div class="icon-cell selected" title="Кружок">⬤</div>
+          <div class="icon-cell" title="Флажок">🚩</div>
+          <div class="icon-cell" title="Дом">🏠</div>
+          <div class="icon-cell" title="Машина">🚗</div>
+          <div class="icon-cell" title="Палатка">⛺</div>
+          <div class="icon-cell" title="Топливо">⛽</div>
+          <div class="icon-cell" title="Вода">💧</div>
+          <div class="icon-cell" title="Опасность">⚠️</div>
+          <div class="icon-cell" title="Финиш">🏁</div>
+          <div class="icon-cell" title="Старт">🟢</div>
+          <div class="icon-cell" title="Звезда">★</div>
+          <div class="icon-cell" title="Крест">✚</div>
+          <div class="icon-cell" title="Ромб">◆</div>
+          <div class="icon-cell" title="Треугольник">▲</div>
+          <div class="icon-cell" title="Якорь">⚓</div>
+          <div class="icon-cell" title="Камера">📷</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="prop-field" style="flex:1">
+          <label>Цвет маркера</label>
+          <input type="color" value="#4a8adf" style="width:100%;height:30px;border-radius:4px;border:1px solid #2a4a7a;cursor:pointer">
+        </div>
+        <div class="prop-field" style="flex:1">
+          <label>Радиус сближения, м</label>
+          <input type="number" value="50" min="0">
+        </div>
+      </div>
+      <div class="prop-field">
+        <label>Координаты (WGS84)</label>
+        <div class="prop-coords">
+          <input value="55°45.132'N" placeholder="Широта">
+          <input value="37°36.934'E" placeholder="Долгота">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-secondary" onclick="closeModal('modal-wpt-props')">Отмена</button>
+        <button class="btn-primary" onclick="closeModal('modal-wpt-props');showToast('Точка сохранена')">Сохранить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     МОДАЛЬНОЕ ОКНО: ТРЕКИ
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-tracks">
+  <div class="modal" id="modal-tracks-win" style="top:60px;left:500px;width:310px">
+    <div class="modal-header" onmousedown="startDrag(event,'modal-tracks-win')">
+      〜 Треки
+      <span class="modal-close" onclick="closeModal('modal-tracks')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="track-item" onclick="selectTrack(this)">
+        <div class="track-color" style="background:#4adf7a"></div>
+        <div class="track-info">
+          <div class="track-name">Трек Домодедово–Серпухов</div>
+          <div class="track-meta">847 точек · 123.4 км · 26.02.2026</div>
+        </div>
+      </div>
+      <div class="track-item" onclick="selectTrack(this)">
+        <div class="track-color" style="background:#df7a4a"></div>
+        <div class="track-info">
+          <div class="track-name">Разведка бродов р. Ока</div>
+          <div class="track-meta">412 точек · 38.7 км · 01.03.2026</div>
+        </div>
+      </div>
+      <div id="track-controls" class="track-controls" style="display:none">
+        <div class="ctrl-row">
+          <span style="min-width:50px">Цвет</span>
+          <input type="color" id="track-color-input" value="#4adf7a" style="width:36px;height:24px;border:none;background:none;cursor:pointer">
+        </div>
+        <div class="ctrl-row">
+          <span style="min-width:50px">Толщина</span>
+          <input type="range" min="1" max="8" value="3" oninput="document.getElementById('track-width-val').textContent=this.value+'px'">
+          <span id="track-width-val" style="min-width:32px;text-align:right">3px</span>
+        </div>
+        <div class="btn-row">
+          <button class="btn-secondary" onclick="showToast('Трек удалён');document.getElementById('track-controls').style.display='none'" style="color:#e07070;border-color:#6a2a2a">Удалить</button>
+          <button class="btn-primary" onclick="showToast('Свойства трека сохранены')">Применить</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-right:4px">Сохранить:</span>
+      <div class="save-btn" onclick="showToast('Сохраняем трек в .plt (OziExplorer)...')">💾 .plt</div>
+      <div class="save-btn" onclick="showToast('Сохраняем трек в .gpx...')">💾 .gpx</div>
+      <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Открыть:</span>
+      <div class="open-btn" onclick="showToast('Открываем .plt...')">📂 .plt</div>
+      <div class="open-btn" onclick="showToast('Открываем .gpx...')">📂 .gpx</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     МОДАЛЬНОЕ ОКНО: МАРШРУТЫ
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-routes">
+  <div class="modal" id="modal-routes-win" style="top:60px;left:830px;width:330px">
+    <div class="modal-header" onmousedown="startDrag(event,'modal-routes-win')">
+      ⚑ Маршруты
+      <span class="modal-close" onclick="closeModal('modal-routes')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="route-item">
+        <div class="route-header" onclick="toggleRoute(this)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="route-color-dot" style="background:#df4a4a"></span>
+            <span style="font-size:13px;color:#c0d8ff">Маршрут 2026 #1</span>
+          </div>
+          <span style="font-size:11px;color:#5a7aaa">6 КП · 87.3 км ▾</span>
+        </div>
+        <div class="route-kp-list">
+          <div class="route-kp"><span class="route-kp-num">КП1</span><span>wp1 — Старт (55°45.1'N 37°36.9'E)</span><span class="route-dist">—</span></div>
+          <div class="route-kp"><span class="route-kp-num">КП2</span><span>wp2 — Брод р.Лопасня</span><span class="route-dist">12.4 км · 184°</span></div>
+          <div class="route-kp"><span class="route-kp-num">КП3</span><span>wp3 — Карьер Ступино</span><span class="route-dist">23.1 км · 162°</span></div>
+          <div class="route-kp"><span class="route-kp-num">КП4</span><span>wp4 — Лесная дорога</span><span class="route-dist">15.8 км · 220°</span></div>
+          <div class="route-kp"><span class="route-kp-num">КП5</span><span>wp5 — Финиш Серпухов</span><span class="route-dist">35.9 км · 185°</span></div>
+        </div>
+      </div>
+      <div class="route-item">
+        <div class="route-header" onclick="toggleRoute(this)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="route-color-dot" style="background:#4a8adf"></span>
+            <span style="font-size:13px;color:#c0d8ff">Разведка север</span>
+          </div>
+          <span style="font-size:11px;color:#5a7aaa">4 КП · 45.0 км ▸</span>
+        </div>
+      </div>
+      <button class="btn-primary" style="width:100%;margin-top:8px" onclick="showToast('Режим создания маршрута: кликайте по КП на карте')">+ Новый маршрут</button>
+    </div>
+    <div class="modal-footer">
+      <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-right:4px">Сохранить:</span>
+      <div class="save-btn" onclick="showToast('Сохраняем маршрут в .rte (OziExplorer)...')">💾 .rte</div>
+      <div class="save-btn" onclick="showToast('Сохраняем маршрут в .gpx...')">💾 .gpx</div>
+      <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Открыть:</span>
+      <div class="open-btn" onclick="showToast('Открываем .rte...')">📂 .rte</div>
+      <div class="open-btn" onclick="showToast('Открываем .gpx...')">📂 .gpx</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     МОДАЛЬНОЕ ОКНО: НАСТРОЙКИ
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-settings">
+  <div class="modal" id="modal-settings-win" style="top:60px;left:200px;width:380px">
+    <div class="modal-header" onmousedown="startDrag(event,'modal-settings-win')">
+      ⚙ Настройки
+      <span class="modal-close" onclick="closeModal('modal-settings')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="settings-tabs">
+        <div class="tab-btn active" onclick="switchTab(this,'tab-display')">Отображение</div>
+        <div class="tab-btn" onclick="switchTab(this,'tab-files')">Файлы</div>
+      </div>
+      <div class="tab-content active" id="tab-display">
+        <div class="setting-row">
+          <span class="setting-label">Размер иконок точек</span>
+          <div class="setting-control">
+            <input type="range" min="8" max="32" value="16" oninput="document.getElementById('icon-size-val').textContent=this.value+'px'">
+            <span id="icon-size-val" style="font-size:11px;color:#5a7aaa;min-width:32px">16px</span>
+          </div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Толщина треков по умолчанию</span>
+          <div class="setting-control">
+            <input type="range" min="1" max="8" value="3" oninput="document.getElementById('trk-width-val').textContent=this.value+'px'">
+            <span id="trk-width-val" style="font-size:11px;color:#5a7aaa;min-width:32px">3px</span>
+          </div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Цвет треков по умолчанию</span>
+          <div class="setting-control"><input type="color" value="#4adf7a" class="color-swatch"></div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Радиус сближения по умолчанию</span>
+          <div class="setting-control"><input type="number" value="50" min="0" style="width:70px"> м</div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Формат координат</span>
+          <div class="setting-control">
+            <select>
+              <option selected>°MM.mmm' (градусы-минуты)</option>
+              <option>°MM'SS.s" (с секундами)</option>
+              <option>Десятичные градусы</option>
+            </select>
+          </div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Единицы расстояния</span>
+          <div class="setting-control">
+            <select><option selected>Километры</option><option>Мили</option></select>
+          </div>
+        </div>
+      </div>
+      <div class="tab-content" id="tab-files">
+        <div class="save-section">
+          <h4>Сохранить</h4>
+          <div class="save-btns">
+            <div class="save-btn-grid" onclick="showToast('Точки → .wpt')">💾 Точки (.wpt)</div>
+            <div class="save-btn-grid" onclick="showToast('Точки → .gpx')">💾 Точки (.gpx)</div>
+            <div class="save-btn-grid" onclick="showToast('Треки → .plt')">💾 Треки (.plt)</div>
+            <div class="save-btn-grid" onclick="showToast('Треки → .gpx')">💾 Треки (.gpx)</div>
+            <div class="save-btn-grid" onclick="showToast('Маршруты → .rte')">💾 Маршруты (.rte)</div>
+            <div class="save-btn-grid" onclick="showToast('Маршруты → .gpx')">💾 Маршруты (.gpx)</div>
+            <div class="save-btn-grid" style="grid-column:span 2;background:#1a3a5a;border-color:#2a6a9a;color:#a0c8e0" onclick="showToast('Всё → единый GPX')">💾 Всё вместе (.gpx)</div>
+          </div>
+        </div>
+        <div class="save-section" style="margin-top:12px">
+          <h4>Открыть</h4>
+          <div class="save-btns">
+            <div class="save-btn-grid" onclick="showToast('Открываем .wpt...')">📂 Точки (.wpt)</div>
+            <div class="save-btn-grid" onclick="showToast('Открываем .plt...')">📂 Треки (.plt)</div>
+            <div class="save-btn-grid" onclick="showToast('Открываем .rte...')">📂 Маршруты (.rte)</div>
+            <div class="save-btn-grid" onclick="showToast('Открываем .gpx...')">📂 GPX файл</div>
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-secondary" onclick="closeModal('modal-settings')">Закрыть</button>
+        <button class="btn-primary" onclick="closeModal('modal-settings');showToast('Настройки сохранены')">Сохранить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     МОДАЛЬНОЕ ОКНО: ОФЛАЙН КАРТЫ
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-offline">
+  <div class="modal" id="modal-offline-win" style="top:60px;left:300px;width:420px">
+    <div class="modal-header" onmousedown="startDrag(event,'modal-offline-win')">
+      📦 Офлайн карты
+      <span class="modal-close" onclick="closeModal('modal-offline')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="settings-tabs">
+        <div class="tab-btn active" onclick="switchTab(this,'tab-offline-list')">Мои карты</div>
+        <div class="tab-btn" onclick="switchTab(this,'tab-offline-download')">Скачать</div>
+        <div class="tab-btn" onclick="switchTab(this,'tab-offline-load')">Загрузить файл</div>
+      </div>
+
+      <!-- ВКЛАДКА: МОИ КАРТЫ -->
+      <div class="tab-content active" id="tab-offline-list">
+        <div style="background:#0d1e38;border:1px dashed #2a4a7a;border-radius:6px;padding:24px;text-align:center;color:#3a5a7a;font-size:12px;margin-bottom:10px">
+          <div style="font-size:28px;margin-bottom:8px">🗺</div>
+          <div style="color:#5a7aaa;margin-bottom:4px">Офлайн карты не загружены</div>
+          <div style="font-size:11px">Скачайте карту или загрузите .sqlitedb файл</div>
+        </div>
+        <!-- Пример загруженной карты (задизейблен — для демо) -->
+        <div style="background:#1a2a4a;border:1px solid #2a4a7a;border-radius:6px;padding:10px;opacity:0.5;pointer-events:none">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:18px">🗺</span>
+            <div style="flex:1">
+              <div style="font-size:13px;color:#c0d8ff">Генштаб 500м · Кольский</div>
+              <div style="font-size:11px;color:#5a7aaa">z8–z14 · 1 243 тайлов · 87.4 МБ · 01.03.2026</div>
+            </div>
+            <button class="btn-secondary" style="padding:3px 8px;font-size:11px">Удалить</button>
+          </div>
+          <div style="margin-top:6px;background:#0f3460;border-radius:3px;height:4px">
+            <div style="background:#4a8adf;width:100%;height:100%;border-radius:3px"></div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#3a5a7a;margin-top:6px;text-align:center">↑ Пример — карта после скачивания</div>
+      </div>
+
+      <!-- ВКЛАДКА: СКАЧАТЬ -->
+      <div class="tab-content" id="tab-offline-download">
+        <div style="font-size:11px;color:#5a7aaa;margin-bottom:10px">Выделите область на карте, затем настройте параметры</div>
+
+        <div class="prop-field">
+          <label>Карта для скачивания</label>
+          <select>
+            <option>Генштаб 250м (nakarte.me)</option>
+            <option>Генштаб 500м (nakarte.me)</option>
+            <option>Генштаб 1км (nakarte.me)</option>
+            <option>Спутник Google</option>
+            <option>Спутник Яндекс</option>
+            <option>OpenStreetMap</option>
+            <option>OpenTopoMap</option>
+          </select>
+        </div>
+
+        <div style="display:flex;gap:8px">
+          <div class="prop-field" style="flex:1">
+            <label>Зум от</label>
+            <select id="zoom-min">
+              <option value="6">z6</option><option value="7">z7</option>
+              <option value="8">z8</option><option value="9" selected>z9</option>
+              <option value="10">z10</option><option value="11">z11</option>
+            </select>
+          </div>
+          <div class="prop-field" style="flex:1">
+            <label>Зум до</label>
+            <select id="zoom-max">
+              <option value="12">z12</option><option value="13" selected>z13</option>
+              <option value="14">z14</option><option value="15">z15</option>
+              <option value="16">z16</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Выбор области -->
+        <div style="margin-bottom:10px">
+          <label style="font-size:11px;color:#7a9aba;display:block;margin-bottom:4px">Область скачивания</label>
+          <div style="display:flex;gap:6px">
+            <button class="btn-secondary" style="flex:1;font-size:11px" onclick="showToast('Нарисуйте прямоугольник на карте')">⬜ Прямоугольник</button>
+            <button class="btn-secondary" style="flex:1;font-size:11px" onclick="showToast('Кликайте вершины полигона, двойной клик — завершить')">⬡ Полигон</button>
+            <button class="btn-secondary" style="flex:1;font-size:11px;color:#e07070" onclick="showToast('Область сброшена')">✕ Сбросить</button>
+          </div>
+        </div>
+
+        <!-- Оценка объёма -->
+        <div style="background:#0d1e38;border:1px solid #1a3a5a;border-radius:6px;padding:10px;margin-bottom:10px;font-size:12px">
+          <div style="color:#5a7aaa;margin-bottom:6px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px">Оценка</div>
+          <div style="display:flex;justify-content:space-between;color:#c0d8ff">
+            <span>~4 820 тайлов</span>
+            <span>~312 МБ</span>
+            <span>~18 мин</span>
+          </div>
+          <div style="margin-top:6px;font-size:11px;color:#5a7aaa">⚠️ Более 50 000 тайлов — будет предупреждение</div>
+        </div>
+
+        <div class="prop-field">
+          <label>Имя файла</label>
+          <input value="Генштаб500м_Кольский_z9-13.sqlitedb">
+        </div>
+
+        <button class="btn-primary" style="width:100%;margin-top:4px" onclick="showDownloadProgress()">⬇ Начать скачивание</button>
+
+        <!-- Прогресс (скрыт по умолчанию) -->
+        <div id="download-progress" style="display:none;margin-top:10px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#7a9aba;margin-bottom:4px">
+            <span id="dl-status">Скачивается... 1 243 / 4 820</span>
+            <span id="dl-speed">128 тайл/с · осталось ~28 сек</span>
+          </div>
+          <div style="background:#0f3460;border-radius:4px;height:8px;overflow:hidden">
+            <div id="dl-bar" style="background:linear-gradient(90deg,#4a8adf,#4adfe0);height:100%;width:26%;border-radius:4px;transition:width 0.3s"></div>
+          </div>
+          <button class="btn-secondary" style="width:100%;margin-top:8px;color:#e07070;border-color:#6a2a2a;font-size:11px" onclick="stopDownload()">⏹ Остановить</button>
+        </div>
+      </div>
+
+      <!-- ВКЛАДКА: ЗАГРУЗИТЬ ФАЙЛ -->
+      <div class="tab-content" id="tab-offline-load">
+        <div style="border:2px dashed #2a4a7a;border-radius:8px;padding:30px;text-align:center;cursor:pointer;margin-bottom:12px" onclick="showToast('Открываем диалог выбора файла...')">
+          <div style="font-size:32px;margin-bottom:8px">📂</div>
+          <div style="color:#a0c8e0;font-size:13px;margin-bottom:4px">Нажмите или перетащите файл</div>
+          <div style="color:#4a6a8a;font-size:11px">.sqlitedb · .mbtiles · .rmap</div>
+        </div>
+        <div style="font-size:11px;color:#5a7aaa">
+          <div style="margin-bottom:4px">Поддерживаемые форматы:</div>
+          <div>• <b style="color:#7a9aba">.sqlitedb</b> — RMaps / Locus Maps</div>
+          <div>• <b style="color:#7a9aba">.mbtiles</b> — стандарт MBTiles</div>
+          <div>• <b style="color:#7a9aba">.rmap</b> — OziExplorer растровые карты</div>
+          <div style="margin-top:8px;color:#3a5a7a">После загрузки карта появится в списке "Мои карты" и будет доступна в переключателе слоёв</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     МОДАЛЬНОЕ ОКНО: СИНХРОНИЗАЦИЯ
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-sync">
+  <div class="modal" id="modal-sync-win" style="top:60px;left:350px;width:380px">
+    <div class="modal-header" onmousedown="startDrag(event,'modal-sync-win')">
+      ⟲ Синхронизация с планшетом
+      <span class="modal-close" onclick="closeModal('modal-sync')">✕</span>
+    </div>
+    <div class="modal-body">
+      <!-- Статус подключения -->
+      <div class="sync-status">
+        <div class="sync-dot offline" id="sync-dot"></div>
+        <div class="sync-info">
+          <div class="sync-label">Статус: <span class="sync-val" id="sync-status-text">Не подключено</span></div>
+          <div class="sync-label" style="font-size:11px;margin-top:2px">Последняя синхронизация: <span style="color:#7a9aba">никогда</span></div>
+        </div>
+        <button class="btn-primary" style="margin-left:auto;padding:5px 12px" onclick="testSync()">Подключиться</button>
+      </div>
+
+      <div class="sync-section-title">Подключение (SFTP)</div>
+      <div class="prop-field">
+        <label>Сервер</label>
+        <input value="87.120.84.254" placeholder="IP или hostname">
+      </div>
+      <div style="display:flex;gap:8px">
+        <div class="prop-field" style="flex:1">
+          <label>Порт</label>
+          <input type="number" value="22">
+        </div>
+        <div class="prop-field" style="flex:2">
+          <label>Пользователь</label>
+          <input value="tnav">
+        </div>
+      </div>
+      <div class="prop-field">
+        <label>Пароль</label>
+        <input type="password" value="••••••••">
+      </div>
+
+      <div class="sync-section-title">Ключ активации</div>
+      <div class="prop-field">
+        <label>Ключ (определяет папку на сервере)</label>
+        <input value="TND-A4F2-X9B1-K3M7" placeholder="TND-XXXX-XXXX-XXXX">
+      </div>
+
+      <div class="sync-section-title">Что синхронизировать</div>
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#c0d8ff">
+        <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
+          <input type="checkbox" checked style="accent-color:#4a8adf"> Точки (waypoints)
+        </label>
+        <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
+          <input type="checkbox" checked style="accent-color:#4a8adf"> Маршруты
+        </label>
+        <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
+          <input type="checkbox" style="accent-color:#4a8adf"> Треки (большой объём)
+        </label>
+        <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
+          <input type="checkbox" checked style="accent-color:#4a8adf"> Офлайн карты (.sqlitedb)
+        </label>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-secondary" onclick="closeModal('modal-sync')">Закрыть</button>
+        <button class="btn-primary" onclick="showToast('Настройки синхронизации сохранены')">Сохранить</button>
+        <button class="btn-primary" style="background:#1a4a1a;border-color:#2a8a2a" onclick="showToast('⟲ Синхронизация запущена...')">⟲ Синхронизировать</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     МОДАЛЬНОЕ ОКНО: СЛОИ И КАРТЫ
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-layers">
+  <div class="modal" id="modal-layers-win" style="top:60px;right:10px;left:auto;width:350px">
+    <div class="modal-header" onmousedown="startDrag(event,'modal-layers-win')">
+      🗺 Карта и слои
+      <span class="modal-close" onclick="closeModal('modal-layers')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="layer-section-title">Базовая карта</div>
+      <div class="base-layer"><input type="radio" name="base" checked onchange="setLayer('OpenStreetMap')"> OpenStreetMap</div>
+      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Спутник Google')"> Спутник Google</div>
+      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Спутник ESRI')"> Спутник ESRI</div>
+      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Спутник Яндекс')"> Спутник Яндекс</div>
+      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Гибрид Google')"> Гибрид Google</div>
+      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('OpenTopoMap')"> OpenTopoMap</div>
+      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Thunderforest Outdoors')"> Thunderforest Outdoors</div>
+      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Генштаб 250м')"> Генштаб 250м</div>
+      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Генштаб 500м')"> Генштаб 500м</div>
+      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Генштаб 1км')"> Генштаб 1км</div>
+      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Генштаб 2км')"> Генштаб 2км</div>
+      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Топо 1М')"> Топо 1М</div>
+
+      <div class="layer-section-title" style="margin-top:10px">Оверлейные слои</div>
+      <div style="font-size:10px;color:#4a6a8a;margin-bottom:4px">Ползунок = прозрачность (по умолчанию 100%)</div>
+      <div class="overlay-layer">
+        <input type="checkbox"> <span class="overlay-name">Яндекс дороги</span>
+        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.textContent=this.value+'%'">
+        <span class="opacity-val">100%</span>
+      </div>
+      <div class="overlay-layer">
+        <input type="checkbox"> <span class="overlay-name">OSM треки</span>
+        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.textContent=this.value+'%'">
+        <span class="opacity-val">100%</span>
+      </div>
+      <div class="overlay-layer">
+        <input type="checkbox"> <span class="overlay-name">Викимапия</span>
+        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.textContent=this.value+'%'">
+        <span class="opacity-val">100%</span>
+      </div>
+      <div class="overlay-layer">
+        <input type="checkbox"> <span class="overlay-name">ESRI транспорт</span>
+        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.textContent=this.value+'%'">
+        <span class="opacity-val">100%</span>
+      </div>
+      <div class="overlay-layer">
+        <input type="checkbox"> <span class="overlay-name">Hiking тропы</span>
+        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.textContent=this.value+'%'">
+        <span class="opacity-val">100%</span>
+      </div>
+      <div class="overlay-layer">
+        <input type="checkbox"> <span class="overlay-name">MTB тропы</span>
+        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.textContent=this.value+'%'">
+        <span class="opacity-val">100%</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- УВЕДОМЛЕНИЕ -->
+<div id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────
+// КАРТА
+// ─────────────────────────────────────────────
+const map = L.map('map', { zoomControl: true, attributionControl: false }).setView([55.75, 37.62], 10);
+const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+// Плашка бренда вместо attribution
+const BrandControl = L.Control.extend({
+  options: { position: 'bottomleft' },
+  onAdd() {
+    const div = L.DomUtil.create('div', 'brand-control');
+    div.innerHTML = '🏆&nbsp;Trophy Navigator Desktop';
+    return div;
+  }
+});
+new BrandControl().addTo(map);
+
+// Дисплей зума под кнопками +/-
+const ZoomDisplay = L.Control.extend({
+  options: { position: 'topleft' },
+  onAdd(map) {
+    const div = L.DomUtil.create('div', 'zoom-display-ctrl');
+    div.title = 'Текущий зум';
+    div.textContent = map.getZoom();
+    map.on('zoomend', () => div.textContent = map.getZoom());
+    return div;
+  }
+});
+new ZoomDisplay().addTo(map);
+
+// Координаты в статусбаре
+map.on('mousemove', e => {
+  const {lat, lng: lon} = e.latlng;
+  const latD = Math.floor(Math.abs(lat)), latM = ((Math.abs(lat)-latD)*60).toFixed(3);
+  const lonD = Math.floor(Math.abs(lon)), lonM = ((Math.abs(lon)-lonD)*60).toFixed(3);
+  document.getElementById('sb-coords').textContent = `${latD}°${latM}'${lat>=0?'N':'S'}  ${lonD}°${lonM}'${lon>=0?'E':'W'}`;
+});
+map.on('zoomend', () => document.getElementById('sb-zoom').textContent = map.getZoom());
+document.getElementById('sb-zoom').textContent = map.getZoom();
+
+// ─────────────────────────────────────────────
+// ТОЧКИ
+// ─────────────────────────────────────────────
+let waypoints = [], wpCounter = 1;
+const wpColors = ['#4a8adf','#df4a4a','#4adf7a','#dfdf4a','#df7a4a','#7a4adf','#4adfe0','#df4adf'];
+
+function makeDivIcon(num, color) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="background:${color};width:22px;height:22px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:11px;box-shadow:0 2px 6px rgba(0,0,0,0.5);color:#fff;font-weight:bold">${num}</div>`,
+    iconSize: [22,22], iconAnchor: [11,11]
+  });
+}
+
+function addWaypoint(latlng) {
+  const name = 'wp'+wpCounter;
+  const color = wpColors[(wpCounter-1) % wpColors.length];
+  const marker = L.marker(latlng, { icon: makeDivIcon(wpCounter, color), draggable: true });
+  marker.wpData = { name, color, radius: 50, lat: latlng.lat, lng: latlng.lng, num: wpCounter };
+  marker.addTo(map);
+  marker.on('contextmenu', e => { L.DomEvent.stop(e); showCtxMenu(e.originalEvent, marker); });
+  marker.on('click', e => { L.DomEvent.stop(e); showWptPopup(marker); });
+  waypoints.push(marker);
+  wpCounter++;
+  updateWptTable();
+  showToast(`Добавлена точка ${name}`);
+}
+
+function updateWptTable() {
+  const tbody = document.getElementById('wpt-tbody');
+  tbody.innerHTML = waypoints.map((m, i) => {
+    const d = m.wpData;
+    const latD = Math.floor(Math.abs(d.lat)), latM = ((Math.abs(d.lat)-latD)*60).toFixed(3);
+    const lonD = Math.floor(Math.abs(d.lng)), lonM = ((Math.abs(d.lng)-lonD)*60).toFixed(3);
+    return `<tr oncontextmenu="showCtxMenuTable(event,${i})" onclick="map.panTo([${d.lat},${d.lng}])">
+      <td><span class="wpt-icon" style="background:${d.color}"></span></td>
+      <td style="color:#5a7aaa">${d.num}</td>
+      <td style="font-weight:500">${d.name}</td>
+      <td style="font-family:monospace;font-size:11px">${latD}°${latM}'N ${lonD}°${lonM}'E</td>
+      <td style="text-align:center">${d.radius}м</td>
+    </tr>`;
+  }).join('');
+}
+
+function showWptPopup(marker) {
+  document.getElementById('prop-name').value = marker.wpData.name;
+  openModal('modal-wpt-props');
+}
+
+// ─────────────────────────────────────────────
+// РЕЖИМЫ
+// ─────────────────────────────────────────────
+let currentMode = 'hand';
+const modeNames = { hand:'Навигация', waypoint:'Добавить точку (клик)', track:'Рисовать трек (ESC — стоп)', route:'Создать маршрут (клик по КП)', ruler:'Линейка' };
+const btnMap = { hand:'btn-hand', waypoint:'btn-wpt', track:'btn-trk', route:'btn-rte', ruler:'btn-ruler' };
+
+function setMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('[id^=btn-]:not(#btn-map-layer)').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById(btnMap[mode]);
+  if (btn) btn.classList.add('active');
+  document.getElementById('sb-mode').textContent = modeNames[mode] || mode;
+  map.getContainer().style.cursor = mode === 'hand' ? '' : 'crosshair';
+  if (mode !== 'hand') showToast('Режим: ' + modeNames[mode]);
+}
+
+map.on('click', e => {
+  closeCtxMenu();
+  if (currentMode === 'waypoint') addWaypoint(e.latlng);
+  else if (currentMode === 'ruler') showToast('Линейка: кликайте для измерения расстояния');
+  else if (currentMode === 'track') showToast('Трек: узел добавлен');
+  else if (currentMode === 'route') showToast('Маршрут: кликните по точке на карте');
+});
+
+// ─────────────────────────────────────────────
+// СЛОИ
+// ─────────────────────────────────────────────
+function setLayer(name) {
+  document.getElementById('current-layer-name').textContent = name;
+  document.getElementById('sb-layer').textContent = name;
+  closeModal('modal-layers');
+  showToast('Карта: ' + name);
+}
+
+// ─────────────────────────────────────────────
+// КОНТЕКСТНОЕ МЕНЮ
+// ─────────────────────────────────────────────
+let ctxTarget = null;
+function showCtxMenu(e, marker) {
+  ctxTarget = marker;
+  const m = document.getElementById('ctx-menu');
+  m.style.left = e.clientX+'px'; m.style.top = e.clientY+'px';
+  m.classList.add('open');
+}
+function showCtxMenuTable(e, idx) {
+  e.preventDefault(); ctxTarget = waypoints[idx];
+  const m = document.getElementById('ctx-menu');
+  m.style.left = e.clientX+'px'; m.style.top = e.clientY+'px';
+  m.classList.add('open');
+}
+function closeCtxMenu() { document.getElementById('ctx-menu').classList.remove('open'); }
+function ctxAction(action) {
+  closeCtxMenu();
+  if (action === 'props' && ctxTarget) showWptPopup(ctxTarget);
+  else if (action === 'center' && ctxTarget) map.panTo(ctxTarget.getLatLng());
+  else if (action === 'copy' && ctxTarget) showToast('Скопировано: ' + ctxTarget.wpData.lat.toFixed(5) + ', ' + ctxTarget.wpData.lng.toFixed(5));
+  else if (action === 'delete' && ctxTarget) {
+    ctxTarget.remove();
+    waypoints = waypoints.filter(m => m !== ctxTarget);
+    updateWptTable(); showToast('Точка удалена');
+  }
+}
+document.addEventListener('click', () => closeCtxMenu());
+map.getContainer().addEventListener('contextmenu', e => {
+  e.preventDefault(); ctxTarget = null;
+  const m = document.getElementById('ctx-menu');
+  m.style.left = e.clientX+'px'; m.style.top = e.clientY+'px';
+  m.classList.add('open');
+});
+
+// ─────────────────────────────────────────────
+// МОДАЛЬНЫЕ ОКНА + DRAG
+// ─────────────────────────────────────────────
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  if (id === 'modal-wpts') updateWptTable();
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function startDrag(e, winId) {
+  const el = document.getElementById(winId);
+  const rect = el.getBoundingClientRect();
+  let dx = e.clientX - rect.left, dy = e.clientY - rect.top;
+  const onMove = e => { el.style.left = (e.clientX-dx)+'px'; el.style.top = (e.clientY-dy)+'px'; el.style.right = 'auto'; };
+  const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+// ─────────────────────────────────────────────
+// ВКЛАДКИ НАСТРОЕК
+// ─────────────────────────────────────────────
+function switchTab(btn, tabId) {
+  btn.closest('.modal-body').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.closest('.modal-body').querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+}
+
+// ─────────────────────────────────────────────
+// ТРЕКИ / МАРШРУТЫ
+// ─────────────────────────────────────────────
+function selectTrack(el) {
+  document.querySelectorAll('.track-item').forEach(t => t.style.background = '');
+  el.style.background = '#1a3a6a';
+  document.getElementById('track-controls').style.display = 'block';
+}
+function toggleRoute(btn) {
+  const list = btn.nextElementSibling;
+  if (list && list.classList.contains('route-kp-list')) {
+    const show = list.style.display === 'none';
+    list.style.display = show ? 'block' : 'none';
+    const span = btn.querySelector('span:last-child');
+    span.textContent = span.textContent.replace(show ? '▸' : '▾', show ? '▾' : '▸');
+  }
+}
+
+// ─────────────────────────────────────────────
+// СИНХРОНИЗАЦИЯ — имитация подключения
+// ─────────────────────────────────────────────
+function testSync() {
+  showToast('Подключаемся к серверу...');
+  setTimeout(() => {
+    document.getElementById('sync-dot').classList.remove('offline');
+    document.getElementById('sync-status-text').textContent = 'Подключено';
+    showToast('✓ Соединение с сервером установлено');
+  }, 1500);
+}
+
+// ─────────────────────────────────────────────
+// ОФЛАЙН — анимация прогресса
+// ─────────────────────────────────────────────
+let dlInterval;
+function showDownloadProgress() {
+  document.getElementById('download-progress').style.display = 'block';
+  let pct = 26, tiles = 1243;
+  dlInterval = setInterval(() => {
+    pct = Math.min(pct + Math.random()*3, 100);
+    tiles = Math.min(Math.round(tiles + Math.random()*80), 4820);
+    document.getElementById('dl-bar').style.width = pct + '%';
+    document.getElementById('dl-status').textContent = `Скачивается... ${tiles} / 4 820`;
+    if (pct >= 100) {
+      clearInterval(dlInterval);
+      document.getElementById('dl-status').textContent = '✅ Скачано 4 820 тайлов';
+      document.getElementById('dl-speed').textContent = '312 МБ · завершено';
+      showToast('Карта скачана: Генштаб500м_Кольский_z9-13.sqlitedb');
+    }
+  }, 400);
+}
+function stopDownload() {
+  clearInterval(dlInterval);
+  document.getElementById('download-progress').style.display = 'none';
+  showToast('Скачивание остановлено');
+}
+
+// ─────────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.style.display = 'none', 2500);
+}
+
+// ─────────────────────────────────────────────
+// ИКОНКИ — выбор
+// ─────────────────────────────────────────────
+document.querySelectorAll('.icon-cell').forEach(cell => {
+  cell.addEventListener('click', () => {
+    document.querySelectorAll('.icon-cell').forEach(c => c.classList.remove('selected'));
+    cell.classList.add('selected');
+  });
+});
+
+// Демо-точки
+setTimeout(() => {
+  addWaypoint(L.latLng(55.78, 37.52));
+  addWaypoint(L.latLng(55.72, 37.70));
+  addWaypoint(L.latLng(55.65, 37.58));
+}, 500);
+</script>
+</body>
+</html>
