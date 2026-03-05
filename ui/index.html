@@ -343,7 +343,7 @@
   <!-- ТРЕКИ -->
   <div class="tb-group primary">
     <span class="tb-group-label" onclick="openModal('modal-tracks')" title="Список треков">Треки</span>
-    <button class="tb-tag" id="btn-trk" onclick="setMode('track')" title="Рисовать трек (ESC — завершить)">〜</button>
+    <button class="tb-tag" id="btn-trk" onclick="startNewTrack()" title="Рисовать трек (ESC — завершить)">〜</button>
   </div>
 
   <div class="tb-sep"></div>
@@ -351,7 +351,7 @@
   <!-- МАРШРУТЫ -->
   <div class="tb-group primary">
     <span class="tb-group-label" onclick="openModal('modal-routes')" title="Список маршрутов">Маршруты</span>
-    <button class="tb-tag" id="btn-rte" onclick="setMode('route')" title="Создать маршрут">⚑</button>
+    <button class="tb-tag" id="btn-rte" onclick="startNewRoute()" title="Создать маршрут">⚑</button>
   </div>
 
   <div class="tb-sep"></div>
@@ -422,8 +422,15 @@
         <button class="btn-secondary" style="padding:4px 8px;font-size:11px" onclick="showToast('Выделены все точки')">Все</button>
         <button class="btn-secondary" style="padding:4px 8px;font-size:11px;color:#e07070;border-color:#6a2a2a" onclick="showToast('Выбранные точки удалены')">Удалить</button>
       </div>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+        <label style="font-size:12px;color:#5a7aaa;display:flex;align-items:center;gap:4px;cursor:pointer">
+          <input type="checkbox" id="wpt-select-all" style="accent-color:#4a8adf" onchange="selectAllWaypoints(this)"> Все
+        </label>
+        <button class="btn-secondary" style="padding:3px 8px;font-size:11px;color:#e07070;border-color:#6a2a2a;margin-left:4px" onclick="deleteSelectedWaypoints()">🗑 Удалить выбранные</button>
+        <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="clearAllWaypoints()">🗑 Все точки</button>
+      </div>
       <table class="wpt-table">
-        <thead><tr><th></th><th>#</th><th>Название</th><th>Координаты</th><th>Радиус</th></tr></thead>
+        <thead><tr><th></th><th></th><th>#</th><th>Название</th><th>Координаты</th><th>R</th></tr></thead>
         <tbody id="wpt-tbody"></tbody>
       </table>
     </div>
@@ -506,49 +513,52 @@
      МОДАЛЬНОЕ ОКНО: ТРЕКИ
 ════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-tracks">
-  <div class="modal" id="modal-tracks-win" style="top:60px;left:500px;width:310px">
+  <div class="modal" id="modal-tracks-win" style="top:60px;left:500px;width:320px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-tracks-win')">
       〜 Треки
       <span class="modal-close" onclick="closeModal('modal-tracks')">✕</span>
     </div>
     <div class="modal-body">
-      <div class="track-item" onclick="selectTrack(this)">
-        <div class="track-color" style="background:#4adf7a"></div>
-        <div class="track-info">
-          <div class="track-name">Трек Домодедово–Серпухов</div>
-          <div class="track-meta">847 точек · 123.4 км · 26.02.2026</div>
+      <!-- Панель рисования трека -->
+      <div id="track-build-panel" style="display:none;background:#1a3a1a;border:1px solid #2a6a2a;border-radius:6px;padding:8px;margin-bottom:8px">
+        <div style="font-size:12px;color:#a0d8a0;margin-bottom:4px">✏ Рисование трека</div>
+        <div style="font-size:11px;color:#5a7aaa;margin-bottom:6px">Кликайте на карту · двойной клик — завершить</div>
+        <div style="font-size:12px;color:#c0d8ff;margin-bottom:6px">Точек: <span id="track-build-count">0</span></div>
+        <div class="btn-row">
+          <button class="btn-secondary" onclick="cancelTrackDraw()" style="font-size:11px;color:#e07070;border-color:#6a2a2a">✕ Отмена</button>
+          <button class="btn-primary" onclick="finishTrackDraw()" style="font-size:11px">✓ Готово</button>
         </div>
       </div>
-      <div class="track-item" onclick="selectTrack(this)">
-        <div class="track-color" style="background:#df7a4a"></div>
-        <div class="track-info">
-          <div class="track-name">Разведка бродов р. Ока</div>
-          <div class="track-meta">412 точек · 38.7 км · 01.03.2026</div>
-        </div>
-      </div>
-      <div id="track-controls" class="track-controls" style="display:none">
+      <!-- Список треков -->
+      <div id="track-list"></div>
+      <!-- Свойства выбранного трека -->
+      <div id="track-controls" class="track-controls" style="display:none;margin-top:8px;border-top:1px solid #1a3a5a;padding-top:8px">
         <div class="ctrl-row">
-          <span style="min-width:50px">Цвет</span>
+          <span style="min-width:60px;font-size:12px">Название</span>
+          <input id="track-name-input" type="text" style="flex:1;background:#0f3460;border:1px solid #2a4a7a;color:#c0d8ff;border-radius:4px;padding:3px 6px;font-size:12px">
+        </div>
+        <div class="ctrl-row">
+          <span style="min-width:60px;font-size:12px">Цвет</span>
           <input type="color" id="track-color-input" value="#4adf7a" style="width:36px;height:24px;border:none;background:none;cursor:pointer">
         </div>
         <div class="ctrl-row">
-          <span style="min-width:50px">Толщина</span>
-          <input type="range" min="1" max="8" value="3" oninput="document.getElementById('track-width-val').textContent=this.value+'px'">
-          <span id="track-width-val" style="min-width:32px;text-align:right">3px</span>
+          <span style="min-width:60px;font-size:12px">Толщина</span>
+          <input type="range" id="track-width-input" min="1" max="8" value="3" oninput="document.getElementById('track-width-val').textContent=this.value+'px'">
+          <span id="track-width-val" style="min-width:32px;text-align:right;font-size:12px">3px</span>
         </div>
         <div class="btn-row">
-          <button class="btn-secondary" onclick="showToast('Трек удалён');document.getElementById('track-controls').style.display='none'" style="color:#e07070;border-color:#6a2a2a">Удалить</button>
-          <button class="btn-primary" onclick="showToast('Свойства трека сохранены')">Применить</button>
+          <button class="btn-secondary" onclick="deleteSelectedTrack()" style="color:#e07070;border-color:#6a2a2a;font-size:11px">🗑 Удалить трек</button>
+          <button class="btn-primary" onclick="applyTrackProps()" style="font-size:11px">✓ Применить</button>
         </div>
       </div>
+      <button class="btn-primary" style="width:100%;margin-top:8px" onclick="startNewTrack()">+ Новый трек</button>
     </div>
     <div class="modal-footer">
       <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-right:4px">Сохранить:</span>
-      <div class="save-btn" onclick="showToast('Сохраняем трек в .plt (OziExplorer)...')">💾 .plt</div>
-      <div class="save-btn" onclick="showToast('Сохраняем трек в .gpx...')">💾 .gpx</div>
+      <div class="save-btn" onclick="saveTracksGPX()">💾 .gpx</div>
       <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Открыть:</span>
       <div class="open-btn" onclick="openFile('.plt', loadPLT)">📂 .plt</div>
-      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXFile)">📂 .gpx</div>
+      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXTracks)">📂 .gpx</div>
     </div>
   </div>
 </div>
@@ -557,46 +567,33 @@
      МОДАЛЬНОЕ ОКНО: МАРШРУТЫ
 ════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-routes">
-  <div class="modal" id="modal-routes-win" style="top:60px;left:830px;width:330px">
+  <div class="modal" id="modal-routes-win" style="top:60px;left:830px;width:340px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-routes-win')">
       ⚑ Маршруты
       <span class="modal-close" onclick="closeModal('modal-routes')">✕</span>
     </div>
     <div class="modal-body">
-      <div class="route-item">
-        <div class="route-header" onclick="toggleRoute(this)">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="route-color-dot" style="background:#df4a4a"></span>
-            <span style="font-size:13px;color:#c0d8ff">Маршрут 2026 #1</span>
-          </div>
-          <span style="font-size:11px;color:#5a7aaa">6 КП · 87.3 км ▾</span>
-        </div>
-        <div class="route-kp-list">
-          <div class="route-kp"><span class="route-kp-num">КП1</span><span>wp1 — Старт (55°45.1'N 37°36.9'E)</span><span class="route-dist">—</span></div>
-          <div class="route-kp"><span class="route-kp-num">КП2</span><span>wp2 — Брод р.Лопасня</span><span class="route-dist">12.4 км · 184°</span></div>
-          <div class="route-kp"><span class="route-kp-num">КП3</span><span>wp3 — Карьер Ступино</span><span class="route-dist">23.1 км · 162°</span></div>
-          <div class="route-kp"><span class="route-kp-num">КП4</span><span>wp4 — Лесная дорога</span><span class="route-dist">15.8 км · 220°</span></div>
-          <div class="route-kp"><span class="route-kp-num">КП5</span><span>wp5 — Финиш Серпухов</span><span class="route-dist">35.9 км · 185°</span></div>
+      <!-- Панель создания маршрута -->
+      <div id="route-build-panel" style="display:none;background:#1a2a4a;border:1px solid #2a5a8a;border-radius:6px;padding:8px;margin-bottom:8px">
+        <div style="font-size:12px;color:#a0c8e0;margin-bottom:4px">⚑ Создание маршрута</div>
+        <input id="route-build-name" type="text" placeholder="Название маршрута..."
+          style="width:100%;background:#0f3460;border:1px solid #2a4a7a;color:#c0d8ff;border-radius:4px;padding:4px 8px;font-size:12px;margin-bottom:6px">
+        <div style="font-size:11px;color:#5a7aaa;margin-bottom:6px">Кликайте по карте для добавления КП · двойной клик — завершить</div>
+        <div style="font-size:12px;color:#c0d8ff;margin-bottom:6px">КП: <span id="route-build-count">0</span> · Длина: <span id="route-build-dist">0 км</span></div>
+        <div class="btn-row">
+          <button class="btn-secondary" onclick="cancelRouteDraw()" style="font-size:11px;color:#e07070;border-color:#6a2a2a">✕ Отмена</button>
+          <button class="btn-primary" onclick="finishRouteDraw()" style="font-size:11px">✓ Сохранить</button>
         </div>
       </div>
-      <div class="route-item">
-        <div class="route-header" onclick="toggleRoute(this)">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="route-color-dot" style="background:#4a8adf"></span>
-            <span style="font-size:13px;color:#c0d8ff">Разведка север</span>
-          </div>
-          <span style="font-size:11px;color:#5a7aaa">4 КП · 45.0 км ▸</span>
-        </div>
-      </div>
-      <button class="btn-primary" style="width:100%;margin-top:8px" onclick="showToast('Режим создания маршрута: кликайте по КП на карте')">+ Новый маршрут</button>
+      <!-- Список маршрутов -->
+      <div id="route-list"></div>
+      <button class="btn-primary" style="width:100%;margin-top:8px" onclick="startNewRoute()">+ Новый маршрут</button>
     </div>
     <div class="modal-footer">
       <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-right:4px">Сохранить:</span>
-      <div class="save-btn" onclick="showToast('Сохраняем маршрут в .rte (OziExplorer)...')">💾 .rte</div>
-      <div class="save-btn" onclick="showToast('Сохраняем маршрут в .gpx...')">💾 .gpx</div>
+      <div class="save-btn" onclick="saveRoutesGPX()">💾 .gpx</div>
       <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Открыть:</span>
-      <div class="open-btn" onclick="openFile('.rte', loadRTE)">📂 .rte</div>
-      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXFile)">📂 .gpx</div>
+      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXRoutes)">📂 .gpx</div>
     </div>
   </div>
 </div>
@@ -1030,6 +1027,7 @@ function updateWptTable() {
     const latD = Math.floor(Math.abs(d.lat)), latM = ((Math.abs(d.lat)-latD)*60).toFixed(3);
     const lonD = Math.floor(Math.abs(d.lng)), lonM = ((Math.abs(d.lng)-lonD)*60).toFixed(3);
     return `<tr oncontextmenu="showCtxMenuTable(event,${i})" onclick="map.panTo([${d.lat},${d.lng}])">
+      <td onclick="event.stopPropagation()"><input type="checkbox" class="wpt-cb" data-idx="${i}" style="accent-color:#4a8adf"></td>
       <td><span class="wpt-icon" style="background:${d.color}"></span></td>
       <td style="color:#5a7aaa">${d.num}</td>
       <td style="font-weight:500">${d.name}</td>
@@ -1037,6 +1035,8 @@ function updateWptTable() {
       <td style="text-align:center">${d.radius}м</td>
     </tr>`;
   }).join('');
+  const all = document.getElementById('wpt-select-all');
+  if (all) all.checked = false;
 }
 
 function showWptPopup(marker) {
@@ -1064,9 +1064,14 @@ function setMode(mode) {
 map.on('click', e => {
   closeCtxMenu();
   if (currentMode === 'waypoint') addWaypoint(e.latlng);
+  else if (currentMode === 'track') addTrackPoint(e.latlng);
+  else if (currentMode === 'route') addRoutePoint(e.latlng);
   else if (currentMode === 'ruler') showToast('Линейка: кликайте для измерения расстояния');
-  else if (currentMode === 'track') showToast('Трек: узел добавлен');
-  else if (currentMode === 'route') showToast('Маршрут: кликните по точке на карте');
+});
+map.on('dblclick', e => {
+  L.DomEvent.stop(e);
+  if (currentMode === 'track') finishTrackDraw();
+  else if (currentMode === 'route') finishRouteDraw();
 });
 
 // ─────────────────────────────────────────────
@@ -1263,59 +1268,351 @@ function switchTab(btn, tabId) {
 }
 
 // ─────────────────────────────────────────────
-// ТРЕКИ / МАРШРУТЫ
+// ТРЕКИ
 // ─────────────────────────────────────────────
-function selectTrack(el) {
-  document.querySelectorAll('.track-item').forEach(t => t.style.background = '');
-  el.style.background = '#1a3a6a';
-  document.getElementById('track-controls').style.display = 'block';
+let tracks = [], trackIdCounter = 1;
+let currentTrackDraw = null;
+let selectedTrackId = null;
+const trackPalette = ['#4adf7a','#df7a4a','#4a8adf','#dfdf4a','#df4adf','#4adfe0','#df4a4a','#7a4adf'];
+
+function startNewTrack() {
+  currentTrackDraw = {
+    id: trackIdCounter++,
+    name: 'Трек ' + trackIdCounter,
+    color: trackPalette[(trackIdCounter - 2) % trackPalette.length],
+    width: 3, points: [], polyline: null, visible: true
+  };
+  tracks.push(currentTrackDraw);
+  setMode('track');
+  document.getElementById('track-build-panel').style.display = 'block';
+  document.getElementById('track-build-count').textContent = '0';
+  document.getElementById('track-controls').style.display = 'none';
+  closeModal('modal-tracks');
+  showToast('✏ Рисование трека — кликайте на карту. Двойной клик — завершить');
 }
-function toggleRoute(btn) {
-  const list = btn.nextElementSibling;
-  if (list && list.classList.contains('route-kp-list')) {
-    const show = list.style.display === 'none';
-    list.style.display = show ? 'block' : 'none';
-    const span = btn.querySelector('span:last-child');
-    span.textContent = span.textContent.replace(show ? '▸' : '▾', show ? '▾' : '▸');
+function addTrackPoint(latlng) {
+  if (!currentTrackDraw) return;
+  currentTrackDraw.points.push(latlng);
+  if (currentTrackDraw.polyline) {
+    currentTrackDraw.polyline.setLatLngs(currentTrackDraw.points);
+  } else {
+    currentTrackDraw.polyline = L.polyline(currentTrackDraw.points, {
+      color: currentTrackDraw.color, weight: currentTrackDraw.width, opacity: 0.85
+    }).addTo(map);
   }
+  const el = document.getElementById('track-build-count');
+  if (el) el.textContent = currentTrackDraw.points.length;
+}
+function finishTrackDraw() {
+  if (!currentTrackDraw) return;
+  if (currentTrackDraw.points.length < 2) { showToast('⚠ Нужно минимум 2 точки'); return; }
+  setMode('hand');
+  document.getElementById('track-build-panel').style.display = 'none';
+  currentTrackDraw = null;
+  updateTrackList();
+  openModal('modal-tracks');
+  const t = tracks[tracks.length - 1];
+  showToast('✓ Трек сохранён: ' + t.name + ' · ' + trackLen(t).toFixed(1) + ' км');
+}
+function cancelTrackDraw() {
+  if (!currentTrackDraw) return;
+  if (currentTrackDraw.polyline) map.removeLayer(currentTrackDraw.polyline);
+  tracks = tracks.filter(t => t !== currentTrackDraw);
+  currentTrackDraw = null;
+  setMode('hand');
+  document.getElementById('track-build-panel').style.display = 'none';
+  showToast('Рисование трека отменено');
+}
+function trackLen(t) {
+  let d = 0;
+  for (let i = 1; i < t.points.length; i++) d += t.points[i-1].distanceTo(t.points[i]);
+  return d / 1000;
+}
+function selectTrackById(id) {
+  selectedTrackId = id;
+  const t = tracks.find(t => t.id === id);
+  if (!t) return;
+  document.getElementById('track-name-input').value = t.name;
+  document.getElementById('track-color-input').value = t.color;
+  document.getElementById('track-width-input').value = t.width;
+  document.getElementById('track-width-val').textContent = t.width + 'px';
+  document.getElementById('track-controls').style.display = 'block';
+  updateTrackList();
+}
+function applyTrackProps() {
+  const t = tracks.find(t => t.id === selectedTrackId);
+  if (!t) return;
+  t.name = document.getElementById('track-name-input').value || t.name;
+  t.color = document.getElementById('track-color-input').value;
+  t.width = parseInt(document.getElementById('track-width-input').value);
+  if (t.polyline) t.polyline.setStyle({ color: t.color, weight: t.width });
+  updateTrackList();
+  showToast('✓ Свойства обновлены');
+}
+function deleteSelectedTrack() {
+  const t = tracks.find(t => t.id === selectedTrackId);
+  if (!t) return;
+  if (t.polyline) map.removeLayer(t.polyline);
+  tracks = tracks.filter(tr => tr.id !== selectedTrackId);
+  selectedTrackId = null;
+  document.getElementById('track-controls').style.display = 'none';
+  updateTrackList();
+  showToast('Трек удалён');
+}
+function toggleTrackVisible(id) {
+  const t = tracks.find(t => t.id === id);
+  if (!t || !t.polyline) return;
+  t.visible = !t.visible;
+  t.visible ? t.polyline.addTo(map) : map.removeLayer(t.polyline);
+  updateTrackList();
+}
+function updateTrackList() {
+  const el = document.getElementById('track-list');
+  if (!el) return;
+  if (tracks.length === 0) {
+    el.innerHTML = '<div style="color:#5a7aaa;font-size:12px;text-align:center;padding:12px">Треков нет. Нажмите «+ Новый трек»</div>';
+    return;
+  }
+  el.innerHTML = tracks.map(t => {
+    const km = trackLen(t).toFixed(1), sel = t.id === selectedTrackId;
+    return `<div class="track-item${sel ? ' selected' : ''}" style="${sel ? 'background:#1a3a6a;border-left:3px solid #4a8adf;' : ''}" onclick="selectTrackById(${t.id})">
+      <div class="track-color" style="background:${t.color};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px" title="Скрыть/показать" onclick="event.stopPropagation();toggleTrackVisible(${t.id})">${t.visible !== false ? '👁' : '○'}</div>
+      <div class="track-info">
+        <div class="track-name">${t.name}</div>
+        <div class="track-meta">${t.points.length} точек · ${km} км</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function saveTracksGPX() {
+  if (tracks.length === 0) { showToast('Нет треков для сохранения'); return; }
+  let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND">';
+  tracks.forEach(t => {
+    gpx += `<trk><name>${t.name}</name><trkseg>`;
+    t.points.forEach(p => gpx += `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}"></trkpt>`);
+    gpx += '</trkseg></trk>';
+  });
+  gpx += '</gpx>';
+  const a = document.createElement('a');
+  a.href = 'data:application/gpx+xml,' + encodeURIComponent(gpx);
+  a.download = 'tracks.gpx'; a.click();
+  showToast('✓ Треки сохранены в tracks.gpx');
+}
+function loadGPXTracks(text, fname) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  let count = 0;
+  doc.querySelectorAll('trk').forEach(trk => {
+    const name = trk.querySelector('name')?.textContent?.trim() || ('Трек ' + (trackIdCounter));
+    const points = [];
+    trk.querySelectorAll('trkpt').forEach(pt => {
+      const lat = parseFloat(pt.getAttribute('lat')), lon = parseFloat(pt.getAttribute('lon'));
+      if (!isNaN(lat) && !isNaN(lon)) points.push(L.latLng(lat, lon));
+    });
+    if (points.length < 2) return;
+    const color = trackPalette[(trackIdCounter - 1) % trackPalette.length];
+    const polyline = L.polyline(points, { color, weight: 3, opacity: 0.85 }).addTo(map);
+    tracks.push({ id: trackIdCounter++, name, color, width: 3, points, polyline, visible: true });
+    count++;
+  });
+  updateTrackList();
+  showToast('✓ Загружено ' + count + ' треков из ' + fname);
+  if (count > 0) { openModal('modal-tracks'); map.fitBounds(L.featureGroup(tracks.map(t => t.polyline)).getBounds()); }
 }
 
 // ─────────────────────────────────────────────
-// СИНХРОНИЗАЦИЯ — имитация подключения
+// МАРШРУТЫ
 // ─────────────────────────────────────────────
-function testSync() {
-  showToast('Подключаемся к серверу...');
-  setTimeout(() => {
-    document.getElementById('sync-dot').classList.remove('offline');
-    document.getElementById('sync-status-text').textContent = 'Подключено';
-    showToast('✓ Соединение с сервером установлено');
-  }, 1500);
+let routes = [], routeIdCounter = 1;
+let currentRouteDraw = null;
+const routePalette = ['#df4a4a','#4a8adf','#dfdf4a','#4adf7a','#df7a4a','#df4adf'];
+
+function startNewRoute() {
+  currentRouteDraw = {
+    id: routeIdCounter++,
+    name: 'Маршрут ' + routeIdCounter,
+    color: routePalette[(routeIdCounter - 2) % routePalette.length],
+    points: [], markers: [], polyline: null
+  };
+  routes.push(currentRouteDraw);
+  setMode('route');
+  document.getElementById('route-build-panel').style.display = 'block';
+  document.getElementById('route-build-count').textContent = '0';
+  document.getElementById('route-build-dist').textContent = '0 км';
+  document.getElementById('route-build-name').value = currentRouteDraw.name;
+  closeModal('modal-routes');
+  showToast('⚑ Создание маршрута — кликайте по карте. Двойной клик — завершить');
+}
+function addRoutePoint(latlng) {
+  if (!currentRouteDraw) return;
+  const num = currentRouteDraw.points.length + 1;
+  currentRouteDraw.points.push(latlng);
+  const marker = L.marker(latlng, {
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="background:${currentRouteDraw.color};min-width:28px;height:22px;border-radius:11px;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.5);padding:0 4px">КП${num}</div>`,
+      iconSize: [28,22], iconAnchor: [14,11]
+    })
+  }).addTo(map);
+  currentRouteDraw.markers.push(marker);
+  if (currentRouteDraw.polyline) {
+    currentRouteDraw.polyline.setLatLngs(currentRouteDraw.points);
+  } else {
+    currentRouteDraw.polyline = L.polyline(currentRouteDraw.points, {
+      color: currentRouteDraw.color, weight: 3, opacity: 0.9, dashArray: '8 4'
+    }).addTo(map);
+  }
+  const dist = routeLen(currentRouteDraw);
+  const cEl = document.getElementById('route-build-count'), dEl = document.getElementById('route-build-dist');
+  if (cEl) cEl.textContent = num;
+  if (dEl) dEl.textContent = dist.toFixed(1) + ' км';
+}
+function finishRouteDraw() {
+  if (!currentRouteDraw) return;
+  if (currentRouteDraw.points.length < 2) { showToast('⚠ Нужно минимум 2 КП'); return; }
+  const nameInput = document.getElementById('route-build-name');
+  if (nameInput?.value?.trim()) currentRouteDraw.name = nameInput.value.trim();
+  setMode('hand');
+  document.getElementById('route-build-panel').style.display = 'none';
+  const r = currentRouteDraw;
+  currentRouteDraw = null;
+  updateRouteList();
+  openModal('modal-routes');
+  showToast('✓ Маршрут: ' + r.name + ' · ' + routeLen(r).toFixed(1) + ' км · ' + r.points.length + ' КП');
+}
+function cancelRouteDraw() {
+  if (!currentRouteDraw) return;
+  if (currentRouteDraw.polyline) map.removeLayer(currentRouteDraw.polyline);
+  currentRouteDraw.markers.forEach(m => map.removeLayer(m));
+  routes = routes.filter(r => r !== currentRouteDraw);
+  currentRouteDraw = null;
+  setMode('hand');
+  document.getElementById('route-build-panel').style.display = 'none';
+  showToast('Создание маршрута отменено');
+}
+function routeLen(r) {
+  let d = 0;
+  for (let i = 1; i < r.points.length; i++) d += r.points[i-1].distanceTo(r.points[i]);
+  return d / 1000;
+}
+function deleteRoute(id) {
+  const r = routes.find(r => r.id === id);
+  if (!r) return;
+  if (r.polyline) map.removeLayer(r.polyline);
+  r.markers.forEach(m => map.removeLayer(m));
+  routes = routes.filter(r => r.id !== id);
+  updateRouteList();
+  showToast('Маршрут удалён');
+}
+function toggleRouteEl(headerEl) {
+  const kpList = headerEl.nextElementSibling;
+  if (!kpList) return;
+  const visible = kpList.style.display !== 'none';
+  kpList.style.display = visible ? 'none' : 'block';
+  const arrow = headerEl.querySelector('.route-arrow');
+  if (arrow) arrow.textContent = visible ? '▸' : '▾';
+}
+function updateRouteList() {
+  const el = document.getElementById('route-list');
+  if (!el) return;
+  if (routes.length === 0) {
+    el.innerHTML = '<div style="color:#5a7aaa;font-size:12px;text-align:center;padding:12px">Маршрутов нет. Нажмите «+ Новый маршрут»</div>';
+    return;
+  }
+  el.innerHTML = routes.map(r => {
+    const km = routeLen(r).toFixed(1);
+    const kpRows = r.points.map((p, i) => {
+      const prev = i > 0 ? r.points[i-1] : null;
+      const dist = prev ? (prev.distanceTo(p)/1000).toFixed(1) + ' км' : '—';
+      const bear = prev ? (() => {
+        const dy = p.lat - prev.lat, dx = (p.lng - prev.lng) * Math.cos(prev.lat * Math.PI/180);
+        return ((Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360).toFixed(0) + '°';
+      })() : '';
+      return `<div class="route-kp">
+        <span class="route-kp-num" style="background:${r.color}22;color:${r.color}">КП${i+1}</span>
+        <span style="font-size:11px;color:#c0d8ff;flex:1">${p.lat.toFixed(4)}°N ${p.lng.toFixed(4)}°E</span>
+        <span class="route-dist">${dist}${bear ? ' · ' + bear : ''}</span>
+      </div>`;
+    }).join('');
+    return `<div class="route-item">
+      <div class="route-header" onclick="toggleRouteEl(this)" style="cursor:pointer">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="route-color-dot" style="background:${r.color}"></span>
+          <span style="font-size:13px;color:#c0d8ff">${r.name}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:11px;color:#5a7aaa">${r.points.length} КП · ${km} км <span class="route-arrow">▸</span></span>
+          <span style="font-size:12px;color:#e07070;cursor:pointer;padding:0 4px" onclick="event.stopPropagation();deleteRoute(${r.id})" title="Удалить">✕</span>
+        </div>
+      </div>
+      <div class="route-kp-list" style="display:none">${kpRows}</div>
+    </div>`;
+  }).join('');
+}
+function saveRoutesGPX() {
+  if (routes.length === 0) { showToast('Нет маршрутов для сохранения'); return; }
+  let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND">';
+  routes.forEach(r => {
+    gpx += `<rte><name>${r.name}</name>`;
+    r.points.forEach((p, i) => gpx += `<rtept lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}"><name>КП${i+1}</name></rtept>`);
+    gpx += '</rte>';
+  });
+  gpx += '</gpx>';
+  const a = document.createElement('a');
+  a.href = 'data:application/gpx+xml,' + encodeURIComponent(gpx);
+  a.download = 'routes.gpx'; a.click();
+  showToast('✓ Маршруты сохранены в routes.gpx');
+}
+function loadGPXRoutes(text, fname) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  let count = 0;
+  doc.querySelectorAll('rte').forEach(rte => {
+    const name = rte.querySelector('name')?.textContent?.trim() || ('Маршрут ' + routeIdCounter);
+    const color = routePalette[(routeIdCounter - 1) % routePalette.length];
+    const points = [], markers = [];
+    rte.querySelectorAll('rtept').forEach((pt, i) => {
+      const lat = parseFloat(pt.getAttribute('lat')), lon = parseFloat(pt.getAttribute('lon'));
+      if (isNaN(lat) || isNaN(lon)) return;
+      const latlng = L.latLng(lat, lon);
+      points.push(latlng);
+      const m = L.marker(latlng, { icon: L.divIcon({ className: '',
+        html: `<div style="background:${color};min-width:28px;height:22px;border-radius:11px;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.5);padding:0 4px">КП${i+1}</div>`,
+        iconSize: [28,22], iconAnchor: [14,11]
+      })}).addTo(map);
+      markers.push(m);
+    });
+    if (points.length < 2) return;
+    const polyline = L.polyline(points, { color, weight: 3, opacity: 0.9, dashArray: '8 4' }).addTo(map);
+    routes.push({ id: routeIdCounter++, name, color, points, markers, polyline });
+    count++;
+  });
+  updateRouteList();
+  showToast('✓ Загружено ' + count + ' маршрутов из ' + fname);
+  if (count > 0) openModal('modal-routes');
 }
 
 // ─────────────────────────────────────────────
-// ОФЛАЙН — анимация прогресса
+// ТОЧКИ — выделение и удаление
 // ─────────────────────────────────────────────
-let dlInterval;
-function showDownloadProgress() {
-  document.getElementById('download-progress').style.display = 'block';
-  let pct = 26, tiles = 1243;
-  dlInterval = setInterval(() => {
-    pct = Math.min(pct + Math.random()*3, 100);
-    tiles = Math.min(Math.round(tiles + Math.random()*80), 4820);
-    document.getElementById('dl-bar').style.width = pct + '%';
-    document.getElementById('dl-status').textContent = `Скачивается... ${tiles} / 4 820`;
-    if (pct >= 100) {
-      clearInterval(dlInterval);
-      document.getElementById('dl-status').textContent = '✅ Скачано 4 820 тайлов';
-      document.getElementById('dl-speed').textContent = '312 МБ · завершено';
-      showToast('Карта скачана: Генштаб500м_Кольский_z9-13.sqlitedb');
-    }
-  }, 400);
+function selectAllWaypoints(cb) {
+  document.querySelectorAll('.wpt-cb').forEach(c => c.checked = cb.checked);
 }
-function stopDownload() {
-  clearInterval(dlInterval);
-  document.getElementById('download-progress').style.display = 'none';
-  showToast('Скачивание остановлено');
+function deleteSelectedWaypoints() {
+  const checked = [...document.querySelectorAll('.wpt-cb:checked')];
+  if (checked.length === 0) { showToast('Нет выделенных точек'); return; }
+  const indices = new Set(checked.map(cb => parseInt(cb.dataset.idx)));
+  waypoints.forEach((m, i) => { if (indices.has(i)) m.remove(); });
+  waypoints = waypoints.filter((_, i) => !indices.has(i));
+  document.getElementById('wpt-select-all').checked = false;
+  updateWptTable();
+  showToast('Удалено ' + indices.size + ' точек');
+}
+function clearAllWaypoints() {
+  if (waypoints.length === 0) { showToast('Точек нет'); return; }
+  if (!confirm('Удалить все ' + waypoints.length + ' точек?')) return;
+  waypoints.forEach(m => m.remove());
+  waypoints = []; wpCounter = 1;
+  updateWptTable();
+  showToast('Все точки удалены');
 }
 
 // ─────────────────────────────────────────────
