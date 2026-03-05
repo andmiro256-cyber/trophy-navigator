@@ -246,9 +246,9 @@
 
   /* ─── СЛОИ ─── */
   .layer-section-title { font-size: 10px; text-transform: uppercase; color: #5a7aaa; letter-spacing: 0.5px; padding: 6px 0 4px; }
-  .base-layer { padding: 5px 4px; display: flex; align-items: center; gap: 8px; cursor: pointer; border-radius: 4px; font-size: 12px; }
+  .base-layer { padding: 7px 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; border-radius: 4px; font-size: 13px; border-left: 3px solid transparent; transition: background 0.15s, border-color 0.15s; }
   .base-layer:hover { background: #1a3a6a; }
-  .base-layer input[type=radio] { accent-color: #4a8adf; }
+  .base-layer.active { background: #1a3a6a; border-left-color: #4a8adf; color: #7ec8ff; }
   .overlay-layer { padding: 5px 4px; display: flex; align-items: center; gap: 8px; border-radius: 4px; font-size: 12px; }
   .overlay-layer:hover { background: #1a3a6a; }
   .overlay-layer input[type=checkbox] { accent-color: #4a8adf; }
@@ -432,8 +432,8 @@
       <div class="save-btn" onclick="showToast('Сохраняем точки в .wpt (OziExplorer)...')">💾 .wpt</div>
       <div class="save-btn" onclick="showToast('Сохраняем точки в .gpx...')">💾 .gpx</div>
       <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Открыть:</span>
-      <div class="open-btn" onclick="showToast('Открываем .wpt...')">📂 .wpt</div>
-      <div class="open-btn" onclick="showToast('Открываем .gpx...')">📂 .gpx</div>
+      <div class="open-btn" onclick="openFile('.wpt', loadWPT)">📂 .wpt</div>
+      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXFile)">📂 .gpx</div>
     </div>
   </div>
 </div>
@@ -547,8 +547,8 @@
       <div class="save-btn" onclick="showToast('Сохраняем трек в .plt (OziExplorer)...')">💾 .plt</div>
       <div class="save-btn" onclick="showToast('Сохраняем трек в .gpx...')">💾 .gpx</div>
       <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Открыть:</span>
-      <div class="open-btn" onclick="showToast('Открываем .plt...')">📂 .plt</div>
-      <div class="open-btn" onclick="showToast('Открываем .gpx...')">📂 .gpx</div>
+      <div class="open-btn" onclick="openFile('.plt', loadPLT)">📂 .plt</div>
+      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXFile)">📂 .gpx</div>
     </div>
   </div>
 </div>
@@ -595,8 +595,8 @@
       <div class="save-btn" onclick="showToast('Сохраняем маршрут в .rte (OziExplorer)...')">💾 .rte</div>
       <div class="save-btn" onclick="showToast('Сохраняем маршрут в .gpx...')">💾 .gpx</div>
       <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Открыть:</span>
-      <div class="open-btn" onclick="showToast('Открываем .rte...')">📂 .rte</div>
-      <div class="open-btn" onclick="showToast('Открываем .gpx...')">📂 .gpx</div>
+      <div class="open-btn" onclick="openFile('.rte', loadRTE)">📂 .rte</div>
+      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXFile)">📂 .gpx</div>
     </div>
   </div>
 </div>
@@ -671,10 +671,10 @@
         <div class="save-section" style="margin-top:12px">
           <h4>Открыть</h4>
           <div class="save-btns">
-            <div class="save-btn-grid" onclick="showToast('Открываем .wpt...')">📂 Точки (.wpt)</div>
-            <div class="save-btn-grid" onclick="showToast('Открываем .plt...')">📂 Треки (.plt)</div>
-            <div class="save-btn-grid" onclick="showToast('Открываем .rte...')">📂 Маршруты (.rte)</div>
-            <div class="save-btn-grid" onclick="showToast('Открываем .gpx...')">📂 GPX файл</div>
+            <div class="save-btn-grid" onclick="openFile('.wpt', loadWPT)">📂 Точки (.wpt)</div>
+            <div class="save-btn-grid" onclick="openFile('.plt', loadPLT)">📂 Треки (.plt)</div>
+            <div class="save-btn-grid" onclick="openFile('.rte', loadRTE)">📂 Маршруты (.rte)</div>
+            <div class="save-btn-grid" onclick="openFile('.gpx,.GPX', loadGPXFile)">📂 GPX файл</div>
           </div>
         </div>
       </div>
@@ -905,46 +905,47 @@
     </div>
     <div class="modal-body">
       <div class="layer-section-title">Базовая карта</div>
-      <div class="base-layer"><input type="radio" name="base" checked onchange="setLayer('OpenStreetMap')"> OpenStreetMap</div>
-      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Спутник Google')"> Спутник Google</div>
-      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Спутник ESRI')"> Спутник ESRI</div>
-      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Генштаб 250м')"> Генштаб 250м</div>
-      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Генштаб 500м')"> Генштаб 500м</div>
-      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Генштаб 1км')"> Генштаб 1км</div>
-      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('ГГЦ 500м')"> ГГЦ 500м</div>
-      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Топо 1М')"> Топо 1М</div>
+      <div class="base-layer active" onclick="setLayer('OpenStreetMap', this)">🗺 OpenStreetMap</div>
+      <div class="base-layer" onclick="setLayer('Спутник Google', this)">🛰 Спутник Google</div>
+      <div class="base-layer" onclick="setLayer('Спутник ESRI', this)">🛰 Спутник ESRI</div>
+      <div class="base-layer" onclick="setLayer('Генштаб 250м', this)">📋 Генштаб 250м</div>
+      <div class="base-layer" onclick="setLayer('Генштаб 500м', this)">📋 Генштаб 500м</div>
+      <div class="base-layer" onclick="setLayer('Генштаб 1км', this)">📋 Генштаб 1км</div>
+      <div class="base-layer" onclick="setLayer('ГГЦ 250м', this)">📐 ГГЦ 250м</div>
+      <div class="base-layer" onclick="setLayer('ГГЦ 500м', this)">📐 ГГЦ 500м</div>
+      <div class="base-layer" onclick="setLayer('Топо 1М', this)">🏔 Топо 1М</div>
 
       <div class="layer-section-title" style="margin-top:10px">Оверлейные слои</div>
       <div style="font-size:10px;color:#4a6a8a;margin-bottom:4px">Ползунок = прозрачность (по умолчанию 100%)</div>
       <div class="overlay-layer">
-        <input type="checkbox"> <span class="overlay-name">Яндекс дороги</span>
-        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.textContent=this.value+'%'">
+        <input type="checkbox" onchange="toggleOverlay('OSM дороги', this)"> <span class="overlay-name">OSM дороги</span>
+        <input type="range" class="opacity-slider" min="0" max="100" value="70" oninput="setOverlayOpacity('OSM дороги', this)">
+        <span class="opacity-val">70%</span>
+      </div>
+      <div class="overlay-layer">
+        <input type="checkbox" onchange="toggleOverlay('Hiking тропы', this)"> <span class="overlay-name">Hiking тропы</span>
+        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('Hiking тропы', this)">
         <span class="opacity-val">100%</span>
       </div>
       <div class="overlay-layer">
-        <input type="checkbox"> <span class="overlay-name">OSM треки</span>
-        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.textContent=this.value+'%'">
+        <input type="checkbox" onchange="toggleOverlay('MTB тропы', this)"> <span class="overlay-name">MTB тропы</span>
+        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('MTB тропы', this)">
         <span class="opacity-val">100%</span>
       </div>
       <div class="overlay-layer">
-        <input type="checkbox"> <span class="overlay-name">Викимапия</span>
-        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.textContent=this.value+'%'">
+        <input type="checkbox" onchange="toggleOverlay('ESRI транспорт', this)"> <span class="overlay-name">ESRI транспорт</span>
+        <input type="range" class="opacity-slider" min="0" max="100" value="80" oninput="setOverlayOpacity('ESRI транспорт', this)">
+        <span class="opacity-val">80%</span>
+      </div>
+      <div class="overlay-layer">
+        <input type="checkbox" onchange="toggleOverlay('OpenRailway', this)"> <span class="overlay-name">Ж/д пути</span>
+        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('OpenRailway', this)">
         <span class="opacity-val">100%</span>
       </div>
       <div class="overlay-layer">
-        <input type="checkbox"> <span class="overlay-name">ESRI транспорт</span>
-        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.textContent=this.value+'%'">
-        <span class="opacity-val">100%</span>
-      </div>
-      <div class="overlay-layer">
-        <input type="checkbox"> <span class="overlay-name">Hiking тропы</span>
-        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.textContent=this.value+'%'">
-        <span class="opacity-val">100%</span>
-      </div>
-      <div class="overlay-layer">
-        <input type="checkbox"> <span class="overlay-name">MTB тропы</span>
-        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="this.nextElementSibling.textContent=this.value+'%'">
-        <span class="opacity-val">100%</span>
+        <input type="checkbox" onchange="toggleOverlay('Hillshading', this)"> <span class="overlay-name">Рельеф (Hillshade)</span>
+        <input type="range" class="opacity-slider" min="0" max="100" value="50" oninput="setOverlayOpacity('Hillshading', this)">
+        <span class="opacity-val">50%</span>
       </div>
     </div>
   </div>
@@ -1008,8 +1009,8 @@ function makeDivIcon(num, color) {
   });
 }
 
-function addWaypoint(latlng) {
-  const name = 'wp'+wpCounter;
+function addWaypoint(latlng, nameHint) {
+  const name = nameHint || ('wp'+wpCounter);
   const color = wpColors[(wpCounter-1) % wpColors.length];
   const marker = L.marker(latlng, { icon: makeDivIcon(wpCounter, color), draggable: true });
   marker.wpData = { name, color, radius: 50, lat: latlng.lat, lng: latlng.lng, num: wpCounter };
@@ -1019,7 +1020,7 @@ function addWaypoint(latlng) {
   waypoints.push(marker);
   wpCounter++;
   updateWptTable();
-  showToast(`Добавлена точка ${name}`);
+  if (!nameHint) showToast(`Добавлена точка ${name}`);
 }
 
 function updateWptTable() {
@@ -1072,7 +1073,7 @@ map.on('click', e => {
 // СЛОИ
 // ─────────────────────────────────────────────
 // Все тайловые слои
-// ⚠️ Имена слоёв должны точно совпадать с вызовами setLayer() в HTML!
+// ⚠️ Имена слоёв должны точно совпадать с onclick в HTML!
 const baseLayers = {
   'OpenStreetMap':  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc' }),
   'Спутник Google': L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['0','1','2','3'] }),
@@ -1080,23 +1081,121 @@ const baseLayers = {
   'Генштаб 250м':   L.tileLayer('https://{s}.tiles.nakarte.me/g250/{z}/{x}/{y}', { maxZoom: 16, tms: true, subdomains: ['a','b','c'] }),
   'Генштаб 500м':   L.tileLayer('https://{s}.tiles.nakarte.me/g500/{z}/{x}/{y}', { maxZoom: 15, tms: true, subdomains: ['a','b','c'] }),
   'Генштаб 1км':    L.tileLayer('https://{s}.tiles.nakarte.me/g1000/{z}/{x}/{y}', { maxZoom: 14, tms: true, subdomains: ['a','b','c'] }),
+  'ГГЦ 250м':       L.tileLayer('https://{s}.tiles.nakarte.me/ggc250/{z}/{x}/{y}', { maxZoom: 17, tms: true, subdomains: ['a','b','c'] }),
   'ГГЦ 500м':       L.tileLayer('https://{s}.tiles.nakarte.me/ggc500/{z}/{x}/{y}', { maxZoom: 16, tms: true, subdomains: ['a','b','c'] }),
   'Топо 1М':        L.tileLayer('https://{s}.tiles.nakarte.me/topo001m/{z}/{x}/{y}', { maxZoom: 12, tms: true, subdomains: ['a','b','c'] }),
 };
 let currentBaseLayer = baseLayers['OpenStreetMap'];
 currentBaseLayer.addTo(map);
 
-function setLayer(name) {
+const layerEmoji = {
+  'OpenStreetMap':'🗺', 'Спутник Google':'🛰', 'Спутник ESRI':'🛰',
+  'Генштаб 250м':'📋', 'Генштаб 500м':'📋', 'Генштаб 1км':'📋',
+  'ГГЦ 250м':'📐', 'ГГЦ 500м':'📐', 'Топо 1М':'🏔',
+};
+
+function setLayer(name, el) {
   const layer = baseLayers[name];
   if (!layer) { console.warn('Layer not found:', name); return; }
   if (currentBaseLayer) map.removeLayer(currentBaseLayer);
   currentBaseLayer = layer;
   layer.addTo(map);
-  document.getElementById('current-layer-name').textContent = name;
+  const emoji = layerEmoji[name] || '🗺';
+  document.getElementById('current-layer-name').textContent = emoji + ' ' + name;
   document.getElementById('sb-layer').textContent = name;
+  document.querySelectorAll('.base-layer').forEach(d => d.classList.remove('active'));
+  if (el) el.classList.add('active');
   closeModal('modal-layers');
   showToast('Карта: ' + name);
 }
+
+// ─────────────────────────────────────────────
+// ОВЕРЛЕЙНЫЕ СЛОИ
+// ─────────────────────────────────────────────
+const overlayLayers = {
+  'OSM дороги':     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc' }),
+  'Hiking тропы':   L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png', { maxZoom: 19 }),
+  'MTB тропы':      L.tileLayer('https://tile.waymarkedtrails.org/mtb/{z}/{x}/{y}.png', { maxZoom: 19 }),
+  'ESRI транспорт': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 }),
+  'OpenRailway':    L.tileLayer('https://a.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', { maxZoom: 19 }),
+  'Hillshading':    L.tileLayer('https://{s}.tiles.nakarte.me/shadows/{z}/{x}/{y}', { maxZoom: 16, tms: true, subdomains: ['a','b','c'] }),
+};
+function toggleOverlay(name, cb) {
+  const layer = overlayLayers[name];
+  if (!layer) return;
+  const slider = cb.parentElement.querySelector('.opacity-slider');
+  if (cb.checked) {
+    layer.setOpacity((slider ? slider.value : 100) / 100);
+    layer.addTo(map);
+  } else {
+    map.removeLayer(layer);
+  }
+}
+function setOverlayOpacity(name, slider) {
+  const layer = overlayLayers[name];
+  if (layer && map.hasLayer(layer)) layer.setOpacity(slider.value / 100);
+  slider.nextElementSibling.textContent = slider.value + '%';
+}
+
+// ─────────────────────────────────────────────
+// ЗАГРУЗКА ФАЙЛОВ
+// ─────────────────────────────────────────────
+function openFile(accept, callback) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = accept;
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => callback(ev.target.result, file.name);
+    reader.readAsText(file, 'UTF-8');
+  };
+  input.click();
+}
+function loadGPXWaypoints(text, fname) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  const wpts = doc.querySelectorAll('wpt');
+  let count = 0;
+  wpts.forEach(wpt => {
+    const lat = parseFloat(wpt.getAttribute('lat'));
+    const lon = parseFloat(wpt.getAttribute('lon'));
+    if (isNaN(lat) || isNaN(lon)) return;
+    addWaypoint(L.latLng(lat, lon), wpt.querySelector('name')?.textContent?.trim() || '');
+    count++;
+  });
+  showToast('✓ Загружено ' + count + ' точек из ' + fname);
+  if (count > 0) openModal('modal-wpts');
+}
+function loadGPXFile(text, fname) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  let wCount = 0;
+  doc.querySelectorAll('wpt').forEach(wpt => {
+    const lat = parseFloat(wpt.getAttribute('lat')), lon = parseFloat(wpt.getAttribute('lon'));
+    if (isNaN(lat) || isNaN(lon)) return;
+    addWaypoint(L.latLng(lat, lon), wpt.querySelector('name')?.textContent?.trim() || '');
+    wCount++;
+  });
+  const trks = doc.querySelectorAll('trk').length;
+  if (wCount > 0) openModal('modal-wpts');
+  showToast('✓ GPX: ' + wCount + ' точек, ' + trks + ' треков — ' + fname);
+}
+function loadWPT(text, fname) {
+  const lines = text.split(/\r?\n/).slice(4);
+  let count = 0;
+  lines.forEach(line => {
+    const p = line.split(',');
+    if (p.length < 4) return;
+    const lat = parseFloat(p[2]), lon = parseFloat(p[3]);
+    if (isNaN(lat) || isNaN(lon)) return;
+    addWaypoint(L.latLng(lat, lon), p[1]?.trim() || '');
+    count++;
+  });
+  showToast('✓ Загружено ' + count + ' точек из ' + fname);
+  if (count > 0) openModal('modal-wpts');
+}
+function loadPLT(text, fname) { showToast('📂 Трек ' + fname + ' — загрузка треков в следующей версии'); }
+function loadRTE(text, fname) { showToast('📂 Маршрут ' + fname + ' — загрузка маршрутов в следующей версии'); }
 
 // ─────────────────────────────────────────────
 // КОНТЕКСТНОЕ МЕНЮ
