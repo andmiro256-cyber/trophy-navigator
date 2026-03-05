@@ -1257,21 +1257,39 @@ async function checkForUpdates() {
   btn.textContent = '⏳ Проверяем...';
   status.textContent = '';
   try {
-    const r = await fetch('https://api.github.com/repos/andmiro256-cyber/trophy-navigator/releases/latest');
-    if (!r.ok) throw new Error('Нет ответа от GitHub');
-    const data = await r.json();
-    const latest = data.tag_name?.replace(/^v/, '') || '?';
-    const current = document.getElementById('about-version').textContent;
-    if (latest === current) {
-      status.style.color = '#4adf7a';
-      status.textContent = '✓ У вас актуальная версия ' + current;
+    // Если запущено в Tauri — используем встроенный updater
+    if (window.__TAURI__) {
+      const { check } = await import('https://unpkg.com/@tauri-apps/plugin-updater@2/dist/index.mjs');
+      const update = await check();
+      if (update) {
+        status.style.color = '#dfdf4a';
+        status.textContent = `⬆ Доступна версия ${update.version}. Скачиваем...`;
+        btn.textContent = '⏳ Скачиваем...';
+        await update.downloadAndInstall();
+        status.textContent = '✓ Обновление установлено. Перезапустите приложение.';
+      } else {
+        const current = document.getElementById('about-version').textContent;
+        status.style.color = '#4adf7a';
+        status.textContent = '✓ У вас актуальная версия ' + current;
+      }
     } else {
-      status.style.color = '#dfdf4a';
-      status.textContent = `⬆ Доступна версия ${latest}. Скачайте на GitHub.`;
+      // В браузере — проверяем через GitHub API
+      const r = await fetch('https://api.github.com/repos/andmiro256-cyber/trophy-navigator/releases/latest');
+      if (!r.ok) throw new Error('Нет ответа');
+      const data = await r.json();
+      const latest = data.tag_name?.replace(/^v/, '') || '?';
+      const current = document.getElementById('about-version').textContent;
+      if (latest === current) {
+        status.style.color = '#4adf7a';
+        status.textContent = '✓ У вас актуальная версия ' + current;
+      } else {
+        status.style.color = '#dfdf4a';
+        status.textContent = `⬆ Доступна версия ${latest}. Скачайте на GitHub.`;
+      }
     }
   } catch(e) {
     status.style.color = '#df7a4a';
-    status.textContent = '✗ Нет соединения или ошибка проверки';
+    status.textContent = '✗ ' + (e.message || 'Ошибка проверки обновлений');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '🔄 Проверить обновление';
@@ -1295,7 +1313,7 @@ async function checkForUpdates() {
       <div style="font-size:13px;color:#5a7aaa;margin-bottom:20px">Навигация для трофи-рейдов</div>
       <div style="background:#0d1e38;border-radius:8px;padding:14px;margin-bottom:16px;text-align:left">
         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.1.0</span>
+          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.3.0</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:#5a7aaa">Платформа</span><span style="color:#e0e0e0">Linux / Windows</span>

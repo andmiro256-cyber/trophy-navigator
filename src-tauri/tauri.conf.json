@@ -1,6 +1,6 @@
 {
   "productName": "Trophy Navigator Desktop",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "identifier": "ru.trophy-nav.desktop",
   "build": {
     "frontendDist": "../ui"
@@ -19,6 +19,14 @@
     ],
     "security": {
       "csp": null
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQxRjZDNTEwRUQ2NkM2RkEKUldUNnhtYnRFTVgyMFJjbnJycklOcDFzZlAxbkZOZ2dlUEVLakwyVWk3cit6WFlwS25nVjFLZkgK",
+      "endpoints": [
+        "https://github.com/andmiro256-cyber/trophy-navigator/releases/latest/download/latest.json"
+      ]
     }
   },
   "bundle": {
