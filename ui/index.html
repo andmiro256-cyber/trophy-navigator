@@ -323,14 +323,12 @@
      ТУЛБАР
 ════════════════════════════════════════════ -->
 <div id="toolbar">
-  <!-- Настройки -->
-  <button class="tb-btn settings-btn" onclick="openModal('modal-settings')" title="Настройки программы">⚙ Настройки</button>
-  <button class="tb-btn settings-btn" onclick="openModal('modal-about')" title="О программе">ℹ О программе</button>
+  <!-- Навигация -->
 
   <div class="tb-sep"></div>
 
   <!-- Рука -->
-  <button class="tb-btn active" id="btn-hand" onclick="setMode('hand')" title="Навигация — обычное перемещение по карте (пробел)">🧭 Навигация</button>
+  <button class="tb-btn active" id="btn-hand" onclick="setMode('hand'); showToast('Навигация: перемещение и зум. Клик по карте ничего не добавляет.')" title="Режим навигации — перемещение по карте (пробел)">🧭 Навигация</button>
 
   <div class="tb-sep"></div>
 
@@ -372,8 +370,11 @@
   <!-- Синхронизация -->
   <button class="tb-btn sync-btn" onclick="openModal('modal-sync')" title="Синхронизация с планшетом">⟲ Синхронизация</button>
 
-  <!-- Карта — справа, широкая, показывает текущий слой -->
+  <!-- Правая часть тулбара -->
   <div style="margin-left:auto"></div>
+  <button class="tb-btn settings-btn" onclick="openModal('modal-settings')" title="Настройки программы">⚙ Настройки</button>
+  <button class="tb-btn settings-btn" onclick="openModal('modal-about')" title="О программе">ℹ О программе</button>
+  <div class="tb-sep"></div>
   <button class="tb-btn" id="btn-map-layer" onclick="openModal('modal-layers')" title="Выбор карты и слоёв">
     🗺 <span class="layer-name" id="current-layer-name">OpenStreetMap</span> ▾
   </button>
@@ -907,14 +908,10 @@
       <div class="base-layer"><input type="radio" name="base" checked onchange="setLayer('OpenStreetMap')"> OpenStreetMap</div>
       <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Спутник Google')"> Спутник Google</div>
       <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Спутник ESRI')"> Спутник ESRI</div>
-      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Спутник Яндекс')"> Спутник Яндекс</div>
-      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Гибрид Google')"> Гибрид Google</div>
-      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('OpenTopoMap')"> OpenTopoMap</div>
-      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Thunderforest Outdoors')"> Thunderforest Outdoors</div>
       <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Генштаб 250м')"> Генштаб 250м</div>
       <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Генштаб 500м')"> Генштаб 500м</div>
       <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Генштаб 1км')"> Генштаб 1км</div>
-      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Генштаб 2км')"> Генштаб 2км</div>
+      <div class="base-layer"><input type="radio" name="base" onchange="setLayer('ГГЦ 500м')"> ГГЦ 500м</div>
       <div class="base-layer"><input type="radio" name="base" onchange="setLayer('Топо 1М')"> Топо 1М</div>
 
       <div class="layer-section-title" style="margin-top:10px">Оверлейные слои</div>
@@ -1075,22 +1072,23 @@ map.on('click', e => {
 // СЛОИ
 // ─────────────────────────────────────────────
 // Все тайловые слои
+// ⚠️ Имена слоёв должны точно совпадать с вызовами setLayer() в HTML!
 const baseLayers = {
-  'OpenStreetMap': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc' }),
-  'Google Спутник': L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['0','1','2','3'] }),
-  'ESRI Спутник': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 }),
-  'Генштаб 1км': L.tileLayer('https://tiles.nakarte.me/g1000/{z}/{x}/{y}', { maxZoom: 14, tms: true }),
-  'Генштаб 500м': L.tileLayer('https://tiles.nakarte.me/g500/{z}/{x}/{y}', { maxZoom: 15, tms: true }),
-  'Генштаб 250м': L.tileLayer('https://tiles.nakarte.me/g250/{z}/{x}/{y}', { maxZoom: 16, tms: true }),
-  'ГГЦ 500м': L.tileLayer('https://tiles.nakarte.me/ggc500/{z}/{x}/{y}', { maxZoom: 16, tms: true }),
-  'Топо 1М': L.tileLayer('https://tiles.nakarte.me/topo001m/{z}/{x}/{y}', { maxZoom: 12, tms: true }),
+  'OpenStreetMap':  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc' }),
+  'Спутник Google': L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['0','1','2','3'] }),
+  'Спутник ESRI':   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 }),
+  'Генштаб 250м':   L.tileLayer('https://{s}.tiles.nakarte.me/g250/{z}/{x}/{y}', { maxZoom: 16, tms: true, subdomains: ['a','b','c'] }),
+  'Генштаб 500м':   L.tileLayer('https://{s}.tiles.nakarte.me/g500/{z}/{x}/{y}', { maxZoom: 15, tms: true, subdomains: ['a','b','c'] }),
+  'Генштаб 1км':    L.tileLayer('https://{s}.tiles.nakarte.me/g1000/{z}/{x}/{y}', { maxZoom: 14, tms: true, subdomains: ['a','b','c'] }),
+  'ГГЦ 500м':       L.tileLayer('https://{s}.tiles.nakarte.me/ggc500/{z}/{x}/{y}', { maxZoom: 16, tms: true, subdomains: ['a','b','c'] }),
+  'Топо 1М':        L.tileLayer('https://{s}.tiles.nakarte.me/topo001m/{z}/{x}/{y}', { maxZoom: 12, tms: true, subdomains: ['a','b','c'] }),
 };
 let currentBaseLayer = baseLayers['OpenStreetMap'];
 currentBaseLayer.addTo(map);
 
 function setLayer(name) {
   const layer = baseLayers[name];
-  if (!layer) return;
+  if (!layer) { console.warn('Layer not found:', name); return; }
   if (currentBaseLayer) map.removeLayer(currentBaseLayer);
   currentBaseLayer = layer;
   layer.addTo(map);
