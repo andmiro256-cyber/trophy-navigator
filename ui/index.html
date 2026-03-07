@@ -910,24 +910,33 @@
       <span class="modal-close" onclick="closeModal('modal-layers')">✕</span>
     </div>
     <div class="modal-body">
-      <div class="layer-section-title">Онлайн карты</div>
+      <div class="layer-section-title">Яндекс</div>
+      <div class="base-layer" data-layer="Яндекс Схема" onclick="setLayer('Яндекс Схема', this)">🗺 Яндекс Схема</div>
+      <div class="base-layer" data-layer="Яндекс Спутник" onclick="setLayer('Яндекс Спутник', this)">🛰 Яндекс Спутник</div>
+      <div class="base-layer" data-layer="Яндекс Гибрид" onclick="setLayer('Яндекс Гибрид', this)">🛰 Яндекс Гибрид</div>
+
+      <div class="layer-section-title" style="margin-top:8px">Google / ESRI</div>
       <div class="base-layer active" data-layer="OpenStreetMap" onclick="setLayer('OpenStreetMap', this)">🗺 OpenStreetMap</div>
       <div class="base-layer" data-layer="OpenTopoMap" onclick="setLayer('OpenTopoMap', this)">🏔 OpenTopoMap</div>
+      <div class="base-layer" data-layer="2GIS" onclick="setLayer('2GIS', this)">🗺 2GIS</div>
       <div class="base-layer" data-layer="Спутник Google" onclick="setLayer('Спутник Google', this)">🛰 Спутник Google</div>
+      <div class="base-layer" data-layer="Гибрид Google" onclick="setLayer('Гибрид Google', this)">🛰 Гибрид Google</div>
       <div class="base-layer" data-layer="Спутник ESRI" onclick="setLayer('Спутник ESRI', this)">🛰 Спутник ESRI</div>
 
-      <div class="layer-section-title" style="margin-top:10px">Nakarte</div>
-      <div class="base-layer" data-layer="Генштаб 250к" onclick="setLayer('Генштаб 250к', this)">📋 Генштаб 250к</div>
-      <div class="base-layer" data-layer="Генштаб 1000к" onclick="setLayer('Генштаб 1000к', this)">📋 Генштаб 1000к</div>
-      <div class="base-layer" data-layer="Генштаб 2км" onclick="setLayer('Генштаб 2км', this)">📋 Генштаб 2км</div>
-      <div class="base-layer" data-layer="Топо 1М" onclick="setLayer('Топо 1М', this)">🏔 Топо 1М</div>
+      <div class="layer-section-title" style="margin-top:8px">Генштаб / Топо (nakarte.me)</div>
+      <div class="base-layer" data-layer="Генштаб 250м" onclick="setLayer('Генштаб 250м', this)">📋 Генштаб 250м</div>
+      <div class="base-layer" data-layer="Генштаб 500м" onclick="setLayer('Генштаб 500м', this)">📋 Генштаб 500м</div>
+      <div class="base-layer" data-layer="Генштаб 1км" onclick="setLayer('Генштаб 1км', this)">📋 Генштаб 1км</div>
+      <div class="base-layer" data-layer="Топо 250м" onclick="setLayer('Топо 250м', this)">🏔 Топо 250м</div>
+      <div class="base-layer" data-layer="Топо 500м" onclick="setLayer('Топо 500м', this)">🏔 Топо 500м</div>
+      <div class="base-layer" data-layer="Топо 1км" onclick="setLayer('Топо 1км', this)">🏔 Топо 1км</div>
 
-      <div class="layer-section-title" style="margin-top:10px">Оверлейные слои</div>
-      <div style="font-size:10px;color:#4a6a8a;margin-bottom:4px">Ползунок = прозрачность (по умолчанию 100%)</div>
+      <div class="layer-section-title" style="margin-top:8px">Оверлейные слои</div>
+      <div style="font-size:10px;color:#4a6a8a;margin-bottom:4px">Ползунок = прозрачность</div>
       <div class="overlay-layer">
-        <input type="checkbox" data-overlay="OSM дороги" onchange="toggleOverlay('OSM дороги', this)"> <span class="overlay-name">OSM дороги</span>
-        <input type="range" class="opacity-slider" min="0" max="100" value="70" oninput="setOverlayOpacity('OSM дороги', this)">
-        <span class="opacity-val">70%</span>
+        <input type="checkbox" data-overlay="Яндекс дороги" onchange="toggleOverlay('Яндекс дороги', this)"> <span class="overlay-name">Яндекс дороги</span>
+        <input type="range" class="opacity-slider" min="0" max="100" value="80" oninput="setOverlayOpacity('Яндекс дороги', this)">
+        <span class="opacity-val">80%</span>
       </div>
       <div class="overlay-layer">
         <input type="checkbox" data-overlay="Hiking тропы" onchange="toggleOverlay('Hiking тропы', this)"> <span class="overlay-name">Hiking тропы</span>
@@ -943,16 +952,6 @@
         <input type="checkbox" data-overlay="ESRI транспорт" onchange="toggleOverlay('ESRI транспорт', this)"> <span class="overlay-name">ESRI транспорт</span>
         <input type="range" class="opacity-slider" min="0" max="100" value="80" oninput="setOverlayOpacity('ESRI транспорт', this)">
         <span class="opacity-val">80%</span>
-      </div>
-      <div class="overlay-layer">
-        <input type="checkbox" data-overlay="OpenRailway" onchange="toggleOverlay('OpenRailway', this)"> <span class="overlay-name">Ж/д пути</span>
-        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('OpenRailway', this)">
-        <span class="opacity-val">100%</span>
-      </div>
-      <div class="overlay-layer">
-        <input type="checkbox" data-overlay="Nakarte рельеф" onchange="toggleOverlay('Nakarte рельеф', this)"> <span class="overlay-name">Nakarte рельеф</span>
-        <input type="range" class="opacity-slider" min="0" max="100" value="50" oninput="setOverlayOpacity('Nakarte рельеф', this)">
-        <span class="opacity-val">50%</span>
       </div>
     </div>
   </div>
@@ -1310,19 +1309,29 @@ map.on('dblclick', e => {
 const baseLayers = {
   'OpenStreetMap':  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc' }),
   'OpenTopoMap':    L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, subdomains: 'abc' }),
+  '2GIS':           L.tileLayer('https://tile2.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1', { maxZoom: 18 }),
+  'Яндекс Схема':   L.tileLayer('https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', { maxZoom: 19 }),
+  'Яндекс Спутник': L.tileLayer('https://sat0{s}.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}', { maxZoom: 19, subdomains: ['1','2'] }),
+  'Яндекс Гибрид':  L.tileLayer('https://sat0{s}.maps.yandex.net/tiles?l=sat%2Cskl&x={x}&y={y}&z={z}', { maxZoom: 19, subdomains: ['1','2'] }),
   'Спутник Google': L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['0','1','2','3'] }),
+  'Гибрид Google':  L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['0','1','2','3'] }),
   'Спутник ESRI':   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 }),
-  'Генштаб 250к':   L.tileLayer('https://{s}.tiles.nakarte.me/ggc250/{z}/{x}/{y}', { maxNativeZoom: 8, maxZoom: 18, tms: true, subdomains: ['a','b','c'] }),
-  'Генштаб 1000к':  L.tileLayer('https://{s}.tiles.nakarte.me/ggc1000/{z}/{x}/{y}', { maxNativeZoom: 13, maxZoom: 18, tms: true, subdomains: ['a','b','c'] }),
-  'Генштаб 2км':    L.tileLayer('https://{s}.tiles.nakarte.me/ggc2000/{z}/{x}/{y}', { maxNativeZoom: 13, maxZoom: 18, tms: true, subdomains: ['a','b','c'] }),
-  'Топо 1М':        L.tileLayer('https://{s}.tiles.nakarte.me/topo001m/{z}/{x}/{y}', { maxNativeZoom: 10, maxZoom: 18, tms: true, subdomains: ['a','b','c'] }),
+  'Генштаб 250м':   L.tileLayer('https://tiles.nakarte.me/ggc250/{z}/{x}/{y}.png', { maxNativeZoom: 15, maxZoom: 18, tms: true }),
+  'Генштаб 500м':   L.tileLayer('https://tiles.nakarte.me/ggc500/{z}/{x}/{y}.png', { maxNativeZoom: 14, maxZoom: 18, tms: true }),
+  'Генштаб 1км':    L.tileLayer('https://tiles.nakarte.me/ggc1000/{z}/{x}/{y}.png', { maxNativeZoom: 13, maxZoom: 18, tms: true }),
+  'Топо 250м':      L.tileLayer('https://tiles.nakarte.me/topo250/{z}/{x}/{y}.png', { maxNativeZoom: 15, maxZoom: 18, tms: true }),
+  'Топо 500м':      L.tileLayer('https://tiles.nakarte.me/topo500/{z}/{x}/{y}.png', { maxNativeZoom: 14, maxZoom: 18, tms: true }),
+  'Топо 1км':       L.tileLayer('https://tiles.nakarte.me/topo1000/{z}/{x}/{y}.png', { maxNativeZoom: 13, maxZoom: 18, tms: true }),
 };
 let currentBaseLayer = baseLayers['OpenStreetMap'];
 currentBaseLayer.addTo(map);
 
 const layerEmoji = {
-  'OpenStreetMap':'🗺', 'OpenTopoMap':'🏔', 'Спутник Google':'🛰', 'Спутник ESRI':'🛰',
-  'Генштаб 250к':'📋', 'Генштаб 1000к':'📋', 'Генштаб 2км':'📋', 'Топо 1М':'🏔',
+  'OpenStreetMap':'🗺', 'OpenTopoMap':'🏔', '2GIS':'🗺',
+  'Яндекс Схема':'🗺', 'Яндекс Спутник':'🛰', 'Яндекс Гибрид':'🛰',
+  'Спутник Google':'🛰', 'Гибрид Google':'🛰', 'Спутник ESRI':'🛰',
+  'Генштаб 250м':'📋', 'Генштаб 500м':'📋', 'Генштаб 1км':'📋',
+  'Топо 250м':'🏔', 'Топо 500м':'🏔', 'Топо 1км':'🏔',
 };
 
 function setLayer(name, el) {
@@ -1345,12 +1354,10 @@ function setLayer(name, el) {
 // ОВЕРЛЕЙНЫЕ СЛОИ
 // ─────────────────────────────────────────────
 const overlayLayers = {
-  'OSM дороги':     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc' }),
+  'Яндекс дороги':  L.tileLayer('https://core-renderer-tiles.maps.yandex.net/tiles?l=skl&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', { maxZoom: 19 }),
   'Hiking тропы':   L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png', { maxZoom: 19 }),
   'MTB тропы':      L.tileLayer('https://tile.waymarkedtrails.org/mtb/{z}/{x}/{y}.png', { maxZoom: 19 }),
   'ESRI транспорт': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 }),
-  'OpenRailway':    L.tileLayer('https://a.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', { maxZoom: 19 }),
-  'Nakarte рельеф': L.tileLayer('https://{s}.tiles.nakarte.me/shadows/{z}/{x}/{y}', { maxZoom: 16, tms: true, subdomains: ['a','b','c'] }),
 };
 function toggleOverlay(name, cb) {
   const layer = overlayLayers[name];
