@@ -1,6 +1,6 @@
 {
   "productName": "Trophy Navigator Desktop",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "identifier": "ru.trophy-nav.desktop",
   "build": {
     "frontendDist": "../ui"

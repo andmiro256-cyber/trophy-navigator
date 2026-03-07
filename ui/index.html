@@ -923,13 +923,13 @@
       <div class="base-layer" data-layer="Гибрид Google" onclick="setLayer('Гибрид Google', this)">🛰 Гибрид Google</div>
       <div class="base-layer" data-layer="Спутник ESRI" onclick="setLayer('Спутник ESRI', this)">🛰 Спутник ESRI</div>
 
-      <div class="layer-section-title" style="margin-top:8px">Генштаб / Топо (nakarte.me)</div>
-      <div class="base-layer" data-layer="Генштаб 250м" onclick="setLayer('Генштаб 250м', this)">📋 Генштаб 250м</div>
-      <div class="base-layer" data-layer="Генштаб 500м" onclick="setLayer('Генштаб 500м', this)">📋 Генштаб 500м</div>
-      <div class="base-layer" data-layer="Генштаб 1км" onclick="setLayer('Генштаб 1км', this)">📋 Генштаб 1км</div>
-      <div class="base-layer" data-layer="Топо 250м" onclick="setLayer('Топо 250м', this)">🏔 Топо 250м</div>
-      <div class="base-layer" data-layer="Топо 500м" onclick="setLayer('Топо 500м', this)">🏔 Топо 500м</div>
-      <div class="base-layer" data-layer="Топо 1км" onclick="setLayer('Топо 1км', this)">🏔 Топо 1км</div>
+      <div class="layer-section-title" style="margin-top:8px">ГГЦ / Генштаб (nakarte.me)</div>
+      <div class="base-layer" data-layer="ГГЦ 250м" onclick="setLayer('ГГЦ 250м', this)">📋 ГГЦ 250м</div>
+      <div class="base-layer" data-layer="ГГЦ 500м" onclick="setLayer('ГГЦ 500м', this)">📋 ГГЦ 500м</div>
+      <div class="base-layer" data-layer="ГГЦ 1км" onclick="setLayer('ГГЦ 1км', this)">📋 ГГЦ 1км</div>
+      <div class="base-layer" data-layer="Генштаб 250м" onclick="setLayer('Генштаб 250м', this)">🏔 Генштаб 250м</div>
+      <div class="base-layer" data-layer="Генштаб 500м" onclick="setLayer('Генштаб 500м', this)">🏔 Генштаб 500м</div>
+      <div class="base-layer" data-layer="Генштаб 1км" onclick="setLayer('Генштаб 1км', this)">🏔 Генштаб 1км</div>
 
       <div class="layer-section-title" style="margin-top:8px">Оверлейные слои</div>
       <div style="font-size:10px;color:#4a6a8a;margin-bottom:4px">Ползунок = прозрачность</div>
@@ -1316,12 +1316,12 @@ const baseLayers = {
   'Спутник Google': L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['0','1','2','3'] }),
   'Гибрид Google':  L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['0','1','2','3'] }),
   'Спутник ESRI':   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 }),
-  'Генштаб 250м':   L.tileLayer('https://tiles.nakarte.me/ggc250/{z}/{x}/{y}.png', { maxNativeZoom: 15, maxZoom: 18, tms: true }),
-  'Генштаб 500м':   L.tileLayer('https://tiles.nakarte.me/ggc500/{z}/{x}/{y}.png', { maxNativeZoom: 14, maxZoom: 18, tms: true }),
-  'Генштаб 1км':    L.tileLayer('https://tiles.nakarte.me/ggc1000/{z}/{x}/{y}.png', { maxNativeZoom: 13, maxZoom: 18, tms: true }),
-  'Топо 250м':      L.tileLayer('https://tiles.nakarte.me/topo250/{z}/{x}/{y}.png', { maxNativeZoom: 15, maxZoom: 18, tms: true }),
-  'Топо 500м':      L.tileLayer('https://tiles.nakarte.me/topo500/{z}/{x}/{y}.png', { maxNativeZoom: 14, maxZoom: 18, tms: true }),
-  'Топо 1км':       L.tileLayer('https://tiles.nakarte.me/topo1000/{z}/{x}/{y}.png', { maxNativeZoom: 13, maxZoom: 18, tms: true }),
+  'ГГЦ 250м':       L.tileLayer('https://tiles.nakarte.me/ggc250/{z}/{x}/{y}.png', { maxNativeZoom: 15, maxZoom: 18, tms: true }),
+  'ГГЦ 500м':       L.tileLayer('https://tiles.nakarte.me/ggc500/{z}/{x}/{y}.png', { maxNativeZoom: 14, maxZoom: 18, tms: true }),
+  'ГГЦ 1км':        L.tileLayer('https://tiles.nakarte.me/ggc1000/{z}/{x}/{y}.png', { maxNativeZoom: 13, maxZoom: 18, tms: true }),
+  'Генштаб 250м':   L.tileLayer('https://tiles.nakarte.me/topo250/{z}/{x}/{y}.png', { maxNativeZoom: 15, maxZoom: 18, tms: true }),
+  'Генштаб 500м':   L.tileLayer('https://tiles.nakarte.me/topo500/{z}/{x}/{y}.png', { maxNativeZoom: 14, maxZoom: 18, tms: true }),
+  'Генштаб 1км':    L.tileLayer('https://tiles.nakarte.me/topo1000/{z}/{x}/{y}.png', { maxNativeZoom: 13, maxZoom: 18, tms: true }),
 };
 let currentBaseLayer = baseLayers['OpenStreetMap'];
 currentBaseLayer.addTo(map);
@@ -1330,8 +1330,8 @@ const layerEmoji = {
   'OpenStreetMap':'🗺', 'OpenTopoMap':'🏔', '2GIS':'🗺',
   'Яндекс Схема':'🗺', 'Яндекс Спутник':'🛰', 'Яндекс Гибрид':'🛰',
   'Спутник Google':'🛰', 'Гибрид Google':'🛰', 'Спутник ESRI':'🛰',
-  'Генштаб 250м':'📋', 'Генштаб 500м':'📋', 'Генштаб 1км':'📋',
-  'Топо 250м':'🏔', 'Топо 500м':'🏔', 'Топо 1км':'🏔',
+  'ГГЦ 250м':'📋', 'ГГЦ 500м':'📋', 'ГГЦ 1км':'📋',
+  'Генштаб 250м':'🏔', 'Генштаб 500м':'🏔', 'Генштаб 1км':'🏔',
 };
 
 function setLayer(name, el) {
@@ -2451,7 +2451,7 @@ async function checkForUpdates(silent = false) {
       <div style="font-size:13px;color:#5a7aaa;margin-bottom:20px">Навигация для трофи-рейдов</div>
       <div style="background:#0d1e38;border-radius:8px;padding:14px;margin-bottom:16px;text-align:left">
         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.5.6</span>
+          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.5.7</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:#5a7aaa">Платформа</span><span style="color:#e0e0e0">Linux / Windows</span>
