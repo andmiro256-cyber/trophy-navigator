@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Trophy Navigator Desktop</title>
+<link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
 <style>
@@ -418,9 +419,9 @@
     </div>
     <div class="modal-body">
       <div style="margin-bottom:8px;display:flex;gap:6px;align-items:center">
-        <input placeholder="🔍 Поиск по названию..." style="flex:1;background:#0f3460;border:1px solid #2a4a7a;color:#c0d8ff;border-radius:4px;padding:4px 8px;font-size:12px">
-        <button class="btn-secondary" style="padding:4px 8px;font-size:11px" onclick="showToast('Выделены все точки')">Все</button>
-        <button class="btn-secondary" style="padding:4px 8px;font-size:11px;color:#e07070;border-color:#6a2a2a" onclick="showToast('Выбранные точки удалены')">Удалить</button>
+        <input id="wpt-search" placeholder="🔍 Поиск по названию..." oninput="updateWptTable()" style="flex:1;background:#0f3460;border:1px solid #2a4a7a;color:#c0d8ff;border-radius:4px;padding:4px 8px;font-size:12px">
+        <button class="btn-secondary" style="padding:4px 8px;font-size:11px" onclick="document.getElementById('wpt-select-all').checked=true;selectAllWaypoints(document.getElementById('wpt-select-all'))">Все</button>
+        <button class="btn-secondary" style="padding:4px 8px;font-size:11px;color:#e07070;border-color:#6a2a2a" onclick="deleteSelectedWaypoints()">Удалить</button>
       </div>
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
         <label style="font-size:12px;color:#5a7aaa;display:flex;align-items:center;gap:4px;cursor:pointer">
@@ -436,8 +437,8 @@
     </div>
     <div class="modal-footer">
       <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-right:4px">Сохранить:</span>
-      <div class="save-btn" onclick="showToast('Сохраняем точки в .wpt (OziExplorer)...')">💾 .wpt</div>
-      <div class="save-btn" onclick="showToast('Сохраняем точки в .gpx...')">💾 .gpx</div>
+      <div class="save-btn" onclick="saveWaypointsWPT()">💾 .wpt</div>
+      <div class="save-btn" onclick="saveWaypointsGPX()">💾 .gpx</div>
       <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Открыть:</span>
       <div class="open-btn" onclick="openFile('.wpt', loadWPT)">📂 .wpt</div>
       <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXFile)">📂 .gpx</div>
@@ -461,49 +462,49 @@
       </div>
       <div class="prop-field">
         <label>Описание</label>
-        <textarea rows="2" style="resize:none">Брод через реку</textarea>
+        <textarea id="prop-desc" rows="2" style="resize:none"></textarea>
       </div>
       <div class="prop-field">
         <label>Иконка</label>
         <div class="icon-grid">
-          <div class="icon-cell selected" title="Кружок">⬤</div>
-          <div class="icon-cell" title="Флажок">🚩</div>
-          <div class="icon-cell" title="Дом">🏠</div>
-          <div class="icon-cell" title="Машина">🚗</div>
-          <div class="icon-cell" title="Палатка">⛺</div>
-          <div class="icon-cell" title="Топливо">⛽</div>
-          <div class="icon-cell" title="Вода">💧</div>
-          <div class="icon-cell" title="Опасность">⚠️</div>
-          <div class="icon-cell" title="Финиш">🏁</div>
-          <div class="icon-cell" title="Старт">🟢</div>
-          <div class="icon-cell" title="Звезда">★</div>
-          <div class="icon-cell" title="Крест">✚</div>
-          <div class="icon-cell" title="Ромб">◆</div>
-          <div class="icon-cell" title="Треугольник">▲</div>
-          <div class="icon-cell" title="Якорь">⚓</div>
-          <div class="icon-cell" title="Камера">📷</div>
+          <div class="icon-cell selected" data-symbol="⬤" title="Кружок">⬤</div>
+          <div class="icon-cell" data-symbol="🚩" title="Флажок">🚩</div>
+          <div class="icon-cell" data-symbol="🏠" title="Дом">🏠</div>
+          <div class="icon-cell" data-symbol="🚗" title="Машина">🚗</div>
+          <div class="icon-cell" data-symbol="⛺" title="Палатка">⛺</div>
+          <div class="icon-cell" data-symbol="⛽" title="Топливо">⛽</div>
+          <div class="icon-cell" data-symbol="💧" title="Вода">💧</div>
+          <div class="icon-cell" data-symbol="⚠" title="Опасность">⚠</div>
+          <div class="icon-cell" data-symbol="🏁" title="Финиш">🏁</div>
+          <div class="icon-cell" data-symbol="🟢" title="Старт">🟢</div>
+          <div class="icon-cell" data-symbol="★" title="Звезда">★</div>
+          <div class="icon-cell" data-symbol="✚" title="Крест">✚</div>
+          <div class="icon-cell" data-symbol="◆" title="Ромб">◆</div>
+          <div class="icon-cell" data-symbol="▲" title="Треугольник">▲</div>
+          <div class="icon-cell" data-symbol="⚓" title="Якорь">⚓</div>
+          <div class="icon-cell" data-symbol="📷" title="Камера">📷</div>
         </div>
       </div>
       <div style="display:flex;gap:10px">
         <div class="prop-field" style="flex:1">
           <label>Цвет маркера</label>
-          <input type="color" value="#4a8adf" style="width:100%;height:30px;border-radius:4px;border:1px solid #2a4a7a;cursor:pointer">
+          <input id="prop-color" type="color" value="#4a8adf" style="width:100%;height:30px;border-radius:4px;border:1px solid #2a4a7a;cursor:pointer">
         </div>
         <div class="prop-field" style="flex:1">
           <label>Радиус сближения, м</label>
-          <input type="number" value="50" min="0">
+          <input id="prop-radius" type="number" value="50" min="0">
         </div>
       </div>
       <div class="prop-field">
         <label>Координаты (WGS84)</label>
         <div class="prop-coords">
-          <input value="55°45.132'N" placeholder="Широта">
-          <input value="37°36.934'E" placeholder="Долгота">
+          <input id="prop-lat" value="55°45.132'N" placeholder="Широта">
+          <input id="prop-lng" value="37°36.934'E" placeholder="Долгота">
         </div>
       </div>
       <div class="btn-row">
         <button class="btn-secondary" onclick="closeModal('modal-wpt-props')">Отмена</button>
-        <button class="btn-primary" onclick="closeModal('modal-wpt-props');showToast('Точка сохранена')">Сохранить</button>
+        <button class="btn-primary" onclick="applyWaypointProps()">Сохранить</button>
       </div>
     </div>
   </div>
@@ -550,11 +551,17 @@
           <button class="btn-secondary" onclick="deleteSelectedTrack()" style="color:#e07070;border-color:#6a2a2a;font-size:11px">🗑 Удалить трек</button>
           <button class="btn-primary" onclick="applyTrackProps()" style="font-size:11px">✓ Применить</button>
         </div>
+        <div class="btn-row" style="margin-top:4px">
+          <button class="btn-secondary" onclick="centerSelectedTrack()" style="font-size:11px">🎯 Центрировать</button>
+          <button class="btn-secondary" onclick="reverseSelectedTrack()" style="font-size:11px">⇄ Развернуть</button>
+          <button class="btn-secondary" onclick="continueSelectedTrack()" style="font-size:11px">➕ Продолжить</button>
+        </div>
       </div>
       <button class="btn-primary" style="width:100%;margin-top:8px" onclick="startNewTrack()">+ Новый трек</button>
     </div>
     <div class="modal-footer">
       <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-right:4px">Сохранить:</span>
+      <div class="save-btn" onclick="saveTracksPLT()">💾 .plt</div>
       <div class="save-btn" onclick="saveTracksGPX()">💾 .gpx</div>
       <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Открыть:</span>
       <div class="open-btn" onclick="openFile('.plt', loadPLT)">📂 .plt</div>
@@ -591,8 +598,10 @@
     </div>
     <div class="modal-footer">
       <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-right:4px">Сохранить:</span>
+      <div class="save-btn" onclick="saveRoutesRTE()">💾 .rte</div>
       <div class="save-btn" onclick="saveRoutesGPX()">💾 .gpx</div>
       <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Открыть:</span>
+      <div class="open-btn" onclick="openFile('.rte', loadRTE)">📂 .rte</div>
       <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXRoutes)">📂 .gpx</div>
     </div>
   </div>
@@ -656,13 +665,13 @@
         <div class="save-section">
           <h4>Сохранить</h4>
           <div class="save-btns">
-            <div class="save-btn-grid" onclick="showToast('Точки → .wpt')">💾 Точки (.wpt)</div>
-            <div class="save-btn-grid" onclick="showToast('Точки → .gpx')">💾 Точки (.gpx)</div>
-            <div class="save-btn-grid" onclick="showToast('Треки → .plt')">💾 Треки (.plt)</div>
-            <div class="save-btn-grid" onclick="showToast('Треки → .gpx')">💾 Треки (.gpx)</div>
-            <div class="save-btn-grid" onclick="showToast('Маршруты → .rte')">💾 Маршруты (.rte)</div>
-            <div class="save-btn-grid" onclick="showToast('Маршруты → .gpx')">💾 Маршруты (.gpx)</div>
-            <div class="save-btn-grid" style="grid-column:span 2;background:#1a3a5a;border-color:#2a6a9a;color:#a0c8e0" onclick="showToast('Всё → единый GPX')">💾 Всё вместе (.gpx)</div>
+            <div class="save-btn-grid" onclick="saveWaypointsWPT()">💾 Точки (.wpt)</div>
+            <div class="save-btn-grid" onclick="saveWaypointsGPX()">💾 Точки (.gpx)</div>
+            <div class="save-btn-grid" onclick="saveTracksPLT()">💾 Треки (.plt)</div>
+            <div class="save-btn-grid" onclick="saveTracksGPX()">💾 Треки (.gpx)</div>
+            <div class="save-btn-grid" onclick="saveRoutesRTE()">💾 Маршруты (.rte)</div>
+            <div class="save-btn-grid" onclick="saveRoutesGPX()">💾 Маршруты (.gpx)</div>
+            <div class="save-btn-grid" style="grid-column:span 2;background:#1a3a5a;border-color:#2a6a9a;color:#a0c8e0" onclick="saveAllGPX()">💾 Всё вместе (.gpx)</div>
           </div>
         </div>
         <div class="save-section" style="margin-top:12px">
@@ -711,7 +720,7 @@
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-size:18px">🗺</span>
             <div style="flex:1">
-              <div style="font-size:13px;color:#c0d8ff">Генштаб 500м · Кольский</div>
+          <div style="font-size:13px;color:#c0d8ff">Генштаб 250к · Кольский</div>
               <div style="font-size:11px;color:#5a7aaa">z8–z14 · 1 243 тайлов · 87.4 МБ · 01.03.2026</div>
             </div>
             <button class="btn-secondary" style="padding:3px 8px;font-size:11px">Удалить</button>
@@ -730,9 +739,9 @@
         <div class="prop-field">
           <label>Карта для скачивания</label>
           <select>
-            <option>Генштаб 250м (nakarte.me)</option>
-            <option>Генштаб 500м (nakarte.me)</option>
-            <option>Генштаб 1км (nakarte.me)</option>
+            <option>Генштаб 250к (nakarte.me)</option>
+            <option>Генштаб 1000к (nakarte.me)</option>
+            <option>Топо 1М (nakarte.me)</option>
             <option>Спутник Google</option>
             <option>Спутник Яндекс</option>
             <option>OpenStreetMap</option>
@@ -901,47 +910,48 @@
       <span class="modal-close" onclick="closeModal('modal-layers')">✕</span>
     </div>
     <div class="modal-body">
-      <div class="layer-section-title">Базовая карта</div>
-      <div class="base-layer active" onclick="setLayer('OpenStreetMap', this)">🗺 OpenStreetMap</div>
-      <div class="base-layer" onclick="setLayer('Спутник Google', this)">🛰 Спутник Google</div>
-      <div class="base-layer" onclick="setLayer('Спутник ESRI', this)">🛰 Спутник ESRI</div>
-      <div class="base-layer" onclick="setLayer('Генштаб 250м', this)">📋 Генштаб 250м</div>
-      <div class="base-layer" onclick="setLayer('Генштаб 500м', this)">📋 Генштаб 500м</div>
-      <div class="base-layer" onclick="setLayer('Генштаб 1км', this)">📋 Генштаб 1км</div>
-      <div class="base-layer" onclick="setLayer('ГГЦ 250м', this)">📐 ГГЦ 250м</div>
-      <div class="base-layer" onclick="setLayer('ГГЦ 500м', this)">📐 ГГЦ 500м</div>
-      <div class="base-layer" onclick="setLayer('Топо 1М', this)">🏔 Топо 1М</div>
+      <div class="layer-section-title">Онлайн карты</div>
+      <div class="base-layer active" data-layer="OpenStreetMap" onclick="setLayer('OpenStreetMap', this)">🗺 OpenStreetMap</div>
+      <div class="base-layer" data-layer="OpenTopoMap" onclick="setLayer('OpenTopoMap', this)">🏔 OpenTopoMap</div>
+      <div class="base-layer" data-layer="Спутник Google" onclick="setLayer('Спутник Google', this)">🛰 Спутник Google</div>
+      <div class="base-layer" data-layer="Спутник ESRI" onclick="setLayer('Спутник ESRI', this)">🛰 Спутник ESRI</div>
+
+      <div class="layer-section-title" style="margin-top:10px">Nakarte</div>
+      <div class="base-layer" data-layer="Генштаб 250к" onclick="setLayer('Генштаб 250к', this)">📋 Генштаб 250к</div>
+      <div class="base-layer" data-layer="Генштаб 1000к" onclick="setLayer('Генштаб 1000к', this)">📋 Генштаб 1000к</div>
+      <div class="base-layer" data-layer="Генштаб 2км" onclick="setLayer('Генштаб 2км', this)">📋 Генштаб 2км</div>
+      <div class="base-layer" data-layer="Топо 1М" onclick="setLayer('Топо 1М', this)">🏔 Топо 1М</div>
 
       <div class="layer-section-title" style="margin-top:10px">Оверлейные слои</div>
       <div style="font-size:10px;color:#4a6a8a;margin-bottom:4px">Ползунок = прозрачность (по умолчанию 100%)</div>
       <div class="overlay-layer">
-        <input type="checkbox" onchange="toggleOverlay('OSM дороги', this)"> <span class="overlay-name">OSM дороги</span>
+        <input type="checkbox" data-overlay="OSM дороги" onchange="toggleOverlay('OSM дороги', this)"> <span class="overlay-name">OSM дороги</span>
         <input type="range" class="opacity-slider" min="0" max="100" value="70" oninput="setOverlayOpacity('OSM дороги', this)">
         <span class="opacity-val">70%</span>
       </div>
       <div class="overlay-layer">
-        <input type="checkbox" onchange="toggleOverlay('Hiking тропы', this)"> <span class="overlay-name">Hiking тропы</span>
+        <input type="checkbox" data-overlay="Hiking тропы" onchange="toggleOverlay('Hiking тропы', this)"> <span class="overlay-name">Hiking тропы</span>
         <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('Hiking тропы', this)">
         <span class="opacity-val">100%</span>
       </div>
       <div class="overlay-layer">
-        <input type="checkbox" onchange="toggleOverlay('MTB тропы', this)"> <span class="overlay-name">MTB тропы</span>
+        <input type="checkbox" data-overlay="MTB тропы" onchange="toggleOverlay('MTB тропы', this)"> <span class="overlay-name">MTB тропы</span>
         <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('MTB тропы', this)">
         <span class="opacity-val">100%</span>
       </div>
       <div class="overlay-layer">
-        <input type="checkbox" onchange="toggleOverlay('ESRI транспорт', this)"> <span class="overlay-name">ESRI транспорт</span>
+        <input type="checkbox" data-overlay="ESRI транспорт" onchange="toggleOverlay('ESRI транспорт', this)"> <span class="overlay-name">ESRI транспорт</span>
         <input type="range" class="opacity-slider" min="0" max="100" value="80" oninput="setOverlayOpacity('ESRI транспорт', this)">
         <span class="opacity-val">80%</span>
       </div>
       <div class="overlay-layer">
-        <input type="checkbox" onchange="toggleOverlay('OpenRailway', this)"> <span class="overlay-name">Ж/д пути</span>
+        <input type="checkbox" data-overlay="OpenRailway" onchange="toggleOverlay('OpenRailway', this)"> <span class="overlay-name">Ж/д пути</span>
         <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('OpenRailway', this)">
         <span class="opacity-val">100%</span>
       </div>
       <div class="overlay-layer">
-        <input type="checkbox" onchange="toggleOverlay('Hillshading', this)"> <span class="overlay-name">Рельеф (Hillshade)</span>
-        <input type="range" class="opacity-slider" min="0" max="100" value="50" oninput="setOverlayOpacity('Hillshading', this)">
+        <input type="checkbox" data-overlay="Nakarte рельеф" onchange="toggleOverlay('Nakarte рельеф', this)"> <span class="overlay-name">Nakarte рельеф</span>
+        <input type="range" class="opacity-slider" min="0" max="100" value="50" oninput="setOverlayOpacity('Nakarte рельеф', this)">
         <span class="opacity-val">50%</span>
       </div>
     </div>
@@ -995,43 +1005,216 @@ document.getElementById('sb-zoom').textContent = map.getZoom();
 // ─────────────────────────────────────────────
 // ТОЧКИ
 // ─────────────────────────────────────────────
-let waypoints = [], wpCounter = 1;
+let waypoints = [], wpCounter = 1, activeWaypoint = null;
 const wpColors = ['#4a8adf','#df4a4a','#4adf7a','#dfdf4a','#df7a4a','#7a4adf','#4adfe0','#df4adf'];
 
-function makeDivIcon(num, color) {
+function escapeHtml(text) {
+  return String(text ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+}
+
+function formatDm(value, pos, neg) {
+  const abs = Math.abs(value);
+  const deg = Math.floor(abs);
+  const min = ((abs - deg) * 60).toFixed(3);
+  return `${deg}°${min}'${value >= 0 ? pos : neg}`;
+}
+
+function parseCoordinateInput(value, pos, neg) {
+  const text = String(value || '').trim().replace(',', '.');
+  const hemi = text.slice(-1).toUpperCase();
+  const sign = hemi === neg ? -1 : 1;
+  const body = hemi === pos || hemi === neg ? text.slice(0, -1).trim() : text;
+  const dm = body.match(/^(\d+(?:\.\d+)?)\s*[°º]\s*(\d+(?:\.\d+)?)'?$/);
+  if (dm) return sign * (parseFloat(dm[1]) + parseFloat(dm[2]) / 60);
+  const decimal = Number(body);
+  return Number.isFinite(decimal) ? decimal : NaN;
+}
+
+function escapeXml(text) {
+  return escapeHtml(text).replace(/&#39;/g, '&apos;');
+}
+
+function normalizeText(text) {
+  return String(text || '').replace(/^\uFEFF/, '');
+}
+
+function splitCsvLine(line) {
+  const result = [];
+  let current = '';
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (quoted && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        quoted = !quoted;
+      }
+    } else if (char === ',' && !quoted) {
+      result.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current);
+  return result.map(part => part.trim());
+}
+
+function csvField(value) {
+  const text = String(value ?? '');
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function fitToLatLngs(points) {
+  if (!points || points.length === 0) return;
+  map.fitBounds(L.latLngBounds(points), { padding: [30, 30] });
+}
+
+function hexToOziColor(color) {
+  const hex = String(color || '').replace('#', '');
+  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return 255;
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return (b << 16) | (g << 8) | r;
+}
+
+function oziColorToHex(value, fallback = null) {
+  const color = Number(value);
+  if (!Number.isInteger(color) || color < 0) return fallback;
+  const r = color & 255;
+  const g = (color >> 8) & 255;
+  const b = (color >> 16) & 255;
+  return `#${[r, g, b].map(part => part.toString(16).padStart(2, '0')).join('')}`;
+}
+
+function isTrackPointRow(parts) {
+  if (!parts || parts.length < 2) return false;
+  const lat = parseFloat(parts[0]);
+  const lon = parseFloat(parts[1]);
+  return Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+}
+
+function isTrackHeaderRow(parts) {
+  return !!parts && parts.length >= 4 && /^-?\d+$/.test(parts[0]) && /^-?\d+$/.test(parts[1]) && !isTrackPointRow(parts);
+}
+
+function makeDivIcon(data) {
+  const symbol = escapeHtml(data.icon || '⬤');
   return L.divIcon({
     className: '',
-    html: `<div style="background:${color};width:22px;height:22px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:11px;box-shadow:0 2px 6px rgba(0,0,0,0.5);color:#fff;font-weight:bold">${num}</div>`,
+    html: `<div style="position:relative;background:${data.color};width:24px;height:24px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.5);color:#fff;font-weight:bold">
+      <span>${symbol}</span>
+      <span style="position:absolute;right:-4px;bottom:-5px;min-width:14px;height:14px;padding:0 2px;background:#0f3460;border:1px solid #fff;border-radius:7px;font-size:9px;line-height:12px;text-align:center">${data.num}</span>
+    </div>`,
     iconSize: [22,22], iconAnchor: [11,11]
   });
 }
 
-function addWaypoint(latlng, nameHint) {
+function updateWaypointCircle(marker) {
+  if (marker.wpCircle) {
+    map.removeLayer(marker.wpCircle);
+    marker.wpCircle = null;
+  }
+  if (marker.wpData.radius > 0) {
+    marker.wpCircle = L.circle(marker.getLatLng(), {
+      radius: marker.wpData.radius,
+      color: marker.wpData.color,
+      weight: 1,
+      opacity: 0.75,
+      fillColor: marker.wpData.color,
+      fillOpacity: 0.08
+    }).addTo(map);
+  }
+}
+
+function refreshWaypoint(marker) {
+  marker.setIcon(makeDivIcon(marker.wpData));
+  marker.wpData.lat = marker.getLatLng().lat;
+  marker.wpData.lng = marker.getLatLng().lng;
+  updateWaypointCircle(marker);
+}
+
+function openQuickRename(marker) {
+  const popupId = `wp-rename-${marker.wpData.num}`;
+  const value = escapeHtml(marker.wpData.name);
+  marker.bindPopup(`
+    <div style="min-width:180px">
+      <div style="font-size:11px;color:#5a7aaa;margin-bottom:6px">Быстрое переименование</div>
+      <input id="${popupId}" value="${value}" maxlength="16" style="width:100%;padding:5px 6px;border:1px solid #2a4a7a;border-radius:4px;background:#0f3460;color:#c0d8ff">
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button onclick="applyQuickRename(${marker.wpData.num})" style="flex:1;padding:5px 6px;border:1px solid #1a6adf;border-radius:4px;background:#0f4a8a;color:#c0d8ff;cursor:pointer">Сохранить</button>
+        <button onclick="openWaypointPropsByNum(${marker.wpData.num})" style="flex:1;padding:5px 6px;border:1px solid #2a4a7a;border-radius:4px;background:#1a2a4a;color:#7a9aba;cursor:pointer">Свойства</button>
+      </div>
+    </div>
+  `, { closeButton: false, offset: [0, -12] }).openPopup();
+  setTimeout(() => {
+    const input = document.getElementById(popupId);
+    if (input) {
+      input.focus();
+      input.select();
+      input.addEventListener('keydown', event => {
+        if (event.key === 'Enter') applyQuickRename(marker.wpData.num);
+      }, { once: true });
+    }
+  }, 0);
+}
+
+function addWaypoint(latlng, nameHint, extra = {}) {
   const name = nameHint || ('wp'+wpCounter);
   const color = wpColors[(wpCounter-1) % wpColors.length];
-  const marker = L.marker(latlng, { icon: makeDivIcon(wpCounter, color), draggable: true });
-  marker.wpData = { name, color, radius: 50, lat: latlng.lat, lng: latlng.lng, num: wpCounter };
+  const wpData = {
+    name,
+    desc: extra.desc || '',
+    icon: extra.icon || '⬤',
+    color: extra.color || color,
+    radius: Number.isFinite(extra.radius) ? extra.radius : 50,
+    lat: latlng.lat,
+    lng: latlng.lng,
+    num: wpCounter
+  };
+  const marker = L.marker(latlng, { draggable: true, icon: makeDivIcon(wpData) });
+  marker.wpData = wpData;
   marker.addTo(map);
+  refreshWaypoint(marker);
   marker.on('contextmenu', e => { L.DomEvent.stop(e); showCtxMenu(e.originalEvent, marker); });
-  marker.on('click', e => { L.DomEvent.stop(e); showWptPopup(marker); });
+  marker.on('click', e => {
+    L.DomEvent.stop(e);
+    if (currentMode === 'route' && currentRouteDraw) {
+      addRoutePoint(marker.getLatLng(), marker.wpData.name);
+      return;
+    }
+    openQuickRename(marker);
+  });
+  marker.on('dragend', () => {
+    refreshWaypoint(marker);
+    updateWptTable();
+  });
   waypoints.push(marker);
   wpCounter++;
   updateWptTable();
-  if (!nameHint) showToast(`Добавлена точка ${name}`);
+  if (!nameHint && !extra.silent) showToast(`Добавлена точка ${name}`);
+  return marker;
 }
 
 function updateWptTable() {
   const tbody = document.getElementById('wpt-tbody');
-  tbody.innerHTML = waypoints.map((m, i) => {
+  const filter = document.getElementById('wpt-search')?.value?.trim().toLowerCase() || '';
+  const filtered = waypoints.filter(m => {
     const d = m.wpData;
-    const latD = Math.floor(Math.abs(d.lat)), latM = ((Math.abs(d.lat)-latD)*60).toFixed(3);
-    const lonD = Math.floor(Math.abs(d.lng)), lonM = ((Math.abs(d.lng)-lonD)*60).toFixed(3);
-    return `<tr oncontextmenu="showCtxMenuTable(event,${i})" onclick="map.panTo([${d.lat},${d.lng}])">
-      <td onclick="event.stopPropagation()"><input type="checkbox" class="wpt-cb" data-idx="${i}" style="accent-color:#4a8adf"></td>
+    return !filter || d.name.toLowerCase().includes(filter) || (d.desc || '').toLowerCase().includes(filter);
+  });
+  tbody.innerHTML = filtered.map(m => {
+    const d = m.wpData;
+    const idx = waypoints.indexOf(m);
+    return `<tr oncontextmenu="showCtxMenuTable(event,${idx})" onclick="map.panTo([${d.lat},${d.lng}])">
+      <td onclick="event.stopPropagation()"><input type="checkbox" class="wpt-cb" data-idx="${idx}" style="accent-color:#4a8adf"></td>
       <td><span class="wpt-icon" style="background:${d.color}"></span></td>
       <td style="color:#5a7aaa">${d.num}</td>
       <td style="font-weight:500">${d.name}</td>
-      <td style="font-family:monospace;font-size:11px">${latD}°${latM}'N ${lonD}°${lonM}'E</td>
+      <td style="font-family:monospace;font-size:11px">${formatDm(d.lat, 'N', 'S')} ${formatDm(d.lng, 'E', 'W')}</td>
       <td style="text-align:center">${d.radius}м</td>
     </tr>`;
   }).join('');
@@ -1040,8 +1223,53 @@ function updateWptTable() {
 }
 
 function showWptPopup(marker) {
+  activeWaypoint = marker;
   document.getElementById('prop-name').value = marker.wpData.name;
+  document.getElementById('prop-desc').value = marker.wpData.desc || '';
+  document.getElementById('prop-color').value = marker.wpData.color;
+  document.getElementById('prop-radius').value = marker.wpData.radius;
+  document.getElementById('prop-lat').value = formatDm(marker.wpData.lat, 'N', 'S');
+  document.getElementById('prop-lng').value = formatDm(marker.wpData.lng, 'E', 'W');
+  document.querySelectorAll('.icon-cell').forEach(cell => cell.classList.toggle('selected', cell.dataset.symbol === (marker.wpData.icon || '⬤')));
   openModal('modal-wpt-props');
+}
+
+function openWaypointPropsByNum(num) {
+  const marker = waypoints.find(m => m.wpData.num === num);
+  if (!marker) return;
+  marker.closePopup();
+  showWptPopup(marker);
+}
+
+function applyQuickRename(num) {
+  const marker = waypoints.find(m => m.wpData.num === num);
+  const input = document.getElementById(`wp-rename-${num}`);
+  if (!marker || !input) return;
+  marker.wpData.name = input.value.trim().slice(0, 16) || marker.wpData.name;
+  updateWptTable();
+  marker.closePopup();
+  showToast('Название точки обновлено');
+}
+
+function applyWaypointProps() {
+  if (!activeWaypoint) { closeModal('modal-wpt-props'); return; }
+  const name = document.getElementById('prop-name').value.trim().slice(0, 16);
+  const lat = parseCoordinateInput(document.getElementById('prop-lat').value, 'N', 'S');
+  const lng = parseCoordinateInput(document.getElementById('prop-lng').value, 'E', 'W');
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+    showToast('Некорректные координаты точки');
+    return;
+  }
+  activeWaypoint.wpData.name = name || activeWaypoint.wpData.name;
+  activeWaypoint.wpData.desc = document.getElementById('prop-desc').value.trim();
+  activeWaypoint.wpData.color = document.getElementById('prop-color').value;
+  activeWaypoint.wpData.radius = Math.max(0, parseInt(document.getElementById('prop-radius').value || '0', 10) || 0);
+  activeWaypoint.wpData.icon = document.querySelector('.icon-cell.selected')?.dataset.symbol || '⬤';
+  activeWaypoint.setLatLng([lat, lng]);
+  refreshWaypoint(activeWaypoint);
+  updateWptTable();
+  closeModal('modal-wpt-props');
+  showToast('Точка сохранена');
 }
 
 // ─────────────────────────────────────────────
@@ -1081,22 +1309,20 @@ map.on('dblclick', e => {
 // ⚠️ Имена слоёв должны точно совпадать с onclick в HTML!
 const baseLayers = {
   'OpenStreetMap':  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc' }),
+  'OpenTopoMap':    L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, subdomains: 'abc' }),
   'Спутник Google': L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['0','1','2','3'] }),
   'Спутник ESRI':   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 }),
-  'Генштаб 250м':   L.tileLayer('https://{s}.tiles.nakarte.me/g250/{z}/{x}/{y}', { maxZoom: 16, tms: true, subdomains: ['a','b','c'] }),
-  'Генштаб 500м':   L.tileLayer('https://{s}.tiles.nakarte.me/g500/{z}/{x}/{y}', { maxZoom: 15, tms: true, subdomains: ['a','b','c'] }),
-  'Генштаб 1км':    L.tileLayer('https://{s}.tiles.nakarte.me/g1000/{z}/{x}/{y}', { maxZoom: 14, tms: true, subdomains: ['a','b','c'] }),
-  'ГГЦ 250м':       L.tileLayer('https://{s}.tiles.nakarte.me/ggc250/{z}/{x}/{y}', { maxZoom: 17, tms: true, subdomains: ['a','b','c'] }),
-  'ГГЦ 500м':       L.tileLayer('https://{s}.tiles.nakarte.me/ggc500/{z}/{x}/{y}', { maxZoom: 16, tms: true, subdomains: ['a','b','c'] }),
-  'Топо 1М':        L.tileLayer('https://{s}.tiles.nakarte.me/topo001m/{z}/{x}/{y}', { maxZoom: 12, tms: true, subdomains: ['a','b','c'] }),
+  'Генштаб 250к':   L.tileLayer('https://{s}.tiles.nakarte.me/ggc250/{z}/{x}/{y}', { maxNativeZoom: 8, maxZoom: 18, tms: true, subdomains: ['a','b','c'] }),
+  'Генштаб 1000к':  L.tileLayer('https://{s}.tiles.nakarte.me/ggc1000/{z}/{x}/{y}', { maxNativeZoom: 13, maxZoom: 18, tms: true, subdomains: ['a','b','c'] }),
+  'Генштаб 2км':    L.tileLayer('https://{s}.tiles.nakarte.me/ggc2000/{z}/{x}/{y}', { maxNativeZoom: 13, maxZoom: 18, tms: true, subdomains: ['a','b','c'] }),
+  'Топо 1М':        L.tileLayer('https://{s}.tiles.nakarte.me/topo001m/{z}/{x}/{y}', { maxNativeZoom: 10, maxZoom: 18, tms: true, subdomains: ['a','b','c'] }),
 };
 let currentBaseLayer = baseLayers['OpenStreetMap'];
 currentBaseLayer.addTo(map);
 
 const layerEmoji = {
-  'OpenStreetMap':'🗺', 'Спутник Google':'🛰', 'Спутник ESRI':'🛰',
-  'Генштаб 250м':'📋', 'Генштаб 500м':'📋', 'Генштаб 1км':'📋',
-  'ГГЦ 250м':'📐', 'ГГЦ 500м':'📐', 'Топо 1М':'🏔',
+  'OpenStreetMap':'🗺', 'OpenTopoMap':'🏔', 'Спутник Google':'🛰', 'Спутник ESRI':'🛰',
+  'Генштаб 250к':'📋', 'Генштаб 1000к':'📋', 'Генштаб 2км':'📋', 'Топо 1М':'🏔',
 };
 
 function setLayer(name, el) {
@@ -1109,7 +1335,8 @@ function setLayer(name, el) {
   document.getElementById('current-layer-name').textContent = emoji + ' ' + name;
   document.getElementById('sb-layer').textContent = name;
   document.querySelectorAll('.base-layer').forEach(d => d.classList.remove('active'));
-  if (el) el.classList.add('active');
+  const layerEl = el || [...document.querySelectorAll('.base-layer')].find(node => node.dataset.layer === name);
+  if (layerEl) layerEl.classList.add('active');
   closeModal('modal-layers');
   showToast('Карта: ' + name);
 }
@@ -1123,7 +1350,7 @@ const overlayLayers = {
   'MTB тропы':      L.tileLayer('https://tile.waymarkedtrails.org/mtb/{z}/{x}/{y}.png', { maxZoom: 19 }),
   'ESRI транспорт': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 }),
   'OpenRailway':    L.tileLayer('https://a.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', { maxZoom: 19 }),
-  'Hillshading':    L.tileLayer('https://{s}.tiles.nakarte.me/shadows/{z}/{x}/{y}', { maxZoom: 16, tms: true, subdomains: ['a','b','c'] }),
+  'Nakarte рельеф': L.tileLayer('https://{s}.tiles.nakarte.me/shadows/{z}/{x}/{y}', { maxZoom: 16, tms: true, subdomains: ['a','b','c'] }),
 };
 function toggleOverlay(name, cb) {
   const layer = overlayLayers[name];
@@ -1158,49 +1385,222 @@ function openFile(accept, callback) {
   };
   input.click();
 }
-function loadGPXWaypoints(text, fname) {
-  const doc = new DOMParser().parseFromString(text, 'application/xml');
+
+function downloadText(filename, mimeType, text) {
+  const a = document.createElement('a');
+  a.href = `data:${mimeType};charset=utf-8,` + encodeURIComponent(text);
+  a.download = filename;
+  a.click();
+}
+
+function saveWaypointsWPT() {
+  if (waypoints.length === 0) { showToast('Нет точек для сохранения'); return; }
+  const rows = [
+    'OziExplorer Waypoint File Version 1.1',
+    'WGS 84',
+    'Reserved 2',
+    'Reserved 3'
+  ];
+  waypoints.forEach(m => {
+    const d = m.wpData;
+    rows.push([
+      d.num,
+      csvField(d.name),
+      d.lat.toFixed(6),
+      d.lng.toFixed(6),
+      1,
+      1,
+      0,
+      0,
+      255,
+      csvField(d.desc || ''),
+      0,
+      0,
+      '',
+      '',
+      '',
+      '',
+      Math.max(0, d.radius || 0),
+      -777,
+      '',
+      ''
+    ].join(','));
+  });
+  downloadText('waypoints.wpt', 'text/plain', rows.join('\r\n'));
+  showToast('✓ Точки сохранены в waypoints.wpt');
+}
+
+function saveWaypointsGPX() {
+  if (waypoints.length === 0) { showToast('Нет точек для сохранения'); return; }
+  let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND">';
+  waypoints.forEach(m => {
+    const d = m.wpData;
+    gpx += `<wpt lat="${d.lat.toFixed(6)}" lon="${d.lng.toFixed(6)}"><name>${escapeXml(d.name)}</name>`;
+    if (d.desc) gpx += `<desc>${escapeXml(d.desc)}</desc>`;
+    gpx += '</wpt>';
+  });
+  gpx += '</gpx>';
+  downloadText('waypoints.gpx', 'application/gpx+xml', gpx);
+  showToast('✓ Точки сохранены в waypoints.gpx');
+}
+
+function saveAllGPX() {
+  if (waypoints.length === 0 && tracks.length === 0 && routes.length === 0) {
+    showToast('Нет данных для сохранения');
+    return;
+  }
+  let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND">';
+  waypoints.forEach(m => {
+    const d = m.wpData;
+    gpx += `<wpt lat="${d.lat.toFixed(6)}" lon="${d.lng.toFixed(6)}"><name>${escapeXml(d.name)}</name>`;
+    if (d.desc) gpx += `<desc>${escapeXml(d.desc)}</desc>`;
+    gpx += '</wpt>';
+  });
+  tracks.forEach(t => {
+    gpx += `<trk><name>${escapeXml(t.name)}</name><trkseg>`;
+    t.points.forEach(p => gpx += `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}"></trkpt>`);
+    gpx += '</trkseg></trk>';
+  });
+  routes.forEach(r => {
+    gpx += `<rte><name>${escapeXml(r.name)}</name>`;
+    r.points.forEach((p, i) => gpx += `<rtept lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}"><name>${escapeXml(r.labels?.[i] || `КП${i+1}`)}</name></rtept>`);
+    gpx += '</rte>';
+  });
+  gpx += '</gpx>';
+  downloadText('tnd-export.gpx', 'application/gpx+xml', gpx);
+  showToast('✓ Всё сохранено в tnd-export.gpx');
+}
+
+function loadGPXWaypoints(text, fname, options = {}) {
+  const doc = new DOMParser().parseFromString(normalizeText(text), 'application/xml');
   const wpts = doc.querySelectorAll('wpt');
   let count = 0;
+  const imported = [];
   wpts.forEach(wpt => {
     const lat = parseFloat(wpt.getAttribute('lat'));
     const lon = parseFloat(wpt.getAttribute('lon'));
     if (isNaN(lat) || isNaN(lon)) return;
-    addWaypoint(L.latLng(lat, lon), wpt.querySelector('name')?.textContent?.trim() || '');
+    const marker = addWaypoint(L.latLng(lat, lon), wpt.querySelector('name')?.textContent?.trim() || '', {
+      desc: wpt.querySelector('desc')?.textContent?.trim() || '',
+      silent: true
+    });
+    if (marker) imported.push(marker.getLatLng());
     count++;
   });
-  showToast('✓ Загружено ' + count + ' точек из ' + fname);
-  if (count > 0) openModal('modal-wpts');
+  if (!options.silent) {
+    showToast('✓ Загружено ' + count + ' точек из ' + fname);
+    if (count > 0) {
+      openModal('modal-wpts');
+      fitToLatLngs(imported);
+    }
+  }
+  return count;
 }
 function loadGPXFile(text, fname) {
-  const doc = new DOMParser().parseFromString(text, 'application/xml');
-  let wCount = 0;
-  doc.querySelectorAll('wpt').forEach(wpt => {
-    const lat = parseFloat(wpt.getAttribute('lat')), lon = parseFloat(wpt.getAttribute('lon'));
-    if (isNaN(lat) || isNaN(lon)) return;
-    addWaypoint(L.latLng(lat, lon), wpt.querySelector('name')?.textContent?.trim() || '');
-    wCount++;
-  });
-  const trks = doc.querySelectorAll('trk').length;
+  const wCount = loadGPXWaypoints(text, fname, { silent: true });
+  const tCount = loadGPXTracks(text, fname, { silent: true });
+  const rCount = loadGPXRoutes(text, fname, { silent: true });
   if (wCount > 0) openModal('modal-wpts');
-  showToast('✓ GPX: ' + wCount + ' точек, ' + trks + ' треков — ' + fname);
+  if (tCount > 0) openModal('modal-tracks');
+  if (rCount > 0) openModal('modal-routes');
+  showToast(`✓ GPX: ${wCount} точек, ${tCount} треков, ${rCount} маршрутов — ${fname}`);
 }
 function loadWPT(text, fname) {
-  const lines = text.split(/\r?\n/).slice(4);
+  const lines = normalizeText(text).split(/\r?\n/).slice(4);
   let count = 0;
+  const imported = [];
   lines.forEach(line => {
-    const p = line.split(',');
+    const p = splitCsvLine(line);
     if (p.length < 4) return;
     const lat = parseFloat(p[2]), lon = parseFloat(p[3]);
     if (isNaN(lat) || isNaN(lon)) return;
-    addWaypoint(L.latLng(lat, lon), p[1]?.trim() || '');
+    const radius = parseFloat(p[16]);
+    const marker = addWaypoint(L.latLng(lat, lon), p[1]?.trim() || '', {
+      desc: p[9]?.trim() || '',
+      radius: Number.isFinite(radius) ? radius : 50,
+      silent: true
+    });
+    if (marker) imported.push(marker.getLatLng());
     count++;
   });
   showToast('✓ Загружено ' + count + ' точек из ' + fname);
-  if (count > 0) openModal('modal-wpts');
+  if (count > 0) {
+    openModal('modal-wpts');
+    fitToLatLngs(imported);
+  }
 }
-function loadPLT(text, fname) { showToast('📂 Трек ' + fname + ' — загрузка треков в следующей версии'); }
-function loadRTE(text, fname) { showToast('📂 Маршрут ' + fname + ' — загрузка маршрутов в следующей версии'); }
+function loadPLT(text, fname) {
+  const lines = normalizeText(text).split(/\r?\n/);
+  const baseName = fname.replace(/\.[^.]+$/, '') || 'Трек';
+  let count = 0;
+  const importedTracks = [];
+  let current = null;
+  const finalizeTrack = () => {
+    if (!current || current.points.length < 2) return;
+    importedTracks.push(createTrackFromPoints(current.points, current.name, { color: current.color || undefined }));
+    count++;
+  };
+  lines.slice(lines[0]?.includes('OziExplorer Track Point File Version') ? 4 : 0).forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    const p = splitCsvLine(trimmed);
+    if (isTrackHeaderRow(p)) {
+      finalizeTrack();
+      current = {
+        name: p[3]?.trim() || `${baseName} ${count + 1}`,
+        color: oziColorToHex(p[2], null),
+        points: []
+      };
+      return;
+    }
+    if (current && p.length === 1 && /^\d+$/.test(p[0])) return;
+    if (isTrackPointRow(p)) {
+      if (!current) current = { name: `${baseName} ${count + 1}`, points: [] };
+      current.points.push(L.latLng(parseFloat(p[0]), parseFloat(p[1])));
+      return;
+    }
+  });
+  finalizeTrack();
+  updateTrackList();
+  showToast('✓ Загружено ' + count + ' треков из ' + fname);
+  if (count > 0) {
+    openModal('modal-tracks');
+    fitToLatLngs(importedTracks.flatMap(track => track.points));
+  }
+}
+function loadRTE(text, fname) {
+  let current = null;
+  let count = 0;
+  const importedRoutes = [];
+  normalizeText(text).split(/\r?\n/).forEach(line => {
+    const p = splitCsvLine(line);
+    if (p[0] === 'R') {
+      if (current?.points.length >= 2) {
+        importedRoutes.push(createRouteFromPoints(current.points, current.name, current.labels));
+        count++;
+      }
+      current = { name: p[2]?.trim() || `Маршрут ${routeIdCounter}`, points: [], labels: [] };
+      return;
+    }
+    if (p[0] === 'W' && current) {
+      const lat = parseFloat(p[4]);
+      const lon = parseFloat(p[5]);
+      if (isNaN(lat) || isNaN(lon)) return;
+      current.points.push(L.latLng(lat, lon));
+      current.labels.push(p[3]?.trim() || `КП${current.points.length}`);
+    }
+  });
+  if (current?.points.length >= 2) {
+    importedRoutes.push(createRouteFromPoints(current.points, current.name, current.labels));
+    count++;
+  }
+  updateRouteList();
+  showToast('✓ Загружено ' + count + ' маршрутов из ' + fname);
+  if (count > 0) {
+    openModal('modal-routes');
+    fitToLatLngs(importedRoutes.flatMap(route => route.points));
+  }
+}
 
 // ─────────────────────────────────────────────
 // КОНТЕКСТНОЕ МЕНЮ
@@ -1225,6 +1625,7 @@ function ctxAction(action) {
   else if (action === 'center' && ctxTarget) map.panTo(ctxTarget.getLatLng());
   else if (action === 'copy' && ctxTarget) showToast('Скопировано: ' + ctxTarget.wpData.lat.toFixed(5) + ', ' + ctxTarget.wpData.lng.toFixed(5));
   else if (action === 'delete' && ctxTarget) {
+    if (ctxTarget.wpCircle) map.removeLayer(ctxTarget.wpCircle);
     ctxTarget.remove();
     waypoints = waypoints.filter(m => m !== ctxTarget);
     updateWptTable(); showToast('Точка удалена');
@@ -1272,17 +1673,47 @@ function switchTab(btn, tabId) {
 // ─────────────────────────────────────────────
 let tracks = [], trackIdCounter = 1;
 let currentTrackDraw = null;
+let currentTrackSnapshot = null;
 let selectedTrackId = null;
 const trackPalette = ['#4adf7a','#df7a4a','#4a8adf','#dfdf4a','#df4adf','#4adfe0','#df4a4a','#7a4adf'];
 
+function bindTrackPolyline(track) {
+  if (!track?.polyline || track.polyline._trackBound) return;
+  track.polyline._trackBound = true;
+  track.polyline.on('click', e => {
+    L.DomEvent.stop(e);
+    selectTrackById(track.id);
+    openModal('modal-tracks');
+  });
+}
+
+function createTrackFromPoints(points, name, options = {}) {
+  const id = trackIdCounter++;
+  const color = options.color || trackPalette[(id - 1) % trackPalette.length];
+  const width = options.width || 3;
+  const polyline = L.polyline(points, { color, weight: width, opacity: 0.85 }).addTo(map);
+  const track = { id, name: name || `Трек ${id}`, color, width, points: [...points], polyline, visible: true };
+  bindTrackPolyline(track);
+  tracks.push(track);
+  return track;
+}
+
 function startNewTrack() {
+  if (currentTrackDraw) {
+    openModal('modal-tracks');
+    showToast('Сначала завершите текущее рисование трека');
+    return;
+  }
+  currentTrackSnapshot = null;
   currentTrackDraw = {
-    id: trackIdCounter++,
+    id: trackIdCounter,
     name: 'Трек ' + trackIdCounter,
-    color: trackPalette[(trackIdCounter - 2) % trackPalette.length],
-    width: 3, points: [], polyline: null, visible: true
+    color: trackPalette[(trackIdCounter - 1) % trackPalette.length],
+    width: 3, points: [], polyline: null, visible: true, isNew: true
   };
+  trackIdCounter++;
   tracks.push(currentTrackDraw);
+  selectedTrackId = currentTrackDraw.id;
   setMode('track');
   document.getElementById('track-build-panel').style.display = 'block';
   document.getElementById('track-build-count').textContent = '0';
@@ -1299,6 +1730,7 @@ function addTrackPoint(latlng) {
     currentTrackDraw.polyline = L.polyline(currentTrackDraw.points, {
       color: currentTrackDraw.color, weight: currentTrackDraw.width, opacity: 0.85
     }).addTo(map);
+    bindTrackPolyline(currentTrackDraw);
   }
   const el = document.getElementById('track-build-count');
   if (el) el.textContent = currentTrackDraw.points.length;
@@ -1306,21 +1738,32 @@ function addTrackPoint(latlng) {
 function finishTrackDraw() {
   if (!currentTrackDraw) return;
   if (currentTrackDraw.points.length < 2) { showToast('⚠ Нужно минимум 2 точки'); return; }
+  const t = currentTrackDraw;
   setMode('hand');
   document.getElementById('track-build-panel').style.display = 'none';
   currentTrackDraw = null;
+  currentTrackSnapshot = null;
+  selectedTrackId = t.id;
   updateTrackList();
   openModal('modal-tracks');
-  const t = tracks[tracks.length - 1];
   showToast('✓ Трек сохранён: ' + t.name + ' · ' + trackLen(t).toFixed(1) + ' км');
 }
 function cancelTrackDraw() {
   if (!currentTrackDraw) return;
-  if (currentTrackDraw.polyline) map.removeLayer(currentTrackDraw.polyline);
-  tracks = tracks.filter(t => t !== currentTrackDraw);
+  if (currentTrackDraw.isNew) {
+    if (currentTrackDraw.polyline) map.removeLayer(currentTrackDraw.polyline);
+    tracks = tracks.filter(t => t !== currentTrackDraw);
+    selectedTrackId = null;
+  } else if (currentTrackSnapshot) {
+    currentTrackDraw.points = currentTrackSnapshot.points.map(p => L.latLng(p.lat, p.lng));
+    if (currentTrackDraw.polyline) currentTrackDraw.polyline.setLatLngs(currentTrackDraw.points);
+    selectedTrackId = currentTrackDraw.id;
+  }
   currentTrackDraw = null;
+  currentTrackSnapshot = null;
   setMode('hand');
   document.getElementById('track-build-panel').style.display = 'none';
+  updateTrackList();
   showToast('Рисование трека отменено');
 }
 function trackLen(t) {
@@ -1349,9 +1792,51 @@ function applyTrackProps() {
   updateTrackList();
   showToast('✓ Свойства обновлены');
 }
+function centerSelectedTrack() {
+  const t = tracks.find(track => track.id === selectedTrackId);
+  if (!t?.points?.length) return;
+  fitToLatLngs(t.points);
+  showToast('Переход к треку: ' + t.name);
+}
+function reverseSelectedTrack() {
+  const t = tracks.find(track => track.id === selectedTrackId);
+  if (!t || t.points.length < 2) return;
+  t.points = [...t.points].reverse();
+  if (t.polyline) t.polyline.setLatLngs(t.points);
+  if (currentTrackDraw?.id === t.id) {
+    document.getElementById('track-build-count').textContent = t.points.length;
+  }
+  updateTrackList();
+  showToast('Трек развёрнут');
+}
+function continueSelectedTrack() {
+  const t = tracks.find(track => track.id === selectedTrackId);
+  if (!t) return;
+  if (currentTrackDraw && currentTrackDraw.id !== t.id) {
+    showToast('Сначала завершите текущее рисование трека');
+    return;
+  }
+  currentTrackSnapshot = {
+    points: t.points.map(point => L.latLng(point.lat, point.lng))
+  };
+  currentTrackDraw = t;
+  currentTrackDraw.isNew = false;
+  setMode('track');
+  document.getElementById('track-build-panel').style.display = 'block';
+  document.getElementById('track-build-count').textContent = t.points.length;
+  document.getElementById('track-controls').style.display = 'none';
+  closeModal('modal-tracks');
+  showToast('Продолжение трека: кликайте по карте для добавления новых точек');
+}
 function deleteSelectedTrack() {
   const t = tracks.find(t => t.id === selectedTrackId);
   if (!t) return;
+  if (currentTrackDraw?.id === t.id) {
+    currentTrackDraw = null;
+    currentTrackSnapshot = null;
+    document.getElementById('track-build-panel').style.display = 'none';
+    setMode('hand');
+  }
   if (t.polyline) map.removeLayer(t.polyline);
   tracks = tracks.filter(tr => tr.id !== selectedTrackId);
   selectedTrackId = null;
@@ -1362,6 +1847,10 @@ function deleteSelectedTrack() {
 function toggleTrackVisible(id) {
   const t = tracks.find(t => t.id === id);
   if (!t || !t.polyline) return;
+  if (currentTrackDraw?.id === id) {
+    showToast('Сначала завершите редактирование трека');
+    return;
+  }
   t.visible = !t.visible;
   t.visible ? t.polyline.addTo(map) : map.removeLayer(t.polyline);
   updateTrackList();
@@ -1388,19 +1877,34 @@ function saveTracksGPX() {
   if (tracks.length === 0) { showToast('Нет треков для сохранения'); return; }
   let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND">';
   tracks.forEach(t => {
-    gpx += `<trk><name>${t.name}</name><trkseg>`;
+    gpx += `<trk><name>${escapeXml(t.name)}</name><trkseg>`;
     t.points.forEach(p => gpx += `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}"></trkpt>`);
     gpx += '</trkseg></trk>';
   });
   gpx += '</gpx>';
-  const a = document.createElement('a');
-  a.href = 'data:application/gpx+xml,' + encodeURIComponent(gpx);
-  a.download = 'tracks.gpx'; a.click();
+  downloadText('tracks.gpx', 'application/gpx+xml', gpx);
   showToast('✓ Треки сохранены в tracks.gpx');
 }
-function loadGPXTracks(text, fname) {
-  const doc = new DOMParser().parseFromString(text, 'application/xml');
+function saveTracksPLT() {
+  if (tracks.length === 0) { showToast('Нет треков для сохранения'); return; }
+  const rows = [
+    'OziExplorer Track Point File Version 2.1',
+    'WGS 84',
+    'Altitude is in Feet',
+    'Reserved 3'
+  ];
+  tracks.forEach((t, index) => {
+    rows.push(`${index},0,${hexToOziColor(t.color)},${csvField(t.name)},0,0,2,8421376`);
+    rows.push(String(t.points.length));
+    t.points.forEach((p, pointIndex) => rows.push(`${p.lat.toFixed(6)},${p.lng.toFixed(6)},${pointIndex === 0 ? 1 : 0},0,0,0`));
+  });
+  downloadText('tracks.plt', 'text/plain', rows.join('\r\n'));
+  showToast('✓ Треки сохранены в tracks.plt');
+}
+function loadGPXTracks(text, fname, options = {}) {
+  const doc = new DOMParser().parseFromString(normalizeText(text), 'application/xml');
   let count = 0;
+  const importedTracks = [];
   doc.querySelectorAll('trk').forEach(trk => {
     const name = trk.querySelector('name')?.textContent?.trim() || ('Трек ' + (trackIdCounter));
     const points = [];
@@ -1409,14 +1913,18 @@ function loadGPXTracks(text, fname) {
       if (!isNaN(lat) && !isNaN(lon)) points.push(L.latLng(lat, lon));
     });
     if (points.length < 2) return;
-    const color = trackPalette[(trackIdCounter - 1) % trackPalette.length];
-    const polyline = L.polyline(points, { color, weight: 3, opacity: 0.85 }).addTo(map);
-    tracks.push({ id: trackIdCounter++, name, color, width: 3, points, polyline, visible: true });
+    importedTracks.push(createTrackFromPoints(points, name));
     count++;
   });
   updateTrackList();
-  showToast('✓ Загружено ' + count + ' треков из ' + fname);
-  if (count > 0) { openModal('modal-tracks'); map.fitBounds(L.featureGroup(tracks.map(t => t.polyline)).getBounds()); }
+  if (!options.silent) {
+    showToast('✓ Загружено ' + count + ' треков из ' + fname);
+    if (count > 0) {
+      openModal('modal-tracks');
+      fitToLatLngs(importedTracks.flatMap(track => track.points));
+    }
+  }
+  return count;
 }
 
 // ─────────────────────────────────────────────
@@ -1426,13 +1934,34 @@ let routes = [], routeIdCounter = 1;
 let currentRouteDraw = null;
 const routePalette = ['#df4a4a','#4a8adf','#dfdf4a','#4adf7a','#df7a4a','#df4adf'];
 
+function createRouteMarker(latlng, color, label) {
+  return L.marker(latlng, {
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="background:${color};min-width:28px;height:22px;border-radius:11px;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.5);padding:0 4px">${escapeHtml(label)}</div>`,
+      iconSize: [28,22], iconAnchor: [14,11]
+    })
+  }).addTo(map);
+}
+
+function createRouteFromPoints(points, name, labels = [], options = {}) {
+  const id = routeIdCounter++;
+  const color = options.color || routePalette[(id - 1) % routePalette.length];
+  const markers = points.map((latlng, i) => createRouteMarker(latlng, color, labels[i] || `КП${i+1}`));
+  const polyline = L.polyline(points, { color, weight: 3, opacity: 0.9, dashArray: '8 4' }).addTo(map);
+  const route = { id, name: name || `Маршрут ${id}`, color, points: [...points], labels: labels.length ? [...labels] : points.map((_, i) => `КП${i+1}`), markers, polyline };
+  routes.push(route);
+  return route;
+}
+
 function startNewRoute() {
   currentRouteDraw = {
-    id: routeIdCounter++,
+    id: routeIdCounter,
     name: 'Маршрут ' + routeIdCounter,
-    color: routePalette[(routeIdCounter - 2) % routePalette.length],
-    points: [], markers: [], polyline: null
+    color: routePalette[(routeIdCounter - 1) % routePalette.length],
+    points: [], labels: [], markers: [], polyline: null
   };
+  routeIdCounter++;
   routes.push(currentRouteDraw);
   setMode('route');
   document.getElementById('route-build-panel').style.display = 'block';
@@ -1440,19 +1969,14 @@ function startNewRoute() {
   document.getElementById('route-build-dist').textContent = '0 км';
   document.getElementById('route-build-name').value = currentRouteDraw.name;
   closeModal('modal-routes');
-  showToast('⚑ Создание маршрута — кликайте по карте. Двойной клик — завершить');
+  showToast('⚑ Создание маршрута — кликайте по карте или по существующим точкам. Двойной клик — завершить');
 }
-function addRoutePoint(latlng) {
+function addRoutePoint(latlng, label) {
   if (!currentRouteDraw) return;
   const num = currentRouteDraw.points.length + 1;
   currentRouteDraw.points.push(latlng);
-  const marker = L.marker(latlng, {
-    icon: L.divIcon({
-      className: '',
-      html: `<div style="background:${currentRouteDraw.color};min-width:28px;height:22px;border-radius:11px;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.5);padding:0 4px">КП${num}</div>`,
-      iconSize: [28,22], iconAnchor: [14,11]
-    })
-  }).addTo(map);
+  currentRouteDraw.labels.push(label || `КП${num}`);
+  const marker = createRouteMarker(latlng, currentRouteDraw.color, currentRouteDraw.labels[num - 1]);
   currentRouteDraw.markers.push(marker);
   if (currentRouteDraw.polyline) {
     currentRouteDraw.polyline.setLatLngs(currentRouteDraw.points);
@@ -1524,11 +2048,11 @@ function updateRouteList() {
       const prev = i > 0 ? r.points[i-1] : null;
       const dist = prev ? (prev.distanceTo(p)/1000).toFixed(1) + ' км' : '—';
       const bear = prev ? (() => {
-        const dy = p.lat - prev.lat, dx = (p.lng - prev.lng) * Math.cos(prev.lat * Math.PI/180);
+      const dy = p.lat - prev.lat, dx = (p.lng - prev.lng) * Math.cos(prev.lat * Math.PI/180);
         return ((Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360).toFixed(0) + '°';
       })() : '';
       return `<div class="route-kp">
-        <span class="route-kp-num" style="background:${r.color}22;color:${r.color}">КП${i+1}</span>
+        <span class="route-kp-num" style="background:${r.color}22;color:${r.color}">${escapeHtml(r.labels?.[i] || `КП${i+1}`)}</span>
         <span style="font-size:11px;color:#c0d8ff;flex:1">${p.lat.toFixed(4)}°N ${p.lng.toFixed(4)}°E</span>
         <span class="route-dist">${dist}${bear ? ' · ' + bear : ''}</span>
       </div>`;
@@ -1552,42 +2076,56 @@ function saveRoutesGPX() {
   if (routes.length === 0) { showToast('Нет маршрутов для сохранения'); return; }
   let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND">';
   routes.forEach(r => {
-    gpx += `<rte><name>${r.name}</name>`;
-    r.points.forEach((p, i) => gpx += `<rtept lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}"><name>КП${i+1}</name></rtept>`);
+    gpx += `<rte><name>${escapeXml(r.name)}</name>`;
+    r.points.forEach((p, i) => gpx += `<rtept lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}"><name>${escapeXml(r.labels?.[i] || `КП${i+1}`)}</name></rtept>`);
     gpx += '</rte>';
   });
   gpx += '</gpx>';
-  const a = document.createElement('a');
-  a.href = 'data:application/gpx+xml,' + encodeURIComponent(gpx);
-  a.download = 'routes.gpx'; a.click();
+  downloadText('routes.gpx', 'application/gpx+xml', gpx);
   showToast('✓ Маршруты сохранены в routes.gpx');
 }
-function loadGPXRoutes(text, fname) {
-  const doc = new DOMParser().parseFromString(text, 'application/xml');
+function saveRoutesRTE() {
+  if (routes.length === 0) { showToast('Нет маршрутов для сохранения'); return; }
+  const rows = [
+    'OziExplorer Route File Version 1.0',
+    'WGS 84',
+    'Reserved 1',
+    'Reserved 2'
+  ];
+  routes.forEach((r, idx) => {
+    rows.push(`R,${idx},${csvField(r.name)},,0,0`);
+    r.points.forEach((p, i) => rows.push(`W,${idx},${i + 1},${csvField(r.labels?.[i] || `КП${i+1}`)},${p.lat.toFixed(6)},${p.lng.toFixed(6)}`));
+  });
+  downloadText('routes.rte', 'text/plain', rows.join('\r\n'));
+  showToast('✓ Маршруты сохранены в routes.rte');
+}
+function loadGPXRoutes(text, fname, options = {}) {
+  const doc = new DOMParser().parseFromString(normalizeText(text), 'application/xml');
   let count = 0;
+  const importedRoutes = [];
   doc.querySelectorAll('rte').forEach(rte => {
     const name = rte.querySelector('name')?.textContent?.trim() || ('Маршрут ' + routeIdCounter);
-    const color = routePalette[(routeIdCounter - 1) % routePalette.length];
-    const points = [], markers = [];
+    const points = [];
+    const labels = [];
     rte.querySelectorAll('rtept').forEach((pt, i) => {
       const lat = parseFloat(pt.getAttribute('lat')), lon = parseFloat(pt.getAttribute('lon'));
       if (isNaN(lat) || isNaN(lon)) return;
-      const latlng = L.latLng(lat, lon);
-      points.push(latlng);
-      const m = L.marker(latlng, { icon: L.divIcon({ className: '',
-        html: `<div style="background:${color};min-width:28px;height:22px;border-radius:11px;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.5);padding:0 4px">КП${i+1}</div>`,
-        iconSize: [28,22], iconAnchor: [14,11]
-      })}).addTo(map);
-      markers.push(m);
+      points.push(L.latLng(lat, lon));
+      labels.push(pt.querySelector('name')?.textContent?.trim() || `КП${i+1}`);
     });
     if (points.length < 2) return;
-    const polyline = L.polyline(points, { color, weight: 3, opacity: 0.9, dashArray: '8 4' }).addTo(map);
-    routes.push({ id: routeIdCounter++, name, color, points, markers, polyline });
+    importedRoutes.push(createRouteFromPoints(points, name, labels));
     count++;
   });
   updateRouteList();
-  showToast('✓ Загружено ' + count + ' маршрутов из ' + fname);
-  if (count > 0) openModal('modal-routes');
+  if (!options.silent) {
+    showToast('✓ Загружено ' + count + ' маршрутов из ' + fname);
+    if (count > 0) {
+      openModal('modal-routes');
+      fitToLatLngs(importedRoutes.flatMap(route => route.points));
+    }
+  }
+  return count;
 }
 
 // ─────────────────────────────────────────────
@@ -1600,7 +2138,11 @@ function deleteSelectedWaypoints() {
   const checked = [...document.querySelectorAll('.wpt-cb:checked')];
   if (checked.length === 0) { showToast('Нет выделенных точек'); return; }
   const indices = new Set(checked.map(cb => parseInt(cb.dataset.idx)));
-  waypoints.forEach((m, i) => { if (indices.has(i)) m.remove(); });
+  waypoints.forEach((m, i) => {
+    if (!indices.has(i)) return;
+    if (m.wpCircle) map.removeLayer(m.wpCircle);
+    m.remove();
+  });
   waypoints = waypoints.filter((_, i) => !indices.has(i));
   document.getElementById('wpt-select-all').checked = false;
   updateWptTable();
@@ -1609,7 +2151,10 @@ function deleteSelectedWaypoints() {
 function clearAllWaypoints() {
   if (waypoints.length === 0) { showToast('Точек нет'); return; }
   if (!confirm('Удалить все ' + waypoints.length + ' точек?')) return;
-  waypoints.forEach(m => m.remove());
+  waypoints.forEach(m => {
+    if (m.wpCircle) map.removeLayer(m.wpCircle);
+    m.remove();
+  });
   waypoints = []; wpCounter = 1;
   updateWptTable();
   showToast('Все точки удалены');
@@ -1653,35 +2198,17 @@ async function checkForUpdates() {
   btn.textContent = '⏳ Проверяем...';
   status.textContent = '';
   try {
-    // Если запущено в Tauri — используем встроенный updater
-    if (window.__TAURI__) {
-      const { check } = await import('https://unpkg.com/@tauri-apps/plugin-updater@2/dist/index.mjs');
-      const update = await check();
-      if (update) {
-        status.style.color = '#dfdf4a';
-        status.textContent = `⬆ Доступна версия ${update.version}. Скачиваем...`;
-        btn.textContent = '⏳ Скачиваем...';
-        await update.downloadAndInstall();
-        status.textContent = '✓ Обновление установлено. Перезапустите приложение.';
-      } else {
-        const current = document.getElementById('about-version').textContent;
-        status.style.color = '#4adf7a';
-        status.textContent = '✓ У вас актуальная версия ' + current;
-      }
+    const r = await fetch('https://api.github.com/repos/andmiro256-cyber/trophy-navigator/releases/latest');
+    if (!r.ok) throw new Error('Нет ответа');
+    const data = await r.json();
+    const latest = data.tag_name?.replace(/^v/, '') || '?';
+    const current = document.getElementById('about-version').textContent;
+    if (latest === current) {
+      status.style.color = '#4adf7a';
+      status.textContent = '✓ У вас актуальная версия ' + current;
     } else {
-      // В браузере — проверяем через GitHub API
-      const r = await fetch('https://api.github.com/repos/andmiro256-cyber/trophy-navigator/releases/latest');
-      if (!r.ok) throw new Error('Нет ответа');
-      const data = await r.json();
-      const latest = data.tag_name?.replace(/^v/, '') || '?';
-      const current = document.getElementById('about-version').textContent;
-      if (latest === current) {
-        status.style.color = '#4adf7a';
-        status.textContent = '✓ У вас актуальная версия ' + current;
-      } else {
-        status.style.color = '#dfdf4a';
-        status.textContent = `⬆ Доступна версия ${latest}. Скачайте на GitHub.`;
-      }
+      status.style.color = '#dfdf4a';
+      status.textContent = `⬆ Доступна версия ${latest}. Скачать: ${data.html_url || 'GitHub Releases'}`;
     }
   } catch(e) {
     status.style.color = '#df7a4a';
@@ -1709,7 +2236,7 @@ async function checkForUpdates() {
       <div style="font-size:13px;color:#5a7aaa;margin-bottom:20px">Навигация для трофи-рейдов</div>
       <div style="background:#0d1e38;border-radius:8px;padding:14px;margin-bottom:16px;text-align:left">
         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.3.0</span>
+          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.5.0</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:#5a7aaa">Платформа</span><span style="color:#e0e0e0">Linux / Windows</span>
