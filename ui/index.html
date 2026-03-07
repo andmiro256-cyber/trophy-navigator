@@ -1373,6 +1373,24 @@ function setOverlayOpacity(name, slider) {
 // ЗАГРУЗКА ФАЙЛОВ
 // ─────────────────────────────────────────────
 function openFile(accept, callback) {
+  // Try Tauri dialog API first (works reliably in AppImage/WebKit2GTK)
+  if (isTauriRuntime()) {
+    const extensions = accept.split(',').map(s => s.trim().replace(/^\./, '').toLowerCase()).filter(Boolean);
+    tauriInvoke('plugin:dialog|open', { multiple: false, filters: [{ name: 'Files', extensions }] })
+      .then(path => {
+        if (!path) return;
+        const fname = String(path).split(/[\\/]/).pop();
+        tauriInvoke('plugin:fs|read_text_file', { path })
+          .then(text => callback(text, fname))
+          .catch(() => openFileHtmlFallback(accept, callback));
+      })
+      .catch(() => openFileHtmlFallback(accept, callback));
+    return;
+  }
+  openFileHtmlFallback(accept, callback);
+}
+
+function openFileHtmlFallback(accept, callback) {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = accept;
@@ -2182,20 +2200,90 @@ document.querySelectorAll('.icon-cell').forEach(cell => {
   });
 });
 
-// Демо-точки
-setTimeout(() => {
-  addWaypoint(L.latLng(55.78, 37.52));
-  addWaypoint(L.latLng(55.72, 37.70));
-  addWaypoint(L.latLng(55.65, 37.58));
-}, 500);
+// ─────────────────────────────────────────────
+// ОФЛАЙН / СИНХРОНИЗАЦИЯ — заглушки
+// ─────────────────────────────────────────────
+let dlInterval;
+function showDownloadProgress() {
+  document.getElementById('download-progress').style.display = 'block';
+  let pct = 0, tiles = 0;
+  dlInterval = setInterval(() => {
+    pct = Math.min(pct + Math.random() * 3, 100);
+    tiles = Math.round(pct / 100 * 4820);
+    document.getElementById('dl-bar').style.width = pct + '%';
+    document.getElementById('dl-status').textContent = `Скачивается... ${tiles} / 4 820`;
+    if (pct >= 100) {
+      clearInterval(dlInterval);
+      document.getElementById('dl-status').textContent = '✅ Скачано 4 820 тайлов';
+      showToast('Функция офлайн-карт в разработке');
+    }
+  }, 400);
+}
+function stopDownload() {
+  clearInterval(dlInterval);
+  document.getElementById('download-progress').style.display = 'none';
+  showToast('Скачивание остановлено');
+}
+function testSync() {
+  showToast('Синхронизация в разработке');
+  setTimeout(() => {
+    document.getElementById('sync-dot').classList.remove('offline');
+    document.getElementById('sync-status-text').textContent = 'Нет соединения';
+    document.getElementById('sync-dot').classList.add('offline');
+  }, 1500);
+}
 
 // ─────────────────────────────────────────────
 // ПРОВЕРКА ОБНОВЛЕНИЙ
 // ─────────────────────────────────────────────
 let updateCheckBusy = false;
+let pendingUpdateRid = null;
+let pendingUpdateVersion = null;
 
 function normalizeVersion(value) {
   return String(value || '').trim().replace(/^v/i, '').split(/\s+/)[0];
+}
+
+function getUpdateButton() {
+  return document.getElementById('btn-check-update');
+}
+
+function getUpdateStatus() {
+  return document.getElementById('update-status');
+}
+
+function getErrorMessage(error, fallback = 'Ошибка обновления') {
+  if (typeof error === 'string' && error.trim()) return error;
+  if (error && typeof error.message === 'string' && error.message.trim()) return error.message;
+  return fallback;
+}
+
+function isTauriRuntime() {
+  return typeof window.__TAURI_INTERNALS__?.invoke === 'function';
+}
+
+function tauriInvoke(command, args = {}) {
+  const invoke = window.__TAURI_INTERNALS__?.invoke;
+  if (typeof invoke !== 'function') throw new Error('Tauri IPC недоступен');
+  return invoke(command, args);
+}
+
+function formatPublishedDate(value) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toLocaleDateString('ru-RU');
+}
+
+function resetUpdateButton() {
+  const btn = getUpdateButton();
+  btn.textContent = '🔄 Проверить обновление';
+  btn.onclick = () => checkForUpdates();
+}
+
+function setInstallUpdateButton(version) {
+  const btn = getUpdateButton();
+  btn.textContent = `⬇ Установить ${version}`;
+  btn.onclick = () => installPendingUpdate();
 }
 
 function compareVersions(a, b) {
@@ -2220,11 +2308,12 @@ function pickReleaseAsset(assets) {
   return list.find(asset => asset?.browser_download_url) || null;
 }
 
-async function checkForUpdates(silent = false) {
-  if (updateCheckBusy) return;
-  updateCheckBusy = true;
-  const btn = document.getElementById('btn-check-update');
-  const status = document.getElementById('update-status');
+async function fallbackCheckForUpdates(silent = false) {
+  const btn = getUpdateButton();
+  const status = getUpdateStatus();
+  pendingUpdateRid = null;
+  pendingUpdateVersion = null;
+  resetUpdateButton();
   btn.disabled = true;
   btn.textContent = '⏳ Проверяем...';
   status.style.color = '#5a7aaa';
@@ -2235,7 +2324,7 @@ async function checkForUpdates(silent = false) {
     const data = await r.json();
     const latest = normalizeVersion(data.tag_name || data.name || '?');
     const current = normalizeVersion(document.getElementById('about-version').textContent);
-    const published = data.published_at ? new Date(data.published_at).toLocaleDateString('ru-RU') : null;
+    const published = formatPublishedDate(data.published_at);
     const versionDiff = compareVersions(latest, current);
     if (versionDiff === 0) {
       status.style.color = '#4adf7a';
@@ -2251,11 +2340,90 @@ async function checkForUpdates(silent = false) {
     }
   } catch(e) {
     status.style.color = '#df7a4a';
-    status.textContent = '✗ ' + (e.message || 'Ошибка проверки обновлений');
+    status.textContent = '✗ ' + getErrorMessage(e, 'Ошибка проверки обновлений');
+  } finally {
+    btn.disabled = false;
+    resetUpdateButton();
+  }
+}
+
+async function installPendingUpdate() {
+  if (updateCheckBusy || !pendingUpdateRid) return;
+  if (!confirm(`Установить обновление ${pendingUpdateVersion || ''}?`.trim())) return;
+
+  updateCheckBusy = true;
+  const btn = getUpdateButton();
+  const status = getUpdateStatus();
+  btn.disabled = true;
+  btn.textContent = '⏳ Устанавливаем...';
+  status.style.color = '#5a7aaa';
+  status.textContent = 'Скачиваем и устанавливаем обновление...';
+
+  try {
+    await tauriInvoke('install_app_update', { rid: pendingUpdateRid });
+    status.style.color = '#4adf7a';
+    status.textContent = '✓ Обновление установлено. Если приложение не перезапустилось само, запустите его снова.';
+    pendingUpdateRid = null;
+    pendingUpdateVersion = null;
+  } catch (e) {
+    status.style.color = '#df7a4a';
+    status.textContent = '✗ ' + getErrorMessage(e, 'Не удалось установить обновление');
   } finally {
     updateCheckBusy = false;
     btn.disabled = false;
-    btn.innerHTML = '🔄 Проверить обновление';
+    if (pendingUpdateRid) {
+      setInstallUpdateButton(pendingUpdateVersion || 'обновление');
+    } else {
+      resetUpdateButton();
+    }
+  }
+}
+
+async function checkForUpdates(silent = false) {
+  if (updateCheckBusy) return;
+  updateCheckBusy = true;
+  const btn = getUpdateButton();
+  const status = getUpdateStatus();
+  pendingUpdateRid = null;
+  pendingUpdateVersion = null;
+  btn.disabled = true;
+  btn.textContent = '⏳ Проверяем...';
+  status.style.color = '#5a7aaa';
+  status.textContent = silent ? 'Проверяем обновления...' : '';
+  try {
+    if (!isTauriRuntime()) {
+      await fallbackCheckForUpdates(silent);
+      return;
+    }
+
+    const update = await tauriInvoke('check_app_update');
+    if (!update) {
+      status.style.color = '#4adf7a';
+      status.textContent = '✓ У вас актуальная версия ' + normalizeVersion(document.getElementById('about-version').textContent);
+      resetUpdateButton();
+      return;
+    }
+
+    pendingUpdateRid = update.rid;
+    pendingUpdateVersion = normalizeVersion(update.version);
+    const published = formatPublishedDate(update.date);
+    const notes = update.body ? `. ${update.body}` : '';
+
+    status.style.color = '#dfdf4a';
+    status.textContent = `⬆ Доступна версия ${pendingUpdateVersion}${published ? ` от ${published}` : ''}${notes}`;
+    setInstallUpdateButton(pendingUpdateVersion);
+  } catch(e) {
+    status.style.color = '#df7a4a';
+    status.textContent = '✗ ' + getErrorMessage(e, 'Ошибка проверки обновлений');
+    resetUpdateButton();
+  } finally {
+    updateCheckBusy = false;
+    btn.disabled = false;
+    if (pendingUpdateRid) {
+      setInstallUpdateButton(pendingUpdateVersion || 'обновление');
+    } else {
+      resetUpdateButton();
+    }
   }
 }
 
@@ -2276,7 +2444,7 @@ async function checkForUpdates(silent = false) {
       <div style="font-size:13px;color:#5a7aaa;margin-bottom:20px">Навигация для трофи-рейдов</div>
       <div style="background:#0d1e38;border-radius:8px;padding:14px;margin-bottom:16px;text-align:left">
         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.5.0</span>
+          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.5.5</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:#5a7aaa">Платформа</span><span style="color:#e0e0e0">Linux / Windows</span>
