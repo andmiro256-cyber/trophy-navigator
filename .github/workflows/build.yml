@@ -85,6 +85,12 @@ jobs:
           VERSION=${{ steps.version.outputs.version }}
           APPIMAGE_SIG=$(cat artifacts/TrophyNavigator-Linux/*.AppImage.sig 2>/dev/null || echo "")
           NSIS_SIG=$(cat artifacts/TrophyNavigator-Windows/*.exe.sig 2>/dev/null || echo "")
+          APPIMAGE_FILE=$(find artifacts/TrophyNavigator-Linux -maxdepth 1 -type f -name '*.AppImage' -printf '%f\n' | head -n 1)
+          NSIS_FILE=$(find artifacts/TrophyNavigator-Windows -maxdepth 1 -type f -name '*.exe' -printf '%f\n' | head -n 1)
+          if [ -z "$APPIMAGE_FILE" ] || [ -z "$NSIS_FILE" ]; then
+            echo "Release artifacts not found" >&2
+            exit 1
+          fi
           cat > latest.json << EOF
           {
             "version": "$VERSION",
@@ -93,11 +99,11 @@ jobs:
             "platforms": {
               "linux-x86_64": {
                 "signature": "$APPIMAGE_SIG",
-                "url": "https://github.com/andmiro256-cyber/trophy-navigator/releases/download/v$VERSION/TrophyNavigator_${VERSION}_amd64.AppImage"
+                "url": "https://github.com/andmiro256-cyber/trophy-navigator/releases/download/v$VERSION/$APPIMAGE_FILE"
               },
               "windows-x86_64": {
                 "signature": "$NSIS_SIG",
-                "url": "https://github.com/andmiro256-cyber/trophy-navigator/releases/download/v$VERSION/TrophyNavigator_${VERSION}_x64-setup.exe"
+                "url": "https://github.com/andmiro256-cyber/trophy-navigator/releases/download/v$VERSION/$NSIS_FILE"
               }
             }
           }
