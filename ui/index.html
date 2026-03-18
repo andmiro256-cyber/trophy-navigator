@@ -3,14 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🧭 Trophy Navigator Desktop v0.5.9</title>
+<title>🧭 Trophy Navigator Desktop v0.6.0</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  /* ─── CSS Variables (дизайн-система) ─── */
+  :root {
+    --bg-base: #12192e;
+    --bg-elevated: #16213e;
+    --bg-surface: #1a2a4a;
+    --bg-sunken: #0d1b32;
+    --border-subtle: #1a3a5a;
+    --border-normal: #2a4a7a;
+    --border-bright: #4a8adf;
+    --text-primary: #c8dff5;
+    --text-secondary: #9ab8d0;
+    --text-muted: #5a7a9a;
+    --accent-blue: #4a8adf;
+    --accent-green: #4adf7a;
+    --accent-amber: #e0a050;
+    --accent-red: #e07070;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; scrollbar-width: thin; scrollbar-color: #2a4a7a transparent; }
+  body { font-family: 'Segoe UI', sans-serif; background: var(--bg-base); color: var(--text-primary); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
   /* ─── Убрать attribution Leaflet ─── */
   .leaflet-control-attribution { display: none !important; }
@@ -317,10 +334,100 @@
 
   /* ─── TOAST ─── */
   #toast {
-    position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
-    background: #0f3460; border: 1px solid #4a8adf; border-radius: 6px;
-    padding: 8px 18px; font-size: 12px; color: #7ec8ff; z-index: 5000; display: none;
+    position: fixed; top: 68px; left: 50%; transform: translateX(-50%) translateY(-8px);
+    background: rgba(15,52,96,0.95); border: 1px solid #4a8adf; border-radius: 8px;
+    padding: 10px 20px; font-size: 12px; color: #7ec8ff; z-index: 5000; display: none;
+    backdrop-filter: blur(8px); box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    animation: toast-slide-in 0.25s ease-out forwards;
   }
+  @keyframes toast-slide-in { from { opacity:0; transform: translateX(-50%) translateY(-16px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
+  @keyframes toast-slide-out { from { opacity:1; transform: translateX(-50%) translateY(0); } to { opacity:0; transform: translateX(-50%) translateY(8px); } }
+  #toast.toast-success { border-color: var(--accent-green); color: #80f0a0; background: rgba(13,42,26,0.95); }
+  #toast.toast-warning { border-color: var(--accent-amber); color: #f0c060; background: rgba(42,30,8,0.95); }
+  #toast.toast-error   { border-color: var(--accent-red);   color: #f08080; background: rgba(42,13,13,0.95); }
+  #toast.toast-hiding  { animation: toast-slide-out 0.18s ease-in forwards; }
+
+  /* ─── КАСТОМНЫЙ SCROLLBAR ─── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2a4a7a; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #4a8adf; }
+
+  /* ─── АНИМАЦИЯ МОДАЛЬНЫХ ОКОН ─── */
+  .modal {
+    animation: modal-appear 0.2s ease-out;
+  }
+  @keyframes modal-appear { from { opacity:0; transform: scale(0.95) translateY(-8px); } to { opacity:1; transform: scale(1) translateY(0); } }
+
+  /* ─── УЛУЧШЕНИЕ КОНТРАСТА ─── */
+  .prop-field label { color: #9ab8d0 !important; }
+  .sync-label { color: #9ab8d0 !important; }
+  .layer-section-title { color: #7a9aba !important; }
+
+  /* ─── ZEBRA STRIPING ДЛЯ ТАБЛИЦ ─── */
+  .wpt-table tbody tr:nth-child(even) td { background: rgba(15,52,96,0.3); }
+  .wpt-table th { position: sticky; top: 0; z-index: 1; cursor: pointer; user-select: none; }
+  .wpt-table th:hover { background: #1a4a7a; }
+
+  /* ─── PROGRESS BAR УЛУЧШЕНИЕ ─── */
+  #dl-prog-bar {
+    background: linear-gradient(90deg, #4a8adf, #4adfe0, #4adf7a) !important;
+    background-size: 200% 100%;
+    animation: progress-shimmer 2s ease-in-out infinite;
+  }
+  @keyframes progress-shimmer { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+  /* ─── КНОПКИ ТУЛБАРА — УЛУЧШЕННЫЕ HOVER ─── */
+  .tb-btn { transition: all 0.2s ease; }
+  .tb-btn:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(74,138,223,0.3); }
+  .tb-btn:active { transform: translateY(0); }
+  .tb-tag { transition: all 0.2s ease; }
+  .tb-tag:hover { transform: scale(1.08); }
+
+  /* ─── МОДАЛКИ — ТЕНИ И BACKDROP ─── */
+  .modal { box-shadow: 0 12px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(74,138,223,0.1) !important; }
+  .modal-header { border-bottom: 1px solid rgba(74,138,223,0.2); }
+
+  /* ─── МАСШТАБНАЯ ЛИНЕЙКА LEAFLET ─── */
+  .leaflet-control-scale-line {
+    background: rgba(22,33,62,0.85) !important;
+    border-color: #4a8adf !important;
+    color: #c0d8ff !important;
+    font-size: 11px !important;
+    padding: 2px 8px !important;
+    border-radius: 0 0 4px 4px !important;
+  }
+
+  /* ─── TOOLBAR OVERFLOW PROTECTION ─── */
+  #toolbar { overflow: hidden; }
+  @media (max-width: 1100px) { .tb-btn.sync-btn { display: none; } }
+  @media (max-width: 950px) { #btn-ruler { display: none; } .tb-group-label { font-size: 14px !important; } }
+
+  /* ─── МОДАЛКИ MAX-WIDTH ─── */
+  .modal { max-width: calc(100vw - 20px); }
+
+  /* ─── АЗИМУТ В МАРШРУТАХ ─── */
+  .route-azimuth { color: #7a9aba; font-size: 10px; margin-left: 4px; }
+
+  /* ─── PREMIUM LAYERS ─── */
+  .premium-layer.locked { opacity: 0.4; cursor: not-allowed; }
+  .premium-layer.locked::after { content: ' 🔒'; font-size: 10px; }
+
+  /* ─── CUSTOM LAYER FORM ─── */
+  #custom-layer-form code { background: var(--bg-surface); padding: 1px 4px; border-radius: 3px; font-size: 11px; color: var(--accent-blue); }
+
+  /* ─── ЛИНЕЙКА ─── */
+  .ruler-label {
+    background: rgba(255,106,0,0.9) !important;
+    border: none !important;
+    color: #fff !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4) !important;
+  }
+  .ruler-label::before { display: none !important; }
 </style>
 </head>
 <body>
@@ -361,24 +468,19 @@
 
   <div class="tb-sep"></div>
 
-  <!-- Инструменты -->
-  <button class="tb-btn" id="btn-ruler" onclick="setMode('ruler')" title="Линейка">📐 Линейка</button>
-  <button class="tb-btn" onclick="startAreaSelect()" title="Скачать тайлы в .sqlitedb">⬇ Скачать</button>
+  <!-- Режимы -->
+  <button class="tb-btn active" id="btn-hand" onclick="setMode('hand')" title="Навигация — перемещение по карте (H / Пробел)">🧭</button>
+  <button class="tb-btn" id="btn-ruler" onclick="setMode('ruler')" title="Линейка (M)">📐</button>
 
   <div class="tb-sep"></div>
 
-  <!-- Офлайн карты -->
-  <button class="tb-btn" style="background:#1a2a3a;border-color:#2a5a7a;color:#a0d8ff" onclick="openModal('modal-offline')" title="Офлайн карты — скачать и загрузить">📦 Офлайн карты</button>
+  <!-- Инструменты -->
+  <button class="tb-btn" onclick="openModal('modal-offline')" title="Офлайн карты — скачать и загрузить (D)">⬇ Офлайн карты</button>
 
   <div class="tb-sep"></div>
 
   <!-- Синхронизация -->
-  <button class="tb-btn sync-btn" onclick="openModal('modal-sync')" title="Синхронизация с планшетом">⟲ Синхронизация</button>
-
-  <div class="tb-sep"></div>
-
-  <!-- Навигация -->
-  <button class="tb-btn active" id="btn-hand" onclick="setMode('hand'); showToast('Навигация: перемещение и зум. Клик по карте ничего не добавляет.')" title="Режим навигации — перемещение по карте (пробел)">🧭 Навигация</button>
+  <button class="tb-btn sync-btn" onclick="openModal('modal-sync')" title="Синхронизация с планшетом">⟲ Синхр.</button>
 
   <!-- Правая часть тулбара -->
   <div style="margin-left:auto"></div>
@@ -399,11 +501,11 @@
      СТРОКА СОСТОЯНИЯ
 ════════════════════════════════════════════ -->
 <div id="statusbar">
-  <span>📍 <span class="highlight" id="sb-coords">—</span></span>
-  <span>🔍 z<span class="highlight" id="sb-zoom">—</span></span>
-  <span>🖱 <span class="highlight" id="sb-mode">Навигация</span></span>
-  <span>🗺 <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span style="margin-left:auto;color:#3a5a7a;">Trophy Navigator Desktop · UI Preview</span>
+  <span title="Координаты курсора">📍 <span class="highlight" id="sb-coords">—</span></span>
+  <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
+  <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
+  <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
+  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.6.0</span>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -419,7 +521,9 @@
 </div>
 <div id="ctx-menu-map">
   <div class="ctx-item" onclick="ctxMapAction('addwpt')">📍 Добавить точку здесь</div>
+  <div class="ctx-item" onclick="ctxMapAction('center')">🎯 Центрировать карту</div>
   <div class="ctx-item" onclick="ctxMapAction('copycoords')">📋 Копировать координаты</div>
+  <div class="ctx-item" onclick="ctxMapAction('measure')">📐 Измерить расстояние отсюда</div>
   <div class="ctx-item" id="ctx-undo-route" onclick="ctxMapAction('undoroute')" style="display:none">↩ Убрать последнюю точку маршрута</div>
 </div>
 
@@ -444,16 +548,14 @@
       </div>
       <div style="margin-bottom:8px;display:flex;gap:6px;align-items:center">
         <input id="wpt-search" placeholder="🔍 Поиск по названию..." oninput="updateWptTable()" style="flex:1;background:#0f3460;border:1px solid #2a4a7a;color:#c0d8ff;border-radius:4px;padding:4px 8px;font-size:12px">
-        <button class="btn-secondary" style="padding:4px 8px;font-size:11px" onclick="document.getElementById('wpt-select-all').checked=true;selectAllWaypoints(document.getElementById('wpt-select-all'))">Все</button>
-        <button class="btn-secondary" style="padding:4px 8px;font-size:11px;color:#e07070;border-color:#6a2a2a" onclick="deleteSelectedWaypoints()">Удалить</button>
       </div>
-      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
-        <label style="font-size:12px;color:#5a7aaa;display:flex;align-items:center;gap:4px;cursor:pointer">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+        <label style="font-size:12px;color:#7a9aba;display:flex;align-items:center;gap:4px;cursor:pointer">
           <input type="checkbox" id="wpt-select-all" style="accent-color:#4a8adf" onchange="selectAllWaypoints(this)"> Все
         </label>
-        <button class="btn-secondary" style="padding:3px 8px;font-size:11px;color:#e07070;border-color:#6a2a2a;margin-left:4px" onclick="deleteSelectedWaypoints()">🗑 Удалить выбранные</button>
-        <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="toggleBulkEditPanel()">✏ Редактировать выбранные</button>
-        <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="clearAllWaypoints()">🗑 Все точки</button>
+        <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="toggleBulkEditPanel()">✏ Редактировать</button>
+        <button class="btn-secondary" style="padding:3px 8px;font-size:11px;color:#e07070;border-color:#6a2a2a" onclick="deleteSelectedWaypoints()">🗑 Удалить выбранные</button>
+        <button class="btn-secondary" style="padding:3px 8px;font-size:11px;color:#e07070;border-color:#6a2a2a" onclick="clearAllWaypoints()">🗑 Очистить</button>
       </div>
       <!-- Панель массового редактирования -->
       <div id="bulk-edit-panel" style="display:none;background:#1a2a4a;border:1px solid #2a5a8a;border-radius:6px;padding:8px;margin-bottom:8px">
@@ -472,9 +574,11 @@
             <span style="font-size:11px;color:#5a7aaa">Иконка:</span>
             <select id="bulk-icon" style="background:#0f3460;border:1px solid #2a4a7a;color:#c0d8ff;border-radius:4px;padding:2px 4px;font-size:12px">
               <option value="">— не менять</option>
-              <option value="⬤">⬤</option><option value="🚩">🚩</option><option value="🏠">🏠</option><option value="🚗">🚗</option>
-              <option value="⛺">⛺</option><option value="⛽">⛽</option><option value="💧">💧</option><option value="⚠">⚠</option>
-              <option value="🏁">🏁</option><option value="🟢">🟢</option><option value="★">★</option><option value="✚">✚</option>
+              <option value="⬤">⬤ Кружок</option><option value="◆">◆ Ромб</option><option value="▲">▲ Треугольник</option><option value="■">■ Квадрат</option>
+              <option value="★">★ Звезда</option><option value="✚">✚ Крест</option><option value="🚩">🚩 Флажок</option><option value="🏁">🏁 Финиш</option>
+              <option value="🟢">🟢 Старт</option><option value="📍">📍 Метка</option><option value="🎯">🎯 Цель</option><option value="⚠">⚠ Опасность</option>
+              <option value="🏠">🏠 Дом</option><option value="⛺">⛺ Палатка</option><option value="⛽">⛽ Топливо</option><option value="💧">💧 Вода</option>
+              <option value="🚗">🚗 Машина</option><option value="⚓">⚓ Якорь</option><option value="📷">📷 Фото</option><option value="🔥">🔥 Костёр</option>
             </select>
           </div>
         </div>
@@ -519,23 +623,57 @@
       </div>
       <div class="prop-field">
         <label>Иконка</label>
-        <div class="icon-grid">
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">Основные</div>
+        <div class="icon-grid" style="grid-template-columns:repeat(10,1fr)">
           <div class="icon-cell selected" data-symbol="⬤" title="Кружок">⬤</div>
-          <div class="icon-cell" data-symbol="🚩" title="Флажок">🚩</div>
-          <div class="icon-cell" data-symbol="🏠" title="Дом">🏠</div>
-          <div class="icon-cell" data-symbol="🚗" title="Машина">🚗</div>
-          <div class="icon-cell" data-symbol="⛺" title="Палатка">⛺</div>
-          <div class="icon-cell" data-symbol="⛽" title="Топливо">⛽</div>
-          <div class="icon-cell" data-symbol="💧" title="Вода">💧</div>
-          <div class="icon-cell" data-symbol="⚠" title="Опасность">⚠</div>
-          <div class="icon-cell" data-symbol="🏁" title="Финиш">🏁</div>
-          <div class="icon-cell" data-symbol="🟢" title="Старт">🟢</div>
-          <div class="icon-cell" data-symbol="★" title="Звезда">★</div>
-          <div class="icon-cell" data-symbol="✚" title="Крест">✚</div>
           <div class="icon-cell" data-symbol="◆" title="Ромб">◆</div>
           <div class="icon-cell" data-symbol="▲" title="Треугольник">▲</div>
+          <div class="icon-cell" data-symbol="■" title="Квадрат">■</div>
+          <div class="icon-cell" data-symbol="★" title="Звезда">★</div>
+          <div class="icon-cell" data-symbol="✚" title="Крест">✚</div>
+          <div class="icon-cell" data-symbol="✕" title="Х-метка">✕</div>
+          <div class="icon-cell" data-symbol="🚩" title="Флажок">🚩</div>
+          <div class="icon-cell" data-symbol="🏁" title="Финиш">🏁</div>
+          <div class="icon-cell" data-symbol="🟢" title="Старт">🟢</div>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);margin:6px 0 4px">Навигация</div>
+        <div class="icon-grid" style="grid-template-columns:repeat(10,1fr)">
+          <div class="icon-cell" data-symbol="📍" title="Метка">📍</div>
+          <div class="icon-cell" data-symbol="🎯" title="Цель">🎯</div>
+          <div class="icon-cell" data-symbol="⚠" title="Опасность">⚠</div>
+          <div class="icon-cell" data-symbol="🚧" title="Преграда">🚧</div>
+          <div class="icon-cell" data-symbol="↗" title="Поворот">↗</div>
+          <div class="icon-cell" data-symbol="⬆" title="Прямо">⬆</div>
+          <div class="icon-cell" data-symbol="🔄" title="Разворот">🔄</div>
+          <div class="icon-cell" data-symbol="🅿" title="Парковка">🅿</div>
+          <div class="icon-cell" data-symbol="🛤" title="Брод">🛤</div>
+          <div class="icon-cell" data-symbol="🌊" title="Река">🌊</div>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);margin:6px 0 4px">Объекты</div>
+        <div class="icon-grid" style="grid-template-columns:repeat(10,1fr)">
+          <div class="icon-cell" data-symbol="🏠" title="Дом">🏠</div>
+          <div class="icon-cell" data-symbol="🏢" title="Здание">🏢</div>
+          <div class="icon-cell" data-symbol="⛺" title="Палатка">⛺</div>
+          <div class="icon-cell" data-symbol="🏕" title="Лагерь">🏕</div>
+          <div class="icon-cell" data-symbol="⛽" title="Топливо">⛽</div>
+          <div class="icon-cell" data-symbol="💧" title="Вода">💧</div>
+          <div class="icon-cell" data-symbol="🍽" title="Еда">🍽</div>
+          <div class="icon-cell" data-symbol="🏥" title="Медпункт">🏥</div>
+          <div class="icon-cell" data-symbol="🔧" title="Сервис">🔧</div>
+          <div class="icon-cell" data-symbol="📷" title="Фото">📷</div>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);margin:6px 0 4px">Транспорт и природа</div>
+        <div class="icon-grid" style="grid-template-columns:repeat(10,1fr)">
+          <div class="icon-cell" data-symbol="🚗" title="Машина">🚗</div>
+          <div class="icon-cell" data-symbol="🚙" title="Внедорожник">🚙</div>
+          <div class="icon-cell" data-symbol="🏍" title="Мотоцикл">🏍</div>
+          <div class="icon-cell" data-symbol="🚤" title="Лодка">🚤</div>
           <div class="icon-cell" data-symbol="⚓" title="Якорь">⚓</div>
-          <div class="icon-cell" data-symbol="📷" title="Камера">📷</div>
+          <div class="icon-cell" data-symbol="🌲" title="Лес">🌲</div>
+          <div class="icon-cell" data-symbol="⛰" title="Гора">⛰</div>
+          <div class="icon-cell" data-symbol="🏔" title="Перевал">🏔</div>
+          <div class="icon-cell" data-symbol="🪨" title="Камень">🪨</div>
+          <div class="icon-cell" data-symbol="🔥" title="Костёр">🔥</div>
         </div>
       </div>
       <div style="display:flex;gap:10px">
@@ -918,8 +1056,8 @@
           <span id="dl-prog-status">Подготовка...</span>
           <span id="dl-prog-speed"></span>
         </div>
-        <div style="background:#0f3460;border-radius:4px;height:8px;overflow:hidden">
-          <div id="dl-prog-bar" style="background:linear-gradient(90deg,#4a8adf,#4adfe0);height:100%;width:0%;border-radius:4px;transition:width 0.3s"></div>
+        <div style="background:var(--bg-sunken);border:1px solid var(--border-subtle);border-radius:6px;height:10px;overflow:hidden">
+          <div id="dl-prog-bar" style="height:100%;width:0%;border-radius:6px;transition:width 0.3s"></div>
         </div>
         <button class="btn-secondary" style="width:100%;margin-top:8px;color:#e07070;border-color:#6a2a2a;font-size:11px" onclick="stopTileDownload()">⏹ Остановить</button>
       </div>
@@ -1000,44 +1138,74 @@
       <span class="modal-close" onclick="closeModal('modal-layers')">✕</span>
     </div>
     <div class="modal-body">
-      <div class="layer-section-title">Яндекс</div>
-      <div class="base-layer" data-layer="Яндекс Схема" onclick="setLayer('Яндекс Схема', this)">🗺 Яндекс Схема</div>
-      <div class="base-layer" data-layer="Яндекс Гибрид" onclick="setLayer('Яндекс Гибрид', this)">🛰 Яндекс Гибрид</div>
+      <!-- Пользовательские карты (всегда доступны) -->
+      <div class="layer-section-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Мои карты</span>
+        <span style="font-size:12px;cursor:pointer;color:var(--accent-blue)" onclick="showAddCustomLayer()">+ Добавить</span>
+      </div>
+      <div id="custom-layers-list"></div>
+      <div id="custom-layer-form" style="display:none;background:var(--bg-sunken);border:1px solid var(--border-normal);border-radius:6px;padding:10px;margin-bottom:8px">
+        <div class="prop-field"><label>Название</label><input id="cl-name" placeholder="Моя карта"></div>
+        <div class="prop-field"><label>URL шаблон тайлов</label><input id="cl-url" placeholder="https://server/{z}/{x}/{y}.png"></div>
+        <div style="display:flex;gap:8px">
+          <div class="prop-field" style="flex:1"><label>Max zoom</label><input id="cl-maxzoom" type="number" value="18" min="1" max="22"></div>
+          <div class="prop-field" style="flex:1"><label>TMS (Y инверсия)</label><select id="cl-tms"><option value="0">Нет (XYZ)</option><option value="1">Да (TMS)</option></select></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:6px">
+          <div class="prop-field" style="flex:1"><label>Поддомены</label><input id="cl-subdomains" placeholder="abc (необязательно)"></div>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px">Шаблон: <code>{x}</code>, <code>{y}</code>, <code>{z}</code> — координаты тайла, <code>{s}</code> — поддомен</div>
+        <div class="btn-row">
+          <button class="btn-secondary" style="font-size:11px" onclick="openFile('.xml,.XML', importLocusXml)">📂 Импорт .xml</button>
+          <div style="flex:1"></div>
+          <button class="btn-secondary" style="font-size:11px" onclick="hideAddCustomLayer()">Отмена</button>
+          <button class="btn-primary" style="font-size:11px" onclick="addCustomLayer()">Добавить</button>
+        </div>
+      </div>
 
-      <div class="layer-section-title" style="margin-top:8px">Яндекс (доп.)</div>
-      <div class="base-layer" data-layer="Яндекс Спутник" onclick="setLayer('Яндекс Спутник', this)">🛰 Яндекс Спутник</div>
-      <div class="base-layer" data-layer="Космоснимки рельеф" onclick="setLayer('Космоснимки рельеф', this)">🏔 Космоснимки рельеф</div>
-
-      <div class="layer-section-title" style="margin-top:8px">Google / Bing / ESRI</div>
+      <!-- Бесплатные карты (всегда доступны) -->
+      <div class="layer-section-title" style="margin-top:8px">Бесплатные карты</div>
       <div class="base-layer active" data-layer="OpenStreetMap" onclick="setLayer('OpenStreetMap', this)">🗺 OpenStreetMap</div>
       <div class="base-layer" data-layer="OpenTopoMap" onclick="setLayer('OpenTopoMap', this)">🏔 OpenTopoMap</div>
       <div class="base-layer" data-layer="CyclOSM" onclick="setLayer('CyclOSM', this)">🚴 CyclOSM</div>
       <div class="base-layer" data-layer="OSM Humanitarian" onclick="setLayer('OSM Humanitarian', this)">🗺 OSM Humanitarian</div>
-      <div class="base-layer" data-layer="2GIS" onclick="setLayer('2GIS', this)">🗺 2GIS</div>
-      <div class="base-layer" data-layer="Спутник Google" onclick="setLayer('Спутник Google', this)">🛰 Спутник Google</div>
-      <div class="base-layer" data-layer="Карты Google" onclick="setLayer('Карты Google', this)">🗺 Карты Google</div>
-      <div class="base-layer" data-layer="Рельеф Google" onclick="setLayer('Рельеф Google', this)">🏔 Рельеф Google</div>
-      <div class="base-layer" data-layer="Гибрид Google" onclick="setLayer('Гибрид Google', this)">🛰 Гибрид Google</div>
-      <div class="base-layer" data-layer="Спутник Bing" onclick="setLayer('Спутник Bing', this)">🛰 Спутник Bing</div>
-      <div class="base-layer" data-layer="Гибрид Bing" onclick="setLayer('Гибрид Bing', this)">🛰 Гибрид Bing</div>
-      <div class="base-layer" data-layer="Спутник ESRI" onclick="setLayer('Спутник ESRI', this)">🛰 Спутник ESRI</div>
-      <div class="base-layer" data-layer="ESRI Clarity" onclick="setLayer('ESRI Clarity', this)">🛰 ESRI Clarity</div>
 
-      <div class="layer-section-title" style="margin-top:8px">Thunderforest / Прочие</div>
-      <div class="base-layer" data-layer="TF Outdoors" onclick="setLayer('TF Outdoors', this)">🏔 TF Outdoors</div>
-      <div class="base-layer" data-layer="LoMaps" onclick="setLayer('LoMaps', this)">🗺 LoMaps</div>
-      <div class="base-layer" data-layer="TF Transport" onclick="setLayer('TF Transport', this)">🗺 TF Transport</div>
-      <div class="base-layer" data-layer="TF Велосипед" onclick="setLayer('TF Велосипед', this)">🚴 TF Велосипед</div>
-      <div class="base-layer" data-layer="MTB Map" onclick="setLayer('MTB Map', this)">🚵 MTB Map</div>
-      <div class="base-layer" data-layer="Michelin" onclick="setLayer('Michelin', this)">🗺 Michelin</div>
+      <!-- Premium карты (требуют лицензию) -->
+      <div class="layer-section-title" style="margin-top:8px" id="premium-layers-title">Premium карты <span style="font-size:9px;color:var(--accent-amber)" id="premium-badge"></span></div>
+      <div id="premium-layers-container">
+        <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">Яндекс</div>
+        <div class="base-layer premium-layer" data-layer="Яндекс Схема" onclick="setLayerPremium('Яндекс Схема', this)">🗺 Яндекс Схема</div>
+        <div class="base-layer premium-layer" data-layer="Яндекс Гибрид" onclick="setLayerPremium('Яндекс Гибрид', this)">🛰 Яндекс Гибрид</div>
+        <div class="base-layer premium-layer" data-layer="Яндекс Спутник" onclick="setLayerPremium('Яндекс Спутник', this)">🛰 Яндекс Спутник</div>
+        <div class="base-layer premium-layer" data-layer="Космоснимки рельеф" onclick="setLayerPremium('Космоснимки рельеф', this)">🏔 Космоснимки</div>
 
-      <div class="layer-section-title" style="margin-top:8px">ГГЦ / Генштаб (nakarte.me)</div>
-      <div class="base-layer" data-layer="ГГЦ 250м" onclick="setLayer('ГГЦ 250м', this)">📋 ГГЦ 250м</div>
-      <div class="base-layer" data-layer="ГГЦ 500м" onclick="setLayer('ГГЦ 500м', this)">📋 ГГЦ 500м</div>
-      <div class="base-layer" data-layer="ГГЦ 1км" onclick="setLayer('ГГЦ 1км', this)">📋 ГГЦ 1км</div>
-      <div class="base-layer" data-layer="Генштаб 250м" onclick="setLayer('Генштаб 250м', this)">🏔 Генштаб 250м</div>
-      <div class="base-layer" data-layer="Генштаб 500м" onclick="setLayer('Генштаб 500м', this)">🏔 Генштаб 500м</div>
-      <div class="base-layer" data-layer="Генштаб 1км" onclick="setLayer('Генштаб 1км', this)">🏔 Генштаб 1км</div>
+        <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">Google / Bing / ESRI</div>
+        <div class="base-layer premium-layer" data-layer="2GIS" onclick="setLayerPremium('2GIS', this)">🗺 2GIS</div>
+        <div class="base-layer premium-layer" data-layer="Спутник Google" onclick="setLayerPremium('Спутник Google', this)">🛰 Спутник Google</div>
+        <div class="base-layer premium-layer" data-layer="Карты Google" onclick="setLayerPremium('Карты Google', this)">🗺 Карты Google</div>
+        <div class="base-layer premium-layer" data-layer="Рельеф Google" onclick="setLayerPremium('Рельеф Google', this)">🏔 Рельеф Google</div>
+        <div class="base-layer premium-layer" data-layer="Гибрид Google" onclick="setLayerPremium('Гибрид Google', this)">🛰 Гибрид Google</div>
+        <div class="base-layer premium-layer" data-layer="Спутник Bing" onclick="setLayerPremium('Спутник Bing', this)">🛰 Спутник Bing</div>
+        <div class="base-layer premium-layer" data-layer="Гибрид Bing" onclick="setLayerPremium('Гибрид Bing', this)">🛰 Гибрид Bing</div>
+        <div class="base-layer premium-layer" data-layer="Спутник ESRI" onclick="setLayerPremium('Спутник ESRI', this)">🛰 Спутник ESRI</div>
+        <div class="base-layer premium-layer" data-layer="ESRI Clarity" onclick="setLayerPremium('ESRI Clarity', this)">🛰 ESRI Clarity</div>
+
+        <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">Thunderforest / Прочие</div>
+        <div class="base-layer premium-layer" data-layer="TF Outdoors" onclick="setLayerPremium('TF Outdoors', this)">🏔 TF Outdoors</div>
+        <div class="base-layer premium-layer" data-layer="LoMaps" onclick="setLayerPremium('LoMaps', this)">🗺 LoMaps</div>
+        <div class="base-layer premium-layer" data-layer="TF Transport" onclick="setLayerPremium('TF Transport', this)">🗺 TF Transport</div>
+        <div class="base-layer premium-layer" data-layer="TF Велосипед" onclick="setLayerPremium('TF Велосипед', this)">🚴 TF Велосипед</div>
+        <div class="base-layer premium-layer" data-layer="MTB Map" onclick="setLayerPremium('MTB Map', this)">🚵 MTB Map</div>
+        <div class="base-layer premium-layer" data-layer="Michelin" onclick="setLayerPremium('Michelin', this)">🗺 Michelin</div>
+
+        <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">ГГЦ / Генштаб (nakarte.me)</div>
+        <div class="base-layer premium-layer" data-layer="ГГЦ 250м" onclick="setLayerPremium('ГГЦ 250м', this)">📋 ГГЦ 250м</div>
+        <div class="base-layer premium-layer" data-layer="ГГЦ 500м" onclick="setLayerPremium('ГГЦ 500м', this)">📋 ГГЦ 500м</div>
+        <div class="base-layer premium-layer" data-layer="ГГЦ 1км" onclick="setLayerPremium('ГГЦ 1км', this)">📋 ГГЦ 1км</div>
+        <div class="base-layer premium-layer" data-layer="Генштаб 250м" onclick="setLayerPremium('Генштаб 250м', this)">🏔 Генштаб 250м</div>
+        <div class="base-layer premium-layer" data-layer="Генштаб 500м" onclick="setLayerPremium('Генштаб 500м', this)">🏔 Генштаб 500м</div>
+        <div class="base-layer premium-layer" data-layer="Генштаб 1км" onclick="setLayerPremium('Генштаб 1км', this)">🏔 Генштаб 1км</div>
+      </div>
 
       <div class="layer-section-title" style="margin-top:8px">Оверлейные слои</div>
       <div style="font-size:10px;color:#4a6a8a;margin-bottom:4px">Ползунок = прозрачность</div>
@@ -1121,6 +1289,9 @@ const ZoomDisplay = L.Control.extend({
 });
 new ZoomDisplay().addTo(map);
 
+// Масштабная линейка
+L.control.scale({ imperial: false, maxWidth: 200, position: 'bottomleft' }).addTo(map);
+
 // Координаты в статусбаре
 map.on('mousemove', e => {
   const {lat, lng: lon} = e.latlng;
@@ -1136,6 +1307,62 @@ document.getElementById('sb-zoom').textContent = map.getZoom();
 // ─────────────────────────────────────────────
 let waypoints = [], wpCounter = 1, activeWaypoint = null;
 const wpColors = ['#4a8adf','#df4a4a','#4adf7a','#dfdf4a','#df7a4a','#7a4adf','#4adfe0','#df4adf'];
+
+// ─── UNDO стек ───
+const undoStack = [];
+const MAX_UNDO = 50;
+function pushUndo(action) {
+  undoStack.push(action);
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+}
+function undoLastAction() {
+  if (undoStack.length === 0) { showToast('Нечего отменять'); return; }
+  const action = undoStack.pop();
+  if (action.type === 'addWaypoint') {
+    const m = action.marker;
+    if (m.wpCircle) map.removeLayer(m.wpCircle);
+    map.removeLayer(m);
+    waypoints = waypoints.filter(w => w !== m);
+    waypointSets.forEach(s => { s.waypoints = s.waypoints.filter(w => w !== m); });
+    updateWptTable();
+    showToast('↩ Отменено: добавление точки');
+  } else if (action.type === 'addTrackPoint') {
+    const t = action.track;
+    if (t && t.points.length > 0) {
+      t.points.pop();
+      if (t.pointsData) t.pointsData.pop();
+      if (t.polyline) t.polyline.setLatLngs(t.points);
+      if (t.markers?.length > 0) { const m = t.markers.pop(); if (m) map.removeLayer(m); }
+      const el = document.getElementById('track-build-count');
+      if (el) el.textContent = t.points.length;
+      showToast('↩ Отменено: точка трека');
+    }
+  } else if (action.type === 'addRoutePoint') {
+    if (currentRouteDraw && currentRouteDraw.points.length > 0) {
+      removeRouteBuildPoint(currentRouteDraw.points.length - 1);
+      showToast('↩ Отменено: точка маршрута');
+    }
+  } else if (action.type === 'deleteWaypoint') {
+    const m = action.marker;
+    m.addTo(map);
+    if (m.wpCircle && action.hadCircle) updateWaypointCircle(m);
+    waypoints.push(m);
+    const set = waypointSets.find(s => s.id === m._setId);
+    if (set) set.waypoints.push(m);
+    updateWptTable();
+    showToast('↩ Восстановлена точка: ' + m.wpData.name);
+  }
+}
+
+// ─── Вычисление азимута между двумя точками ───
+function calcBearing(lat1, lon1, lat2, lon2) {
+  const toRad = d => d * Math.PI / 180;
+  const toDeg = r => r * 180 / Math.PI;
+  const dLon = toRad(lon2 - lon1);
+  const y = Math.sin(dLon) * Math.cos(toRad(lat2));
+  const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
 
 // ─── Наборы точек (waypoint sets) ───
 let waypointSets = [];
@@ -1429,6 +1656,7 @@ function addWaypoint(latlng, nameHint, extra = {}) {
   marker._setId = set ? set.id : null;
   wpCounter++;
   updateWptTable();
+  pushUndo({ type: 'addWaypoint', marker });
   if (!nameHint && !extra.silent) showToast(`Добавлена точка ${name}`);
   return marker;
 }
@@ -1517,6 +1745,7 @@ const modeNames = { hand:'Навигация', waypoint:'Добавить точ
 const btnMap = { hand:'btn-hand', waypoint:'btn-wpt', track:'btn-trk', route:'btn-rte', ruler:'btn-ruler' };
 
 function setMode(mode) {
+  if (currentMode === 'ruler' && mode !== 'ruler') clearRuler();
   currentMode = mode;
   document.querySelectorAll('[id^=btn-]:not(#btn-map-layer)').forEach(b => b.classList.remove('active'));
   const btn = document.getElementById(btnMap[mode]);
@@ -1535,7 +1764,58 @@ function toggleMode(mode) {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeAllModals();
+  // Не перехватывать в полях ввода
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+    if (e.key === 'Escape') { e.target.blur(); closeAllModals(); }
+    return;
+  }
+  switch(e.key) {
+    case 'Escape': closeAllModals(); break;
+    case ' ':
+    case 'h': case 'H':
+      e.preventDefault();
+      setMode('hand');
+      showToast('Навигация');
+      break;
+    case 'w': case 'W':
+      if (!e.ctrlKey) toggleMode('waypoint');
+      break;
+    case 't': case 'T':
+      if (!e.ctrlKey) startNewTrack();
+      break;
+    case 'r': case 'R':
+      if (!e.ctrlKey) startNewRoute();
+      break;
+    case 'm': case 'M':
+      if (!e.ctrlKey) setMode('ruler');
+      break;
+    case 'd': case 'D':
+      if (!e.ctrlKey) startAreaSelect();
+      break;
+    case 'l': case 'L':
+      if (!e.ctrlKey) openModal('modal-layers');
+      break;
+    case 'f': case 'F':
+      if (!e.ctrlKey) {
+        // Fit ко всем видимым объектам
+        const allPts = [];
+        waypoints.forEach(m => allPts.push(m.getLatLng()));
+        tracks.forEach(t => { if (t.visible) t.points.forEach(p => allPts.push(p)); });
+        routes.forEach(r => { if (!r._hidden) r.points.forEach(p => allPts.push(p)); });
+        if (allPts.length > 0) fitToLatLngs(allPts);
+        else showToast('Нет объектов на карте');
+      }
+      break;
+    case 'Delete':
+      if (ctxTarget) ctxAction('delete');
+      break;
+    case 'z': case 'Z':
+      if (e.ctrlKey) { undoLastAction(); e.preventDefault(); }
+      break;
+    case 's': case 'S':
+      if (e.ctrlKey) { e.preventDefault(); saveAllGPX(); }
+      break;
+  }
 });
 
 map.on('click', e => {
@@ -1543,7 +1823,7 @@ map.on('click', e => {
   if (currentMode === 'waypoint') addWaypoint(e.latlng);
   else if (currentMode === 'track') addTrackPoint(e.latlng);
   else if (currentMode === 'route') showToast('⚠ Кликайте по существующим точкам (КП)');
-  else if (currentMode === 'ruler') showToast('Линейка: кликайте для измерения расстояния');
+  else if (currentMode === 'ruler') addRulerPoint(e.latlng);
 });
 map.on('dblclick', e => {
   L.DomEvent.stop(e);
@@ -1848,12 +2128,18 @@ function saveWaypointsGPX() {
   const activeSet = getActiveSet();
   const list = activeSet ? activeSet.waypoints : waypoints;
   if (list.length === 0) { showToast('Нет точек для сохранения'); return; }
-  let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND">';
+  let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">\n';
   list.forEach(m => {
     const d = m.wpData;
-    gpx += `<wpt lat="${d.lat.toFixed(6)}" lon="${d.lng.toFixed(6)}"><name>${escapeXml(d.name)}</name>`;
-    if (d.desc) gpx += `<desc>${escapeXml(d.desc)}</desc>`;
-    gpx += '</wpt>';
+    gpx += `  <wpt lat="${d.lat.toFixed(6)}" lon="${d.lng.toFixed(6)}">\n`;
+    gpx += `    <name>${escapeXml(d.name)}</name>\n`;
+    if (d.desc) gpx += `    <desc>${escapeXml(d.desc)}</desc>\n`;
+    gpx += `    <sym>${escapeXml(d.icon || '⬤')}</sym>\n`;
+    gpx += `    <extensions>\n`;
+    gpx += `      <tnd:color>${escapeXml(d.color || '#df7a4a')}</tnd:color>\n`;
+    gpx += `      <tnd:radius>${d.radius || 0}</tnd:radius>\n`;
+    gpx += `    </extensions>\n`;
+    gpx += `  </wpt>\n`;
   });
   gpx += '</gpx>';
   const fname = (activeSet ? activeSet.name : 'waypoints').replace(/[^a-zA-Zа-яА-Я0-9_-]/g, '_') + '.gpx';
@@ -1865,12 +2151,15 @@ function saveAllGPX() {
     showToast('Нет данных для сохранения');
     return;
   }
-  let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND">';
+  let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">\n';
   waypoints.forEach(m => {
     const d = m.wpData;
-    gpx += `<wpt lat="${d.lat.toFixed(6)}" lon="${d.lng.toFixed(6)}"><name>${escapeXml(d.name)}</name>`;
+    gpx += `<wpt lat="${d.lat.toFixed(6)}" lon="${d.lng.toFixed(6)}">`;
+    gpx += `<name>${escapeXml(d.name)}</name>`;
     if (d.desc) gpx += `<desc>${escapeXml(d.desc)}</desc>`;
-    gpx += '</wpt>';
+    gpx += `<sym>${escapeXml(d.icon || '⬤')}</sym>`;
+    gpx += `<extensions><tnd:color>${escapeXml(d.color || '#df7a4a')}</tnd:color><tnd:radius>${d.radius || 0}</tnd:radius></extensions>`;
+    gpx += '</wpt>\n';
   });
   tracks.forEach(t => {
     gpx += `<trk><name>${escapeXml(t.name)}</name><trkseg>`;
@@ -1907,10 +2196,19 @@ function loadGPXWaypoints(text, fname, options = {}) {
     const lat = parseFloat(wpt.getAttribute('lat'));
     const lon = parseFloat(wpt.getAttribute('lon'));
     if (isNaN(lat) || isNaN(lon)) return;
-    const marker = addWaypoint(L.latLng(lat, lon), wpt.querySelector('name')?.textContent?.trim() || '', {
+    // Читаем sym, extensions (tnd:color, tnd:radius)
+    const sym = wpt.querySelector('sym')?.textContent?.trim() || '';
+    const ext = wpt.querySelector('extensions');
+    const tndColor = ext?.querySelector('color')?.textContent?.trim() || '';
+    const tndRadius = ext?.querySelector('radius')?.textContent?.trim() || '';
+    const extra = {
       desc: wpt.querySelector('desc')?.textContent?.trim() || '',
       silent: true
-    });
+    };
+    if (sym) extra.icon = sym;
+    if (tndColor && /^#[0-9a-fA-F]{6}$/.test(tndColor)) extra.color = tndColor;
+    if (tndRadius && Number.isFinite(parseFloat(tndRadius))) extra.radius = parseFloat(tndRadius);
+    const marker = addWaypoint(L.latLng(lat, lon), wpt.querySelector('name')?.textContent?.trim() || '', extra);
     if (marker) imported.push(marker.getLatLng());
     count++;
   });
@@ -2079,12 +2377,14 @@ function ctxAction(action) {
     showToast('Скопировано: ' + txt);
   }
   else if (action === 'delete') {
+    const hadCircle = !!target.wpCircle;
     if (target.wpCircle) map.removeLayer(target.wpCircle);
     map.removeLayer(target);
     waypoints = waypoints.filter(m => m !== target);
     waypointSets.forEach(s => { s.waypoints = s.waypoints.filter(m => m !== target); });
+    pushUndo({ type: 'deleteWaypoint', marker: target, hadCircle });
     updateWptTable();
-    showToast('Точка удалена');
+    showToast('Точка удалена (Ctrl+Z — отменить)');
   }
 }
 function ctxMapAction(action) {
@@ -2092,6 +2392,10 @@ function ctxMapAction(action) {
   if (!ctxLatLng) return;
   if (action === 'addwpt') {
     addWaypoint(ctxLatLng);
+  } else if (action === 'center') {
+    map.panTo(ctxLatLng);
+  } else if (action === 'measure') {
+    startRulerFrom(ctxLatLng);
   } else if (action === 'copycoords') {
     const txt = ctxLatLng.lat.toFixed(5) + ', ' + ctxLatLng.lng.toFixed(5);
     navigator.clipboard.writeText(txt).catch(() => {});
@@ -2310,6 +2614,7 @@ function addTrackPoint(latlng) {
   currentTrackDraw.markers.push(createTrackMarker(currentTrackDraw, currentTrackDraw.points.length - 1));
   const el = document.getElementById('track-build-count');
   if (el) el.textContent = currentTrackDraw.points.length;
+  pushUndo({ type: 'addTrackPoint', track: currentTrackDraw });
 }
 function finishTrackDraw() {
   if (!currentTrackDraw) return;
@@ -2779,6 +3084,25 @@ function deleteRoute(id) {
   updateRouteList();
   showToast('Маршрут удалён');
 }
+function centerRoute(id) {
+  const r = routes.find(r => r.id === id);
+  if (!r || !r.points.length) return;
+  fitToLatLngs(r.points);
+  showToast('Переход к маршруту: ' + r.name);
+}
+function toggleRouteVisible(id) {
+  const r = routes.find(r => r.id === id);
+  if (!r) return;
+  if (!r._hidden) {
+    if (r.polyline) map.removeLayer(r.polyline);
+    r._hidden = true;
+    showToast('Маршрут скрыт: ' + r.name);
+  } else {
+    if (r.polyline) r.polyline.addTo(map);
+    r._hidden = false;
+    showToast('Маршрут показан: ' + r.name);
+  }
+}
 function toggleRouteEl(headerEl) {
   const kpList = headerEl.nextElementSibling;
   if (!kpList) return;
@@ -2799,10 +3123,7 @@ function updateRouteList() {
     const kpRows = r.points.map((p, i) => {
       const prev = i > 0 ? r.points[i-1] : null;
       const dist = prev ? (prev.distanceTo(p)/1000).toFixed(1) + ' км' : '—';
-      const bear = prev ? (() => {
-      const dy = p.lat - prev.lat, dx = (p.lng - prev.lng) * Math.cos(prev.lat * Math.PI/180);
-        return ((Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360).toFixed(0) + '°';
-      })() : '';
+      const bear = prev ? calcBearing(prev.lat, prev.lng, p.lat, p.lng).toFixed(0) + '°' : '';
       return `<div class="route-kp">
         <span class="route-kp-num" style="background:${r.color}22;color:${r.color}">${escapeHtml(r.labels?.[i] || `КП${i+1}`)}</span>
         <span style="font-size:11px;color:#c0d8ff;flex:1">${p.lat.toFixed(4)}°N ${p.lng.toFixed(4)}°E</span>
@@ -2817,6 +3138,8 @@ function updateRouteList() {
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:11px;color:#5a7aaa">${r.points.length} КП · ${km} км <span class="route-arrow">▸</span></span>
+          <span style="font-size:12px;color:#7a9aba;cursor:pointer;padding:0 4px" onclick="event.stopPropagation();toggleRouteVisible(${r.id})" title="Скрыть/показать">👁</span>
+          <span style="font-size:12px;color:#7a9aba;cursor:pointer;padding:0 4px" onclick="event.stopPropagation();centerRoute(${r.id})" title="Центрировать">🎯</span>
           <span style="font-size:12px;color:#e07070;cursor:pointer;padding:0 4px" onclick="event.stopPropagation();deleteRoute(${r.id})" title="Удалить">✕</span>
         </div>
       </div>
@@ -2949,11 +3272,22 @@ function applyBulkEdit() {
 // TOAST
 // ─────────────────────────────────────────────
 let toastTimer;
-function showToast(msg) {
+function showToast(msg, type) {
   const t = document.getElementById('toast');
+  // Автоопределение типа по маркерам
+  if (!type) {
+    if (msg.startsWith('✓')) type = 'success';
+    else if (msg.startsWith('⚠')) type = 'warning';
+    else if (msg.startsWith('❌') || msg.toLowerCase().startsWith('ошибка')) type = 'error';
+  }
+  t.className = type ? `toast-${type}` : '';
   t.textContent = msg; t.style.display = 'block';
+  t.style.animation = 'none'; void t.offsetWidth; t.style.animation = '';
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.style.display = 'none', 2500);
+  toastTimer = setTimeout(() => {
+    t.classList.add('toast-hiding');
+    setTimeout(() => { t.style.display = 'none'; t.classList.remove('toast-hiding'); }, 180);
+  }, 2500);
 }
 
 // ─────────────────────────────────────────────
@@ -3554,6 +3888,60 @@ function restoreState() {
   try { applyState(state); } catch (e) { console.warn('Restore state failed:', e); }
 }
 
+// ─────────────────────────────────────────────
+// ЛИНЕЙКА (RULER) — измерение расстояний
+// ─────────────────────────────────────────────
+let rulerPoints = [];
+let rulerLines = [];
+let rulerMarkers = [];
+let rulerTotalDist = 0;
+
+function startRulerFrom(latlng) {
+  clearRuler();
+  setMode('ruler');
+  addRulerPoint(latlng);
+}
+
+function addRulerPoint(latlng) {
+  rulerPoints.push(latlng);
+  const idx = rulerPoints.length;
+  const marker = L.circleMarker(latlng, {
+    radius: 5, color: '#ff6a00', fillColor: '#ff6a00', fillOpacity: 0.9, weight: 2
+  }).addTo(map);
+
+  if (rulerPoints.length > 1) {
+    const prev = rulerPoints[rulerPoints.length - 2];
+    const segDist = prev.distanceTo(latlng);
+    rulerTotalDist += segDist;
+    const line = L.polyline([prev, latlng], {
+      color: '#ff6a00', weight: 2, dashArray: '6 4', opacity: 0.8
+    }).addTo(map);
+    rulerLines.push(line);
+
+    // Метка расстояния на середине сегмента
+    const mid = L.latLng((prev.lat + latlng.lat)/2, (prev.lng + latlng.lng)/2);
+    const bearing = calcBearing(prev.lat, prev.lng, latlng.lat, latlng.lng);
+    const label = L.tooltip({ permanent: true, direction: 'center', className: 'ruler-label' })
+      .setLatLng(mid)
+      .setContent(`${(segDist/1000).toFixed(2)} км · ${bearing.toFixed(0)}°`);
+    label.addTo(map);
+    rulerMarkers.push(label);
+  }
+  rulerMarkers.push(marker);
+
+  const totalKm = (rulerTotalDist / 1000).toFixed(2);
+  showToast(`📐 Линейка: ${totalKm} км · ${idx} ${idx === 1 ? 'точка' : 'точек'} (ESC — сброс)`);
+}
+
+function clearRuler() {
+  rulerLines.forEach(l => map.removeLayer(l));
+  rulerMarkers.forEach(m => map.removeLayer(m));
+  rulerPoints = []; rulerLines = []; rulerMarkers = []; rulerTotalDist = 0;
+}
+
+// Перехватываем клик в режиме ruler
+const _origMapClick = map._events.click;
+
 // Auto-save
 window.addEventListener('beforeunload', saveState);
 setInterval(saveState, 30000);
@@ -3862,6 +4250,379 @@ async function checkForUpdates(silent = false) {
   }
 }
 
+// ═══════════════════════════════════════════
+//  РАБОЧАЯ ДИРЕКТОРИЯ + АВТОСОХРАНЕНИЕ НА ДИСК
+// ═══════════════════════════════════════════
+
+const APP_DIR_NAME = 'TrophyNavigator';
+const APP_SUBDIRS = ['waypoints', 'tracks', 'routes', 'maps', 'backup'];
+let appDataPath = null;
+
+async function initWorkingDirectory() {
+  if (!window.__TAURI__) return null;
+  try {
+    const { documentDir } = window.__TAURI__.path || {};
+    const { mkdir, exists } = window.__TAURI__.fs;
+    if (!documentDir) return null;
+    const docDir = await documentDir();
+    const sep = docDir.endsWith('/') || docDir.endsWith('\\') ? '' : '/';
+    appDataPath = docDir + sep + APP_DIR_NAME;
+    // Создаём структуру папок
+    if (!(await exists(appDataPath))) await mkdir(appDataPath, { recursive: true });
+    for (const sub of APP_SUBDIRS) {
+      const subPath = appDataPath + '/' + sub;
+      if (!(await exists(subPath))) await mkdir(subPath, { recursive: true });
+    }
+    console.log('Working directory:', appDataPath);
+    return appDataPath;
+  } catch (e) {
+    console.warn('Cannot init working directory:', e);
+    return null;
+  }
+}
+
+async function saveStateToFile() {
+  if (!window.__TAURI__ || !appDataPath) return;
+  try {
+    const { writeTextFile } = window.__TAURI__.fs;
+    const state = collectState();
+    await writeTextFile(appDataPath + '/session.json', JSON.stringify(state, null, 2));
+  } catch (e) {
+    console.warn('Auto-save to file failed:', e);
+  }
+}
+
+async function loadStateFromFile() {
+  if (!window.__TAURI__ || !appDataPath) return false;
+  try {
+    const { readTextFile, exists } = window.__TAURI__.fs;
+    const path = appDataPath + '/session.json';
+    if (!(await exists(path))) return false;
+    const raw = await readTextFile(path);
+    const state = JSON.parse(raw);
+    if (state && state.version === 1) {
+      applyState(state);
+      console.log('State restored from file');
+      return true;
+    }
+  } catch (e) {
+    console.warn('Load state from file failed:', e);
+  }
+  return false;
+}
+
+// Автосохранение на диск каждые 60 сек
+setInterval(saveStateToFile, 60000);
+// При выходе — синхронное сохранение в localStorage (надёжнее чем async writeFile)
+// Файл уже актуален с интервала 60с
+
+// ═══════════════════════════════════════════
+//  MACHINE ID + TRIAL / ЛИЦЕНЗИРОВАНИЕ
+// ═══════════════════════════════════════════
+
+const LICENSE_SERVER = 'http://87.120.84.254:9222';
+const TRIAL_DAYS = 20;
+
+let _cachedMachineId = null;
+
+async function getMachineIdAsync() {
+  if (_cachedMachineId) return _cachedMachineId;
+  // Пробуем аппаратный ID через Rust
+  if (window.__TAURI__) {
+    try {
+      const hwId = await window.__TAURI__.core.invoke('get_hardware_id');
+      if (hwId) {
+        _cachedMachineId = hwId;
+        localStorage.setItem('tnd-machine-id', hwId);
+        return hwId;
+      }
+    } catch (e) {
+      console.warn('Hardware ID unavailable:', e);
+    }
+  }
+  // Fallback: случайный ID (для браузерной версии)
+  return getMachineId();
+}
+
+function getMachineId() {
+  if (_cachedMachineId) return _cachedMachineId;
+  let id = localStorage.getItem('tnd-machine-id');
+  if (!id) {
+    id = 'SW-' + Array.from(crypto.getRandomValues(new Uint8Array(6))).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase().slice(0, 12).replace(/(.{4})/g, '$1-').slice(0, -1);
+    localStorage.setItem('tnd-machine-id', id);
+  }
+  return id;
+}
+
+function getTrialInfo() {
+  const raw = localStorage.getItem('tnd-trial');
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+function startTrial() {
+  const info = { start: new Date().toISOString(), days: TRIAL_DAYS };
+  localStorage.setItem('tnd-trial', JSON.stringify(info));
+  return info;
+}
+
+function getTrialDaysLeft() {
+  // Сначала проверяем серверный ответ (если был)
+  const serverTrial = localStorage.getItem('tnd-trial-server');
+  if (serverTrial) {
+    try {
+      const data = JSON.parse(serverTrial);
+      if (Number.isFinite(data.daysLeft)) return Math.max(0, data.daysLeft);
+    } catch {}
+  }
+  // Fallback на локальный расчёт
+  let info = getTrialInfo();
+  if (!info) info = startTrial();
+  const start = new Date(info.start);
+  const now = new Date();
+  const elapsed = Math.floor((now - start) / (1000 * 60 * 60 * 24));
+  return Math.max(0, TRIAL_DAYS - elapsed);
+}
+
+function isLicensed() {
+  const lic = localStorage.getItem('tnd-license');
+  if (!lic) return false;
+  try {
+    const data = JSON.parse(lic);
+    if (data.expiry && new Date(data.expiry) > new Date()) return true;
+    return false;
+  } catch { return false; }
+}
+
+async function checkLicenseOnServer() {
+  const machineId = await getMachineIdAsync();
+  try {
+    const resp = await fetch(`${LICENSE_SERVER}/api/desktop/license/${encodeURIComponent(machineId)}`, {
+      headers: { 'X-Client-Id': 'desktop', 'X-Machine-Id': machineId }
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (data.licensed) {
+      localStorage.setItem('tnd-license', JSON.stringify({
+        plan: data.plan,
+        expiry: data.expiry,
+        checkedAt: new Date().toISOString()
+      }));
+    }
+    return data;
+  } catch (e) {
+    console.warn('License check failed:', e);
+    return null;
+  }
+}
+
+async function registerTrialOnServer() {
+  const machineId = await getMachineIdAsync();
+  try {
+    const resp = await fetch(`${LICENSE_SERVER}/api/desktop/trial/${encodeURIComponent(machineId)}?hostname=${encodeURIComponent(navigator.userAgent?.slice(0, 80) || '')}&os=${encodeURIComponent(navigator.platform || '')}`, {
+      method: 'GET'
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      // Сохраняем серверный ответ — он приоритетнее localStorage
+      localStorage.setItem('tnd-trial-server', JSON.stringify({ daysLeft: data.daysLeft, checkedAt: new Date().toISOString() }));
+    }
+  } catch (e) { /* offline — используем локальный fallback */ }
+}
+
+function showTrialBanner() {
+  if (isLicensed()) return; // Лицензия есть — не показываем
+  const daysLeft = getTrialDaysLeft();
+  if (daysLeft > 7) return; // Больше недели — не беспокоим
+  const banner = document.createElement('div');
+  banner.id = 'trial-banner';
+  banner.style.cssText = `position:fixed;bottom:32px;right:12px;background:rgba(42,30,8,0.95);border:1px solid #e0a050;border-radius:8px;padding:10px 16px;font-size:12px;color:#f0c060;z-index:4000;box-shadow:0 4px 16px rgba(0,0,0,0.4);max-width:300px;`;
+  if (daysLeft === 0) {
+    banner.innerHTML = `⚠ Пробный период истёк.<br><span style="font-size:11px;color:#9ab8d0">Для продолжения работы активируйте лицензию (1000₽/год)</span>`;
+    banner.style.borderColor = '#e07070';
+    banner.style.background = 'rgba(42,13,13,0.95)';
+    banner.style.color = '#f08080';
+  } else {
+    banner.innerHTML = `⏳ Пробный период: осталось ${daysLeft} дн.<br><span style="font-size:11px;color:#9ab8d0">Лицензия: 1000₽/год или бесплатно с RaceNav Full</span>`;
+  }
+  banner.innerHTML += `<span onclick="this.parentElement.remove()" style="position:absolute;top:4px;right:8px;cursor:pointer;color:#7a9aba;font-size:14px">✕</span>`;
+  document.body.appendChild(banner);
+}
+
+// ═══════════════════════════════════════════
+//  ПОЛЬЗОВАТЕЛЬСКИЕ КАРТЫ
+// ═══════════════════════════════════════════
+
+let customLayers = [];
+
+function loadCustomLayers() {
+  try { customLayers = JSON.parse(localStorage.getItem('tnd-custom-layers') || '[]'); } catch { customLayers = []; }
+}
+function saveCustomLayers() {
+  localStorage.setItem('tnd-custom-layers', JSON.stringify(customLayers));
+}
+
+function showAddCustomLayer() { document.getElementById('custom-layer-form').style.display = 'block'; }
+function hideAddCustomLayer() { document.getElementById('custom-layer-form').style.display = 'none'; }
+
+function addCustomLayer() {
+  const name = document.getElementById('cl-name').value.trim();
+  const url = document.getElementById('cl-url').value.trim();
+  const maxZoom = parseInt(document.getElementById('cl-maxzoom').value) || 18;
+  const tms = document.getElementById('cl-tms').value === '1';
+  const subdomains = document.getElementById('cl-subdomains').value.trim() || 'abc';
+  if (!name || !url) { showToast('⚠ Укажите название и URL'); return; }
+  if (!url.includes('{z}') || !url.includes('{x}') || !url.includes('{y}')) {
+    showToast('⚠ URL должен содержать {x}, {y}, {z}'); return;
+  }
+  customLayers.push({ name, url, maxZoom, tms, subdomains, id: Date.now() });
+  saveCustomLayers();
+  renderCustomLayers();
+  hideAddCustomLayer();
+  // Очистить форму
+  document.getElementById('cl-name').value = '';
+  document.getElementById('cl-url').value = '';
+  showToast('✓ Карта добавлена: ' + name);
+}
+
+function deleteCustomLayer(id) {
+  customLayers = customLayers.filter(l => l.id !== id);
+  saveCustomLayers();
+  renderCustomLayers();
+  showToast('Карта удалена');
+}
+
+function renderCustomLayers() {
+  const el = document.getElementById('custom-layers-list');
+  if (!el) return;
+  if (customLayers.length === 0) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:4px 10px;margin-bottom:4px">Нет добавленных карт. Нажмите «+ Добавить»</div>';
+    return;
+  }
+  el.innerHTML = customLayers.map(l => `
+    <div class="base-layer" data-layer="custom:${l.id}" onclick="setCustomLayer(${l.id}, this)" style="position:relative">
+      🗺 ${escapeHtml(l.name)}
+      <span style="margin-left:auto;font-size:11px;color:var(--text-muted)">${l.tms ? 'TMS' : 'XYZ'} z${l.maxZoom}</span>
+      <span style="font-size:12px;color:var(--accent-red);cursor:pointer;padding:0 4px" onclick="event.stopPropagation();deleteCustomLayer(${l.id})" title="Удалить">✕</span>
+    </div>
+  `).join('');
+}
+
+function setCustomLayer(id, el) {
+  const layer = customLayers.find(l => l.id === id);
+  if (!layer) return;
+  const tileLayer = L.tileLayer(layer.url, {
+    maxZoom: layer.maxZoom,
+    tms: layer.tms,
+    subdomains: layer.subdomains || 'abc'
+  });
+  if (currentBaseLayer) map.removeLayer(currentBaseLayer);
+  // CRS: custom layers всегда EPSG3857, убираем оверлеи если были на Яндексе
+  if (yandexLayers.has(currentBaseLayerName)) removeActiveOverlaysForCRSChange();
+  switchCRS(false);
+  currentBaseLayer = tileLayer;
+  currentBaseLayerName = 'custom:' + layer.name;
+  tileLayer.addTo(map);
+  document.getElementById('current-layer-name').textContent = '🗺 ' + layer.name;
+  document.getElementById('sb-layer').textContent = layer.name;
+  document.querySelectorAll('.base-layer').forEach(d => d.classList.remove('active'));
+  if (el) el.classList.add('active');
+  closeModal('modal-layers');
+  showToast('Карта: ' + layer.name);
+}
+
+function importLocusXml(text, fname) {
+  // Парсинг Locus/RMaps XML формата
+  try {
+    const doc = new DOMParser().parseFromString(text, 'application/xml');
+    const name = doc.querySelector('name')?.textContent?.trim() || fname.replace(/\.[^.]+$/, '');
+    let url = doc.querySelector('url')?.textContent?.trim() || '';
+    const maxZoom = parseInt(doc.querySelector('maxZoom,max_zoom')?.textContent) || 18;
+    const tms = (doc.querySelector('tms')?.textContent?.trim() || '').toLowerCase() === 'true';
+    // Locus формат: {$z}/{$x}/{$y} → {z}/{x}/{y}
+    url = url.replace(/\{\$z\}/g, '{z}').replace(/\{\$x\}/g, '{x}').replace(/\{\$y\}/g, '{y}');
+    // SAS Planet формат: {$zoom}/{$x}/{$y}
+    url = url.replace(/\{\$zoom\}/g, '{z}');
+    if (!url || !url.includes('{z}') || !url.includes('{x}') || !url.includes('{y}')) {
+      showToast('⚠ URL в XML не содержит {x}, {y}, {z}');
+      return;
+    }
+    customLayers.push({ name, url, maxZoom, tms, subdomains: 'abc', id: Date.now() });
+    saveCustomLayers();
+    renderCustomLayers();
+    hideAddCustomLayer();
+    showToast('✓ Импортирована карта: ' + name);
+  } catch (e) {
+    showToast('⚠ Ошибка разбора XML: ' + e.message);
+  }
+}
+
+// ═══════════════════════════════════════════
+//  PREMIUM-БЛОКИРОВКА КАРТ
+// ═══════════════════════════════════════════
+
+function isPremiumAvailable() {
+  return isLicensed() || getTrialDaysLeft() > 0;
+}
+
+function setLayerPremium(name, el) {
+  if (!isPremiumAvailable()) {
+    showToast('⚠ Premium карты доступны по лицензии или в триал-периоде', 'warning');
+    return;
+  }
+  setLayer(name, el);
+}
+
+function updatePremiumUI() {
+  const available = isPremiumAvailable();
+  const badge = document.getElementById('premium-badge');
+  const container = document.getElementById('premium-layers-container');
+  if (badge) {
+    if (isLicensed()) {
+      badge.textContent = '✓ Активно';
+      badge.style.color = 'var(--accent-green)';
+    } else if (getTrialDaysLeft() > 0) {
+      badge.textContent = `Триал: ${getTrialDaysLeft()} дн.`;
+      badge.style.color = 'var(--accent-amber)';
+    } else {
+      badge.textContent = '🔒 Требуется лицензия';
+      badge.style.color = 'var(--accent-red)';
+    }
+  }
+  if (container) {
+    container.querySelectorAll('.premium-layer').forEach(el => {
+      if (available) {
+        el.style.opacity = '1';
+        el.style.pointerEvents = '';
+        el.classList.remove('locked');
+      } else {
+        el.style.opacity = '0.4';
+        el.style.pointerEvents = '';  // клик работает, но setLayerPremium блокирует
+        el.classList.add('locked');
+      }
+    });
+  }
+}
+
+// Инициализация кастомных слоёв
+loadCustomLayers();
+renderCustomLayers();
+
+// Инициализация при загрузке
+(async function initApp() {
+  await initWorkingDirectory();
+  // Пробуем восстановить из файла (если localStorage пуст)
+  const restoredFromFile = await loadStateFromFile();
+  if (restoredFromFile) showToast('✓ Сессия восстановлена');
+  // Trial / License — используем аппаратный ID
+  const machineId = await getMachineIdAsync();
+  registerTrialOnServer();
+  checkLicenseOnServer();
+  setTimeout(showTrialBanner, 3000);
+  updatePremiumUI();
+  console.log('Machine ID:', machineId, '(hw:', machineId.startsWith('HW-'), ') | Trial days left:', getTrialDaysLeft(), '| Licensed:', isLicensed());
+})();
+
 </script>
 
 <!-- ═══════════════════════════════════════════
@@ -3879,7 +4640,7 @@ async function checkForUpdates(silent = false) {
       <div style="font-size:13px;color:#5a7aaa;margin-bottom:20px">Навигация для трофи-рейдов</div>
       <div style="background:#0d1e38;border-radius:8px;padding:14px;margin-bottom:16px;text-align:left">
         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.5.8</span>
+          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.6.0</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:#5a7aaa">Платформа</span><span style="color:#e0e0e0">Linux / Windows</span>
