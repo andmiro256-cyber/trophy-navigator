@@ -4085,13 +4085,14 @@ dependencies = [
 
 [[package]]
 name = "trophy-navigator-desktop"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
+ "tauri-plugin-fs",
  "tauri-plugin-process",
  "tauri-plugin-updater",
 ]
