@@ -278,12 +278,12 @@
   .opacity-val { font-size: 11px; color: #5a7aaa; min-width: 32px; text-align: right; }
 
   /* ─── КОНТЕКСТНОЕ МЕНЮ ─── */
-  #ctx-menu, #ctx-menu-map {
+  #ctx-menu, #ctx-menu-map, #ctx-menu-track {
     display: none; position: fixed;
     background: #16213e; border: 1px solid #0f3460; border-radius: 6px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.5); z-index: 2000; min-width: 160px; overflow: hidden;
   }
-  #ctx-menu.open, #ctx-menu-map.open { display: block; }
+  #ctx-menu.open, #ctx-menu-map.open, #ctx-menu-track.open { display: block; }
   .ctx-item { padding: 7px 14px; font-size: 12px; cursor: pointer; color: #c0d8ff; }
   .ctx-item:hover { background: #1a3a6a; }
   .ctx-item.danger { color: #e07070; }
@@ -441,6 +441,24 @@
     box-shadow: 0 2px 6px rgba(0,0,0,0.4) !important;
   }
   .ruler-label::before { display: none !important; }
+
+  /* ─── SELECT — глобальная тёмная тема ─── */
+  select {
+    background: #0f3460 !important;
+    color: #c0d8ff !important;
+    border: 1px solid #2a4a7a !important;
+    border-radius: 4px !important;
+    font-size: 12px !important;
+  }
+  select option {
+    background: #0f3460;
+    color: #c0d8ff;
+  }
+  select optgroup {
+    background: #162844;
+    color: #7ec8ff;
+    font-weight: 600;
+  }
 </style>
 </head>
 <body>
@@ -531,6 +549,10 @@
   <div class="ctx-item" onclick="ctxAction('copy')">📋 Копировать координаты</div>
   <div class="ctx-sep"></div>
   <div class="ctx-item danger" onclick="ctxAction('delete')">🗑 Удалить</div>
+</div>
+<div id="ctx-menu-track">
+  <div class="ctx-item danger" onclick="ctxTrackAction('delete')">🗑 Удалить точку</div>
+  <div class="ctx-item" onclick="ctxTrackAction('split')">✂️ Разбить трек здесь</div>
 </div>
 <div id="ctx-menu-map">
   <div class="ctx-item" onclick="ctxMapAction('addwpt')">📍 Добавить точку здесь</div>
@@ -728,7 +750,8 @@
       <div id="track-build-panel" style="display:none;background:#1a3a1a;border:1px solid #2a6a2a;border-radius:6px;padding:8px;margin-bottom:8px">
         <div style="font-size:12px;color:#a0d8a0;margin-bottom:4px">✏ Рисование трека</div>
         <div style="font-size:11px;color:#5a7aaa;margin-bottom:6px">Кликайте на карту · двойной клик — завершить</div>
-        <div style="font-size:12px;color:#c0d8ff;margin-bottom:6px">Точек: <span id="track-build-count">0</span></div>
+        <div style="font-size:12px;color:#c0d8ff;margin-bottom:4px">Точек: <span id="track-build-count">0</span> &nbsp;·&nbsp; <span id="track-build-len">0.0 км</span></div>
+        <div id="track-build-extra" style="font-size:11px;color:#90c890;margin-bottom:4px;display:none"></div>
         <div class="btn-row">
           <button class="btn-secondary" onclick="cancelTrackDraw()" style="font-size:11px;color:#e07070;border-color:#6a2a2a">✕ Отмена</button>
           <button class="btn-primary" onclick="finishTrackDraw()" style="font-size:11px">✓ Готово</button>
@@ -1344,8 +1367,7 @@ function undoLastAction() {
       if (t.pointsData) t.pointsData.pop();
       if (t.polyline) t.polyline.setLatLngs(t.points);
       if (t.markers?.length > 0) { const m = t.markers.pop(); if (m) map.removeLayer(m); }
-      const el = document.getElementById('track-build-count');
-      if (el) el.textContent = t.points.length;
+      updateTrackBuildPanel(t);
       showToast('↩ Отменено: точка трека');
     }
   } else if (action.type === 'addRoutePoint') {
@@ -2128,7 +2150,7 @@ function saveWaypointsWPT() {
       1,
       0,
       0,
-      255,
+      hexToOziColor(d.color || '#df7a4a'),
       csvField(d.desc || ''),
       0,
       0,
@@ -2264,9 +2286,11 @@ function loadWPT(text, fname) {
     const lat = parseFloat(p[2]), lon = parseFloat(p[3]);
     if (isNaN(lat) || isNaN(lon)) return;
     const radius = parseFloat(p[16]);
+    const wptColor = oziColorToHex(p[8]);
     const marker = addWaypoint(L.latLng(lat, lon), p[1]?.trim() || '', {
       desc: p[9]?.trim() || '',
       radius: Number.isFinite(radius) ? radius : 30,
+      color: wptColor || undefined,
       silent: true
     });
     if (marker) imported.push(marker.getLatLng());
@@ -2381,6 +2405,74 @@ function showCtxMenuTable(e, idx) {
 function closeCtxMenu() {
   document.getElementById('ctx-menu').classList.remove('open');
   document.getElementById('ctx-menu-map').classList.remove('open');
+  document.getElementById('ctx-menu-track').classList.remove('open');
+}
+
+let ctxTrackTarget = null; // { track, idx, marker }
+
+function showTrackPointCtxMenu(e, track, idx, marker) {
+  closeCtxMenu();
+  ctxHandledByMarker = true;
+  ctxTrackTarget = { track, idx, marker };
+  const m = document.getElementById('ctx-menu-track');
+  const x = Math.min(e.clientX, window.innerWidth - 160);
+  const y = Math.min(e.clientY, window.innerHeight - 80);
+  m.style.left = x + 'px'; m.style.top = y + 'px';
+  m.classList.add('open');
+  e.preventDefault();
+  e.stopPropagation();
+}
+
+function ctxTrackAction(action) {
+  const t = ctxTrackTarget;
+  closeCtxMenu();
+  if (!t) return;
+  const { track, idx, marker } = t;
+
+  if (action === 'delete') {
+    // Удаляем точку из трека
+    if (track.points.length <= 2) {
+      showToast('В треке должно быть минимум 2 точки');
+      return;
+    }
+    map.removeLayer(marker);
+    track.markers.splice(idx, 1);
+    track.points.splice(idx, 1);
+    if (track.pointsData?.length) track.pointsData.splice(idx, 1);
+    // Обновляем _trackIdx для оставшихся маркеров
+    track.markers.forEach((m, i) => { m._trackIdx = i; });
+    if (track.polyline) track.polyline.setLatLngs(track.points);
+    showToast('Точка трека удалена');
+
+  } else if (action === 'split') {
+    // Разбиваем трек на два в этой точке
+    if (idx === 0 || idx >= track.points.length - 1) {
+      showToast('Выберите среднюю точку — не первую и не последнюю');
+      return;
+    }
+    const pts1 = track.points.slice(0, idx + 1);
+    const pts2 = track.points.slice(idx);
+    const pd1 = track.pointsData?.slice(0, idx + 1) || [];
+    const pd2 = track.pointsData?.slice(idx) || [];
+    const name1 = track.name + ' (1)';
+    const name2 = track.name + ' (2)';
+    const color = track.color, width = track.width, pointSize = track.pointSize;
+
+    // Удаляем старый трек
+    if (track.polyline) map.removeLayer(track.polyline);
+    removeTrackMarkers(track);
+    const tIdx = tracks.indexOf(track);
+    if (tIdx !== -1) tracks.splice(tIdx, 1);
+
+    // Создаём два новых
+    const t1 = createTrackFromPoints(pts1, name1, { color, width, pointSize });
+    t1.pointsData = pd1;
+    const t2 = createTrackFromPoints(pts2, name2, { color, width, pointSize });
+    t2.pointsData = pd2;
+
+    updateTrackList();
+    showToast(`Трек разбит на "${name1}" и "${name2}"`);
+  }
 }
 function ctxAction(action) {
   const target = ctxTarget; // capture reference before closing
@@ -2539,8 +2631,9 @@ function createTrackMarker(track, idx) {
     direction: 'top', offset: [0, -6], opacity: 0.95,
     className: 'track-point-tooltip'
   });
-  // Make draggable via mouse events
+  // Перетаскивание левой кнопкой
   m.on('mousedown', function(e) {
+    if (e.originalEvent?.button !== 0) return; // только ЛКМ
     L.DomEvent.stop(e);
     m.closeTooltip();
     const onMove = ev => {
@@ -2557,6 +2650,11 @@ function createTrackMarker(track, idx) {
     map.dragging.disable();
     map.on('mousemove', onMove);
     map.on('mouseup', onUp);
+  });
+  // ПКМ — контекстное меню
+  m.on('contextmenu', function(e) {
+    L.DomEvent.stop(e);
+    showTrackPointCtxMenu(e.originalEvent, track, m._trackIdx, m);
   });
   return m;
 }
@@ -2614,7 +2712,7 @@ function startNewTrack() {
   selectedTrackId = currentTrackDraw.id;
   setMode('track');
   document.getElementById('track-build-panel').style.display = 'block';
-  document.getElementById('track-build-count').textContent = '0';
+  updateTrackBuildPanel(currentTrackDraw);
   document.getElementById('track-controls').style.display = 'none';
   closeModal('modal-tracks');
   showToast('✏ Рисование трека — кликайте на карту. Двойной клик — завершить');
@@ -2634,8 +2732,7 @@ function addTrackPoint(latlng) {
   }
   if (!currentTrackDraw.markers) currentTrackDraw.markers = [];
   currentTrackDraw.markers.push(createTrackMarker(currentTrackDraw, currentTrackDraw.points.length - 1));
-  const el = document.getElementById('track-build-count');
-  if (el) el.textContent = currentTrackDraw.points.length;
+  updateTrackBuildPanel(currentTrackDraw);
   pushUndo({ type: 'addTrackPoint', track: currentTrackDraw });
 }
 function finishTrackDraw() {
@@ -2675,6 +2772,30 @@ function trackLen(t) {
   let d = 0;
   for (let i = 1; i < t.points.length; i++) d += t.points[i-1].distanceTo(t.points[i]);
   return d / 1000;
+}
+function updateTrackBuildPanel(t) {
+  const elCount = document.getElementById('track-build-count');
+  const elLen = document.getElementById('track-build-len');
+  const elExtra = document.getElementById('track-build-extra');
+  if (!elCount) return;
+  elCount.textContent = t.points.length;
+  const km = trackLen(t);
+  elLen.textContent = km.toFixed(2) + ' км';
+  // Скорость и длительность — только если есть временны́е метки в pointsData
+  const pd = t.pointsData;
+  if (pd && pd.length >= 2 && pd[0]?.time && pd[pd.length-1]?.time) {
+    const t0 = new Date(pd[0].time).getTime();
+    const t1 = new Date(pd[pd.length-1].time).getTime();
+    const durMs = t1 - t0;
+    if (durMs > 0) {
+      const durMin = Math.round(durMs / 60000);
+      const h = Math.floor(durMin / 60), m = durMin % 60;
+      const durStr = h > 0 ? h + 'ч ' + m + 'мин' : m + ' мин';
+      const avgSpd = km / (durMs / 3600000);
+      elExtra.textContent = '⏱ ' + durStr + '  ·  ⚡ ' + avgSpd.toFixed(1) + ' км/ч';
+      elExtra.style.display = 'block';
+    } else { elExtra.style.display = 'none'; }
+  } else { elExtra.style.display = 'none'; }
 }
 function selectTrackById(id) {
   selectedTrackId = id;
@@ -2724,7 +2845,7 @@ function reverseSelectedTrack() {
   if (t.polyline) t.polyline.setLatLngs(t.points);
   addTrackMarkers(t);
   if (currentTrackDraw?.id === t.id) {
-    document.getElementById('track-build-count').textContent = t.points.length;
+    updateTrackBuildPanel(t);
   }
   updateTrackList();
   showToast('Трек развёрнут');
@@ -2743,7 +2864,7 @@ function continueSelectedTrack() {
   currentTrackDraw.isNew = false;
   setMode('track');
   document.getElementById('track-build-panel').style.display = 'block';
-  document.getElementById('track-build-count').textContent = t.points.length;
+  updateTrackBuildPanel(t);
   document.getElementById('track-controls').style.display = 'none';
   closeModal('modal-tracks');
   showToast('Продолжение трека: кликайте по карте для добавления новых точек');
@@ -2803,9 +2924,9 @@ function updateTrackList() {
 }
 function saveTracksGPX() {
   if (tracks.length === 0) { showToast('Нет треков для сохранения'); return; }
-  let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND">';
+  let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND" xmlns:tnd="http://trophy-nav.ru/gpx/ext">';
   tracks.forEach(t => {
-    gpx += `<trk><name>${escapeXml(t.name)}</name><trkseg>`;
+    gpx += `<trk><name>${escapeXml(t.name)}</name><extensions><tnd:color>${escapeXml(t.color || '#4a8adf')}</tnd:color></extensions><trkseg>`;
     t.points.forEach((p, i) => {
       gpx += `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
       const d = t.pointsData?.[i];
@@ -2884,7 +3005,10 @@ function loadGPXTracks(text, fname, options = {}) {
       }
     });
     if (points.length < 2) return;
-    const t = createTrackFromPoints(points, name);
+    // Читаем цвет из <trk><extensions><tnd:color>
+    const trkExt = trk.querySelector(':scope > extensions');
+    const trkColor = trkExt?.querySelector('color')?.textContent?.trim() || null;
+    const t = createTrackFromPoints(points, name, { color: trkColor || undefined });
     t.pointsData = pointsData;
     importedTracks.push(t);
     count++;
@@ -3332,11 +3456,12 @@ let dlAbortController = null;
 
 // Список базовых слоёв для скачивания (должен совпадать с makeBaseLayer)
 const dlLayerList = [
-  'OpenStreetMap', 'OpenTopoMap', '2GIS',
-  'Яндекс Схема', 'Яндекс Гибрид',
-  'Спутник Google', 'Гибрид Google', 'Спутник Bing', 'Гибрид Bing', 'Спутник ESRI',
-  'ГГЦ 250м', 'ГГЦ 1км', 'ГГЦ 2км',
-  'Генштаб 250м',
+  'OpenStreetMap', 'OpenTopoMap', 'CyclOSM', 'OSM Humanitarian', '2GIS',
+  'Яндекс Схема', 'Яндекс Гибрид', 'Яндекс Спутник',
+  'Спутник Google', 'Гибрид Google', 'Карты Google', 'Рельеф Google',
+  'Спутник Bing', 'Гибрид Bing', 'Спутник ESRI', 'ESRI Clarity',
+  'TF Outdoors', 'TF Transport', 'TF Велосипед', 'LoMaps',
+  'ГГЦ 250м', 'ГГЦ 1км', 'ГГЦ 2км', 'Генштаб 250м',
 ];
 // Оверлейные слои (тайловые) для скачивания
 const dlOverlayList = [

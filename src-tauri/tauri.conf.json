@@ -24,7 +24,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXkgNUQ3NTQ1MEU4REVDRjcxClJXUnh6OTdvVUZUWEJmSkliYmhUa094TnlOSEZvQW9BbnhzeVpXM2d2cWZLWCtDaDhNcmo2Y0R2Cg==",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDk1NjExQzVFNzJBODA5QzAKUldUQUNhaHlYaHhobFJHZjlxUS9XNDRCUlQ0Sys4SE83K2huWUpTUkkvRTAxVzhQK25FOExRMW4K",
       "endpoints": [
         "https://github.com/andmiro256-cyber/trophy-navigator/releases/latest/download/latest.json"
       ]
