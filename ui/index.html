@@ -388,6 +388,19 @@
   .modal { box-shadow: 0 12px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(74,138,223,0.1) !important; }
   .modal-header { border-bottom: 1px solid rgba(74,138,223,0.2); }
 
+  /* ─── LEAFLET POPUP — тёмная тема ─── */
+  .leaflet-popup-content-wrapper {
+    background: #16213e !important;
+    color: #c0d8ff !important;
+    border: 1px solid #2a4a7a !important;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.6) !important;
+    border-radius: 8px !important;
+  }
+  .leaflet-popup-content { color: #c0d8ff !important; }
+  .leaflet-popup-tip { background: #16213e !important; }
+  .leaflet-popup-close-button { color: #7a9aba !important; }
+  .leaflet-popup-close-button:hover { color: #fff !important; background: #1a3a6a !important; border-radius: 50% !important; }
+
   /* ─── МАСШТАБНАЯ ЛИНЕЙКА LEAFLET ─── */
   .leaflet-control-scale-line {
     background: rgba(22,33,62,0.85) !important;
@@ -1200,11 +1213,9 @@
 
         <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">ГГЦ / Генштаб (nakarte.me)</div>
         <div class="base-layer premium-layer" data-layer="ГГЦ 250м" onclick="setLayerPremium('ГГЦ 250м', this)">📋 ГГЦ 250м</div>
-        <div class="base-layer premium-layer" data-layer="ГГЦ 500м" onclick="setLayerPremium('ГГЦ 500м', this)">📋 ГГЦ 500м</div>
         <div class="base-layer premium-layer" data-layer="ГГЦ 1км" onclick="setLayerPremium('ГГЦ 1км', this)">📋 ГГЦ 1км</div>
+        <div class="base-layer premium-layer" data-layer="ГГЦ 2км" onclick="setLayerPremium('ГГЦ 2км', this)">📋 ГГЦ 2км</div>
         <div class="base-layer premium-layer" data-layer="Генштаб 250м" onclick="setLayerPremium('Генштаб 250м', this)">🏔 Генштаб 250м</div>
-        <div class="base-layer premium-layer" data-layer="Генштаб 500м" onclick="setLayerPremium('Генштаб 500м', this)">🏔 Генштаб 500м</div>
-        <div class="base-layer premium-layer" data-layer="Генштаб 1км" onclick="setLayerPremium('Генштаб 1км', this)">🏔 Генштаб 1км</div>
       </div>
 
       <div class="layer-section-title" style="margin-top:8px">Оверлейные слои</div>
@@ -1834,6 +1845,19 @@ map.on('dblclick', e => {
 // ─────────────────────────────────────────────
 // СЛОИ
 // ─────────────────────────────────────────────
+// Bing: вычисление quadkey для x/y/z
+function bingQuadKey(x, y, z) {
+  let quadKey = '';
+  for (let i = z; i > 0; i--) {
+    let digit = 0;
+    const mask = 1 << (i - 1);
+    if ((x & mask) !== 0) digit++;
+    if ((y & mask) !== 0) digit += 2;
+    quadKey += digit;
+  }
+  return quadKey;
+}
+
 // Bing тайлы используют quadkey вместо x/y/z
 const BingTileLayer = L.TileLayer.extend({
   getTileUrl: function(coords) {
@@ -1886,12 +1910,10 @@ function makeBaseLayer(name) {
     case 'TF Велосипед':   return L.tileLayer('https://{s}.tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38', { maxZoom: 22, subdomains: 'abc' });
     case 'MTB Map':        return L.tileLayer('http://tile.mtbmap.cz/mtbmap_tiles/{z}/{x}/{y}.png', { maxZoom: 18 });
     case 'Michelin':       return L.tileLayer('https://map1.viamichelin.com/map/mapdirect?map=viamichelin&z={z}&x={x}&y={y}&format=png&version=201901161110&layer=background&locale=default&cs=1&protocol=https', { maxZoom: 18 });
-    case 'ГГЦ 250м':       return L.tileLayer('https://tiles.nakarte.me/ggc250/{z}/{x}/{y}.png', { maxNativeZoom: 15, maxZoom: 18, tms: true });
-    case 'ГГЦ 500м':       return L.tileLayer('https://tiles.nakarte.me/ggc500/{z}/{x}/{y}.png', { maxNativeZoom: 14, maxZoom: 18, tms: true });
-    case 'ГГЦ 1км':        return L.tileLayer('https://tiles.nakarte.me/ggc1000/{z}/{x}/{y}.png', { maxNativeZoom: 13, maxZoom: 18, tms: true });
-    case 'Генштаб 250м':   return L.tileLayer('https://tiles.nakarte.me/topo250/{z}/{x}/{y}.png', { maxNativeZoom: 15, maxZoom: 18, tms: true });
-    case 'Генштаб 500м':   return L.tileLayer('https://tiles.nakarte.me/topo500/{z}/{x}/{y}.png', { maxNativeZoom: 14, maxZoom: 18, tms: true });
-    case 'Генштаб 1км':    return L.tileLayer('https://tiles.nakarte.me/topo1000/{z}/{x}/{y}.png', { maxNativeZoom: 13, maxZoom: 18, tms: true });
+    case 'ГГЦ 250м':       return L.tileLayer('https://tiles.nakarte.me/ggc250/{z}/{x}/{y}', { maxNativeZoom: 15, maxZoom: 18, tms: true });
+    case 'ГГЦ 1км':        return L.tileLayer('https://tiles.nakarte.me/ggc1000/{z}/{x}/{y}', { maxNativeZoom: 13, maxZoom: 18, tms: true });
+    case 'ГГЦ 2км':        return L.tileLayer('https://tiles.nakarte.me/ggc2000/{z}/{x}/{y}', { maxNativeZoom: 12, maxZoom: 18, tms: true });
+    case 'Генштаб 250м':   return L.tileLayer('https://tiles.nakarte.me/topo001m/{z}/{x}/{y}', { maxNativeZoom: 15, maxZoom: 18, tms: true });
     default: return null;
   }
 }
@@ -1904,8 +1926,8 @@ const layerEmoji = {
   'OpenStreetMap':'🗺', 'OpenTopoMap':'🏔', '2GIS':'🗺',
   'Яндекс Схема':'🗺', 'Яндекс Гибрид':'🛰',
   'Спутник Google':'🛰', 'Гибрид Google':'🛰', 'Спутник Bing':'🛰', 'Гибрид Bing':'🛰', 'Спутник ESRI':'🛰',
-  'ГГЦ 250м':'📋', 'ГГЦ 500м':'📋', 'ГГЦ 1км':'📋',
-  'Генштаб 250м':'🏔', 'Генштаб 500м':'🏔', 'Генштаб 1км':'🏔',
+  'ГГЦ 250м':'📋', 'ГГЦ 1км':'📋', 'ГГЦ 2км':'📋',
+  'Генштаб 250м':'🏔',
 };
 
 function switchCRS(needYandex) {
@@ -3313,8 +3335,13 @@ const dlLayerList = [
   'OpenStreetMap', 'OpenTopoMap', '2GIS',
   'Яндекс Схема', 'Яндекс Гибрид',
   'Спутник Google', 'Гибрид Google', 'Спутник Bing', 'Гибрид Bing', 'Спутник ESRI',
-  'ГГЦ 250м', 'ГГЦ 500м', 'ГГЦ 1км',
-  'Генштаб 250м', 'Генштаб 500м', 'Генштаб 1км',
+  'ГГЦ 250м', 'ГГЦ 1км', 'ГГЦ 2км',
+  'Генштаб 250м',
+];
+// Оверлейные слои (тайловые) для скачивания
+const dlOverlayList = [
+  'OSM GPS треки', 'Hiking тропы', 'MTB тропы', 'ESRI транспорт',
+  'Bing дороги', 'Windy рельеф', 'Горнолыжные трассы', 'Лыжные трассы',
 ];
 
 function startAreaSelect() {
@@ -3385,12 +3412,23 @@ function openDownloadSettings(bounds) {
   // Заполнить select слоёв
   const sel = document.getElementById('dl-layer-select');
   sel.innerHTML = '';
+  const baseGroup = document.createElement('optgroup');
+  baseGroup.label = 'Базовые карты';
   dlLayerList.forEach(name => {
     const opt = document.createElement('option');
     opt.value = name; opt.textContent = name;
     if (name === currentBaseLayerName) opt.selected = true;
-    sel.appendChild(opt);
+    baseGroup.appendChild(opt);
   });
+  sel.appendChild(baseGroup);
+  const overlayGroup = document.createElement('optgroup');
+  overlayGroup.label = 'Оверлеи';
+  dlOverlayList.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    overlayGroup.appendChild(opt);
+  });
+  sel.appendChild(overlayGroup);
 
   // Сохранить bounds
   window._dlBounds = bounds;
@@ -3457,7 +3495,7 @@ function updateDownloadEstimate() {
 // ─── Генерация URL тайла ───
 
 function getTileUrl(layerName, x, y, z) {
-  const isTms = (name) => ['ГГЦ 250м','ГГЦ 500м','ГГЦ 1км','Генштаб 250м','Генштаб 500м','Генштаб 1км'].includes(name);
+  const isTms = (name) => ['ГГЦ 250м','ГГЦ 1км','ГГЦ 2км','Генштаб 250м'].includes(name);
 
   const tmsY = (y, z) => Math.pow(2, z) - 1 - y;
 
@@ -3501,12 +3539,19 @@ function getTileUrl(layerName, x, y, z) {
     case 'TF Велосипед':   return `https://${pickS('abc')}.tile.thunderforest.com/cycle/${z}/${x}/${y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38`;
     case 'MTB Map':        return `http://tile.mtbmap.cz/mtbmap_tiles/${z}/${x}/${y}.png`;
     case 'Michelin':       return `https://map1.viamichelin.com/map/mapdirect?map=viamichelin&z=${z}&x=${x}&y=${y}&format=png&version=201901161110&layer=background&locale=default&cs=1&protocol=https`;
-    case 'ГГЦ 250м':       return `https://tiles.nakarte.me/ggc250/${z}/${x}/${tmsY(y,z)}.png`;
-    case 'ГГЦ 500м':       return `https://tiles.nakarte.me/ggc500/${z}/${x}/${tmsY(y,z)}.png`;
-    case 'ГГЦ 1км':        return `https://tiles.nakarte.me/ggc1000/${z}/${x}/${tmsY(y,z)}.png`;
-    case 'Генштаб 250м':   return `https://tiles.nakarte.me/topo250/${z}/${x}/${tmsY(y,z)}.png`;
-    case 'Генштаб 500м':   return `https://tiles.nakarte.me/topo500/${z}/${x}/${tmsY(y,z)}.png`;
-    case 'Генштаб 1км':    return `https://tiles.nakarte.me/topo1000/${z}/${x}/${tmsY(y,z)}.png`;
+    case 'ГГЦ 250м':       return `https://tiles.nakarte.me/ggc250/${z}/${x}/${tmsY(y,z)}`;
+    case 'ГГЦ 1км':        return `https://tiles.nakarte.me/ggc1000/${z}/${x}/${tmsY(y,z)}`;
+    case 'ГГЦ 2км':        return `https://tiles.nakarte.me/ggc2000/${z}/${x}/${tmsY(y,z)}`;
+    case 'Генштаб 250м':   return `https://tiles.nakarte.me/topo001m/${z}/${x}/${tmsY(y,z)}`;
+    // Оверлеи
+    case 'OSM GPS треки':  return `https://gps-${pickS('abc')}.tile.openstreetmap.org/lines/${z}/${x}/${y}.png`;
+    case 'Hiking тропы':   return `https://tile.waymarkedtrails.org/hiking/${z}/${x}/${y}.png`;
+    case 'MTB тропы':      return `https://tile.waymarkedtrails.org/mtb/${z}/${x}/${y}.png`;
+    case 'ESRI транспорт': return `https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/${z}/${y}/${x}`;
+    case 'Windy рельеф':   return `https://tiles.windy.com/tiles/v8.1/darkmap/${z}/${x}/${y}.png`;
+    case 'Горнолыжные трассы': return `https://tiles.opensnowmap.org/pistes/${z}/${x}/${y}.png`;
+    case 'Лыжные трассы':  return `https://tiles.opensnowmap.org/piste/${z}/${x}/${y}.png`;
+    case 'Bing дороги':    { const q = bingQuadKey(x, y, z); return `https://ecn.t0.tiles.virtualearth.net/tiles/r${q}?g=14000&mkt=ru-RU&shading=hill`; }
     default: return null;
   }
 }
