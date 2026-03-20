@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🧭 Trophy Navigator Desktop v0.6.0</title>
+<title>🧭 Trophy Navigator Desktop v0.6.2</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -101,6 +101,7 @@
   }
   .tb-group-label:hover { color: #fff; background: rgba(74,138,223,0.2); }
   .tb-group-label.mode-active { color: #4adf7a; text-shadow: 0 0 8px rgba(74,223,122,0.5); }
+  .tb-tag.mode-active { background: rgba(74,223,122,0.25); border-color: #4adf7a; color: #4adf7a; box-shadow: 0 0 8px rgba(74,223,122,0.4); }
   /* Ярлык-кнопка рядом с надписью */
   .tb-tag {
     background: rgba(15,52,96,0.6);
@@ -449,6 +450,13 @@
     border: 1px solid #2a4a7a !important;
     border-radius: 4px !important;
     font-size: 12px !important;
+    color-scheme: dark;
+    -webkit-appearance: none;
+    appearance: none;
+    padding: 6px 28px 6px 8px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237a9aba' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
   }
   select option {
     background: #0f3460;
@@ -459,6 +467,41 @@
     color: #7ec8ff;
     font-weight: 600;
   }
+
+  /* ─── ПОИСК ─── */
+  .search-control { position:absolute;top:10px;right:60px;z-index:800;display:none; }
+  .search-control.open { display:block; }
+  .search-box { display:flex;align-items:center;background:rgba(22,33,62,0.95);border:1px solid #2a4a7a;border-radius:8px;padding:4px 8px;gap:6px;backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,0.5);width:320px; }
+  .search-box input { flex:1;background:transparent;border:none;color:#c0d8ff;font-size:13px;outline:none;padding:6px 4px; }
+  .search-box input::placeholder { color:#5a7aaa; }
+  .search-box .search-clear { color:#5a7aaa;cursor:pointer;font-size:16px;padding:0 4px;display:none; }
+  .search-box .search-clear:hover { color:#c0d8ff; }
+  .search-results { background:rgba(22,33,62,0.97);border:1px solid #2a4a7a;border-top:none;border-radius:0 0 8px 8px;max-height:240px;overflow-y:auto;display:none;box-shadow:0 4px 16px rgba(0,0,0,0.5); }
+  .search-results.has-results { display:block; }
+  .search-result-item { padding:8px 12px;cursor:pointer;font-size:12px;color:#c0d8ff;border-bottom:1px solid #1a2a4a;display:flex;gap:8px; }
+  .search-result-item:hover { background:#1a3a6a; }
+  .search-result-item:last-child { border-bottom:none; }
+  .search-result-name { color:#c0d8ff;font-size:12px; }
+  .search-result-type { color:#5a7aaa;font-size:10px;margin-top:2px; }
+
+  /* ─── РОУТИНГ ─── */
+  .route-endpoint { display:flex;gap:8px;align-items:center;margin-bottom:8px; }
+  .route-endpoint .ep-marker { width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0; }
+  .route-endpoint .ep-marker.ep-a { background:#1a5a1a;border:2px solid #4adf7a;color:#4adf7a; }
+  .route-endpoint .ep-marker.ep-b { background:#5a1a1a;border:2px solid #e07070;color:#e07070; }
+  .route-endpoint input { flex:1;background:#0f3460;border:1px solid #2a4a7a;color:#c0d8ff;border-radius:4px;padding:6px 8px;font-size:12px; }
+  .route-endpoint input:focus { outline:none;border-color:#4a8adf; }
+  .route-endpoint .ep-pick { background:#1a2a4a;border:1px solid #2a4a7a;color:#7a9aba;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:14px;flex-shrink:0; }
+  .route-endpoint .ep-pick:hover { background:#2a4a7a;color:#c0d8ff; }
+  .route-endpoint .ep-pick.picking { background:#0f4a8a;border-color:#4a8adf;color:#7ec8ff; }
+  .routing-info { background:#0d1e38;border-radius:6px;padding:12px;display:none;margin-top:8px; }
+  .routing-info.has-route { display:block; }
+  .routing-info-row { display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a2a4a; }
+  .routing-info-row:last-child { border-bottom:none; }
+  .routing-info-label { color:#5a7aaa;font-size:12px; }
+  .routing-info-value { color:#c0d8ff;font-size:14px;font-weight:600; }
+  .routing-swap { background:none;border:1px solid #2a4a7a;color:#7a9aba;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:16px; }
+  .routing-swap:hover { background:#1a3a6a;color:#c0d8ff; }
 </style>
 </head>
 <body>
@@ -499,9 +542,13 @@
 
   <div class="tb-sep"></div>
 
+  <!-- Блокировка перемещения -->
+  <button class="tb-btn" id="btn-lock" onclick="toggleLock()" title="Заблокировать/разблокировать перемещение объектов (K)">🔓</button>
+
   <!-- Режимы -->
   <button class="tb-btn active" id="btn-hand" onclick="setMode('hand')" title="Навигация — перемещение по карте (H / Пробел)">🧭</button>
   <button class="tb-btn" id="btn-ruler" onclick="setMode('ruler')" title="Линейка (M)">📐</button>
+  <button class="tb-btn" id="btn-routing" onclick="openModal('modal-routing')" title="Маршрут по дорогам">🛣</button>
 
   <div class="tb-sep"></div>
 
@@ -515,6 +562,21 @@
 
   <!-- Правая часть тулбара -->
   <div style="margin-left:auto"></div>
+
+  <!-- Поиск встроенный -->
+  <div style="position:relative;display:flex;align-items:center">
+    <div style="display:flex;align-items:center;background:#0f3460;border:1px solid #2a4a7a;border-radius:6px;padding:2px 6px;gap:4px">
+      <span style="color:#5a7aaa;font-size:12px">🔍</span>
+      <input type="text" id="search-input" placeholder="Поиск места..."
+        autocomplete="off" spellcheck="false"
+        style="background:transparent;border:none;color:#c0d8ff;font-size:12px;outline:none;width:200px;padding:4px 0">
+      <span id="search-clear" onclick="clearSearch()" style="color:#5a7aaa;cursor:pointer;font-size:14px;display:none">✕</span>
+    </div>
+    <div class="search-results" id="search-results" style="position:absolute;top:100%;right:0;width:340px;margin-top:2px"></div>
+  </div>
+
+  <button class="tb-btn settings-btn" onclick="showToast('Сервер — в разработке')" title="Подключение к серверу">☁ Сервер</button>
+  <button class="tb-btn" onclick="showClearConfirm()" title="Удалить все данные с карты" style="color:#e07070">🗑</button>
   <button class="tb-btn settings-btn" onclick="openModal('modal-settings')" title="Настройки программы">⚙ Настройки</button>
   <button class="tb-btn settings-btn" onclick="openModal('modal-about')" title="О программе">ℹ О программе</button>
   <div class="tb-sep"></div>
@@ -536,7 +598,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.6.0</span>
+  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.6.2</span>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -560,6 +622,9 @@
   <div class="ctx-item" onclick="ctxMapAction('copycoords')">📋 Копировать координаты</div>
   <div class="ctx-item" onclick="ctxMapAction('measure')">📐 Измерить расстояние отсюда</div>
   <div class="ctx-item" id="ctx-undo-route" onclick="ctxMapAction('undoroute')" style="display:none">↩ Убрать последнюю точку маршрута</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="ctxMapAction('routefrom')">🟢 Маршрут отсюда</div>
+  <div class="ctx-item" onclick="ctxMapAction('routeto')">🔴 Маршрут сюда</div>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -927,7 +992,7 @@
         </div>
         <div class="setting-row">
           <span class="setting-label">Радиус сближения по умолчанию</span>
-          <div class="setting-control"><input type="number" value="50" min="0" style="width:70px"> м</div>
+          <div class="setting-control"><input id="setting-default-radius" type="number" value="50" min="0" style="width:70px"> м</div>
         </div>
         <div class="setting-row">
           <span class="setting-label">Формат координат</span>
@@ -1028,13 +1093,12 @@
         </div>
       </div>
 
-      <!-- Выбор слоя -->
+      <!-- Базовая карта + зум в одном ряду -->
       <div class="prop-field">
-        <label>Карта для скачивания</label>
-        <select id="dl-layer-select" onchange="updateDownloadEstimate()"></select>
+        <label>Базовая карта</label>
+        <select id="dl-layer-select" onchange="updateDownloadEstimate()" style="font-size:13px;padding:7px 28px 7px 8px"></select>
       </div>
 
-      <!-- Зум от/до -->
       <div style="display:flex;gap:8px">
         <div class="prop-field" style="flex:1">
           <label>Зум от</label>
@@ -1053,16 +1117,39 @@
             <option value="18">z18</option>
           </select>
         </div>
+        <div class="prop-field" style="flex:1">
+          <label>Формат</label>
+          <select id="dl-format">
+            <option value="locus">RMaps</option>
+            <option value="osmand">OsmAnd</option>
+          </select>
+        </div>
       </div>
 
-      <!-- Формат -->
-      <div class="prop-field">
-        <label>Формат</label>
-        <select id="dl-format">
-          <option value="locus">RMaps / Locus (z = 17 − zoom)</option>
-          <option value="osmand">OsmAnd (z = zoom)</option>
-        </select>
-      </div>
+      <!-- Наложение слоёв (спойлер) -->
+      <details style="margin-bottom:8px">
+        <summary style="font-size:11px;color:#5a7aaa;cursor:pointer;padding:4px 0;user-select:none">▸ Наложить слои (второй слой + оверлеи)</summary>
+        <div style="padding:6px 0">
+          <div class="prop-field">
+            <label>Второй слой</label>
+            <select id="dl-layer2-select" onchange="updateDownloadEstimate()">
+              <option value="">— нет —</option>
+            </select>
+          </div>
+          <div id="dl-layer2-opacity-row" style="display:none">
+            <div class="prop-field">
+              <label>Прозрачность: <span id="dl-layer2-opacity-val">50%</span></label>
+              <input type="range" id="dl-layer2-opacity" min="10" max="90" value="50" step="5"
+                style="width:100%;accent-color:#4a8adf"
+                oninput="document.getElementById('dl-layer2-opacity-val').textContent=this.value+'%'">
+            </div>
+          </div>
+          <div class="prop-field">
+            <label>Оверлеи</label>
+            <div id="dl-overlay-checks" style="max-height:80px;overflow-y:auto;background:#0d1e38;border:1px solid #1a3a5a;border-radius:4px;padding:4px 8px"></div>
+          </div>
+        </div>
+      </details>
 
       <!-- Оценка -->
       <div id="dl-estimate-box" style="background:#0d1e38;border:1px solid #1a3a5a;border-radius:6px;padding:10px;margin-bottom:10px;font-size:12px">
@@ -1096,6 +1183,27 @@
           <div id="dl-prog-bar" style="height:100%;width:0%;border-radius:6px;transition:width 0.3s"></div>
         </div>
         <button class="btn-secondary" style="width:100%;margin-top:8px;color:#e07070;border-color:#6a2a2a;font-size:11px" onclick="stopTileDownload()">⏹ Остановить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     МОДАЛЬНОЕ ОКНО: ПОДТВЕРЖДЕНИЕ ОЧИСТКИ
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-clear-confirm">
+  <div class="modal" style="top:30%;left:50%;transform:translateX(-50%);width:340px">
+    <div class="modal-header" style="background:#6a2a2a">
+      🗑 Удалить всё
+      <span class="modal-close" onclick="closeModal('modal-clear-confirm')">✕</span>
+    </div>
+    <div class="modal-body" style="text-align:center;padding:20px">
+      <div style="font-size:13px;color:#e0e0e0;margin-bottom:12px">Удалить все данные с карты?</div>
+      <div id="clear-confirm-info" style="font-size:12px;color:#7a9aba;margin-bottom:16px"></div>
+      <div style="font-size:11px;color:#e07070;margin-bottom:16px">Это действие нельзя отменить</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-secondary" style="flex:1" onclick="closeModal('modal-clear-confirm')">Отмена</button>
+        <button class="btn-primary" style="flex:1;background:#8a2a2a;border-color:#a03030" onclick="clearAllDataConfirmed()">🗑 Удалить</button>
       </div>
     </div>
   </div>
@@ -1201,92 +1309,99 @@
 
       <!-- Бесплатные карты (всегда доступны) -->
       <div class="layer-section-title" style="margin-top:8px">Бесплатные карты</div>
-      <div class="base-layer active" data-layer="OpenStreetMap" onclick="setLayer('OpenStreetMap', this)">🗺 OpenStreetMap</div>
-      <div class="base-layer" data-layer="OpenTopoMap" onclick="setLayer('OpenTopoMap', this)">🏔 OpenTopoMap</div>
-      <div class="base-layer" data-layer="CyclOSM" onclick="setLayer('CyclOSM', this)">🚴 CyclOSM</div>
-      <div class="base-layer" data-layer="OSM Humanitarian" onclick="setLayer('OSM Humanitarian', this)">🗺 OSM Humanitarian</div>
+      <div id="catalog-free-layers">
+        <div class="base-layer active" data-layer="OpenStreetMap" onclick="setLayer('OpenStreetMap', this)">🗺 OpenStreetMap</div>
+        <div class="base-layer" data-layer="OpenTopoMap" onclick="setLayer('OpenTopoMap', this)">🏔 OpenTopoMap</div>
+        <div class="base-layer" data-layer="CyclOSM" onclick="setLayer('CyclOSM', this)">🚴 CyclOSM</div>
+        <div class="base-layer" data-layer="OSM Humanitarian" onclick="setLayer('OSM Humanitarian', this)">🗺 OSM Humanitarian</div>
+      </div>
 
       <!-- Premium карты (требуют лицензию) -->
       <div class="layer-section-title" style="margin-top:8px" id="premium-layers-title">Premium карты <span style="font-size:9px;color:var(--accent-amber)" id="premium-badge"></span></div>
       <div id="premium-layers-container">
-        <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">Яндекс</div>
-        <div class="base-layer premium-layer" data-layer="Яндекс Схема" onclick="setLayerPremium('Яндекс Схема', this)">🗺 Яндекс Схема</div>
-        <div class="base-layer premium-layer" data-layer="Яндекс Гибрид" onclick="setLayerPremium('Яндекс Гибрид', this)">🛰 Яндекс Гибрид</div>
-        <div class="base-layer premium-layer" data-layer="Яндекс Спутник" onclick="setLayerPremium('Яндекс Спутник', this)">🛰 Яндекс Спутник</div>
-        <div class="base-layer premium-layer" data-layer="Космоснимки рельеф" onclick="setLayerPremium('Космоснимки рельеф', this)">🏔 Космоснимки</div>
+        <div id="catalog-base-layers">
+          <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">Яндекс</div>
+          <div class="base-layer premium-layer" data-layer="Яндекс Схема" onclick="setLayerPremium('Яндекс Схема', this)">🗺 Яндекс Схема</div>
+          <div class="base-layer premium-layer" data-layer="Яндекс Гибрид" onclick="setLayerPremium('Яндекс Гибрид', this)">🛰 Яндекс Гибрид</div>
+          <div class="base-layer premium-layer" data-layer="Яндекс Спутник" onclick="setLayerPremium('Яндекс Спутник', this)">🛰 Яндекс Спутник</div>
+          <div class="base-layer premium-layer" data-layer="Космоснимки рельеф" onclick="setLayerPremium('Космоснимки рельеф', this)">🏔 Космоснимки</div>
 
-        <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">Google / Bing / ESRI</div>
-        <div class="base-layer premium-layer" data-layer="2GIS" onclick="setLayerPremium('2GIS', this)">🗺 2GIS</div>
-        <div class="base-layer premium-layer" data-layer="Спутник Google" onclick="setLayerPremium('Спутник Google', this)">🛰 Спутник Google</div>
-        <div class="base-layer premium-layer" data-layer="Карты Google" onclick="setLayerPremium('Карты Google', this)">🗺 Карты Google</div>
-        <div class="base-layer premium-layer" data-layer="Рельеф Google" onclick="setLayerPremium('Рельеф Google', this)">🏔 Рельеф Google</div>
-        <div class="base-layer premium-layer" data-layer="Гибрид Google" onclick="setLayerPremium('Гибрид Google', this)">🛰 Гибрид Google</div>
-        <div class="base-layer premium-layer" data-layer="Спутник Bing" onclick="setLayerPremium('Спутник Bing', this)">🛰 Спутник Bing</div>
-        <div class="base-layer premium-layer" data-layer="Гибрид Bing" onclick="setLayerPremium('Гибрид Bing', this)">🛰 Гибрид Bing</div>
-        <div class="base-layer premium-layer" data-layer="Спутник ESRI" onclick="setLayerPremium('Спутник ESRI', this)">🛰 Спутник ESRI</div>
-        <div class="base-layer premium-layer" data-layer="ESRI Clarity" onclick="setLayerPremium('ESRI Clarity', this)">🛰 ESRI Clarity</div>
+          <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">Google / Bing / ESRI</div>
+          <div class="base-layer premium-layer" data-layer="2GIS" onclick="setLayerPremium('2GIS', this)">🗺 2GIS</div>
+          <div class="base-layer premium-layer" data-layer="Спутник Google" onclick="setLayerPremium('Спутник Google', this)">🛰 Спутник Google</div>
+          <div class="base-layer premium-layer" data-layer="Карты Google" onclick="setLayerPremium('Карты Google', this)">🗺 Карты Google</div>
+          <div class="base-layer premium-layer" data-layer="Рельеф Google" onclick="setLayerPremium('Рельеф Google', this)">🏔 Рельеф Google</div>
+          <div class="base-layer premium-layer" data-layer="Гибрид Google" onclick="setLayerPremium('Гибрид Google', this)">🛰 Гибрид Google</div>
+          <div class="base-layer premium-layer" data-layer="Спутник Bing" onclick="setLayerPremium('Спутник Bing', this)">🛰 Спутник Bing</div>
+          <div class="base-layer premium-layer" data-layer="Гибрид Bing" onclick="setLayerPremium('Гибрид Bing', this)">🛰 Гибрид Bing</div>
+          <div class="base-layer premium-layer" data-layer="Спутник ESRI" onclick="setLayerPremium('Спутник ESRI', this)">🛰 Спутник ESRI</div>
+          <div class="base-layer premium-layer" data-layer="ESRI Clarity" onclick="setLayerPremium('ESRI Clarity', this)">🛰 ESRI Clarity</div>
 
-        <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">Thunderforest / Прочие</div>
-        <div class="base-layer premium-layer" data-layer="TF Outdoors" onclick="setLayerPremium('TF Outdoors', this)">🏔 TF Outdoors</div>
-        <div class="base-layer premium-layer" data-layer="LoMaps" onclick="setLayerPremium('LoMaps', this)">🗺 LoMaps</div>
-        <div class="base-layer premium-layer" data-layer="TF Transport" onclick="setLayerPremium('TF Transport', this)">🗺 TF Transport</div>
-        <div class="base-layer premium-layer" data-layer="TF Велосипед" onclick="setLayerPremium('TF Велосипед', this)">🚴 TF Велосипед</div>
-        <div class="base-layer premium-layer" data-layer="MTB Map" onclick="setLayerPremium('MTB Map', this)">🚵 MTB Map</div>
-        <div class="base-layer premium-layer" data-layer="Michelin" onclick="setLayerPremium('Michelin', this)">🗺 Michelin</div>
+          <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">Thunderforest / Прочие</div>
+          <div class="base-layer premium-layer" data-layer="TF Outdoors" onclick="setLayerPremium('TF Outdoors', this)">🏔 TF Outdoors</div>
+          <div class="base-layer premium-layer" data-layer="LoMaps" onclick="setLayerPremium('LoMaps', this)">🗺 LoMaps</div>
+          <div class="base-layer premium-layer" data-layer="TF Transport" onclick="setLayerPremium('TF Transport', this)">🗺 TF Transport</div>
+          <div class="base-layer premium-layer" data-layer="TF Велосипед" onclick="setLayerPremium('TF Велосипед', this)">🚴 TF Велосипед</div>
+          <div class="base-layer premium-layer" data-layer="MTB Map" onclick="setLayerPremium('MTB Map', this)">🚵 MTB Map</div>
+          <div class="base-layer premium-layer" data-layer="Michelin" onclick="setLayerPremium('Michelin', this)">🗺 Michelin</div>
 
-        <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">ГГЦ / Генштаб (nakarte.me)</div>
-        <div class="base-layer premium-layer" data-layer="ГГЦ 250м" onclick="setLayerPremium('ГГЦ 250м', this)">📋 ГГЦ 250м</div>
-        <div class="base-layer premium-layer" data-layer="ГГЦ 1км" onclick="setLayerPremium('ГГЦ 1км', this)">📋 ГГЦ 1км</div>
-        <div class="base-layer premium-layer" data-layer="ГГЦ 2км" onclick="setLayerPremium('ГГЦ 2км', this)">📋 ГГЦ 2км</div>
-        <div class="base-layer premium-layer" data-layer="Генштаб 250м" onclick="setLayerPremium('Генштаб 250м', this)">🏔 Генштаб 250м</div>
+          <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">ГГЦ / Генштаб (nakarte.me)</div>
+          <div class="base-layer premium-layer" data-layer="ГГЦ 250м" onclick="setLayerPremium('ГГЦ 250м', this)">📋 ГГЦ 250м</div>
+          <div class="base-layer premium-layer" data-layer="ГГЦ 500м" onclick="setLayerPremium('ГГЦ 500м', this)">📋 ГГЦ 500м</div>
+          <div class="base-layer premium-layer" data-layer="ГГЦ 1км" onclick="setLayerPremium('ГГЦ 1км', this)">📋 ГГЦ 1км</div>
+          <div class="base-layer premium-layer" data-layer="ГГЦ 2км" onclick="setLayerPremium('ГГЦ 2км', this)">📋 ГГЦ 2км</div>
+          <div class="base-layer premium-layer" data-layer="Генштаб 250м" onclick="setLayerPremium('Генштаб 250м', this)">🏔 Генштаб 250м</div>
+        </div>
       </div>
 
       <div class="layer-section-title" style="margin-top:8px">Оверлейные слои</div>
       <div style="font-size:10px;color:#4a6a8a;margin-bottom:4px">Ползунок = прозрачность</div>
-      <div class="overlay-layer">
-        <input type="checkbox" data-overlay="OSM GPS треки" onchange="toggleOverlay('OSM GPS треки', this)"> <span class="overlay-name">OSM GPS треки</span>
-        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('OSM GPS треки', this)">
-        <span class="opacity-val">100%</span>
-      </div>
-      <div class="overlay-layer">
-        <input type="checkbox" data-overlay="Hiking тропы" onchange="toggleOverlay('Hiking тропы', this)"> <span class="overlay-name">Hiking тропы</span>
-        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('Hiking тропы', this)">
-        <span class="opacity-val">100%</span>
-      </div>
-      <div class="overlay-layer">
-        <input type="checkbox" data-overlay="MTB тропы" onchange="toggleOverlay('MTB тропы', this)"> <span class="overlay-name">MTB тропы</span>
-        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('MTB тропы', this)">
-        <span class="opacity-val">100%</span>
-      </div>
-      <div class="overlay-layer">
-        <input type="checkbox" data-overlay="ESRI транспорт" onchange="toggleOverlay('ESRI транспорт', this)"> <span class="overlay-name">ESRI транспорт</span>
-        <input type="range" class="opacity-slider" min="0" max="100" value="80" oninput="setOverlayOpacity('ESRI транспорт', this)">
-        <span class="opacity-val">80%</span>
-      </div>
-      <div class="overlay-layer">
-        <input type="checkbox" data-overlay="Wikimapia" onchange="toggleOverlay('Wikimapia', this)"> <span class="overlay-name">Wikimapia</span>
-        <input type="range" class="opacity-slider" min="0" max="100" value="80" oninput="setOverlayOpacity('Wikimapia', this)">
-        <span class="opacity-val">80%</span>
-      </div>
-      <div class="overlay-layer">
-        <input type="checkbox" data-overlay="Bing дороги" onchange="toggleOverlay('Bing дороги', this)"> <span class="overlay-name">Bing дороги</span>
-        <input type="range" class="opacity-slider" min="0" max="100" value="70" oninput="setOverlayOpacity('Bing дороги', this)">
-        <span class="opacity-val">70%</span>
-      </div>
-      <div class="overlay-layer">
-        <input type="checkbox" data-overlay="Windy рельеф" onchange="toggleOverlay('Windy рельеф', this)"> <span class="overlay-name">Windy рельеф</span>
-        <input type="range" class="opacity-slider" min="0" max="100" value="50" oninput="setOverlayOpacity('Windy рельеф', this)">
-        <span class="opacity-val">50%</span>
-      </div>
-      <div class="overlay-layer">
-        <input type="checkbox" data-overlay="Горнолыжные трассы" onchange="toggleOverlay('Горнолыжные трассы', this)"> <span class="overlay-name">Горнолыжные трассы</span>
-        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('Горнолыжные трассы', this)">
-        <span class="opacity-val">100%</span>
-      </div>
-      <div class="overlay-layer">
-        <input type="checkbox" data-overlay="Лыжные трассы" onchange="toggleOverlay('Лыжные трассы', this)"> <span class="overlay-name">Лыжные трассы</span>
-        <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('Лыжные трассы', this)">
-        <span class="opacity-val">100%</span>
+      <div id="catalog-overlay-layers">
+        <div class="overlay-layer">
+          <input type="checkbox" data-overlay="OSM GPS треки" onchange="toggleOverlay('OSM GPS треки', this)"> <span class="overlay-name">OSM GPS треки</span>
+          <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('OSM GPS треки', this)">
+          <span class="opacity-val">100%</span>
+        </div>
+        <div class="overlay-layer">
+          <input type="checkbox" data-overlay="Hiking тропы" onchange="toggleOverlay('Hiking тропы', this)"> <span class="overlay-name">Hiking тропы</span>
+          <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('Hiking тропы', this)">
+          <span class="opacity-val">100%</span>
+        </div>
+        <div class="overlay-layer">
+          <input type="checkbox" data-overlay="MTB тропы" onchange="toggleOverlay('MTB тропы', this)"> <span class="overlay-name">MTB тропы</span>
+          <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('MTB тропы', this)">
+          <span class="opacity-val">100%</span>
+        </div>
+        <div class="overlay-layer">
+          <input type="checkbox" data-overlay="ESRI транспорт" onchange="toggleOverlay('ESRI транспорт', this)"> <span class="overlay-name">ESRI транспорт</span>
+          <input type="range" class="opacity-slider" min="0" max="100" value="80" oninput="setOverlayOpacity('ESRI транспорт', this)">
+          <span class="opacity-val">80%</span>
+        </div>
+        <div class="overlay-layer">
+          <input type="checkbox" data-overlay="Wikimapia" onchange="toggleOverlay('Wikimapia', this)"> <span class="overlay-name">Wikimapia</span>
+          <input type="range" class="opacity-slider" min="0" max="100" value="80" oninput="setOverlayOpacity('Wikimapia', this)">
+          <span class="opacity-val">80%</span>
+        </div>
+        <div class="overlay-layer">
+          <input type="checkbox" data-overlay="Bing дороги" onchange="toggleOverlay('Bing дороги', this)"> <span class="overlay-name">Bing дороги</span>
+          <input type="range" class="opacity-slider" min="0" max="100" value="70" oninput="setOverlayOpacity('Bing дороги', this)">
+          <span class="opacity-val">70%</span>
+        </div>
+        <div class="overlay-layer">
+          <input type="checkbox" data-overlay="Windy рельеф" onchange="toggleOverlay('Windy рельеф', this)"> <span class="overlay-name">Windy рельеф</span>
+          <input type="range" class="opacity-slider" min="0" max="100" value="50" oninput="setOverlayOpacity('Windy рельеф', this)">
+          <span class="opacity-val">50%</span>
+        </div>
+        <div class="overlay-layer">
+          <input type="checkbox" data-overlay="Горнолыжные трассы" onchange="toggleOverlay('Горнолыжные трассы', this)"> <span class="overlay-name">Горнолыжные трассы</span>
+          <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('Горнолыжные трассы', this)">
+          <span class="opacity-val">100%</span>
+        </div>
+        <div class="overlay-layer">
+          <input type="checkbox" data-overlay="Лыжные трассы" onchange="toggleOverlay('Лыжные трассы', this)"> <span class="overlay-name">Лыжные трассы</span>
+          <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('Лыжные трассы', this)">
+          <span class="opacity-val">100%</span>
+        </div>
       </div>
     </div>
   </div>
@@ -1640,6 +1755,12 @@ function openQuickRename(marker) {
   }, 0);
 }
 
+function getDefaultRadius() {
+  const el = document.getElementById('setting-default-radius');
+  const v = el ? parseInt(el.value) : 50;
+  return Number.isFinite(v) && v >= 0 ? v : 50;
+}
+
 function addWaypoint(latlng, nameHint, extra = {}) {
   const name = nameHint || ('wp'+wpCounter);
   const color = '#df7a4a';
@@ -1648,12 +1769,12 @@ function addWaypoint(latlng, nameHint, extra = {}) {
     desc: extra.desc || '',
     icon: extra.icon || '⬤',
     color: extra.color || color,
-    radius: Number.isFinite(extra.radius) ? extra.radius : 30,
+    radius: Number.isFinite(extra.radius) ? extra.radius : getDefaultRadius(),
     lat: latlng.lat,
     lng: latlng.lng,
     num: wpCounter
   };
-  const marker = L.marker(latlng, { draggable: true, icon: makeDivIcon(wpData) });
+  const marker = L.marker(latlng, { draggable: !objectsLocked, icon: makeDivIcon(wpData) });
   marker.wpData = wpData;
   marker.addTo(map);
   refreshWaypoint(marker);
@@ -1783,10 +1904,16 @@ function setMode(mode) {
   document.querySelectorAll('[id^=btn-]:not(#btn-map-layer)').forEach(b => b.classList.remove('active'));
   const btn = document.getElementById(btnMap[mode]);
   if (btn) btn.classList.add('active');
-  // Update group labels to indicate active mode
+  // Update group labels + tags to indicate active mode
   document.querySelectorAll('.tb-group-label').forEach(l => l.classList.remove('mode-active'));
-  const groupLabel = btn?.closest('.tb-group')?.querySelector('.tb-group-label');
-  if (groupLabel && mode !== 'hand') groupLabel.classList.add('mode-active');
+  document.querySelectorAll('.tb-tag').forEach(t => t.classList.remove('mode-active'));
+  if (mode !== 'hand') {
+    const group = btn?.closest('.tb-group');
+    const groupLabel = group?.querySelector('.tb-group-label');
+    const groupTag = group?.querySelector('.tb-tag');
+    if (groupLabel) groupLabel.classList.add('mode-active');
+    if (groupTag) groupTag.classList.add('mode-active');
+  }
   document.getElementById('sb-mode').textContent = modeNames[mode] || mode;
   map.getContainer().style.cursor = mode === 'hand' ? '' : 'crosshair';
   if (mode !== 'hand') showToast('Режим: ' + modeNames[mode]);
@@ -1796,6 +1923,26 @@ function toggleMode(mode) {
   else setMode(mode);
 }
 
+// ─── БЛОКИРОВКА ПЕРЕМЕЩЕНИЯ ОБЪЕКТОВ ───
+let objectsLocked = false;
+
+function toggleLock() {
+  objectsLocked = !objectsLocked;
+  const btn = document.getElementById('btn-lock');
+  btn.textContent = objectsLocked ? '🔒' : '🔓';
+  btn.classList.toggle('active', objectsLocked);
+  btn.style.background = objectsLocked ? '#6a2a2a' : '';
+  btn.style.borderColor = objectsLocked ? '#a03030' : '';
+  btn.style.color = objectsLocked ? '#ff8080' : '';
+  // Обновить draggable на всех waypoint маркерах
+  waypoints.forEach(m => {
+    if (m.dragging) {
+      objectsLocked ? m.dragging.disable() : m.dragging.enable();
+    }
+  });
+  showToast(objectsLocked ? '🔒 Объекты заблокированы' : '🔓 Объекты разблокированы');
+}
+
 document.addEventListener('keydown', e => {
   // Не перехватывать в полях ввода
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
@@ -1803,7 +1950,7 @@ document.addEventListener('keydown', e => {
     return;
   }
   switch(e.key) {
-    case 'Escape': closeAllModals(); break;
+    case 'Escape': closeAllModals(); setMode('hand'); break;
     case ' ':
     case 'h': case 'H':
       e.preventDefault();
@@ -1827,6 +1974,9 @@ document.addEventListener('keydown', e => {
       break;
     case 'l': case 'L':
       if (!e.ctrlKey) openModal('modal-layers');
+      break;
+    case 'k': case 'K':
+      if (!e.ctrlKey) toggleLock();
       break;
     case 'f': case 'F':
       if (!e.ctrlKey) {
@@ -1853,6 +2003,7 @@ document.addEventListener('keydown', e => {
 
 map.on('click', e => {
   closeCtxMenu();
+  if (typeof routePickMode !== 'undefined' && routePickMode) return; // route pick обрабатывается отдельно
   if (currentMode === 'waypoint') addWaypoint(e.latlng);
   else if (currentMode === 'track') addTrackPoint(e.latlng);
   else if (currentMode === 'route') showToast('⚠ Кликайте по существующим точкам (КП)');
@@ -1902,10 +2053,8 @@ const BingTileLayer = L.TileLayer.extend({
 const yandexLayers = new Set(['Яндекс Схема', 'Яндекс Гибрид']);
 
 function makeBaseLayer(name) {
+  // Hardcoded layers that need special handling (CRS, layerGroup, BingTileLayer)
   switch (name) {
-    case 'OpenStreetMap':  return L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc' });
-    case 'OpenTopoMap':    return L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, subdomains: 'abc' });
-    case '2GIS':           return L.tileLayer('https://tile2.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1', { maxZoom: 18 });
     case 'Яндекс Схема':   return L.tileLayer('https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', { maxZoom: 19 });
     case 'Яндекс Гибрид': {
       // Гибрид = спутник + подписи (два слоя)
@@ -1914,10 +2063,31 @@ function makeBaseLayer(name) {
         L.tileLayer('https://core-renderer-tiles.maps.yandex.net/tiles?l=skl&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', { maxZoom: 19 })
       ]);
     }
-    case 'Спутник Google': return L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['0','1','2','3'] });
-    case 'Гибрид Google':  return L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['0','1','2','3'] });
     case 'Спутник Bing':   return new BingTileLayer('https://ecn.t0.tiles.virtualearth.net/tiles/a{q}?g=14000', { maxZoom: 19 });
     case 'Гибрид Bing':    return new BingTileLayer('https://ecn.t0.tiles.virtualearth.net/tiles/h{q}?g=14000&mkt=ru-RU', { maxZoom: 19 });
+  }
+
+  // Try catalog lookup by label
+  if (tileCatalog) {
+    const entry = tileCatalog.base.find(e => e.label === name);
+    if (entry) {
+      const opts = {
+        maxZoom: entry.maxZoom || 18,
+        maxNativeZoom: entry.maxNativeZoom || entry.maxZoom || 18,
+        subdomains: entry.subdomains || '',
+        tms: !!entry.tms
+      };
+      return L.tileLayer(entry.url, opts);
+    }
+  }
+
+  // Fallback: hardcoded switch for when catalog isn't loaded yet
+  switch (name) {
+    case 'OpenStreetMap':  return L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc' });
+    case 'OpenTopoMap':    return L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, subdomains: 'abc' });
+    case '2GIS':           return L.tileLayer('https://tile2.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1', { maxZoom: 18 });
+    case 'Спутник Google': return L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['0','1','2','3'] });
+    case 'Гибрид Google':  return L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['0','1','2','3'] });
     case 'Спутник ESRI':   return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 });
     case 'ESRI Clarity':   return L.tileLayer('https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false', { maxZoom: 19 });
     case 'Яндекс Спутник': return L.tileLayer('https://sat0{s}.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&lang=ru_RU', { maxZoom: 19, subdomains: '1234' });
@@ -1933,6 +2103,7 @@ function makeBaseLayer(name) {
     case 'MTB Map':        return L.tileLayer('http://tile.mtbmap.cz/mtbmap_tiles/{z}/{x}/{y}.png', { maxZoom: 18 });
     case 'Michelin':       return L.tileLayer('https://map1.viamichelin.com/map/mapdirect?map=viamichelin&z={z}&x={x}&y={y}&format=png&version=201901161110&layer=background&locale=default&cs=1&protocol=https', { maxZoom: 18 });
     case 'ГГЦ 250м':       return L.tileLayer('https://tiles.nakarte.me/ggc250/{z}/{x}/{y}', { maxNativeZoom: 15, maxZoom: 18, tms: true });
+    case 'ГГЦ 500м':       return L.tileLayer('https://tiles.nakarte.me/ggc500/{z}/{x}/{y}', { maxNativeZoom: 14, maxZoom: 18, tms: true });
     case 'ГГЦ 1км':        return L.tileLayer('https://tiles.nakarte.me/ggc1000/{z}/{x}/{y}', { maxNativeZoom: 13, maxZoom: 18, tms: true });
     case 'ГГЦ 2км':        return L.tileLayer('https://tiles.nakarte.me/ggc2000/{z}/{x}/{y}', { maxNativeZoom: 12, maxZoom: 18, tms: true });
     case 'Генштаб 250м':   return L.tileLayer('https://tiles.nakarte.me/topo001m/{z}/{x}/{y}', { maxNativeZoom: 15, maxZoom: 18, tms: true });
@@ -1940,17 +2111,160 @@ function makeBaseLayer(name) {
   }
 }
 
+let tileCatalog = null;
+
 let currentBaseLayer = makeBaseLayer('OpenStreetMap');
 let currentBaseLayerName = 'OpenStreetMap';
 currentBaseLayer.addTo(map);
 
+// Free layer keys (not premium)
+const FREE_LAYER_KEYS = new Set(['osm', 'topo', 'cyclosm', 'osm_hot']);
+
+function getLayerEmoji(label) {
+  if (/Спутник|Гибрид/i.test(label)) return '\u{1F6F0}';
+  if (/ГГЦ/i.test(label)) return '\u{1F4CB}';
+  if (/Рельеф|Topo|Генштаб/i.test(label)) return '\u{1F3D4}';
+  if (/Cycle|Велосипед/i.test(label)) return '\u{1F6B4}';
+  if (/MTB/i.test(label)) return '\u{1F6B5}';
+  if (/OpenTopoMap/i.test(label)) return '\u{1F3D4}';
+  return '\u{1F5FA}';
+}
+
+// Fallback emoji map (used before catalog loads)
 const layerEmoji = {
-  'OpenStreetMap':'🗺', 'OpenTopoMap':'🏔', '2GIS':'🗺',
-  'Яндекс Схема':'🗺', 'Яндекс Гибрид':'🛰',
-  'Спутник Google':'🛰', 'Гибрид Google':'🛰', 'Спутник Bing':'🛰', 'Гибрид Bing':'🛰', 'Спутник ESRI':'🛰',
-  'ГГЦ 250м':'📋', 'ГГЦ 1км':'📋', 'ГГЦ 2км':'📋',
-  'Генштаб 250м':'🏔',
+  'OpenStreetMap':'\u{1F5FA}', 'OpenTopoMap':'\u{1F3D4}', '2GIS':'\u{1F5FA}',
+  'Яндекс Схема':'\u{1F5FA}', 'Яндекс Гибрид':'\u{1F6F0}',
+  'Спутник Google':'\u{1F6F0}', 'Гибрид Google':'\u{1F6F0}', 'Спутник Bing':'\u{1F6F0}', 'Гибрид Bing':'\u{1F6F0}', 'Спутник ESRI':'\u{1F6F0}',
+  'ГГЦ 250м':'\u{1F4CB}', 'ГГЦ 500м':'\u{1F4CB}', 'ГГЦ 1км':'\u{1F4CB}', 'ГГЦ 2км':'\u{1F4CB}',
+  'Генштаб 250м':'\u{1F3D4}',
 };
+
+function buildLayerUI() {
+  if (!tileCatalog) return;
+
+  // --- Build emoji map from catalog ---
+  tileCatalog.base.forEach(e => { layerEmoji[e.label] = getLayerEmoji(e.label); });
+  (tileCatalog.overlays || []).forEach(e => { layerEmoji[e.label] = getLayerEmoji(e.label); });
+
+  // --- Free base layers ---
+  const freeContainer = document.getElementById('catalog-free-layers');
+  if (freeContainer) {
+    const freeLayers = tileCatalog.base.filter(e => FREE_LAYER_KEYS.has(e.key));
+    if (freeLayers.length > 0) {
+      freeContainer.innerHTML = '';
+      freeLayers.forEach(e => {
+        const div = document.createElement('div');
+        div.className = 'base-layer' + (e.label === currentBaseLayerName ? ' active' : '');
+        div.dataset.layer = e.label;
+        div.onclick = function() { setLayer(e.label, this); };
+        div.textContent = getLayerEmoji(e.label) + ' ' + e.label;
+        freeContainer.appendChild(div);
+      });
+    }
+  }
+
+  // --- Premium base layers ---
+  const premiumContainer = document.getElementById('catalog-base-layers');
+  if (premiumContainer) {
+    const premiumLayers = tileCatalog.base.filter(e => !FREE_LAYER_KEYS.has(e.key));
+    if (premiumLayers.length > 0) {
+      premiumContainer.innerHTML = '';
+      premiumLayers.forEach(e => {
+        const div = document.createElement('div');
+        div.className = 'base-layer premium-layer' + (e.label === currentBaseLayerName ? ' active' : '');
+        div.dataset.layer = e.label;
+        div.onclick = function() { setLayerPremium(e.label, this); };
+        div.textContent = getLayerEmoji(e.label) + ' ' + e.label;
+        premiumContainer.appendChild(div);
+      });
+    }
+  }
+
+  // --- Overlay layers ---
+  const overlayContainer = document.getElementById('catalog-overlay-layers');
+  if (overlayContainer) {
+    // Keep hardcoded special overlays (Wikimapia, Bing дороги) that use custom tile classes
+    const hardcodedOverlayNames = new Set(['Wikimapia', 'Bing дороги']);
+    const catalogOverlays = tileCatalog.overlays || [];
+
+    if (catalogOverlays.length > 0) {
+      overlayContainer.innerHTML = '';
+
+      catalogOverlays.forEach(e => {
+        const defaultOpacity = e.opacity != null ? Math.round(e.opacity * 100) : 100;
+
+        // Create overlay layer object if not already existing
+        if (!overlayLayers[e.label]) {
+          overlayLayers[e.label] = L.tileLayer(e.url, {
+            maxZoom: e.maxZoom || 18,
+            subdomains: e.subdomains || '',
+            tms: !!e.tms,
+            opacity: (e.opacity != null ? e.opacity : 0.7),
+            pane: 'overlayTiles'
+          });
+        }
+
+        const div = document.createElement('div');
+        div.className = 'overlay-layer';
+        div.innerHTML = '<input type="checkbox" data-overlay="' + e.label + '" onchange="toggleOverlay(\'' + e.label.replace(/'/g, "\\'") + '\', this)"> ' +
+          '<span class="overlay-name">' + e.label + '</span>' +
+          '<input type="range" class="opacity-slider" min="0" max="100" value="' + defaultOpacity + '" oninput="setOverlayOpacity(\'' + e.label.replace(/'/g, "\\'") + '\', this)">' +
+          '<span class="opacity-val">' + defaultOpacity + '%</span>';
+        overlayContainer.appendChild(div);
+      });
+
+      // Re-add hardcoded special overlays that aren't in catalog
+      hardcodedOverlayNames.forEach(name => {
+        if (!catalogOverlays.find(e => e.label === name) && overlayLayers[name]) {
+          const defaultOpacity = name === 'Wikimapia' ? 80 : 70;
+          const div = document.createElement('div');
+          div.className = 'overlay-layer';
+          div.innerHTML = '<input type="checkbox" data-overlay="' + name + '" onchange="toggleOverlay(\'' + name.replace(/'/g, "\\'") + '\', this)"> ' +
+            '<span class="overlay-name">' + name + '</span>' +
+            '<input type="range" class="opacity-slider" min="0" max="100" value="' + defaultOpacity + '" oninput="setOverlayOpacity(\'' + name.replace(/'/g, "\\'") + '\', this)">' +
+            '<span class="opacity-val">' + defaultOpacity + '%</span>';
+          overlayContainer.appendChild(div);
+        }
+      });
+    }
+  }
+
+  // --- Update download layer lists ---
+  dlLayerList.length = 0;
+  tileCatalog.base.forEach(e => dlLayerList.push(e.label));
+  // Add Bing layers if not already in catalog
+  if (!tileCatalog.base.find(e => e.label === 'Спутник Bing')) dlLayerList.push('Спутник Bing');
+  if (!tileCatalog.base.find(e => e.label === 'Гибрид Bing')) dlLayerList.push('Гибрид Bing');
+  // Add Яндекс Гибрид if not in catalog (uses layerGroup)
+  if (!tileCatalog.base.find(e => e.label === 'Яндекс Гибрид')) dlLayerList.push('Яндекс Гибрид');
+
+  dlOverlayList.length = 0;
+  (tileCatalog.overlays || []).forEach(e => dlOverlayList.push(e.label));
+  // Re-add hardcoded overlays not in catalog
+  if (!(tileCatalog.overlays || []).find(e => e.label === 'Wikimapia')) dlOverlayList.push('Wikimapia');
+  if (!(tileCatalog.overlays || []).find(e => e.label === 'Bing дороги')) dlOverlayList.push('Bing дороги');
+
+  // Update premium UI if function exists
+  if (typeof updatePremiumUI === 'function') updatePremiumUI();
+}
+
+function loadTileCatalog() {
+  fetch('https://trophynav.ru/api/tiles-catalog.json')
+    .then(resp => {
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      return resp.json();
+    })
+    .then(data => {
+      tileCatalog = data;
+      console.log('Tile catalog loaded:', tileCatalog.base.length, 'base,', (tileCatalog.overlays || []).length, 'overlays');
+      buildLayerUI();
+    })
+    .catch(err => {
+      console.warn('Failed to load tile catalog, using hardcoded layers:', err);
+    });
+}
+
+loadTileCatalog();
 
 function switchCRS(needYandex) {
   const targetCRS = needYandex ? 'EPSG3395' : 'EPSG3857';
@@ -1988,7 +2302,7 @@ function setLayer(name, el) {
   currentBaseLayer = layer;
   currentBaseLayerName = name;
   layer.addTo(map);
-  const emoji = layerEmoji[name] || '🗺';
+  const emoji = layerEmoji[name] || getLayerEmoji(name);
   document.getElementById('current-layer-name').textContent = emoji + ' ' + name;
   document.getElementById('sb-layer').textContent = name;
   document.querySelectorAll('.base-layer').forEach(d => d.classList.remove('active'));
@@ -2227,6 +2541,40 @@ function saveAllGPX() {
   downloadText('tnd-export.gpx', 'application/gpx+xml', gpx);
 }
 
+// Маппинг Garmin/OziExplorer символов → эмодзи
+const garminSymbolMap = {
+  'flag, green':'🟢', 'flag, blue':'🔵', 'flag, red':'🔴',
+  'flag':'🚩', 'pin, green':'📍', 'pin, blue':'📍', 'pin, red':'📍',
+  'campground':'⛺', 'camp':'⛺', 'parking area':'🅿', 'parking':'🅿',
+  'gas station':'⛽', 'fuel':'⛽', 'restaurant':'🍽', 'food':'🍽',
+  'hotel':'🏨', 'lodging':'🏨', 'hospital':'🏥', 'medical':'🏥',
+  'danger area':'⚠', 'danger':'⚠', 'skull and crossbones':'☠',
+  'mine':'💣', 'crossing':'✖', 'bridge':'🌉',
+  'summit':'🏔', 'mountain':'🏔', 'trail head':'🥾', 'trailhead':'🥾',
+  'forest':'🌲', 'tree':'🌲', 'park':'🌳',
+  'water':'💧', 'lake':'💧', 'river':'🌊', 'dam':'🌊',
+  'fishing area':'🎣', 'fishing':'🎣', 'hunting area':'🦌',
+  'house':'🏠', 'building':'🏢', 'church':'⛪', 'cemetery':'⚰',
+  'tower':'🗼', 'lighthouse':'🗼',
+  'car':'🚗', 'truck':'🚛', 'bike':'🚴', 'motorcycle':'🏍',
+  'anchor':'⚓', 'boat':'⛵', 'ship':'🚢',
+  'phone':'📞', 'information':'ℹ', 'geocache':'💎',
+  'navaid, white':'📡', 'navaid, amber':'📡', 'navaid, black':'📡',
+  'navaid, blue':'📡', 'navaid, green':'📡', 'navaid, red':'📡',
+  'circle, red':'🔴', 'circle, green':'🟢', 'circle, blue':'🔵',
+  'diamond, red':'🔶', 'diamond, green':'🔷', 'diamond, blue':'🔷',
+  'square, red':'🟥', 'square, green':'🟩', 'square, blue':'🟦',
+  'triangle, red':'🔺', 'triangle, green':'🔺', 'triangle, blue':'🔺',
+  'start':'🏁', 'finish':'🏁', 'stop':'🛑',
+  'default':'⬤', 'waypoint':'⬤', 'dot':'⬤',
+};
+
+function garminToEmoji(sym) {
+  if (!sym) return '⬤';
+  const key = sym.toLowerCase().trim();
+  return garminSymbolMap[key] || sym;
+}
+
 function loadGPXWaypoints(text, fname, options = {}) {
   const doc = new DOMParser().parseFromString(normalizeText(text), 'application/xml');
   const wpts = doc.querySelectorAll('wpt');
@@ -2240,18 +2588,22 @@ function loadGPXWaypoints(text, fname, options = {}) {
     const lat = parseFloat(wpt.getAttribute('lat'));
     const lon = parseFloat(wpt.getAttribute('lon'));
     if (isNaN(lat) || isNaN(lon)) return;
-    // Читаем sym, extensions (tnd:color, tnd:radius)
+    // Читаем sym, extensions (tnd:color, tnd:radius, Garmin Proximity)
     const sym = wpt.querySelector('sym')?.textContent?.trim() || '';
     const ext = wpt.querySelector('extensions');
     const tndColor = ext?.querySelector('color')?.textContent?.trim() || '';
     const tndRadius = ext?.querySelector('radius')?.textContent?.trim() || '';
+    // Garmin Proximity (радиус сближения)
+    const proximity = ext?.querySelector('Proximity')?.textContent?.trim() || '';
     const extra = {
       desc: wpt.querySelector('desc')?.textContent?.trim() || '',
       silent: true
     };
-    if (sym) extra.icon = sym;
+    if (sym) extra.icon = garminToEmoji(sym);
     if (tndColor && /^#[0-9a-fA-F]{6}$/.test(tndColor)) extra.color = tndColor;
+    // Радиус: сначала tnd:radius, потом Garmin Proximity
     if (tndRadius && Number.isFinite(parseFloat(tndRadius))) extra.radius = parseFloat(tndRadius);
+    else if (proximity && Number.isFinite(parseFloat(proximity)) && parseFloat(proximity) > 0) extra.radius = parseFloat(proximity);
     const marker = addWaypoint(L.latLng(lat, lon), wpt.querySelector('name')?.textContent?.trim() || '', extra);
     if (marker) imported.push(marker.getLatLng());
     count++;
@@ -2289,7 +2641,7 @@ function loadWPT(text, fname) {
     const wptColor = oziColorToHex(p[8]);
     const marker = addWaypoint(L.latLng(lat, lon), p[1]?.trim() || '', {
       desc: p[9]?.trim() || '',
-      radius: Number.isFinite(radius) ? radius : 30,
+      radius: Number.isFinite(radius) ? radius : getDefaultRadius(),
       color: wptColor || undefined,
       silent: true
     });
@@ -2435,12 +2787,12 @@ function ctxTrackAction(action) {
       showToast('В треке должно быть минимум 2 точки');
       return;
     }
-    map.removeLayer(marker);
-    track.markers.splice(idx, 1);
+    if (marker) map.removeLayer(marker);
+    if (track.markers?.length > idx) track.markers.splice(idx, 1);
     track.points.splice(idx, 1);
     if (track.pointsData?.length) track.pointsData.splice(idx, 1);
     // Обновляем _trackIdx для оставшихся маркеров
-    track.markers.forEach((m, i) => { m._trackIdx = i; });
+    track.markers?.forEach((m, i) => { m._trackIdx = i; });
     if (track.polyline) track.polyline.setLatLngs(track.points);
     showToast('Точка трека удалена');
 
@@ -2480,6 +2832,7 @@ function ctxAction(action) {
   if (!target) return;
   if (action === 'props') showWptPopup(target);
   else if (action === 'move') {
+    if (objectsLocked) { showToast('🔒 Объекты заблокированы'); return; }
     if (target.dragging) target.dragging.enable();
     map.panTo(target.getLatLng());
     showToast('Перетащите точку в нужное место');
@@ -2518,6 +2871,17 @@ function ctxMapAction(action) {
     if (currentRouteDraw && currentRouteDraw.points.length > 0) {
       removeRouteBuildPoint(currentRouteDraw.points.length - 1);
     }
+  } else if (action === 'routefrom') {
+    routeFromLatLng = ctxLatLng;
+    document.getElementById('route-from-input').value = ctxLatLng.lat.toFixed(5) + ', ' + ctxLatLng.lng.toFixed(5);
+    openModal('modal-routing');
+    showToast('Точка A выбрана');
+  } else if (action === 'routeto') {
+    routeToLatLng = ctxLatLng;
+    document.getElementById('route-to-input').value = ctxLatLng.lat.toFixed(5) + ', ' + ctxLatLng.lng.toFixed(5);
+    openModal('modal-routing');
+    if (routeFromLatLng) calculateOsrmRoute();
+    else showToast('Точка B выбрана. Укажите точку A');
   }
 }
 document.addEventListener('click', (e) => {
@@ -2633,6 +2997,7 @@ function createTrackMarker(track, idx) {
   });
   // Перетаскивание левой кнопкой
   m.on('mousedown', function(e) {
+    if (objectsLocked) return;
     if (e.originalEvent?.button !== 0) return; // только ЛКМ
     L.DomEvent.stop(e);
     m.closeTooltip();
@@ -2678,6 +3043,18 @@ function bindTrackPolyline(track) {
     L.DomEvent.stop(e);
     selectTrackById(track.id);
     openModal('modal-tracks');
+  });
+  track.polyline.on('contextmenu', e => {
+    L.DomEvent.stop(e);
+    // Найти ближайшую точку трека
+    const clickLatLng = e.latlng;
+    let minDist = Infinity, closestIdx = 0;
+    track.points.forEach((p, i) => {
+      const d = clickLatLng.distanceTo(p);
+      if (d < minDist) { minDist = d; closestIdx = i; }
+    });
+    const marker = track.markers?.[closestIdx] || null;
+    showTrackPointCtxMenu(e.originalEvent, track, closestIdx, marker);
   });
 }
 
@@ -3257,6 +3634,36 @@ function toggleRouteEl(headerEl) {
   const arrow = headerEl.querySelector('.route-arrow');
   if (arrow) arrow.textContent = visible ? '▸' : '▾';
 }
+function moveRoutePoint(routeId, idx, dir) {
+  const r = routes.find(r => r.id === routeId);
+  if (!r) return;
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= r.points.length) return;
+  // Swap points
+  [r.points[idx], r.points[newIdx]] = [r.points[newIdx], r.points[idx]];
+  if (r.labels?.length) [r.labels[idx], r.labels[newIdx]] = [r.labels[newIdx], r.labels[idx]];
+  if (r.polyline) r.polyline.setLatLngs(r.points);
+  updateRouteList();
+}
+function deleteRoutePoint(routeId, idx) {
+  const r = routes.find(r => r.id === routeId);
+  if (!r) return;
+  if (r.points.length <= 2) { showToast('Минимум 2 точки в маршруте'); return; }
+  r.points.splice(idx, 1);
+  if (r.labels?.length) r.labels.splice(idx, 1);
+  if (r.polyline) r.polyline.setLatLngs(r.points);
+  updateRouteList();
+  showToast('Точка маршрута удалена');
+}
+function renameRoute(routeId) {
+  const r = routes.find(r => r.id === routeId);
+  if (!r) return;
+  const el = document.getElementById('route-name-' + routeId);
+  if (!el) return;
+  r.name = el.value.trim() || r.name;
+  updateRouteList();
+  showToast('Маршрут переименован: ' + r.name);
+}
 function updateRouteList() {
   const el = document.getElementById('route-list');
   if (!el) return;
@@ -3270,17 +3677,23 @@ function updateRouteList() {
       const prev = i > 0 ? r.points[i-1] : null;
       const dist = prev ? (prev.distanceTo(p)/1000).toFixed(1) + ' км' : '—';
       const bear = prev ? calcBearing(prev.lat, prev.lng, p.lat, p.lng).toFixed(0) + '°' : '';
+      const upBtn = i > 0 ? `<span style="cursor:pointer;color:#7a9aba;font-size:11px;padding:0 2px" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},-1)" title="Вверх">▲</span>` : '<span style="width:16px;display:inline-block"></span>';
+      const dnBtn = i < r.points.length - 1 ? `<span style="cursor:pointer;color:#7a9aba;font-size:11px;padding:0 2px" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},1)" title="Вниз">▼</span>` : '<span style="width:16px;display:inline-block"></span>';
+      const delBtn = `<span style="cursor:pointer;color:#e07070;font-size:11px;padding:0 2px" onclick="event.stopPropagation();deleteRoutePoint(${r.id},${i})" title="Удалить">✕</span>`;
       return `<div class="route-kp">
         <span class="route-kp-num" style="background:${r.color}22;color:${r.color}">${escapeHtml(r.labels?.[i] || `КП${i+1}`)}</span>
         <span style="font-size:11px;color:#c0d8ff;flex:1">${p.lat.toFixed(4)}°N ${p.lng.toFixed(4)}°E</span>
         <span class="route-dist">${dist}${bear ? ' · ' + bear : ''}</span>
+        <span style="display:flex;gap:2px;margin-left:4px">${upBtn}${dnBtn}${delBtn}</span>
       </div>`;
     }).join('');
     return `<div class="route-item">
       <div class="route-header" onclick="toggleRouteEl(this)" style="cursor:pointer">
         <div style="display:flex;align-items:center;gap:8px">
           <span class="route-color-dot" style="background:${r.color}"></span>
-          <span style="font-size:13px;color:#c0d8ff">${r.name}</span>
+          <input id="route-name-${r.id}" value="${escapeHtml(r.name)}" onclick="event.stopPropagation()" onchange="renameRoute(${r.id})"
+            style="font-size:13px;color:#c0d8ff;background:transparent;border:none;border-bottom:1px solid transparent;outline:none;width:120px;padding:0"
+            onfocus="this.style.borderBottomColor='#4a8adf'" onblur="this.style.borderBottomColor='transparent'">
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:11px;color:#5a7aaa">${r.points.length} КП · ${km} км <span class="route-arrow">▸</span></span>
@@ -3454,17 +3867,17 @@ let dlSelectActive = false;
 let dlStartLatLng = null;
 let dlAbortController = null;
 
-// Список базовых слоёв для скачивания (должен совпадать с makeBaseLayer)
-const dlLayerList = [
+// Список базовых слоёв для скачивания (обновляется из каталога через buildLayerUI)
+let dlLayerList = [
   'OpenStreetMap', 'OpenTopoMap', 'CyclOSM', 'OSM Humanitarian', '2GIS',
   'Яндекс Схема', 'Яндекс Гибрид', 'Яндекс Спутник',
   'Спутник Google', 'Гибрид Google', 'Карты Google', 'Рельеф Google',
   'Спутник Bing', 'Гибрид Bing', 'Спутник ESRI', 'ESRI Clarity',
   'TF Outdoors', 'TF Transport', 'TF Велосипед', 'LoMaps',
-  'ГГЦ 250м', 'ГГЦ 1км', 'ГГЦ 2км', 'Генштаб 250м',
+  'ГГЦ 250м', 'ГГЦ 500м', 'ГГЦ 1км', 'ГГЦ 2км', 'Генштаб 250м',
 ];
-// Оверлейные слои (тайловые) для скачивания
-const dlOverlayList = [
+// Оверлейные слои (тайловые) для скачивания (обновляется из каталога через buildLayerUI)
+let dlOverlayList = [
   'OSM GPS треки', 'Hiking тропы', 'MTB тропы', 'ESRI транспорт',
   'Bing дороги', 'Windy рельеф', 'Горнолыжные трассы', 'Лыжные трассы',
 ];
@@ -3534,26 +3947,43 @@ function openDownloadSettings(bounds) {
   document.getElementById('dl-sw').textContent = `${sw.lat.toFixed(4)}, ${sw.lng.toFixed(4)}`;
   document.getElementById('dl-ne').textContent = `${ne.lat.toFixed(4)}, ${ne.lng.toFixed(4)}`;
 
-  // Заполнить select слоёв
+  // Заполнить select базовых слоёв
   const sel = document.getElementById('dl-layer-select');
   sel.innerHTML = '';
-  const baseGroup = document.createElement('optgroup');
-  baseGroup.label = 'Базовые карты';
   dlLayerList.forEach(name => {
     const opt = document.createElement('option');
     opt.value = name; opt.textContent = name;
     if (name === currentBaseLayerName) opt.selected = true;
-    baseGroup.appendChild(opt);
+    sel.appendChild(opt);
   });
-  sel.appendChild(baseGroup);
-  const overlayGroup = document.createElement('optgroup');
-  overlayGroup.label = 'Оверлеи';
-  dlOverlayList.forEach(name => {
+
+  // Второй базовый слой
+  const sel2 = document.getElementById('dl-layer2-select');
+  sel2.innerHTML = '<option value="">— нет —</option>';
+  dlLayerList.forEach(name => {
     const opt = document.createElement('option');
     opt.value = name; opt.textContent = name;
-    overlayGroup.appendChild(opt);
+    sel2.appendChild(opt);
   });
-  sel.appendChild(overlayGroup);
+  sel2.onchange = () => {
+    document.getElementById('dl-layer2-opacity-row').style.display = sel2.value ? 'block' : 'none';
+    updateDownloadEstimate();
+  };
+  document.getElementById('dl-layer2-opacity-row').style.display = 'none';
+
+  // Заполнить чекбоксы оверлеев
+  const overlayBox = document.getElementById('dl-overlay-checks');
+  overlayBox.innerHTML = '';
+  dlOverlayList.forEach(name => {
+    const lbl = document.createElement('label');
+    lbl.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;color:#c0d8ff;cursor:pointer';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.value = name; cb.className = 'dl-overlay-cb';
+    cb.onchange = updateDownloadEstimate;
+    lbl.appendChild(cb);
+    lbl.appendChild(document.createTextNode(name));
+    overlayBox.appendChild(lbl);
+  });
 
   // Сохранить bounds
   window._dlBounds = bounds;
@@ -3593,18 +4023,26 @@ function estimateTiles(bounds, zMin, zMax) {
   return { total, ranges };
 }
 
+function getSelectedOverlays() {
+  return [...document.querySelectorAll('.dl-overlay-cb:checked')].map(cb => cb.value);
+}
+
 function updateDownloadEstimate() {
   if (!window._dlBounds) return;
   const zMin = parseInt(document.getElementById('dl-zoom-min').value);
   const zMax = parseInt(document.getElementById('dl-zoom-max').value);
   const est = estimateTiles(window._dlBounds, zMin, zMax);
 
-  document.getElementById('dl-est-tiles').textContent = est.total.toLocaleString('ru') + ' тайлов';
-  const sizeMB = (est.total * 0.025).toFixed(1); // ~25KB per tile avg
+  const overlayCount = getSelectedOverlays().length;
+  const layerCount = 1 + overlayCount; // базовый + оверлеи
+  const totalTiles = est.total * layerCount;
+
+  document.getElementById('dl-est-tiles').textContent = totalTiles.toLocaleString('ru') + ' тайлов';
+  const sizeMB = (totalTiles * 0.025).toFixed(1);
   document.getElementById('dl-est-size').textContent = '~' + sizeMB + ' МБ';
 
   const warn = document.getElementById('dl-est-warn');
-  if (est.total > 50000) {
+  if (totalTiles > 50000) {
     warn.textContent = '⚠️ Много тайлов! Скачивание может занять значительное время.';
     warn.style.display = 'block';
   } else {
@@ -3614,19 +4052,15 @@ function updateDownloadEstimate() {
   // Автоимя файла
   const layerName = document.getElementById('dl-layer-select').value;
   const safeName = layerName.replace(/\s+/g, '_');
-  document.getElementById('dl-filename').value = `${safeName}_z${zMin}-${zMax}.sqlitedb`;
+  const overlayTag = overlayCount > 0 ? `+${overlayCount}ov` : '';
+  document.getElementById('dl-filename').value = `${safeName}${overlayTag}_z${zMin}-${zMax}.sqlitedb`;
 }
 
 // ─── Генерация URL тайла ───
 
 function getTileUrl(layerName, x, y, z) {
-  const isTms = (name) => ['ГГЦ 250м','ГГЦ 1км','ГГЦ 2км','Генштаб 250м'].includes(name);
-
   const tmsY = (y, z) => Math.pow(2, z) - 1 - y;
-
-  const subdomains = { 'OpenStreetMap': 'abc', 'OpenTopoMap': 'abc' };
   const pickS = (pool) => pool[Math.floor(Math.random() * pool.length)];
-  const gSub = () => pickS(['0','1','2','3']);
 
   function bingQuadkey(x, y, z) {
     let q = '';
@@ -3640,22 +4074,40 @@ function getTileUrl(layerName, x, y, z) {
     return q;
   }
 
+  // Catalog lookup: search both base and overlays by label
+  if (tileCatalog) {
+    const entry = (tileCatalog.base || []).find(e => e.label === layerName)
+              || (tileCatalog.overlays || []).find(e => e.label === layerName);
+    if (entry) {
+      let url = entry.url;
+      const subs = entry.subdomains || '';
+      if (subs && url.includes('{s}')) {
+        url = url.replace('{s}', pickS(subs));
+      }
+      let finalY = y;
+      if (entry.tms) finalY = tmsY(y, z);
+      url = url.replace('{x}', x).replace('{y}', finalY).replace('{z}', z);
+      return url;
+    }
+  }
+
+  // Hardcoded fallback (special layers + backward compatibility)
   switch (layerName) {
     case 'OpenStreetMap':  return `https://${pickS('abc')}.tile.openstreetmap.org/${z}/${x}/${y}.png`;
     case 'OpenTopoMap':    return `https://${pickS('abc')}.tile.opentopomap.org/${z}/${x}/${y}.png`;
     case '2GIS':           return `https://tile2.maps.2gis.com/tiles?x=${x}&y=${y}&z=${z}&v=1`;
     case 'Яндекс Схема':   return `https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x=${x}&y=${y}&z=${z}&scale=1&lang=ru_RU`;
     case 'Яндекс Гибрид':  return `https://core-sat.maps.yandex.net/tiles?l=sat&x=${x}&y=${y}&z=${z}&scale=1&lang=ru_RU`;
-    case 'Спутник Google': return `https://mt${gSub()}.google.com/vt/lyrs=s&x=${x}&y=${y}&z=${z}`;
-    case 'Гибрид Google':  return `https://mt${gSub()}.google.com/vt/lyrs=y&x=${x}&y=${y}&z=${z}`;
+    case 'Спутник Google': return `https://mt${pickS(['0','1','2','3'])}.google.com/vt/lyrs=s&x=${x}&y=${y}&z=${z}`;
+    case 'Гибрид Google':  return `https://mt${pickS(['0','1','2','3'])}.google.com/vt/lyrs=y&x=${x}&y=${y}&z=${z}`;
     case 'Спутник Bing':   return `https://ecn.t0.tiles.virtualearth.net/tiles/a${bingQuadkey(x,y,z)}?g=14000`;
     case 'Гибрид Bing':    return `https://ecn.t0.tiles.virtualearth.net/tiles/h${bingQuadkey(x,y,z)}?g=14000&mkt=ru-RU`;
     case 'Спутник ESRI':   return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`;
     case 'ESRI Clarity':   return `https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}?blankTile=false`;
     case 'Яндекс Спутник': return `https://sat0${pickS('1234')}.maps.yandex.net/tiles?l=sat&x=${x}&y=${y}&z=${z}&lang=ru_RU`;
     case 'Космоснимки рельеф': return `https://${pickS('ab')}tilecart.kosmosnimki.ru/rw/${z}/${x}/${y}.png`;
-    case 'Карты Google':   return `https://mt${gSub()}.google.com/vt/lyrs=m&hl=ru&x=${x}&y=${y}&z=${z}`;
-    case 'Рельеф Google':  return `https://mt${gSub()}.google.com/vt/lyrs=t&hl=ru&x=${x}&y=${y}&z=${z}`;
+    case 'Карты Google':   return `https://mt${pickS(['0','1','2','3'])}.google.com/vt/lyrs=m&hl=ru&x=${x}&y=${y}&z=${z}`;
+    case 'Рельеф Google':  return `https://mt${pickS(['0','1','2','3'])}.google.com/vt/lyrs=t&hl=ru&x=${x}&y=${y}&z=${z}`;
     case 'CyclOSM':        return `https://${pickS('abc')}.tile-cyclosm.openstreetmap.fr/cyclosm/${z}/${x}/${y}.png`;
     case 'OSM Humanitarian': return `https://tile-${pickS('ab')}.openstreetmap.fr/hot/${z}/${x}/${y}.png`;
     case 'TF Outdoors':    return `https://${pickS('abc')}.tile.thunderforest.com/outdoors/${z}/${x}/${y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38`;
@@ -3665,6 +4117,7 @@ function getTileUrl(layerName, x, y, z) {
     case 'MTB Map':        return `http://tile.mtbmap.cz/mtbmap_tiles/${z}/${x}/${y}.png`;
     case 'Michelin':       return `https://map1.viamichelin.com/map/mapdirect?map=viamichelin&z=${z}&x=${x}&y=${y}&format=png&version=201901161110&layer=background&locale=default&cs=1&protocol=https`;
     case 'ГГЦ 250м':       return `https://tiles.nakarte.me/ggc250/${z}/${x}/${tmsY(y,z)}`;
+    case 'ГГЦ 500м':       return `https://tiles.nakarte.me/ggc500/${z}/${x}/${tmsY(y,z)}`;
     case 'ГГЦ 1км':        return `https://tiles.nakarte.me/ggc1000/${z}/${x}/${tmsY(y,z)}`;
     case 'ГГЦ 2км':        return `https://tiles.nakarte.me/ggc2000/${z}/${x}/${tmsY(y,z)}`;
     case 'Генштаб 250м':   return `https://tiles.nakarte.me/topo001m/${z}/${x}/${tmsY(y,z)}`;
@@ -3676,6 +4129,7 @@ function getTileUrl(layerName, x, y, z) {
     case 'Windy рельеф':   return `https://tiles.windy.com/tiles/v8.1/darkmap/${z}/${x}/${y}.png`;
     case 'Горнолыжные трассы': return `https://tiles.opensnowmap.org/pistes/${z}/${x}/${y}.png`;
     case 'Лыжные трассы':  return `https://tiles.opensnowmap.org/piste/${z}/${x}/${y}.png`;
+    case 'Wikimapia':      { const s = (x % 4) + (y % 4) * 4; return `https://i${s}.wikimapia.org/?x=${x}&y=${y}&zoom=${z}&r=0&type=hybrid&lng=1`; }
     case 'Bing дороги':    { const q = bingQuadKey(x, y, z); return `https://ecn.t0.tiles.virtualearth.net/tiles/r${q}?g=14000&mkt=ru-RU&shading=hill`; }
     default: return null;
   }
@@ -3738,13 +4192,89 @@ async function downloadTiles() {
     const infoMax = dlFormat === 'locus' ? zStore(zMin) : zStore(zMax);
     db.run('INSERT INTO info VALUES (?, ?)', [infoMin, infoMax]);
 
-    // Скачивание тайлов
+    // Скачивание тайлов (базовый + второй слой + оверлеи → merge через Canvas)
+    const overlays = getSelectedOverlays();
+    const layer2Name = document.getElementById('dl-layer2-select').value;
+    const layer2Opacity = parseInt(document.getElementById('dl-layer2-opacity').value) / 100;
+    const needMerge = overlays.length > 0 || !!layer2Name;
+
     let done = 0, errors = 0;
     const total = est.total;
     const startTime = Date.now();
     const CONCURRENCY = 4;
 
     const insertStmt = db.prepare('INSERT OR IGNORE INTO tiles VALUES (?,?,?,?,?)');
+
+    // Загрузить один тайл как Image (через fetch + blob URL для CORS)
+    async function fetchTileAsImage(url, sig) {
+      try {
+        const resp = await fetch(url, { signal: sig });
+        if (!resp.ok) return null;
+        const blob = await resp.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => { URL.revokeObjectURL(blobUrl); resolve(img); };
+          img.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(null); };
+          img.src = blobUrl;
+        });
+      } catch (e) {
+        if (e.name === 'AbortError') return null;
+        return null;
+      }
+    }
+
+    // Pool of canvases for merge workers (one per worker to avoid conflicts)
+    const _mergeCanvases = Array.from({ length: CONCURRENCY }, () => {
+      const c = document.createElement('canvas');
+      c.width = 256; c.height = 256;
+      return { canvas: c, ctx: c.getContext('2d') };
+    });
+
+    // Склеить слои через Canvas → PNG blob
+    async function mergeTile(x, y, z, sig, workerIdx) {
+      const { canvas, ctx } = _mergeCanvases[workerIdx];
+      ctx.clearRect(0, 0, 256, 256);
+      let hasContent = false;
+
+      // 1. Базовый слой
+      const baseUrl = getTileUrl(layerName, x, y, z);
+      if (baseUrl) {
+        const img = await fetchTileAsImage(baseUrl, sig);
+        if (img) { ctx.drawImage(img, 0, 0, 256, 256); hasContent = true; }
+      }
+
+      // 2. Второй базовый слой с прозрачностью
+      if (layer2Name) {
+        const url2 = getTileUrl(layer2Name, x, y, z);
+        if (url2) {
+          const img2 = await fetchTileAsImage(url2, sig);
+          if (img2) {
+            ctx.globalAlpha = layer2Opacity;
+            ctx.drawImage(img2, 0, 0, 256, 256);
+            ctx.globalAlpha = 1.0;
+            hasContent = true;
+          }
+        }
+      }
+
+      // 3. Оверлеи (полная прозрачность — как есть)
+      for (const ovName of overlays) {
+        const ovUrl = getTileUrl(ovName, x, y, z);
+        if (!ovUrl) continue;
+        const img = await fetchTileAsImage(ovUrl, sig);
+        if (img) { ctx.drawImage(img, 0, 0, 256, 256); hasContent = true; }
+      }
+
+      if (!hasContent) return null;
+
+      return new Promise(resolve => {
+        canvas.toBlob(blob => {
+          if (!blob) { resolve(null); return; }
+          blob.arrayBuffer().then(buf => resolve(new Uint8Array(buf)));
+        }, 'image/png');
+      });
+    }
 
     // Генерируем все задачи
     const tasks = [];
@@ -3759,21 +4289,33 @@ async function downloadTiles() {
     // Параллельная загрузка с ограничением concurrency
     let idx = 0;
 
-    async function worker() {
+    async function worker(workerIdx) {
       while (true) {
         if (signal.aborted) return;
         const i = idx++;
         if (i >= tasks.length) return;
         const task = tasks[i];
-        const url = getTileUrl(layerName, task.x, task.y, task.z);
-        if (!url) { done++; errors++; continue; }
+
         try {
-          const resp = await fetch(url, { signal });
-          if (resp.ok) {
-            const buf = await resp.arrayBuffer();
-            insertStmt.run([task.x, task.y, zStore(task.z), 0, new Uint8Array(buf)]);
+          if (needMerge) {
+            // Скачать все слои и склеить
+            const merged = await mergeTile(task.x, task.y, task.z, signal, workerIdx);
+            if (merged) {
+              insertStmt.run([task.x, task.y, zStore(task.z), 0, merged]);
+            } else {
+              errors++;
+            }
           } else {
-            errors++;
+            // Один слой — без Canvas
+            const url = getTileUrl(layerName, task.x, task.y, task.z);
+            if (!url) { done++; errors++; continue; }
+            const resp = await fetch(url, { signal });
+            if (resp.ok) {
+              const buf = await resp.arrayBuffer();
+              insertStmt.run([task.x, task.y, zStore(task.z), 0, new Uint8Array(buf)]);
+            } else {
+              errors++;
+            }
           }
         } catch (e) {
           if (e.name === 'AbortError') return;
@@ -3795,7 +4337,7 @@ async function downloadTiles() {
     }
 
     const workers = [];
-    for (let i = 0; i < CONCURRENCY; i++) workers.push(worker());
+    for (let i = 0; i < CONCURRENCY; i++) workers.push(worker(i));
     await Promise.all(workers);
 
     insertStmt.free();
@@ -3931,7 +4473,10 @@ function collectState() {
       color: r.color,
       points: r.points.map(p => ({ lat: p.lat, lng: p.lng })),
       labels: r.labels || []
-    }))
+    })),
+    settings: {
+      defaultRadius: getDefaultRadius()
+    }
   };
   return state;
 }
@@ -3964,7 +4509,31 @@ function clearCurrentData() {
   routeIdCounter = 1;
 }
 
+function showClearConfirm() {
+  const wpCount = waypoints.length;
+  const trkCount = tracks.length;
+  const rteCount = routes.length;
+  const total = wpCount + trkCount + rteCount;
+  if (total === 0) { showToast('Карта уже пуста'); return; }
+  document.getElementById('clear-confirm-info').innerHTML =
+    `Точек: <b>${wpCount}</b> · Треков: <b>${trkCount}</b> · Маршрутов: <b>${rteCount}</b>`;
+  openModal('modal-clear-confirm');
+}
+
+function clearAllDataConfirmed() {
+  closeModal('modal-clear-confirm');
+  clearCurrentData();
+  if (waypointSets.length === 0) {
+    waypointSets.push({ id: 1, name: 'Основной', visible: true, waypoints: [] });
+    activeSetId = 1;
+    setIdCounter = 2;
+  }
+  undoStack.length = 0;
+  showToast('🗑 Все данные удалены');
+}
+
 function applyState(state) {
+  clearCurrentData();
   // 1. Restore waypoint sets
   if (state.waypointSets && state.waypointSets.length > 0) {
     state.waypointSets.forEach(s => {
@@ -3981,7 +4550,7 @@ function applyState(state) {
     state.waypoints.forEach(wp => {
       const latlng = L.latLng(wp.lat, wp.lng);
       wpCounter = wp.num;
-      const marker = L.marker(latlng, { draggable: true, icon: makeDivIcon(wp) });
+      const marker = L.marker(latlng, { draggable: !objectsLocked, icon: makeDivIcon(wp) });
       marker.wpData = {
         name: wp.name, desc: wp.desc || '', icon: wp.icon || '⬤',
         color: wp.color, radius: wp.radius || 0,
@@ -4033,6 +4602,12 @@ function applyState(state) {
       route.id = r.id;
     });
     routeIdCounter = state.counters?.routeIdCounter || routeIdCounter;
+  }
+
+  // 4.5. Restore settings
+  if (state.settings) {
+    const radiusEl = document.getElementById('setting-default-radius');
+    if (radiusEl && state.settings.defaultRadius != null) radiusEl.value = state.settings.defaultRadius;
   }
 
   // 5. Restore map view and layer
@@ -4240,12 +4815,12 @@ async function syncPull() {
       return;
     }
 
-    // Filter by checkboxes
-    if (!checks.waypoints) { delete state.waypoints; delete state.waypointSets; delete state.activeSetId; }
-    if (!checks.tracks) delete state.tracks;
-    if (!checks.routes) delete state.routes;
+    // Filter by checkboxes — сохраняем локальные данные для незатронутых типов
+    const localState = collectState();
+    if (!checks.waypoints) { state.waypoints = localState.waypoints; state.waypointSets = localState.waypointSets; state.activeSetId = localState.activeSetId; }
+    if (!checks.tracks) state.tracks = localState.tracks;
+    if (!checks.routes) state.routes = localState.routes;
 
-    clearCurrentData();
     applyState(state);
     saveState();
 
@@ -4810,7 +5385,7 @@ renderCustomLayers();
       <div style="font-size:13px;color:#5a7aaa;margin-bottom:20px">Навигация для трофи-рейдов</div>
       <div style="background:#0d1e38;border-radius:8px;padding:14px;margin-bottom:16px;text-align:left">
         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.6.0</span>
+          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.6.2</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:#5a7aaa">Платформа</span><span style="color:#e0e0e0">Linux / Windows</span>
@@ -4829,6 +5404,279 @@ renderCustomLayers();
     </div>
   </div>
 </div>
+
+<!-- ═══════════════════════════════════════════
+     МОДАЛЬНОЕ ОКНО: РОУТИНГ
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-routing">
+  <div class="modal" id="modal-routing-win" style="top:80px;right:20px;left:auto;width:380px">
+    <div class="modal-header" onmousedown="startDrag(event,'modal-routing-win')">
+      🛣 Маршрут по дорогам
+      <span class="modal-close" onclick="closeModal('modal-routing');clearOsrmRoute()">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="route-endpoint">
+        <div class="ep-marker ep-a">A</div>
+        <input type="text" id="route-from-input" placeholder="Откуда (адрес или клик)">
+        <button class="ep-pick" id="route-pick-a" onclick="startRoutePick('A')" title="Выбрать на карте">📍</button>
+      </div>
+      <div style="display:flex;justify-content:center">
+        <button class="routing-swap" onclick="swapRouteEndpoints()" title="Поменять местами">⇅</button>
+      </div>
+      <div class="route-endpoint">
+        <div class="ep-marker ep-b">B</div>
+        <input type="text" id="route-to-input" placeholder="Куда (адрес или клик)">
+        <button class="ep-pick" id="route-pick-b" onclick="startRoutePick('B')" title="Выбрать на карте">📍</button>
+      </div>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn-primary" onclick="calculateOsrmRoute()">🛣 Построить</button>
+        <button class="btn-secondary" onclick="clearOsrmRoute()">Очистить</button>
+      </div>
+      <div class="routing-info" id="routing-info">
+        <div class="routing-info-row">
+          <span class="routing-info-label">Расстояние</span>
+          <span class="routing-info-value" id="routing-distance">—</span>
+        </div>
+        <div class="routing-info-row">
+          <span class="routing-info-label">Время в пути</span>
+          <span class="routing-info-value" id="routing-duration">—</span>
+        </div>
+        <div class="routing-info-row">
+          <span class="routing-info-label">Средняя скорость</span>
+          <span class="routing-info-value" id="routing-speed">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// ПОИСК ПО АДРЕСУ (Nominatim)
+// ═══════════════════════════════════════════
+let searchTimeout = null;
+let searchMarker = null;
+
+function toggleSearch() {
+  const input = document.getElementById('search-input');
+  if (document.activeElement === input) { input.blur(); clearSearch(); }
+  else input.focus();
+}
+
+function clearSearch() {
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-results').innerHTML = '';
+  document.getElementById('search-results').classList.remove('has-results');
+  document.getElementById('search-clear').style.display = 'none';
+  if (searchMarker) { map.removeLayer(searchMarker); searchMarker = null; }
+}
+
+document.getElementById('search-input').addEventListener('input', function() {
+  const q = this.value.trim();
+  document.getElementById('search-clear').style.display = q ? 'block' : 'none';
+  clearTimeout(searchTimeout);
+  if (q.length < 3) {
+    document.getElementById('search-results').innerHTML = '';
+    document.getElementById('search-results').classList.remove('has-results');
+    return;
+  }
+  searchTimeout = setTimeout(() => nominatimSearch(q), 400);
+});
+
+document.getElementById('search-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') { toggleSearch(); e.stopPropagation(); }
+});
+
+async function nominatimSearch(query) {
+  const resultsEl = document.getElementById('search-results');
+  resultsEl.innerHTML = '<div style="padding:10px 12px;color:#5a7aaa;font-size:12px">Поиск...</div>';
+  resultsEl.classList.add('has-results');
+  try {
+    const resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&accept-language=ru`, {
+      headers: { 'User-Agent': 'TrophyNavigator/0.6' }
+    });
+    const data = await resp.json();
+    if (!data.length) {
+      resultsEl.innerHTML = '<div style="padding:10px 12px;color:#5a7aaa;font-size:12px">Ничего не найдено</div>';
+      return;
+    }
+    resultsEl.innerHTML = data.map((r, i) => {
+      const name = escapeHtml(r.display_name.split(',')[0]);
+      const rest = escapeHtml(r.display_name.split(',').slice(1, 3).join(','));
+      return `<div class="search-result-item" style="justify-content:space-between">
+        <div style="display:flex;gap:8px;flex:1;cursor:pointer" onclick="goToSearchResult(${r.lat},${r.lon},'${name.replace(/'/g,"\\'")}')">
+          <span style="color:#4a8adf;font-size:14px">📍</span>
+          <div><div class="search-result-name">${name}</div><div class="search-result-type">${rest}</div></div>
+        </div>
+        <div style="display:flex;gap:3px;flex-shrink:0;align-items:center">
+          <span title="Маршрут отсюда" style="cursor:pointer;font-size:11px;background:#1a5a1a;color:#4adf7a;border-radius:3px;padding:2px 5px" onclick="event.stopPropagation();setRoutePoint('A',${r.lat},${r.lon},'${name.replace(/'/g,"\\'")}')">A</span>
+          <span title="Маршрут сюда" style="cursor:pointer;font-size:11px;background:#5a1a1a;color:#e07070;border-radius:3px;padding:2px 5px" onclick="event.stopPropagation();setRoutePoint('B',${r.lat},${r.lon},'${name.replace(/'/g,"\\'")}')">B</span>
+          <span title="Добавить точку" style="cursor:pointer;font-size:11px;background:#1a2a5a;color:#7ec8ff;border-radius:3px;padding:2px 5px" onclick="event.stopPropagation();addWaypointFromSearch(${r.lat},${r.lon},'${name.replace(/'/g,"\\'")}')">+</span>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (err) {
+    resultsEl.innerHTML = '<div style="padding:10px 12px;color:#e07070;font-size:12px">Ошибка поиска</div>';
+  }
+}
+
+function goToSearchResult(lat, lon, name) {
+  if (searchMarker) map.removeLayer(searchMarker);
+  const ll = L.latLng(lat, lon);
+  map.flyTo(ll, 15, { duration: 1 });
+  const safeName = escapeHtml(name);
+  searchMarker = L.marker(ll, {
+    icon: L.divIcon({
+      className: '',
+      html: '<div style="background:#4a8adf;width:14px;height:14px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(74,138,223,0.8)"></div>',
+      iconSize: [14,14], iconAnchor: [7,7]
+    })
+  }).addTo(map).bindPopup(`<b>${safeName}</b><br><span style="font-size:11px;color:#7a9aba">${lat.toFixed(5)}, ${lon.toFixed(5)}</span>`).openPopup();
+  document.getElementById('search-results').classList.remove('has-results');
+  showToast('✓ ' + name);
+}
+
+// ═══════════════════════════════════════════
+// РОУТИНГ ПО ДОРОГАМ (OSRM)
+// ═══════════════════════════════════════════
+let osrmRouteLayer = null;
+let osrmMarkersLayer = null;
+let routeFromLatLng = null;
+let routeToLatLng = null;
+let routePickMode = null;
+
+function startRoutePick(point) {
+  routePickMode = point;
+  document.getElementById('route-pick-a').classList.toggle('picking', point === 'A');
+  document.getElementById('route-pick-b').classList.toggle('picking', point === 'B');
+  showToast('Кликните на карте — точка ' + point);
+}
+
+map.on('click', function(e) {
+  if (!routePickMode) return;
+  if (routePickMode === 'A') {
+    routeFromLatLng = e.latlng;
+    document.getElementById('route-from-input').value = e.latlng.lat.toFixed(5) + ', ' + e.latlng.lng.toFixed(5);
+  } else {
+    routeToLatLng = e.latlng;
+    document.getElementById('route-to-input').value = e.latlng.lat.toFixed(5) + ', ' + e.latlng.lng.toFixed(5);
+  }
+  document.getElementById('route-pick-a').classList.remove('picking');
+  document.getElementById('route-pick-b').classList.remove('picking');
+  routePickMode = null;
+});
+
+function swapRouteEndpoints() {
+  const tmp = routeFromLatLng; routeFromLatLng = routeToLatLng; routeToLatLng = tmp;
+  const a = document.getElementById('route-from-input'), b = document.getElementById('route-to-input');
+  const tv = a.value; a.value = b.value; b.value = tv;
+  if (osrmRouteLayer) calculateOsrmRoute();
+}
+
+async function resolveEndpoint(inputId, currentLatLng) {
+  const val = document.getElementById(inputId).value.trim();
+  // Если есть сохранённые координаты — проверяем что текст не изменился вручную
+  if (currentLatLng) {
+    const expected = currentLatLng.lat.toFixed(5) + ', ' + currentLatLng.lng.toFixed(5);
+    if (val.includes(expected)) return currentLatLng;
+    // Текст изменён — сбросить и геокодировать заново
+  }
+  if (!val) return null;
+  const m = val.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+  if (m) return L.latLng(parseFloat(m[1]), parseFloat(m[2]));
+  try {
+    const resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=1&accept-language=ru`, {
+      headers: { 'User-Agent': 'TrophyNavigator/0.6' }
+    });
+    const data = await resp.json();
+    if (data.length) {
+      document.getElementById(inputId).value = data[0].display_name.split(',')[0] + ' (' + parseFloat(data[0].lat).toFixed(4) + ', ' + parseFloat(data[0].lon).toFixed(4) + ')';
+      return L.latLng(parseFloat(data[0].lat), parseFloat(data[0].lon));
+    }
+  } catch(e) {}
+  return null;
+}
+
+async function calculateOsrmRoute() {
+  routeFromLatLng = await resolveEndpoint('route-from-input', routeFromLatLng);
+  if (!routeFromLatLng) routeFromLatLng = null;
+  routeToLatLng = await resolveEndpoint('route-to-input', routeToLatLng);
+  if (!routeToLatLng) routeToLatLng = null;
+  if (!routeFromLatLng || !routeToLatLng) { showToast('Укажите обе точки маршрута'); return; }
+
+  showToast('Строим маршрут...');
+  try {
+    const resp = await fetch(`https://router.project-osrm.org/route/v1/driving/${routeFromLatLng.lng},${routeFromLatLng.lat};${routeToLatLng.lng},${routeToLatLng.lat}?overview=full&geometries=geojson`);
+    const data = await resp.json();
+    if (data.code !== 'Ok' || !data.routes?.length) { showToast('Маршрут не найден'); return; }
+
+    const route = data.routes[0];
+    const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+
+    if (osrmRouteLayer) map.removeLayer(osrmRouteLayer);
+    if (osrmMarkersLayer) map.removeLayer(osrmMarkersLayer);
+
+    osrmRouteLayer = L.layerGroup([
+      L.polyline(coords, { color: '#1a3a6a', weight: 8, opacity: 0.6, interactive: false }),
+      L.polyline(coords, { color: '#4a8adf', weight: 4, opacity: 0.9, dashArray: '12, 8', interactive: false })
+    ]).addTo(map);
+
+    osrmMarkersLayer = L.layerGroup([
+      L.marker(routeFromLatLng, { icon: L.divIcon({ className: '', html: '<div style="background:#4adf7a;width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(74,223,122,0.8);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff">A</div>', iconSize:[18,18], iconAnchor:[9,9] }) }),
+      L.marker(routeToLatLng, { icon: L.divIcon({ className: '', html: '<div style="background:#e07070;width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(224,112,112,0.8);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff">B</div>', iconSize:[18,18], iconAnchor:[9,9] }) })
+    ]).addTo(map);
+
+    map.fitBounds(L.polyline(coords).getBounds().pad(0.1));
+
+    const distKm = (route.distance / 1000).toFixed(1);
+    const durMin = Math.round(route.duration / 60);
+    const hours = Math.floor(durMin / 60), mins = durMin % 60;
+    const durStr = hours > 0 ? `${hours} ч ${mins} мин` : `${mins} мин`;
+    const speedKmh = route.duration > 0 ? ((route.distance / 1000) / (route.duration / 3600)).toFixed(0) : '—';
+
+    document.getElementById('routing-distance').textContent = distKm + ' км';
+    document.getElementById('routing-duration').textContent = durStr;
+    document.getElementById('routing-speed').textContent = speedKmh + ' км/ч';
+    document.getElementById('routing-info').classList.add('has-route');
+    showToast(`✓ Маршрут: ${distKm} км, ${durStr}`);
+  } catch (err) {
+    showToast('Ошибка запроса маршрута');
+    console.error('OSRM error:', err);
+  }
+}
+
+function setRoutePoint(point, lat, lon, name) {
+  const ll = L.latLng(lat, lon);
+  if (point === 'A') {
+    routeFromLatLng = ll;
+    document.getElementById('route-from-input').value = name;
+  } else {
+    routeToLatLng = ll;
+    document.getElementById('route-to-input').value = name;
+  }
+  openModal('modal-routing');
+  document.getElementById('search-results').classList.remove('has-results');
+  if (routeFromLatLng && routeToLatLng) calculateOsrmRoute();
+  else showToast('Точка ' + point + ' задана: ' + name);
+}
+
+function addWaypointFromSearch(lat, lon, name) {
+  addWaypoint(L.latLng(lat, lon), name);
+  document.getElementById('search-results').classList.remove('has-results');
+  showToast('Точка добавлена: ' + name);
+}
+
+function clearOsrmRoute() {
+  if (osrmRouteLayer) { map.removeLayer(osrmRouteLayer); osrmRouteLayer = null; }
+  if (osrmMarkersLayer) { map.removeLayer(osrmMarkersLayer); osrmMarkersLayer = null; }
+  routeFromLatLng = null; routeToLatLng = null; routePickMode = null;
+  document.getElementById('route-from-input').value = '';
+  document.getElementById('route-to-input').value = '';
+  document.getElementById('routing-info').classList.remove('has-route');
+  document.getElementById('route-pick-a').classList.remove('picking');
+  document.getElementById('route-pick-b').classList.remove('picking');
+}
+</script>
 
 </body>
 </html>
