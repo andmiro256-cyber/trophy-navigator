@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🧭 Trophy Navigator Desktop v0.6.2</title>
+<title>🧭 Trophy Navigator Desktop v0.6.3</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -600,7 +600,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.6.2</span>
+  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.6.3</span>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -5597,7 +5597,7 @@ function showTrialBanner() {
     banner.style.background = 'rgba(42,13,13,0.95)';
     banner.style.color = '#f08080';
   } else {
-    banner.innerHTML = `⏳ Пробный период: осталось ${daysLeft} дн.<br><span style="font-size:11px;color:#9ab8d0">Лицензия: 1000₽/год или бесплатно с RaceNav Full</span>`;
+    banner.innerHTML = `⏳ Пробный период: осталось ${daysLeft} дн.<br><span style="font-size:11px;color:#9ab8d0">Лицензия: 1000₽/год или бесплатно с Trophy Navigator Full</span>`;
   }
   banner.innerHTML += `<span onclick="this.parentElement.remove()" style="position:absolute;top:4px;right:8px;cursor:pointer;color:#7a9aba;font-size:14px">✕</span>`;
   document.body.appendChild(banner);
@@ -5803,7 +5803,7 @@ renderCustomLayers();
       <!-- Информация -->
       <div style="background:#0d1e38;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.6.2</span>
+          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.6.3</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:#5a7aaa">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
@@ -5862,7 +5862,7 @@ renderCustomLayers();
           <div>• Undo (Ctrl+Z) — отмена последнего действия</div>
 
           <div style="color:#5a7aaa;font-size:11px;text-transform:uppercase;margin:12px 0 4px">⟲ Синхронизация</div>
-          <div>• Синхронизация с Android (RaceNav) через сервер</div>
+          <div>• Синхронизация с Android (Trophy Navigator) через сервер</div>
           <div>• Привязка по email — одна учётка на все устройства</div>
           <div>• Выбор данных для отправки/получения</div>
 
