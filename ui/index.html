@@ -578,7 +578,7 @@
   <button class="tb-btn settings-btn" onclick="showToast('Сервер — в разработке')" title="Подключение к серверу">☁ Сервер</button>
   <button class="tb-btn" onclick="showClearConfirm()" title="Удалить все данные с карты" style="color:#e07070">🗑</button>
   <button class="tb-btn settings-btn" onclick="openModal('modal-settings')" title="Настройки программы">⚙ Настройки</button>
-  <button class="tb-btn settings-btn" onclick="openModal('modal-about')" title="О программе">ℹ О программе</button>
+  <button class="tb-btn" onclick="openModal('modal-about')" title="О программе" style="font-size:16px">💡</button>
   <div class="tb-sep"></div>
   <button class="tb-btn" id="btn-map-layer" onclick="openModal('modal-layers')" title="Выбор карты и слоёв">
     🗺 <span class="layer-name" id="current-layer-name">OpenStreetMap</span> ▾
@@ -1060,7 +1060,7 @@
       </div>
       <div class="btn-row">
         <button class="btn-secondary" onclick="closeModal('modal-settings')">Закрыть</button>
-        <button class="btn-primary" onclick="closeModal('modal-settings');showToast('Настройки сохранены')">Сохранить</button>
+        <button class="btn-primary" onclick="closeModal('modal-settings');saveState();showToast('Настройки сохранены')">Сохранить</button>
       </div>
     </div>
   </div>
@@ -1288,10 +1288,18 @@
         </div>
       </div>
 
-      <div class="sync-section-title">Ключ активации</div>
+      <div class="sync-section-title">Аккаунт</div>
       <div class="prop-field">
-        <label>Ключ (определяет группу данных)</label>
-        <input id="sync-api-key" value="TND-A4F2-X9B1-K3M7" placeholder="TND-XXXX-XXXX-XXXX">
+        <label>Email (привязка лицензии и данных)</label>
+        <div style="display:flex;gap:6px">
+          <input id="sync-email" placeholder="your@email.com" style="flex:1">
+          <button class="btn-primary" style="padding:4px 10px;font-size:11px;white-space:nowrap" onclick="registerSyncEmail()">Привязать</button>
+        </div>
+      </div>
+      <div id="sync-email-status" style="font-size:11px;color:#5a7aaa;margin-bottom:8px"></div>
+      <div class="prop-field">
+        <label>Ключ синхронизации (автоматически по email)</label>
+        <input id="sync-api-key" value="" placeholder="TND-XXXX-XXXX-XXXX" readonly style="opacity:0.7">
       </div>
 
       <!-- Отправить на Android -->
@@ -2566,26 +2574,73 @@ function showSaveGPXDialog() {
   if (waypoints.length === 0 && tracks.length === 0 && routes.length === 0) {
     showToast('Нет данных для сохранения'); return;
   }
-  document.getElementById('save-gpx-wpt-label').textContent = `Точки (${waypoints.length})`;
-  document.getElementById('save-gpx-trk-label').textContent = `Треки (${tracks.length})`;
-  document.getElementById('save-gpx-rte-label').textContent = `Маршруты (${routes.length})`;
-  document.getElementById('save-gpx-wpt').checked = waypoints.length > 0;
-  document.getElementById('save-gpx-trk').checked = tracks.length > 0;
-  document.getElementById('save-gpx-rte').checked = routes.length > 0;
-  document.getElementById('save-gpx-wpt').disabled = waypoints.length === 0;
-  document.getElementById('save-gpx-trk').disabled = tracks.length === 0;
-  document.getElementById('save-gpx-rte').disabled = routes.length === 0;
+  const el = document.getElementById('save-gpx-details');
+  let html = '';
+
+  // Наборы точек
+  if (waypointSets.length > 0) {
+    html += '<div style="font-size:11px;color:#5a7aaa;margin:8px 0 4px;text-transform:uppercase">📍 Наборы точек</div>';
+    waypointSets.forEach(s => {
+      const wps = waypoints.filter(m => m._setId === s.id);
+      const dis = wps.length === 0 ? 'disabled' : '';
+      html += `<label style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;color:#c0d8ff;cursor:pointer">
+        <input type="checkbox" class="save-gpx-set-cb" data-set-id="${s.id}" ${wps.length > 0 ? 'checked' : ''} ${dis} style="accent-color:#4a8adf">
+        ${escapeHtml(s.name)} <span style="color:#5a7aaa">(${wps.length})</span>
+      </label>`;
+    });
+  }
+
+  // Треки
+  if (tracks.length > 0) {
+    html += '<div style="font-size:11px;color:#5a7aaa;margin:8px 0 4px;text-transform:uppercase">〜 Треки</div>';
+    tracks.forEach(t => {
+      html += `<label style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;color:#c0d8ff;cursor:pointer">
+        <input type="checkbox" class="save-gpx-trk-cb" data-track-id="${t.id}" checked style="accent-color:#4a8adf">
+        <span style="color:${t.color};font-size:10px">●</span> ${escapeHtml(t.name)} <span style="color:#5a7aaa">(${t.points.length} точек)</span>
+      </label>`;
+    });
+  }
+
+  // Маршруты
+  if (routes.length > 0) {
+    html += '<div style="font-size:11px;color:#5a7aaa;margin:8px 0 4px;text-transform:uppercase">⚑ Маршруты</div>';
+    routes.forEach(r => {
+      html += `<label style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;color:#c0d8ff;cursor:pointer">
+        <input type="checkbox" class="save-gpx-rte-cb" data-route-id="${r.id}" checked style="accent-color:#4a8adf">
+        <span style="color:${r.color};font-size:10px">●</span> ${escapeHtml(r.name)} <span style="color:#5a7aaa">(${r.points.length} КП)</span>
+      </label>`;
+    });
+  }
+
+  el.innerHTML = html;
   openModal('modal-save-gpx');
 }
 
-function saveAllGPX() {
-  const includeWpt = document.getElementById('save-gpx-wpt')?.checked !== false;
-  const includeTrk = document.getElementById('save-gpx-trk')?.checked !== false;
-  const includeRte = document.getElementById('save-gpx-rte')?.checked !== false;
+function saveSelectedGPX() {
+  const selectedSetIds = new Set([...document.querySelectorAll('.save-gpx-set-cb:checked')].map(cb => parseInt(cb.dataset.setId)));
+  const selectedTrackIds = new Set([...document.querySelectorAll('.save-gpx-trk-cb:checked')].map(cb => parseInt(cb.dataset.trackId)));
+  const selectedRouteIds = new Set([...document.querySelectorAll('.save-gpx-rte-cb:checked')].map(cb => parseInt(cb.dataset.routeId)));
+
+  const selWaypoints = waypoints.filter(m => selectedSetIds.has(m._setId));
+  const selTracks = tracks.filter(t => selectedTrackIds.has(t.id));
+  const selRoutes = routes.filter(r => selectedRouteIds.has(r.id));
+
+  if (selWaypoints.length === 0 && selTracks.length === 0 && selRoutes.length === 0) {
+    showToast('Выберите хотя бы один объект'); return;
+  }
+
   closeModal('modal-save-gpx');
+  saveGPXWithData(selWaypoints, selTracks, selRoutes);
+}
+
+function saveAllGPX() {
+  // Вызов из Ctrl+S без диалога — сохранить всё
+  saveGPXWithData(waypoints, tracks, routes);
+}
+
+function saveGPXWithData(selWaypoints, selTracks, selRoutes) {
   let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">\n';
-  if (!includeWpt && !includeTrk && !includeRte) { showToast('Выберите хотя бы один тип данных'); return; }
-  (includeWpt ? waypoints : []).forEach(m => {
+  selWaypoints.forEach(m => {
     const d = m.wpData;
     gpx += `<wpt lat="${d.lat.toFixed(6)}" lon="${d.lng.toFixed(6)}">`;
     gpx += `<name>${escapeXml(d.name)}</name>`;
@@ -2594,7 +2649,7 @@ function saveAllGPX() {
     gpx += `<extensions><tnd:color>${escapeXml(d.color || '#df7a4a')}</tnd:color><tnd:radius>${d.radius || 0}</tnd:radius></extensions>`;
     gpx += '</wpt>\n';
   });
-  (includeTrk ? tracks : []).forEach(t => {
+  selTracks.forEach(t => {
     gpx += `<trk><name>${escapeXml(t.name)}</name><trkseg>`;
     t.points.forEach((p, i) => {
       gpx += `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
@@ -2607,7 +2662,7 @@ function saveAllGPX() {
     });
     gpx += '</trkseg></trk>';
   });
-  (includeRte ? routes : []).forEach(r => {
+  selRoutes.forEach(r => {
     gpx += `<rte><name>${escapeXml(r.name)}</name>`;
     r.points.forEach((p, i) => gpx += `<rtept lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}"><name>${escapeXml(r.labels?.[i] || `КП${i+1}`)}</name></rtept>`);
     gpx += '</rte>';
@@ -2988,7 +3043,14 @@ map.getContainer().addEventListener('contextmenu', e => {
 function openModal(id) {
   document.getElementById(id).classList.add('open');
   if (id === 'modal-wpts') updateWptTable();
-  if (id === 'modal-about') checkForUpdates(true);
+  if (id === 'modal-about') {
+    checkForUpdates(true);
+    document.getElementById('about-platform').textContent = navigator.platform || 'Unknown';
+    const licEl = document.getElementById('about-license');
+    if (isLicensed()) { licEl.textContent = '✓ Активна'; licEl.style.color = '#4adf7a'; }
+    else if (getTrialDaysLeft() > 0) { licEl.textContent = `Триал: ${getTrialDaysLeft()} дн.`; licEl.style.color = '#e0a050'; }
+    else { licEl.textContent = '🔒 Нет лицензии'; licEl.style.color = '#e07070'; }
+  }
 }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function closeAllModals() {
@@ -3220,6 +3282,11 @@ function cancelTrackDraw() {
   updateTrackList();
   showToast('Рисование трека отменено');
 }
+function renameTrack(id, newName) {
+  const t = tracks.find(t => t.id === id);
+  if (t) { t.name = newName.trim() || t.name; showToast('Трек переименован: ' + t.name); }
+}
+
 function trackLen(t) {
   let d = 0;
   for (let i = 1; i < t.points.length; i++) d += t.points[i-1].distanceTo(t.points[i]);
@@ -3368,7 +3435,9 @@ function updateTrackList() {
       <input type="checkbox" class="track-play-cb" data-track-id="${t.id}" onclick="event.stopPropagation()" style="accent-color:${t.color};margin-right:4px" title="Выбрать для плеера">
       <div class="track-color" style="background:${t.color};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px" title="Скрыть/показать" onclick="event.stopPropagation();toggleTrackVisible(${t.id})">${t.visible !== false ? '👁' : '○'}</div>
       <div class="track-info">
-        <div class="track-name">${t.name}</div>
+        <input class="track-name" value="${escapeHtml(t.name)}" onclick="event.stopPropagation()" onchange="renameTrack(${t.id},this.value)"
+          style="background:transparent;border:none;border-bottom:1px solid transparent;color:#c0d8ff;font-size:13px;font-weight:500;outline:none;width:100%;padding:0"
+          onfocus="this.style.borderBottomColor='#4a8adf'" onblur="this.style.borderBottomColor='transparent'">
         <div class="track-meta">${t.points.length} точек · ${km} км</div>
       </div>
     </div>`;
@@ -3461,6 +3530,22 @@ function loadGPXTracks(text, fname, options = {}) {
     const trkExt = trk.querySelector(':scope > extensions');
     const trkColor = trkExt?.querySelector('color')?.textContent?.trim() || null;
     const t = createTrackFromPoints(points, name, { color: trkColor || undefined });
+    // Вычислить скорость из расстояния/времени если нет в данных
+    for (let i = 1; i < pointsData.length; i++) {
+      if (pointsData[i].speed == null && pointsData[i].time && pointsData[i-1].time) {
+        try {
+          const dt = (new Date(pointsData[i].time) - new Date(pointsData[i-1].time)) / 1000; // секунды
+          if (dt > 0) {
+            const dist = points[i-1].distanceTo(points[i]); // метры
+            pointsData[i].speed = dist / dt; // м/с
+          }
+        } catch(_) {}
+      }
+      // Вычислить курс если нет
+      if (pointsData[i].course == null && i > 0) {
+        pointsData[i].course = calcBearing(points[i-1].lat, points[i-1].lng, points[i].lat, points[i].lng);
+      }
+    }
     t.pointsData = pointsData;
     importedTracks.push(t);
     count++;
@@ -4649,7 +4734,7 @@ function clearAllDataConfirmed() {
   if (waypointSets.length === 0) {
     waypointSets.push({ id: 1, name: 'Основной', visible: true, waypoints: [] });
     activeSetId = 1;
-    setIdCounter = 2;
+    waypointSetIdCounter = 2;
   }
   undoStack.length = 0;
   showToast('🗑 Все данные удалены');
@@ -4839,7 +4924,8 @@ function getSyncConfig() {
   return {
     server: document.getElementById('sync-server').value.trim(),
     port: document.getElementById('sync-port').value.trim(),
-    apiKey: document.getElementById('sync-api-key').value.trim()
+    apiKey: document.getElementById('sync-api-key').value.trim(),
+    email: document.getElementById('sync-email').value.trim()
   };
 }
 
@@ -4855,6 +4941,7 @@ function loadSyncConfig() {
     if (cfg.server) document.getElementById('sync-server').value = cfg.server;
     if (cfg.port) document.getElementById('sync-port').value = cfg.port;
     if (cfg.apiKey) document.getElementById('sync-api-key').value = cfg.apiKey;
+    if (cfg.email) document.getElementById('sync-email').value = cfg.email;
   } catch (e) {}
 }
 
@@ -4896,6 +4983,36 @@ function getSyncChecks() {
   };
 }
 
+async function registerSyncEmail() {
+  const email = document.getElementById('sync-email').value.trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showToast('Введите корректный email'); return;
+  }
+  const machineId = await getMachineIdAsync();
+  const statusEl = document.getElementById('sync-email-status');
+  statusEl.textContent = 'Регистрация...';
+  try {
+    const cfg = getSyncConfig();
+    const resp = await fetch(`http://${cfg.server}:${cfg.port}/api/email/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, deviceId: machineId, deviceType: 'desktop', syncKey: cfg.apiKey || undefined })
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      document.getElementById('sync-api-key').value = data.syncKey;
+      const licStatus = data.licensed ? `✅ Лицензия: ${data.plan}` : '⚠ Нет лицензии';
+      statusEl.innerHTML = `✅ Привязан · ${escapeHtml(String(data.devices))} устройств · ${escapeHtml(licStatus)}`;
+      saveSyncConfig();
+      showToast('Email привязан: ' + email);
+    } else {
+      statusEl.innerHTML = `<span style="color:#e07070">Ошибка: ${escapeHtml(String(data.error))}</span>`;
+    }
+  } catch (e) {
+    statusEl.innerHTML = '<span style="color:#e07070">Нет связи с сервером</span>';
+  }
+}
+
 function openSyncModal() {
   updateSyncCounts();
   openModal('modal-sync');
@@ -4923,7 +5040,7 @@ async function checkSyncServerInfo() {
       const by = meta.updatedBy === 'android' ? '📱 Android' : meta.updatedBy === 'desktop' ? '💻 Desktop' : meta.updatedBy || '—';
       document.getElementById('sync-server-info').innerHTML =
         `На сервере: ${meta.waypoints || 0} точек, ${meta.tracks || 0} треков, ${meta.routes || 0} маршрутов<br>` +
-        `<span style="font-size:10px">Обновлено: ${updated} · ${by}</span>`;
+        `<span style="font-size:10px">Обновлено: ${escapeHtml(updated)} · ${escapeHtml(by)}</span>`;
     }
   } catch (e) {
     document.getElementById('sync-server-info').innerHTML = '<span style="color:#e07070">Нет связи с сервером</span>';
@@ -5321,9 +5438,11 @@ async function checkLicenseOnServer() {
     if (!resp.ok) return null;
     const data = await resp.json();
     if (data.licensed) {
+      // Рассчитать expiry из daysLeft если сервер не вернул его напрямую
+      const expiry = data.expiry || new Date(Date.now() + (data.daysLeft || 365) * 86400000).toISOString();
       localStorage.setItem('tnd-license', JSON.stringify({
         plan: data.plan,
-        expiry: data.expiry,
+        expiry: expiry,
         checkedAt: new Date().toISOString()
       }));
     }
@@ -5547,33 +5666,104 @@ renderCustomLayers();
      МОДАЛ: О ПРОГРАММЕ
 ════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-about">
-  <div class="modal" id="modal-about-win" style="top:80px;left:50%;transform:translateX(-50%);width:420px">
+  <div class="modal" id="modal-about-win" style="top:40px;left:50%;transform:translateX(-50%);width:520px;resize:both;overflow:auto;min-width:380px;min-height:300px;z-index:5000">
     <div class="modal-header" onmousedown="startDrag(event,'modal-about-win')">
-      <span>🏆 О программе</span>
+      <span>🏆 Trophy Navigator Desktop</span>
       <span class="modal-close" onclick="closeModal('modal-about')">✕</span>
     </div>
-    <div class="modal-body" style="text-align:center;padding:24px 20px">
-      <div style="font-size:48px;margin-bottom:12px">🏆</div>
-      <div style="font-size:20px;font-weight:700;color:#7ec8ff;margin-bottom:4px">Trophy Navigator Desktop</div>
-      <div style="font-size:13px;color:#5a7aaa;margin-bottom:20px">Навигация для трофи-рейдов</div>
-      <div style="background:#0d1e38;border-radius:8px;padding:14px;margin-bottom:16px;text-align:left">
-        <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a3a6a">
+    <div class="modal-body" style="padding:16px;overflow-y:auto;max-height:calc(100vh - 120px)">
+      <!-- Шапка -->
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:36px;margin-bottom:6px">🏆</div>
+        <div style="font-size:18px;font-weight:700;color:#7ec8ff">Trophy Navigator Desktop</div>
+        <div style="font-size:12px;color:#5a7aaa">Навигация для трофи-рейдов и экспедиций</div>
+      </div>
+
+      <!-- Информация -->
+      <div style="background:#0d1e38;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
+        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.6.2</span>
         </div>
-        <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:#5a7aaa">Платформа</span><span style="color:#e0e0e0">Linux / Windows</span>
+        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
+          <span style="color:#5a7aaa">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
         </div>
-        <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:#5a7aaa">Лицензия</span><span style="color:#4adf7a">✓ Активна</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:4px 0">
-          <span style="color:#5a7aaa">Владелец</span><span style="color:#e0e0e0">Андрей</span>
+        <div style="display:flex;justify-content:space-between;padding:3px 0">
+          <span style="color:#5a7aaa">Лицензия</span><span id="about-license" style="color:#4adf7a">—</span>
         </div>
       </div>
-      <button class="tb-btn" id="btn-check-update" onclick="checkForUpdates()" style="width:100%;justify-content:center;margin-bottom:8px">
+
+      <button class="tb-btn" id="btn-check-update" onclick="checkForUpdates()" style="width:100%;justify-content:center;margin-bottom:12px">
         🔄 Проверить обновление
       </button>
-      <div id="update-status" style="font-size:12px;color:#5a7aaa;min-height:18px"></div>
+      <div id="update-status" style="font-size:12px;color:#5a7aaa;min-height:18px;text-align:center;margin-bottom:12px"></div>
+
+      <!-- Описание функций -->
+      <details open style="margin-bottom:8px">
+        <summary style="font-size:13px;color:#7ec8ff;cursor:pointer;padding:6px 0;font-weight:600">Возможности программы</summary>
+        <div style="font-size:12px;color:#c0d8ff;line-height:1.8;padding:8px 0">
+
+          <div style="color:#5a7aaa;font-size:11px;text-transform:uppercase;margin:8px 0 4px">🗺 Карты</div>
+          <div>• 26+ базовых карт (Google, Яндекс, OSM, ESRI, ГГЦ, Генштаб и др.)</div>
+          <div>• 11 оверлейных слоёв (GPS треки, тропы, подписи, Wikimapia)</div>
+          <div>• Пользовательские карты — добавьте любой тайловый сервер</div>
+          <div>• Каталог карт обновляется с сервера автоматически</div>
+          <div>• Скачивание карт для офлайн (RMaps/OsmAnd) с наложением слоёв</div>
+
+          <div style="color:#5a7aaa;font-size:11px;text-transform:uppercase;margin:12px 0 4px">📍 Точки (Waypoints)</div>
+          <div>• Создание точек кликом на карту или по координатам</div>
+          <div>• Наборы точек — группировка по категориям</div>
+          <div>• Радиус сближения — настраиваемый для каждой точки</div>
+          <div>• Иконки Garmin — автоматическое преобразование символов</div>
+          <div>• Импорт/экспорт: GPX, WPT (OziExplorer), CSV</div>
+
+          <div style="color:#5a7aaa;font-size:11px;text-transform:uppercase;margin:12px 0 4px">〜 Треки</div>
+          <div>• Рисование треков на карте с отображением длины</div>
+          <div>• Редактирование: перетаскивание точек, удаление, разбиение</div>
+          <div>• Импорт GPX/PLT с сохранением высоты и скорости</div>
+          <div>• Настраиваемый цвет, толщина, размер точек</div>
+
+          <div style="color:#5a7aaa;font-size:11px;text-transform:uppercase;margin:12px 0 4px">⚑ Маршруты</div>
+          <div>• Создание маршрутов по контрольным точкам</div>
+          <div>• Перетаскивание точек в списке (drag & drop)</div>
+          <div>• Расстояние и азимут между точками</div>
+          <div>• Импорт/экспорт: GPX, RTE (OziExplorer)</div>
+
+          <div style="color:#5a7aaa;font-size:11px;text-transform:uppercase;margin:12px 0 4px">🔍 Поиск и роутинг</div>
+          <div>• Поиск по адресу (Nominatim / OpenStreetMap)</div>
+          <div>• Результаты поиска → сразу в маршрут (A/B) или точку</div>
+          <div>• Маршрут по дорогам (OSRM) — расстояние, время, скорость</div>
+          <div>• ПКМ на карте → «Маршрут отсюда / сюда»</div>
+
+          <div style="color:#5a7aaa;font-size:11px;text-transform:uppercase;margin:12px 0 4px">📐 Инструменты</div>
+          <div>• Линейка (M) — измерение расстояний с азимутом</div>
+          <div>• Блокировка объектов (K) — защита от случайного перемещения</div>
+          <div>• Очистка карты — удаление всех данных с подтверждением</div>
+          <div>• Undo (Ctrl+Z) — отмена последнего действия</div>
+
+          <div style="color:#5a7aaa;font-size:11px;text-transform:uppercase;margin:12px 0 4px">⟲ Синхронизация</div>
+          <div>• Синхронизация с Android (RaceNav) через сервер</div>
+          <div>• Привязка по email — одна учётка на все устройства</div>
+          <div>• Выбор данных для отправки/получения</div>
+
+          <div style="color:#5a7aaa;font-size:11px;text-transform:uppercase;margin:12px 0 4px">⚙ Настройки</div>
+          <div>• Цвета: точки, треки, маршруты, радиус, OSRM</div>
+          <div>• Прозрачность заливки радиуса</div>
+          <div>• Размер иконок, толщина треков</div>
+          <div>• Автосохранение каждые 30 сек</div>
+
+          <div style="color:#5a7aaa;font-size:11px;text-transform:uppercase;margin:12px 0 4px">⌨ Горячие клавиши</div>
+          <div>• <b>H / Пробел</b> — навигация &nbsp; <b>W</b> — добавить точку</div>
+          <div>• <b>T</b> — новый трек &nbsp; <b>R</b> — новый маршрут</div>
+          <div>• <b>M</b> — линейка &nbsp; <b>K</b> — блокировка</div>
+          <div>• <b>/</b> — поиск &nbsp; <b>D</b> — скачать карту</div>
+          <div>• <b>L</b> — выбор слоёв &nbsp; <b>Ctrl+S</b> — сохранить GPX</div>
+          <div>• <b>Ctrl+Z</b> — отмена &nbsp; <b>ESC</b> — сброс режима</div>
+        </div>
+      </details>
+
+      <div style="text-align:center;font-size:11px;color:#3a5a7a;margin-top:8px">
+        trophynav.ru · info@trophynav.ru
+      </div>
     </div>
   </div>
 </div>
@@ -5582,28 +5772,17 @@ renderCustomLayers();
      МОДАЛЬНОЕ ОКНО: СОХРАНИТЬ GPX
 ════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-save-gpx">
-  <div class="modal" style="top:30%;left:50%;transform:translateX(-50%);width:320px">
+  <div class="modal" style="top:15%;left:50%;transform:translateX(-50%);width:380px">
     <div class="modal-header">
       💾 Сохранить в GPX
       <span class="modal-close" onclick="closeModal('modal-save-gpx')">✕</span>
     </div>
-    <div class="modal-body">
-      <div style="font-size:12px;color:#c0d8ff;margin-bottom:12px">Выберите данные для сохранения:</div>
-      <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;color:#c0d8ff;cursor:pointer">
-        <input type="checkbox" id="save-gpx-wpt" checked style="accent-color:#4a8adf">
-        <span id="save-gpx-wpt-label">Точки</span>
-      </label>
-      <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;color:#c0d8ff;cursor:pointer">
-        <input type="checkbox" id="save-gpx-trk" checked style="accent-color:#4a8adf">
-        <span id="save-gpx-trk-label">Треки</span>
-      </label>
-      <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;color:#c0d8ff;cursor:pointer">
-        <input type="checkbox" id="save-gpx-rte" checked style="accent-color:#4a8adf">
-        <span id="save-gpx-rte-label">Маршруты</span>
-      </label>
+    <div class="modal-body" style="max-height:60vh;overflow-y:auto">
+      <div style="font-size:12px;color:#c0d8ff;margin-bottom:8px">Выберите данные для сохранения:</div>
+      <div id="save-gpx-details"></div>
       <div style="display:flex;gap:8px;margin-top:12px">
         <button class="btn-secondary" style="flex:1" onclick="closeModal('modal-save-gpx')">Отмена</button>
-        <button class="btn-primary" style="flex:1" onclick="saveAllGPX()">💾 Сохранить</button>
+        <button class="btn-primary" style="flex:1" onclick="saveSelectedGPX()">💾 Сохранить</button>
       </div>
     </div>
   </div>
