@@ -2,3 +2,4 @@ src-tauri/target/
 node_modules/
 *.log
 .env
+.playwright-mcp/
