@@ -1,6 +1,6 @@
 [package]
 name = "trophy-navigator-desktop"
-version = "0.6.2"
+version = "0.6.3"
 description = "Trophy Navigator Desktop"
 authors = ["Andrey"]
 edition = "2021"
