@@ -513,7 +513,7 @@
 
   <!-- ФАЙЛЫ -->
   <div class="tb-group primary">
-    <span class="tb-group-label" onclick="openModal('modal-files')" title="Сохранить / Открыть файлы">Файлы</span>
+    <button class="tb-btn" onclick="openModal('modal-files')" title="Сохранить / Загрузить файлы" style="font-size:18px">📁</button>
   </div>
 
   <div class="tb-sep"></div>
@@ -558,7 +558,7 @@
   <div class="tb-sep"></div>
 
   <!-- Синхронизация -->
-  <button class="tb-btn sync-btn" onclick="openModal('modal-sync')" title="Синхронизация с планшетом">⟲ Синхр.</button>
+  <button class="tb-btn sync-btn" onclick="openSyncModal()" title="Синхронизация с планшетом">⟲ Синхр.</button>
 
   <!-- Правая часть тулбара -->
   <div style="margin-left:auto"></div>
@@ -696,9 +696,9 @@
       <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-right:4px">Сохранить:</span>
       <div class="save-btn" onclick="saveWaypointsWPT()">💾 .wpt</div>
       <div class="save-btn" onclick="saveWaypointsGPX()">💾 .gpx</div>
-      <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Открыть:</span>
-      <div class="open-btn" onclick="openFile('.wpt', loadWPT)">📂 .wpt</div>
-      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXFile)">📂 .gpx</div>
+      <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Загрузить:</span>
+      <div class="open-btn" onclick="openFile('.wpt', loadWPT)">📥 .wpt</div>
+      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXFile)">📥 .gpx</div>
     </div>
   </div>
 </div>
@@ -875,9 +875,9 @@
       <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-right:4px">Сохранить:</span>
       <div class="save-btn" onclick="saveTracksPLT()">💾 .plt</div>
       <div class="save-btn" onclick="saveTracksGPX()">💾 .gpx</div>
-      <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Открыть:</span>
-      <div class="open-btn" onclick="openFile('.plt', loadPLT)">📂 .plt</div>
-      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXTracks)">📂 .gpx</div>
+      <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Загрузить:</span>
+      <div class="open-btn" onclick="openFile('.plt', loadPLT)">📥 .plt</div>
+      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXTracks)">📥 .gpx</div>
     </div>
   </div>
 </div>
@@ -913,9 +913,9 @@
       <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-right:4px">Сохранить:</span>
       <div class="save-btn" onclick="saveRoutesRTE()">💾 .rte</div>
       <div class="save-btn" onclick="saveRoutesGPX()">💾 .gpx</div>
-      <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Открыть:</span>
-      <div class="open-btn" onclick="openFile('.rte', loadRTE)">📂 .rte</div>
-      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXRoutes)">📂 .gpx</div>
+      <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Загрузить:</span>
+      <div class="open-btn" onclick="openFile('.rte', loadRTE)">📥 .rte</div>
+      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXRoutes)">📥 .gpx</div>
     </div>
   </div>
 </div>
@@ -939,7 +939,7 @@
           <div class="save-btn-grid" onclick="saveTracksGPX()">💾 Треки (.gpx)</div>
           <div class="save-btn-grid" onclick="saveRoutesRTE()">💾 Маршруты (.rte)</div>
           <div class="save-btn-grid" onclick="saveRoutesGPX()">💾 Маршруты (.gpx)</div>
-          <div class="save-btn-grid" style="grid-column:span 2;background:#1a3a5a;border-color:#2a6a9a;color:#a0c8e0" onclick="saveAllGPX()">💾 Всё вместе (.gpx)</div>
+          <div class="save-btn-grid" style="grid-column:span 2;background:#1a3a5a;border-color:#2a6a9a;color:#a0c8e0" onclick="showSaveGPXDialog()">💾 Сохранить в .gpx</div>
         </div>
       </div>
       <div class="save-section" style="margin-top:12px">
@@ -970,45 +970,92 @@
     <div class="modal-body">
       <div class="settings-tabs">
         <div class="tab-btn active" onclick="switchTab(this,'tab-display')">Отображение</div>
+        <div class="tab-btn" onclick="switchTab(this,'tab-colors')">Цвета</div>
       </div>
       <div class="tab-content active" id="tab-display">
         <div class="setting-row">
           <span class="setting-label">Размер иконок точек</span>
           <div class="setting-control">
-            <input type="range" min="8" max="32" value="16" oninput="document.getElementById('icon-size-val').textContent=this.value+'px'">
+            <input id="setting-icon-size" type="range" min="8" max="32" value="16" oninput="document.getElementById('icon-size-val').textContent=this.value+'px'">
             <span id="icon-size-val" style="font-size:11px;color:#5a7aaa;min-width:32px">16px</span>
           </div>
         </div>
         <div class="setting-row">
           <span class="setting-label">Толщина треков по умолчанию</span>
           <div class="setting-control">
-            <input type="range" min="1" max="8" value="3" oninput="document.getElementById('trk-width-val').textContent=this.value+'px'">
+            <input id="setting-track-width" type="range" min="1" max="8" value="3" oninput="document.getElementById('trk-width-val').textContent=this.value+'px'">
             <span id="trk-width-val" style="font-size:11px;color:#5a7aaa;min-width:32px">3px</span>
           </div>
         </div>
         <div class="setting-row">
-          <span class="setting-label">Цвет треков по умолчанию</span>
-          <div class="setting-control"><input type="color" value="#4adf7a" class="color-swatch"></div>
-        </div>
-        <div class="setting-row">
           <span class="setting-label">Радиус сближения по умолчанию</span>
-          <div class="setting-control"><input id="setting-default-radius" type="number" value="50" min="0" style="width:70px"> м</div>
+          <div class="setting-control"><input id="setting-default-radius" type="number" value="50" min="0" max="5000" style="width:70px"> м</div>
         </div>
         <div class="setting-row">
           <span class="setting-label">Формат координат</span>
           <div class="setting-control">
-            <select>
-              <option selected>°MM.mmm' (градусы-минуты)</option>
-              <option>°MM'SS.s" (с секундами)</option>
-              <option>Десятичные градусы</option>
+            <select id="setting-coord-format">
+              <option value="dm" selected>°MM.mmm' (градусы-минуты)</option>
+              <option value="dms">°MM'SS.s" (с секундами)</option>
+              <option value="dd">Десятичные градусы</option>
             </select>
           </div>
         </div>
         <div class="setting-row">
           <span class="setting-label">Единицы расстояния</span>
           <div class="setting-control">
-            <select><option selected>Километры</option><option>Мили</option></select>
+            <select id="setting-units"><option value="km" selected>Километры</option><option value="mi">Мили</option></select>
           </div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-colors">
+        <div style="font-size:11px;color:#5a7aaa;margin-bottom:8px">Цвета по умолчанию для новых объектов</div>
+
+        <div class="setting-row">
+          <span class="setting-label">Точки — цвет</span>
+          <div class="setting-control"><input id="setting-color-wpt" type="color" value="#df7a4a" class="color-swatch"></div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Треки — цвет</span>
+          <div class="setting-control"><input id="setting-color-track" type="color" value="#4adf7a" class="color-swatch"></div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Маршруты — цвет</span>
+          <div class="setting-control"><input id="setting-color-route" type="color" value="#4a8adf" class="color-swatch"></div>
+        </div>
+
+        <div style="font-size:11px;color:#5a7aaa;margin-top:12px;margin-bottom:8px">Радиус сближения</div>
+
+        <div class="setting-row">
+          <span class="setting-label">Цвет заливки радиуса</span>
+          <div class="setting-control"><input id="setting-color-radius-fill" type="color" value="#4a8adf" class="color-swatch"></div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Цвет обводки радиуса</span>
+          <div class="setting-control"><input id="setting-color-radius-stroke" type="color" value="#4a8adf" class="color-swatch"></div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Прозрачность заливки</span>
+          <div class="setting-control">
+            <input id="setting-radius-opacity" type="range" min="5" max="80" value="15" step="5"
+              oninput="document.getElementById('radius-opacity-val').textContent=this.value+'%'">
+            <span id="radius-opacity-val" style="font-size:11px;color:#5a7aaa;min-width:32px">15%</span>
+          </div>
+        </div>
+
+        <div style="font-size:11px;color:#5a7aaa;margin-top:12px;margin-bottom:8px">Маршрут по дорогам (OSRM)</div>
+
+        <div class="setting-row">
+          <span class="setting-label">Цвет маршрута</span>
+          <div class="setting-control"><input id="setting-color-osrm" type="color" value="#4a8adf" class="color-swatch"></div>
+        </div>
+
+        <div style="font-size:11px;color:#5a7aaa;margin-top:12px;margin-bottom:8px">Поиск</div>
+
+        <div class="setting-row">
+          <span class="setting-label">Цвет маркера поиска</span>
+          <div class="setting-control"><input id="setting-color-search" type="color" value="#4a8adf" class="color-swatch"></div>
         </div>
       </div>
       <div class="btn-row">
@@ -1247,26 +1294,32 @@
         <input id="sync-api-key" value="TND-A4F2-X9B1-K3M7" placeholder="TND-XXXX-XXXX-XXXX">
       </div>
 
-      <div class="sync-section-title">Что синхронизировать</div>
-      <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#c0d8ff">
+      <!-- Отправить на Android -->
+      <div class="sync-section-title">⬆ Отправить на Android</div>
+      <div style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#c0d8ff;margin-bottom:8px">
         <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
-          <input type="checkbox" id="sync-cb-waypoints" checked style="accent-color:#4a8adf"> Точки (waypoints)
+          <input type="checkbox" id="sync-cb-waypoints" checked style="accent-color:#4a8adf"> 📍 Точки (<span id="sync-wpt-count">0</span>)
         </label>
         <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
-          <input type="checkbox" id="sync-cb-tracks" checked style="accent-color:#4a8adf"> Треки
+          <input type="checkbox" id="sync-cb-tracks" checked style="accent-color:#4a8adf"> 〜 Треки (<span id="sync-trk-count">0</span>)
         </label>
         <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
-          <input type="checkbox" id="sync-cb-routes" checked style="accent-color:#4a8adf"> Маршруты
-        </label>
-        <label style="display:flex;gap:8px;align-items:center;cursor:pointer;opacity:0.4">
-          <input type="checkbox" disabled style="accent-color:#4a8adf"> Офлайн карты (.sqlitedb) — <i>скоро</i>
+          <input type="checkbox" id="sync-cb-routes" checked style="accent-color:#4a8adf"> ⚑ Маршруты (<span id="sync-rte-count">0</span>)
         </label>
       </div>
+      <button class="btn-primary" style="width:100%;background:#1a3a4a;border-color:#2a7a8a" onclick="syncPush()">⬆ Отправить выбранное на сервер</button>
 
-      <div class="btn-row">
+      <!-- Загрузить с Android -->
+      <div class="sync-section-title" style="margin-top:12px">⬇ Загрузить с Android</div>
+      <div id="sync-server-info" style="font-size:11px;color:#5a7aaa;margin-bottom:8px">Нажмите для проверки данных на сервере</div>
+      <button class="btn-primary" style="width:100%;background:#1a4a1a;border-color:#2a8a2a" onclick="syncPull()">⬇ Загрузить все данные с сервера</button>
+
+      <div style="font-size:10px;color:#5a7aaa;margin-top:10px;text-align:center">
+        Синхронизация доступна для лицензированных устройств
+      </div>
+
+      <div class="btn-row" style="margin-top:8px">
         <button class="btn-secondary" onclick="closeModal('modal-sync')">Закрыть</button>
-        <button class="btn-primary" style="background:#1a3a4a;border-color:#2a7a8a" onclick="syncPush()">⬆ Отправить</button>
-        <button class="btn-primary" style="background:#1a4a1a;border-color:#2a8a2a" onclick="syncPull()">⬇ Загрузить</button>
       </div>
     </div>
   </div>
@@ -1694,7 +1747,9 @@ function isTrackHeaderRow(parts) {
 }
 
 function makeDivIcon(data) {
-  const symbol = escapeHtml(data.icon || '⬤');
+  // Конвертировать Garmin символы в эмодзи если нужно
+  const rawIcon = data.icon || '⬤';
+  const symbol = escapeHtml(rawIcon.length > 2 ? garminToEmoji(rawIcon) : rawIcon);
   const nameLabel = data.name ? escapeHtml(data.name) : '';
   return L.divIcon({
     className: '',
@@ -1712,13 +1767,16 @@ function updateWaypointCircle(marker) {
     marker.wpCircle = null;
   }
   if (marker.wpData.radius > 0) {
+    const rStroke = document.getElementById('setting-color-radius-stroke')?.value || marker.wpData.color;
+    const rFill = document.getElementById('setting-color-radius-fill')?.value || marker.wpData.color;
+    const rOpacity = (parseInt(document.getElementById('setting-radius-opacity')?.value) || 15) / 100;
     marker.wpCircle = L.circle(marker.getLatLng(), {
       radius: marker.wpData.radius,
-      color: marker.wpData.color,
+      color: rStroke,
       weight: 1,
       opacity: 0.75,
-      fillColor: marker.wpData.color,
-      fillOpacity: 0.08
+      fillColor: rFill,
+      fillOpacity: rOpacity
     }).addTo(map);
   }
 }
@@ -1763,7 +1821,7 @@ function getDefaultRadius() {
 
 function addWaypoint(latlng, nameHint, extra = {}) {
   const name = nameHint || ('wp'+wpCounter);
-  const color = '#df7a4a';
+  const color = document.getElementById('setting-color-wpt')?.value || '#df7a4a';
   const wpData = {
     name,
     desc: extra.desc || '',
@@ -1996,7 +2054,7 @@ document.addEventListener('keydown', e => {
       if (e.ctrlKey) { undoLastAction(); e.preventDefault(); }
       break;
     case 's': case 'S':
-      if (e.ctrlKey) { e.preventDefault(); saveAllGPX(); }
+      if (e.ctrlKey) { e.preventDefault(); showSaveGPXDialog(); }
       break;
   }
 });
@@ -2504,13 +2562,30 @@ function saveWaypointsGPX() {
   downloadText(fname, 'application/gpx+xml', gpx);
 }
 
-function saveAllGPX() {
+function showSaveGPXDialog() {
   if (waypoints.length === 0 && tracks.length === 0 && routes.length === 0) {
-    showToast('Нет данных для сохранения');
-    return;
+    showToast('Нет данных для сохранения'); return;
   }
+  document.getElementById('save-gpx-wpt-label').textContent = `Точки (${waypoints.length})`;
+  document.getElementById('save-gpx-trk-label').textContent = `Треки (${tracks.length})`;
+  document.getElementById('save-gpx-rte-label').textContent = `Маршруты (${routes.length})`;
+  document.getElementById('save-gpx-wpt').checked = waypoints.length > 0;
+  document.getElementById('save-gpx-trk').checked = tracks.length > 0;
+  document.getElementById('save-gpx-rte').checked = routes.length > 0;
+  document.getElementById('save-gpx-wpt').disabled = waypoints.length === 0;
+  document.getElementById('save-gpx-trk').disabled = tracks.length === 0;
+  document.getElementById('save-gpx-rte').disabled = routes.length === 0;
+  openModal('modal-save-gpx');
+}
+
+function saveAllGPX() {
+  const includeWpt = document.getElementById('save-gpx-wpt')?.checked !== false;
+  const includeTrk = document.getElementById('save-gpx-trk')?.checked !== false;
+  const includeRte = document.getElementById('save-gpx-rte')?.checked !== false;
+  closeModal('modal-save-gpx');
   let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">\n';
-  waypoints.forEach(m => {
+  if (!includeWpt && !includeTrk && !includeRte) { showToast('Выберите хотя бы один тип данных'); return; }
+  (includeWpt ? waypoints : []).forEach(m => {
     const d = m.wpData;
     gpx += `<wpt lat="${d.lat.toFixed(6)}" lon="${d.lng.toFixed(6)}">`;
     gpx += `<name>${escapeXml(d.name)}</name>`;
@@ -2519,7 +2594,7 @@ function saveAllGPX() {
     gpx += `<extensions><tnd:color>${escapeXml(d.color || '#df7a4a')}</tnd:color><tnd:radius>${d.radius || 0}</tnd:radius></extensions>`;
     gpx += '</wpt>\n';
   });
-  tracks.forEach(t => {
+  (includeTrk ? tracks : []).forEach(t => {
     gpx += `<trk><name>${escapeXml(t.name)}</name><trkseg>`;
     t.points.forEach((p, i) => {
       gpx += `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
@@ -2532,7 +2607,7 @@ function saveAllGPX() {
     });
     gpx += '</trkseg></trk>';
   });
-  routes.forEach(r => {
+  (includeRte ? routes : []).forEach(r => {
     gpx += `<rte><name>${escapeXml(r.name)}</name>`;
     r.points.forEach((p, i) => gpx += `<rtept lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}"><name>${escapeXml(r.labels?.[i] || `КП${i+1}`)}</name></rtept>`);
     gpx += '</rte>';
@@ -3634,6 +3709,41 @@ function toggleRouteEl(headerEl) {
   const arrow = headerEl.querySelector('.route-arrow');
   if (arrow) arrow.textContent = visible ? '▸' : '▾';
 }
+let _dragRouteId = null, _dragKpIdx = null;
+function onRouteKpDragStart(e) {
+  _dragRouteId = parseInt(e.target.dataset.routeId);
+  _dragKpIdx = parseInt(e.target.dataset.kpIdx);
+  e.dataTransfer.effectAllowed = 'move';
+  e.target.style.opacity = '0.4';
+  setTimeout(() => { e.target.style.opacity = '1'; }, 300);
+}
+function onRouteKpDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const target = e.target.closest('.route-kp');
+  if (target) target.style.borderTop = '2px solid #4a8adf';
+}
+function onRouteKpDrop(e) {
+  e.preventDefault();
+  const target = e.target.closest('.route-kp');
+  if (target) target.style.borderTop = '';
+  const toIdx = parseInt(target?.dataset.kpIdx);
+  if (_dragRouteId == null || _dragKpIdx == null || isNaN(toIdx)) return;
+  if (_dragKpIdx === toIdx) return;
+  const r = routes.find(r => r.id === _dragRouteId);
+  if (!r) return;
+  // Move point
+  const [pt] = r.points.splice(_dragKpIdx, 1);
+  r.points.splice(toIdx, 0, pt);
+  if (r.labels?.length) {
+    const [lb] = r.labels.splice(_dragKpIdx, 1);
+    r.labels.splice(toIdx, 0, lb);
+  }
+  if (r.polyline) r.polyline.setLatLngs(r.points);
+  updateRouteList();
+  _dragRouteId = null; _dragKpIdx = null;
+}
+
 function moveRoutePoint(routeId, idx, dir) {
   const r = routes.find(r => r.id === routeId);
   if (!r) return;
@@ -3680,11 +3790,14 @@ function updateRouteList() {
       const upBtn = i > 0 ? `<span style="cursor:pointer;color:#7a9aba;font-size:11px;padding:0 2px" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},-1)" title="Вверх">▲</span>` : '<span style="width:16px;display:inline-block"></span>';
       const dnBtn = i < r.points.length - 1 ? `<span style="cursor:pointer;color:#7a9aba;font-size:11px;padding:0 2px" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},1)" title="Вниз">▼</span>` : '<span style="width:16px;display:inline-block"></span>';
       const delBtn = `<span style="cursor:pointer;color:#e07070;font-size:11px;padding:0 2px" onclick="event.stopPropagation();deleteRoutePoint(${r.id},${i})" title="Удалить">✕</span>`;
-      return `<div class="route-kp">
+      return `<div class="route-kp" draggable="true" data-route-id="${r.id}" data-kp-idx="${i}"
+        ondragstart="onRouteKpDragStart(event)" ondragover="onRouteKpDragOver(event)" ondrop="onRouteKpDrop(event)"
+        style="cursor:grab">
+        <span style="color:#3a5a7a;font-size:10px;cursor:grab;margin-right:2px">☰</span>
         <span class="route-kp-num" style="background:${r.color}22;color:${r.color}">${escapeHtml(r.labels?.[i] || `КП${i+1}`)}</span>
         <span style="font-size:11px;color:#c0d8ff;flex:1">${p.lat.toFixed(4)}°N ${p.lng.toFixed(4)}°E</span>
         <span class="route-dist">${dist}${bear ? ' · ' + bear : ''}</span>
-        <span style="display:flex;gap:2px;margin-left:4px">${upBtn}${dnBtn}${delBtn}</span>
+        <span style="display:flex;gap:2px;margin-left:4px">${delBtn}</span>
       </div>`;
     }).join('');
     return `<div class="route-item">
@@ -4451,7 +4564,7 @@ function collectState() {
       lng: m.wpData.lng,
       name: m.wpData.name,
       desc: m.wpData.desc,
-      icon: m.wpData.icon,
+      icon: m.wpData.icon?.length > 2 ? garminToEmoji(m.wpData.icon) : m.wpData.icon,
       color: m.wpData.color,
       radius: m.wpData.radius,
       num: m.wpData.num,
@@ -4475,7 +4588,17 @@ function collectState() {
       labels: r.labels || []
     })),
     settings: {
-      defaultRadius: getDefaultRadius()
+      defaultRadius: getDefaultRadius(),
+      colorWpt: document.getElementById('setting-color-wpt')?.value || '#df7a4a',
+      colorTrack: document.getElementById('setting-color-track')?.value || '#4adf7a',
+      colorRoute: document.getElementById('setting-color-route')?.value || '#4a8adf',
+      colorRadiusFill: document.getElementById('setting-color-radius-fill')?.value || '#4a8adf',
+      colorRadiusStroke: document.getElementById('setting-color-radius-stroke')?.value || '#4a8adf',
+      radiusOpacity: parseInt(document.getElementById('setting-radius-opacity')?.value) || 15,
+      colorOsrm: document.getElementById('setting-color-osrm')?.value || '#4a8adf',
+      colorSearch: document.getElementById('setting-color-search')?.value || '#4a8adf',
+      iconSize: parseInt(document.getElementById('setting-icon-size')?.value) || 16,
+      trackWidth: parseInt(document.getElementById('setting-track-width')?.value) || 3
     }
   };
   return state;
@@ -4606,8 +4729,22 @@ function applyState(state) {
 
   // 4.5. Restore settings
   if (state.settings) {
-    const radiusEl = document.getElementById('setting-default-radius');
-    if (radiusEl && state.settings.defaultRadius != null) radiusEl.value = state.settings.defaultRadius;
+    const s = state.settings;
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+    setVal('setting-default-radius', s.defaultRadius);
+    setVal('setting-color-wpt', s.colorWpt);
+    setVal('setting-color-track', s.colorTrack);
+    setVal('setting-color-route', s.colorRoute);
+    setVal('setting-color-radius-fill', s.colorRadiusFill);
+    setVal('setting-color-radius-stroke', s.colorRadiusStroke);
+    setVal('setting-radius-opacity', s.radiusOpacity);
+    if (s.radiusOpacity != null) document.getElementById('radius-opacity-val').textContent = s.radiusOpacity + '%';
+    setVal('setting-color-osrm', s.colorOsrm);
+    setVal('setting-color-search', s.colorSearch);
+    setVal('setting-icon-size', s.iconSize);
+    if (s.iconSize != null) document.getElementById('icon-size-val').textContent = s.iconSize + 'px';
+    setVal('setting-track-width', s.trackWidth);
+    if (s.trackWidth != null) document.getElementById('trk-width-val').textContent = s.trackWidth + 'px';
   }
 
   // 5. Restore map view and layer
@@ -4759,7 +4896,42 @@ function getSyncChecks() {
   };
 }
 
+function openSyncModal() {
+  updateSyncCounts();
+  openModal('modal-sync');
+  checkSyncServerInfo();
+}
+
+function updateSyncCounts() {
+  const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  el('sync-wpt-count', waypoints.length);
+  el('sync-trk-count', tracks.length);
+  el('sync-rte-count', routes.length);
+}
+
+async function checkSyncServerInfo() {
+  const cfg = getSyncConfig();
+  try {
+    const resp = await fetch(syncApiUrl('/api/state/meta'), {
+      headers: { 'X-Api-Key': cfg.apiKey }
+    });
+    const meta = await resp.json();
+    if (meta.error) {
+      document.getElementById('sync-server-info').innerHTML = '<span style="color:#e07070">Ключ не найден</span>';
+    } else {
+      const updated = meta.updatedAt ? new Date(meta.updatedAt).toLocaleString('ru-RU') : 'никогда';
+      const by = meta.updatedBy === 'android' ? '📱 Android' : meta.updatedBy === 'desktop' ? '💻 Desktop' : meta.updatedBy || '—';
+      document.getElementById('sync-server-info').innerHTML =
+        `На сервере: ${meta.waypoints || 0} точек, ${meta.tracks || 0} треков, ${meta.routes || 0} маршрутов<br>` +
+        `<span style="font-size:10px">Обновлено: ${updated} · ${by}</span>`;
+    }
+  } catch (e) {
+    document.getElementById('sync-server-info').innerHTML = '<span style="color:#e07070">Нет связи с сервером</span>';
+  }
+}
+
 async function syncPush() {
+  if (!isPremiumAvailable()) { showToast('Синхронизация доступна по лицензии'); return; }
   saveSyncConfig();
   const cfg = getSyncConfig();
   const checks = getSyncChecks();
@@ -4798,6 +4970,7 @@ async function syncPush() {
 }
 
 async function syncPull() {
+  if (!isPremiumAvailable()) { showToast('Синхронизация доступна по лицензии'); return; }
   saveSyncConfig();
   const cfg = getSyncConfig();
   const checks = getSyncChecks();
@@ -5401,6 +5574,37 @@ renderCustomLayers();
         🔄 Проверить обновление
       </button>
       <div id="update-status" style="font-size:12px;color:#5a7aaa;min-height:18px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     МОДАЛЬНОЕ ОКНО: СОХРАНИТЬ GPX
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-save-gpx">
+  <div class="modal" style="top:30%;left:50%;transform:translateX(-50%);width:320px">
+    <div class="modal-header">
+      💾 Сохранить в GPX
+      <span class="modal-close" onclick="closeModal('modal-save-gpx')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:#c0d8ff;margin-bottom:12px">Выберите данные для сохранения:</div>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;color:#c0d8ff;cursor:pointer">
+        <input type="checkbox" id="save-gpx-wpt" checked style="accent-color:#4a8adf">
+        <span id="save-gpx-wpt-label">Точки</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;color:#c0d8ff;cursor:pointer">
+        <input type="checkbox" id="save-gpx-trk" checked style="accent-color:#4a8adf">
+        <span id="save-gpx-trk-label">Треки</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;color:#c0d8ff;cursor:pointer">
+        <input type="checkbox" id="save-gpx-rte" checked style="accent-color:#4a8adf">
+        <span id="save-gpx-rte-label">Маршруты</span>
+      </label>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn-secondary" style="flex:1" onclick="closeModal('modal-save-gpx')">Отмена</button>
+        <button class="btn-primary" style="flex:1" onclick="saveAllGPX()">💾 Сохранить</button>
+      </div>
     </div>
   </div>
 </div>
