@@ -545,10 +545,12 @@
   <!-- Блокировка перемещения -->
   <button class="tb-btn" id="btn-lock" onclick="toggleLock()" title="Заблокировать/разблокировать перемещение объектов (K)">🔓</button>
 
-  <!-- Режимы -->
-  <button class="tb-btn active" id="btn-hand" onclick="setMode('hand')" title="Навигация — перемещение по карте (H / Пробел)">🧭</button>
-  <button class="tb-btn" id="btn-ruler" onclick="setMode('ruler')" title="Линейка (M)">📐</button>
-  <button class="tb-btn" id="btn-routing" onclick="openModal('modal-routing')" title="Маршрут по дорогам">🛣</button>
+  <!-- Режимы навигации -->
+  <div class="tb-group" style="background:rgba(15,52,96,0.4);border:1px solid #1a3a6a;border-radius:6px;padding:2px 4px;gap:2px">
+    <button class="tb-btn active" id="btn-hand" onclick="setMode('hand')" title="Навигация (H)" style="font-size:14px">🧭</button>
+    <button class="tb-btn" id="btn-ruler" onclick="setMode('ruler')" title="Линейка (M)" style="font-size:14px">📐</button>
+    <button class="tb-btn" id="btn-routing" onclick="openModal('modal-routing')" title="Маршрут по дорогам" style="font-size:14px">🛣</button>
+  </div>
 
   <div class="tb-sep"></div>
 
@@ -1058,6 +1060,12 @@
           <div class="setting-control"><input id="setting-color-search" type="color" value="#4a8adf" class="color-swatch"></div>
         </div>
       </div>
+      <div style="margin-top:12px;padding:8px;background:#0d1e38;border-radius:6px">
+        <div style="font-size:11px;color:#5a7aaa;margin-bottom:6px">📁 Рабочая папка</div>
+        <div style="font-size:12px;color:#c0d8ff;word-break:break-all" id="setting-workdir-path">—</div>
+        <div style="font-size:10px;color:#3a5a7a;margin-top:4px">Подпапки: waypoints, tracks, routes, maps, gpx</div>
+        <button class="btn-secondary" style="font-size:11px;margin-top:6px" onclick="openWorkDir()">📂 Открыть в проводнике</button>
+      </div>
       <div class="btn-row">
         <button class="btn-secondary" onclick="closeModal('modal-settings')">Закрыть</button>
         <button class="btn-primary" onclick="closeModal('modal-settings');saveState();showToast('Настройки сохранены')">Сохранить</button>
@@ -1340,7 +1348,11 @@
   <div class="modal" id="modal-layers-win" style="top:60px;right:10px;left:auto;width:350px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-layers-win')">
       🗺 Карта и слои
-      <span class="modal-close" onclick="closeModal('modal-layers')">✕</span>
+      <span style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:11px;color:#5a7aaa;cursor:pointer" onclick="event.stopPropagation();showHiddenLayersManager()" title="Показать скрытые карты">👁</span>
+        <span style="font-size:11px;color:#5a7aaa;cursor:pointer" onclick="event.stopPropagation();refreshTileCatalog()" title="Обновить каталог с сервера">🔄</span>
+        <span class="modal-close" onclick="closeModal('modal-layers')">✕</span>
+      </span>
     </div>
     <div class="modal-body">
       <!-- Пользовательские карты (всегда доступны) -->
@@ -2179,6 +2191,35 @@ function makeBaseLayer(name) {
 
 let tileCatalog = null;
 
+// Пользовательские предпочтения: скрытые слои из каталога
+function getHiddenLayers() {
+  try { return JSON.parse(localStorage.getItem('tnd-hidden-layers') || '[]'); } catch { return []; }
+}
+function saveHiddenLayers(arr) {
+  localStorage.setItem('tnd-hidden-layers', JSON.stringify(arr));
+}
+function toggleLayerHidden(key) {
+  const hidden = getHiddenLayers();
+  const idx = hidden.indexOf(key);
+  if (idx >= 0) { hidden.splice(idx, 1); showToast('Карта показана'); }
+  else { hidden.push(key); showToast('Карта скрыта'); }
+  saveHiddenLayers(hidden);
+  buildLayerUI();
+}
+function showHiddenLayersManager() {
+  const hidden = getHiddenLayers();
+  if (hidden.length === 0) { showToast('Нет скрытых карт'); return; }
+  const names = hidden.map(k => {
+    const e = tileCatalog?.base?.find(b => b.key === k) || tileCatalog?.overlays?.find(o => o.key === k);
+    return e ? e.label : k;
+  });
+  if (confirm('Скрытые карты:\n\n' + names.join('\n') + '\n\nПоказать все?')) {
+    saveHiddenLayers([]);
+    buildLayerUI();
+    showToast('Все карты показаны');
+  }
+}
+
 let currentBaseLayer = makeBaseLayer('OpenStreetMap');
 let currentBaseLayerName = 'OpenStreetMap';
 currentBaseLayer.addTo(map);
@@ -2212,18 +2253,23 @@ function buildLayerUI() {
   tileCatalog.base.forEach(e => { layerEmoji[e.label] = getLayerEmoji(e.label); });
   (tileCatalog.overlays || []).forEach(e => { layerEmoji[e.label] = getLayerEmoji(e.label); });
 
+  const hidden = getHiddenLayers();
+
   // --- Free base layers ---
   const freeContainer = document.getElementById('catalog-free-layers');
   if (freeContainer) {
-    const freeLayers = tileCatalog.base.filter(e => FREE_LAYER_KEYS.has(e.key));
+    const freeLayers = tileCatalog.base.filter(e => FREE_LAYER_KEYS.has(e.key) && !hidden.includes(e.key));
     if (freeLayers.length > 0) {
       freeContainer.innerHTML = '';
       freeLayers.forEach(e => {
         const div = document.createElement('div');
         div.className = 'base-layer' + (e.label === currentBaseLayerName ? ' active' : '');
         div.dataset.layer = e.label;
-        div.onclick = function() { setLayer(e.label, this); };
-        div.textContent = getLayerEmoji(e.label) + ' ' + e.label;
+        div.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
+        div.innerHTML = `<span onclick="setLayer('${e.label.replace(/'/g,"\\'")}', this.parentElement)"
+          style="flex:1;cursor:pointer">${getLayerEmoji(e.label)} ${e.label}</span>
+          <span onclick="event.stopPropagation();toggleLayerHidden('${e.key}')" title="Скрыть"
+          style="color:#3a5a7a;font-size:10px;cursor:pointer;padding:0 4px">✕</span>`;
         freeContainer.appendChild(div);
       });
     }
@@ -2232,15 +2278,18 @@ function buildLayerUI() {
   // --- Premium base layers ---
   const premiumContainer = document.getElementById('catalog-base-layers');
   if (premiumContainer) {
-    const premiumLayers = tileCatalog.base.filter(e => !FREE_LAYER_KEYS.has(e.key));
+    const premiumLayers = tileCatalog.base.filter(e => !FREE_LAYER_KEYS.has(e.key) && !hidden.includes(e.key));
     if (premiumLayers.length > 0) {
       premiumContainer.innerHTML = '';
       premiumLayers.forEach(e => {
         const div = document.createElement('div');
         div.className = 'base-layer premium-layer' + (e.label === currentBaseLayerName ? ' active' : '');
         div.dataset.layer = e.label;
-        div.onclick = function() { setLayerPremium(e.label, this); };
-        div.textContent = getLayerEmoji(e.label) + ' ' + e.label;
+        div.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
+        div.innerHTML = `<span onclick="setLayerPremium('${e.label.replace(/'/g,"\\'")}', this.parentElement)"
+          style="flex:1;cursor:pointer">${getLayerEmoji(e.label)} ${e.label}</span>
+          <span onclick="event.stopPropagation();toggleLayerHidden('${e.key}')" title="Скрыть"
+          style="color:#3a5a7a;font-size:10px;cursor:pointer;padding:0 4px">✕</span>`;
         premiumContainer.appendChild(div);
       });
     }
@@ -2254,6 +2303,10 @@ function buildLayerUI() {
     const catalogOverlays = tileCatalog.overlays || [];
 
     if (catalogOverlays.length > 0) {
+      // Запомнить включённые оверлеи перед пересозданием
+      const activeOverlays = new Set(
+        [...overlayContainer.querySelectorAll('input[type=checkbox]:checked')].map(cb => cb.dataset.overlay)
+      );
       overlayContainer.innerHTML = '';
 
       catalogOverlays.forEach(e => {
@@ -2270,9 +2323,10 @@ function buildLayerUI() {
           });
         }
 
+        const isActive = activeOverlays.has(e.label);
         const div = document.createElement('div');
         div.className = 'overlay-layer';
-        div.innerHTML = '<input type="checkbox" data-overlay="' + e.label + '" onchange="toggleOverlay(\'' + e.label.replace(/'/g, "\\'") + '\', this)"> ' +
+        div.innerHTML = '<input type="checkbox" data-overlay="' + e.label + '"' + (isActive ? ' checked' : '') + ' onchange="toggleOverlay(\'' + e.label.replace(/'/g, "\\'") + '\', this)"> ' +
           '<span class="overlay-name">' + e.label + '</span>' +
           '<input type="range" class="opacity-slider" min="0" max="100" value="' + defaultOpacity + '" oninput="setOverlayOpacity(\'' + e.label.replace(/'/g, "\\'") + '\', this)">' +
           '<span class="opacity-val">' + defaultOpacity + '%</span>';
@@ -2314,6 +2368,23 @@ function buildLayerUI() {
   if (typeof updatePremiumUI === 'function') updatePremiumUI();
 }
 
+function normalizeCatalog(data) {
+  // Поддержка обоих форматов: key/label (ручной) и id/name (parse_zmp)
+  if (data.base && data.base[0]?.id && !data.base[0]?.key) {
+    data.base = data.base.map(e => ({
+      key: e.id, label: e.name, url: e.url,
+      subdomains: e.subdomains || '', tms: !!e.tms, maxZoom: e.maxZoom || e.maxzoom || 18
+    }));
+  }
+  if (data.overlays && data.overlays[0]?.id && !data.overlays[0]?.key) {
+    data.overlays = data.overlays.map(e => ({
+      key: e.id, label: e.name, url: e.url,
+      subdomains: e.subdomains || '', tms: !!e.tms, opacity: e.opacity || 0.7, maxZoom: e.maxZoom || e.maxzoom || 18
+    }));
+  }
+  return data;
+}
+
 function loadTileCatalog() {
   fetch('https://trophynav.ru/api/tiles-catalog.json')
     .then(resp => {
@@ -2321,7 +2392,7 @@ function loadTileCatalog() {
       return resp.json();
     })
     .then(data => {
-      tileCatalog = data;
+      tileCatalog = normalizeCatalog(data);
       console.log('Tile catalog loaded:', tileCatalog.base.length, 'base,', (tileCatalog.overlays || []).length, 'overlays');
       buildLayerUI();
     })
@@ -2331,6 +2402,23 @@ function loadTileCatalog() {
 }
 
 loadTileCatalog();
+
+function refreshTileCatalog() {
+  showToast('Обновление каталога...');
+  fetch('https://trophynav.ru/api/tiles-catalog.json', { cache: 'no-store' })
+    .then(resp => {
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      return resp.json();
+    })
+    .then(data => {
+      tileCatalog = normalizeCatalog(data);
+      buildLayerUI();
+      showToast(`✅ Каталог обновлён: ${tileCatalog.base.length} карт, ${(tileCatalog.overlays || []).length} оверлеев`);
+    })
+    .catch(err => {
+      showToast('Ошибка обновления каталога');
+    });
+}
 
 function switchCRS(needYandex) {
   const targetCRS = needYandex ? 'EPSG3395' : 'EPSG3857';
@@ -2429,6 +2517,9 @@ function setOverlayOpacity(name, slider) {
 // ─────────────────────────────────────────────
 // ЗАГРУЗКА ФАЙЛОВ
 // ─────────────────────────────────────────────
+let lastOpenDir = localStorage.getItem('tnd-last-open-dir') || undefined;
+let lastSaveDir = localStorage.getItem('tnd-last-save-dir') || undefined;
+
 function openFile(accept, callback) {
   // Tauri v2: try global Tauri JS API first, then HTML fallback
   if (window.__TAURI__) {
@@ -2436,13 +2527,20 @@ function openFile(accept, callback) {
       const { open } = window.__TAURI__.dialog;
       const { readTextFile } = window.__TAURI__.fs;
       const extensions = accept.split(',').map(s => s.trim().replace(/^\./, '').toLowerCase()).filter(Boolean);
+      // Подбираем директорию по типу файла
+      const typeDir = { wpt: 'waypoints', gpx: 'gpx', plt: 'tracks', rte: 'routes' };
+      const subDir = typeDir[extensions[0]] || '';
+      const defPath = lastOpenDir || (appDataPath && subDir ? appDataPath + '/' + subDir : undefined);
       open({
         multiple: false,
         directory: false,
+        defaultPath: defPath,
         filters: [{ name: 'Files', extensions }]
       }).then(path => {
         if (!path) return;
         const p = typeof path === 'object' && path.path ? path.path : String(path);
+        const dir = p.replace(/[\\/][^\\/]+$/, '');
+        if (dir) { lastOpenDir = dir; localStorage.setItem('tnd-last-open-dir', dir); }
         const fname = p.split(/[\\/]/).pop();
         return readTextFile(p).then(text => callback(text, fname));
       }).catch(err => {
@@ -2480,11 +2578,13 @@ function downloadText(filename, mimeType, text) {
       const ext = filename.split('.').pop().toLowerCase();
       const filterName = { gpx: 'GPX files', wpt: 'Waypoint files', plt: 'Track files', rte: 'Route files' }[ext] || 'Files';
       save({
-        defaultPath: filename,
+        defaultPath: lastSaveDir ? lastSaveDir + '/' + filename : filename,
         filters: [{ name: filterName, extensions: [ext] }]
       }).then(path => {
         if (!path) return;
         const p = typeof path === 'object' && path.path ? path.path : String(path);
+        const dir = p.replace(/[\\/][^\\/]+$/, '');
+        if (dir) { lastSaveDir = dir; localStorage.setItem('tnd-last-save-dir', dir); }
         return writeTextFile(p, text).then(() => {
           const fname = p.split(/[\\/]/).pop();
           showToast(`✓ Сохранено: ${fname}`);
@@ -3050,6 +3150,10 @@ function openModal(id) {
     if (isLicensed()) { licEl.textContent = '✓ Активна'; licEl.style.color = '#4adf7a'; }
     else if (getTrialDaysLeft() > 0) { licEl.textContent = `Триал: ${getTrialDaysLeft()} дн.`; licEl.style.color = '#e0a050'; }
     else { licEl.textContent = '🔒 Нет лицензии'; licEl.style.color = '#e07070'; }
+  }
+  if (id === 'modal-settings') {
+    const pathEl = document.getElementById('setting-workdir-path');
+    if (pathEl) pathEl.textContent = appDataPath || 'Не инициализирована';
   }
 }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
@@ -4353,12 +4457,14 @@ async function downloadTiles() {
     try {
       const { save } = window.__TAURI__.dialog;
       savePath = await save({
-        defaultPath: filename,
+        defaultPath: lastSaveDir ? lastSaveDir + '/' + filename : filename,
         filters: [{ name: 'SQLiteDB', extensions: ['sqlitedb'] }]
       });
       if (!savePath) return;
       if (typeof savePath === 'object' && savePath.path) savePath = savePath.path;
       savePath = String(savePath);
+      const dir = savePath.replace(/[\\/][^\\/]+$/, '');
+      if (dir) { lastSaveDir = dir; localStorage.setItem('tnd-last-save-dir', dir); }
     } catch (e) {
       console.warn('Tauri save dialog error:', e);
     }
@@ -4913,8 +5019,7 @@ const _origMapClick = map._events.click;
 window.addEventListener('beforeunload', saveState);
 setInterval(saveState, 30000);
 
-// Auto-restore on load
-restoreState();
+// Auto-restore — выполняется в initApp() для единообразия
 
 // ═══════════════════════════════════════════
 //  СИНХРОНИЗАЦИЯ С СЕРВЕРОМ (HTTP REST API)
@@ -5290,8 +5395,20 @@ async function checkForUpdates(silent = false) {
 // ═══════════════════════════════════════════
 
 const APP_DIR_NAME = 'TrophyNavigator';
-const APP_SUBDIRS = ['waypoints', 'tracks', 'routes', 'maps', 'backup'];
+const APP_SUBDIRS = ['waypoints', 'tracks', 'routes', 'maps', 'gpx', 'backup'];
 let appDataPath = null;
+
+async function openWorkDir() {
+  if (!appDataPath || !window.__TAURI__) { showToast('Папка недоступна'); return; }
+  try {
+    const opener = window.__TAURI__?.opener;
+    if (opener?.openPath) await opener.openPath(appDataPath);
+    else if (opener?.open) await opener.open(appDataPath);
+    else showToast('Плагин opener недоступен');
+  } catch(e) {
+    showToast('Не удалось открыть папку');
+  }
+}
 
 async function initWorkingDirectory() {
   if (!window.__TAURI__) return null;
@@ -5648,9 +5765,13 @@ renderCustomLayers();
 // Инициализация при загрузке
 (async function initApp() {
   await initWorkingDirectory();
-  // Пробуем восстановить из файла (если localStorage пуст)
+  // Пробуем восстановить: сначала из файла, если нет — из localStorage
   const restoredFromFile = await loadStateFromFile();
-  if (restoredFromFile) showToast('✓ Сессия восстановлена');
+  if (restoredFromFile) {
+    showToast('✓ Сессия восстановлена');
+  } else {
+    restoreState(); // fallback на localStorage
+  }
   // Trial / License — используем аппаратный ID
   const machineId = await getMachineIdAsync();
   registerTrialOnServer();
