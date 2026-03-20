@@ -1490,7 +1490,7 @@
 // Фикс для EPSG:3395 — без этого нижние тайлы пропадают
 L.CRS.EPSG3395.infinite = true;
 let currentCRS = 'EPSG3857';
-const map = L.map('map', { zoomControl: true, attributionControl: false }).setView([55.75, 37.62], 10);
+const map = L.map('map', { zoomControl: true, attributionControl: false, maxZoom: 22 }).setView([55.75, 37.62], 10);
 // Pane для тайловых оверлеев — выше базового слоя (tilePane=200), ниже маркеров (overlayPane=400)
 map.createPane('overlayTiles');
 map.getPane('overlayTiles').style.zIndex = 350;
@@ -2133,16 +2133,16 @@ const yandexLayers = new Set(['Яндекс Схема', 'Яндекс Гибр�
 function makeBaseLayer(name) {
   // Hardcoded layers that need special handling (CRS, layerGroup, BingTileLayer)
   switch (name) {
-    case 'Яндекс Схема':   return L.tileLayer('https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', { maxZoom: 19 });
+    case 'Яндекс Схема':   return L.tileLayer('https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', { maxNativeZoom: 19, maxZoom: 22 });
     case 'Яндекс Гибрид': {
       // Гибрид = спутник + подписи (два слоя)
       return L.layerGroup([
-        L.tileLayer('https://core-sat.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', { maxZoom: 19 }),
-        L.tileLayer('https://core-renderer-tiles.maps.yandex.net/tiles?l=skl&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', { maxZoom: 19 })
+        L.tileLayer('https://core-sat.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', { maxNativeZoom: 19, maxZoom: 22 }),
+        L.tileLayer('https://core-renderer-tiles.maps.yandex.net/tiles?l=skl&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', { maxNativeZoom: 19, maxZoom: 22 })
       ]);
     }
-    case 'Спутник Bing':   return new BingTileLayer('https://ecn.t0.tiles.virtualearth.net/tiles/a{q}?g=14000', { maxZoom: 19 });
-    case 'Гибрид Bing':    return new BingTileLayer('https://ecn.t0.tiles.virtualearth.net/tiles/h{q}?g=14000&mkt=ru-RU', { maxZoom: 19 });
+    case 'Спутник Bing':   return new BingTileLayer('https://ecn.t0.tiles.virtualearth.net/tiles/a{q}?g=14000', { maxNativeZoom: 19, maxZoom: 22 });
+    case 'Гибрид Bing':    return new BingTileLayer('https://ecn.t0.tiles.virtualearth.net/tiles/h{q}?g=14000&mkt=ru-RU', { maxNativeZoom: 19, maxZoom: 22 });
   }
 
   // Try catalog lookup by label
@@ -2150,8 +2150,8 @@ function makeBaseLayer(name) {
     const entry = tileCatalog.base.find(e => e.label === name);
     if (entry) {
       const opts = {
-        maxZoom: entry.maxZoom || 18,
-        maxNativeZoom: entry.maxNativeZoom || entry.maxZoom || 18,
+        maxZoom: 22,
+        maxNativeZoom: entry.maxZoom || 18,
         subdomains: entry.subdomains || '',
         tms: !!entry.tms
       };
@@ -2161,30 +2161,30 @@ function makeBaseLayer(name) {
 
   // Fallback: hardcoded switch for when catalog isn't loaded yet
   switch (name) {
-    case 'OpenStreetMap':  return L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc' });
-    case 'OpenTopoMap':    return L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, subdomains: 'abc' });
-    case '2GIS':           return L.tileLayer('https://tile2.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1', { maxZoom: 18 });
-    case 'Спутник Google': return L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['0','1','2','3'] });
-    case 'Гибрид Google':  return L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['0','1','2','3'] });
-    case 'Спутник ESRI':   return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 });
-    case 'ESRI Clarity':   return L.tileLayer('https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false', { maxZoom: 19 });
-    case 'Яндекс Спутник': return L.tileLayer('https://sat0{s}.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&lang=ru_RU', { maxZoom: 19, subdomains: '1234' });
-    case 'Космоснимки рельеф': return L.tileLayer('https://{s}tilecart.kosmosnimki.ru/rw/{z}/{x}/{y}.png', { maxZoom: 14, subdomains: 'ab' });
-    case 'Карты Google':   return L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&hl=ru&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['0','1','2','3'] });
-    case 'Рельеф Google':  return L.tileLayer('https://mt{s}.google.com/vt/lyrs=t&hl=ru&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['0','1','2','3'] });
-    case 'CyclOSM':        return L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'abc' });
-    case 'OSM Humanitarian': return L.tileLayer('https://tile-{s}.openstreetmap.fr/hot/{z}/{x}/{y}.png', { maxZoom: 19, subdomains: 'ab' });
-    case 'TF Outdoors':    return L.tileLayer('https://{s}.tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38', { maxZoom: 22, subdomains: 'abc' });
-    case 'LoMaps':         return L.tileLayer('https://{s}.tile.thunderforest.com/locus-4za/{z}/{x}/{y}.png?apikey=7c352c8ff1244dd8b732e349e0b0fe8d', { maxZoom: 22, subdomains: 'abc' });
-    case 'TF Transport':   return L.tileLayer('https://{s}.tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38', { maxZoom: 22, subdomains: 'abc' });
-    case 'TF Велосипед':   return L.tileLayer('https://{s}.tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38', { maxZoom: 22, subdomains: 'abc' });
-    case 'MTB Map':        return L.tileLayer('http://tile.mtbmap.cz/mtbmap_tiles/{z}/{x}/{y}.png', { maxZoom: 18 });
-    case 'Michelin':       return L.tileLayer('https://map1.viamichelin.com/map/mapdirect?map=viamichelin&z={z}&x={x}&y={y}&format=png&version=201901161110&layer=background&locale=default&cs=1&protocol=https', { maxZoom: 18 });
-    case 'ГГЦ 250м':       return L.tileLayer('https://tiles.nakarte.me/ggc250/{z}/{x}/{y}', { maxNativeZoom: 15, maxZoom: 18, tms: true });
-    case 'ГГЦ 500м':       return L.tileLayer('https://tiles.nakarte.me/ggc500/{z}/{x}/{y}', { maxNativeZoom: 14, maxZoom: 18, tms: true });
-    case 'ГГЦ 1км':        return L.tileLayer('https://tiles.nakarte.me/ggc1000/{z}/{x}/{y}', { maxNativeZoom: 13, maxZoom: 18, tms: true });
-    case 'ГГЦ 2км':        return L.tileLayer('https://tiles.nakarte.me/ggc2000/{z}/{x}/{y}', { maxNativeZoom: 12, maxZoom: 18, tms: true });
-    case 'Генштаб 250м':   return L.tileLayer('https://tiles.nakarte.me/topo001m/{z}/{x}/{y}', { maxNativeZoom: 15, maxZoom: 18, tms: true });
+    case 'OpenStreetMap':  return L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 22, subdomains: 'abc' });
+    case 'OpenTopoMap':    return L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxNativeZoom: 17, maxZoom: 22, subdomains: 'abc' });
+    case '2GIS':           return L.tileLayer('https://tile2.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1', { maxNativeZoom: 18, maxZoom: 22 });
+    case 'Спутник Google': return L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxNativeZoom: 20, maxZoom: 22, subdomains: ['0','1','2','3'] });
+    case 'Гибрид Google':  return L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxNativeZoom: 20, maxZoom: 22, subdomains: ['0','1','2','3'] });
+    case 'Спутник ESRI':   return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxNativeZoom: 18, maxZoom: 22 });
+    case 'ESRI Clarity':   return L.tileLayer('https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false', { maxNativeZoom: 19, maxZoom: 22 });
+    case 'Яндекс Спутник': return L.tileLayer('https://sat0{s}.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&lang=ru_RU', { maxNativeZoom: 19, maxZoom: 22, subdomains: '1234' });
+    case 'Космоснимки рельеф': return L.tileLayer('https://{s}tilecart.kosmosnimki.ru/rw/{z}/{x}/{y}.png', { maxNativeZoom: 14, maxZoom: 22, subdomains: 'ab' });
+    case 'Карты Google':   return L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&hl=ru&x={x}&y={y}&z={z}', { maxNativeZoom: 20, maxZoom: 22, subdomains: ['0','1','2','3'] });
+    case 'Рельеф Google':  return L.tileLayer('https://mt{s}.google.com/vt/lyrs=t&hl=ru&x={x}&y={y}&z={z}', { maxNativeZoom: 20, maxZoom: 22, subdomains: ['0','1','2','3'] });
+    case 'CyclOSM':        return L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 22, subdomains: 'abc' });
+    case 'OSM Humanitarian': return L.tileLayer('https://tile-{s}.openstreetmap.fr/hot/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 22, subdomains: 'ab' });
+    case 'TF Outdoors':    return L.tileLayer('https://{s}.tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38', { maxNativeZoom: 22, maxZoom: 22, subdomains: 'abc' });
+    case 'LoMaps':         return L.tileLayer('https://{s}.tile.thunderforest.com/locus-4za/{z}/{x}/{y}.png?apikey=7c352c8ff1244dd8b732e349e0b0fe8d', { maxNativeZoom: 22, maxZoom: 22, subdomains: 'abc' });
+    case 'TF Transport':   return L.tileLayer('https://{s}.tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38', { maxNativeZoom: 22, maxZoom: 22, subdomains: 'abc' });
+    case 'TF Велосипед':   return L.tileLayer('https://{s}.tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38', { maxNativeZoom: 22, maxZoom: 22, subdomains: 'abc' });
+    case 'MTB Map':        return L.tileLayer('http://tile.mtbmap.cz/mtbmap_tiles/{z}/{x}/{y}.png', { maxNativeZoom: 18, maxZoom: 22 });
+    case 'Michelin':       return L.tileLayer('https://map1.viamichelin.com/map/mapdirect?map=viamichelin&z={z}&x={x}&y={y}&format=png&version=201901161110&layer=background&locale=default&cs=1&protocol=https', { maxNativeZoom: 18, maxZoom: 22 });
+    case 'ГГЦ 250м':       return L.tileLayer('https://tiles.nakarte.me/ggc250/{z}/{x}/{y}', { maxNativeZoom: 15, maxZoom: 22, tms: true });
+    case 'ГГЦ 500м':       return L.tileLayer('https://tiles.nakarte.me/ggc500/{z}/{x}/{y}', { maxNativeZoom: 14, maxZoom: 22, tms: true });
+    case 'ГГЦ 1км':        return L.tileLayer('https://tiles.nakarte.me/ggc1000/{z}/{x}/{y}', { maxNativeZoom: 13, maxZoom: 22, tms: true });
+    case 'ГГЦ 2км':        return L.tileLayer('https://tiles.nakarte.me/ggc2000/{z}/{x}/{y}', { maxNativeZoom: 12, maxZoom: 22, tms: true });
+    case 'Генштаб 250м':   return L.tileLayer('https://tiles.nakarte.me/topo001m/{z}/{x}/{y}', { maxNativeZoom: 15, maxZoom: 22, tms: true });
     default: return null;
   }
 }
