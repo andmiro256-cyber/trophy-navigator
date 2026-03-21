@@ -1305,6 +1305,14 @@
         </div>
       </div>
       <div id="sync-email-status" style="font-size:11px;color:#5a7aaa;margin-bottom:8px"></div>
+
+      <!-- Карточка лицензии -->
+      <div id="license-card" style="background:#1a1a2e;border-radius:8px;padding:10px 14px;margin-bottom:10px;display:none">
+        <div id="license-badge" style="font-size:14px;font-weight:bold;color:#FFD700;margin-bottom:6px"></div>
+        <div id="license-line" style="font-size:12px;color:#888;margin-bottom:3px"></div>
+        <div id="server-line" style="font-size:12px;color:#888"></div>
+      </div>
+
       <div class="prop-field">
         <label>Ключ синхронизации (автоматически по email)</label>
         <input id="sync-api-key" value="" placeholder="TND-XXXX-XXXX-XXXX" readonly style="opacity:0.7">
@@ -5109,7 +5117,11 @@ async function registerSyncEmail() {
       const licStatus = data.licensed ? `✅ Лицензия: ${data.plan}` : '⚠ Нет лицензии';
       statusEl.innerHTML = `✅ Привязан · ${escapeHtml(String(data.devices))} устройств · ${escapeHtml(licStatus)}`;
       saveSyncConfig();
+      localStorage.setItem('tnd-sync-email', email);
       showToast('Email привязан: ' + email);
+      // Проверяем лицензию по email
+      await checkLicenseOnServer();
+      updateLicenseCard();
     } else {
       statusEl.innerHTML = `<span style="color:#e07070">Ошибка: ${escapeHtml(String(data.error))}</span>`;
     }
@@ -5120,8 +5132,80 @@ async function registerSyncEmail() {
 
 function openSyncModal() {
   updateSyncCounts();
+  updateLicenseCard();
   openModal('modal-sync');
   checkSyncServerInfo();
+  // Загружаем сохранённый email
+  const savedEmail = localStorage.getItem('tnd-sync-email');
+  if (savedEmail) {
+    const el = document.getElementById('sync-email');
+    if (el && !el.value) el.value = savedEmail;
+  }
+}
+
+function updateLicenseCard() {
+  const card = document.getElementById('license-card');
+  const badge = document.getElementById('license-badge');
+  const licLine = document.getElementById('license-line');
+  const srvLine = document.getElementById('server-line');
+  if (!card) return;
+
+  const info = getLicenseInfo();
+  const fmtDate = (iso) => {
+    if (!iso) return null;
+    try { return new Date(iso).toLocaleDateString('ru-RU'); } catch { return null; }
+  };
+
+  if (!info) {
+    const daysLeft = getTrialDaysLeft();
+    if (daysLeft > 0) {
+      card.style.display = 'block';
+      card.style.background = '#1e1e1e';
+      badge.textContent = '\u23f3 \u041f\u0440\u043e\u0431\u043d\u044b\u0439 \u043f\u0435\u0440\u0438\u043e\u0434 \u2014 ' + daysLeft + ' \u0434\u043d.';
+      badge.style.color = '#FF9800';
+      licLine.textContent = '\ud83d\udcf1 Navigator Pro \u2014 \u043f\u0440\u043e\u0431\u043d\u044b\u0439 \u043f\u0435\u0440\u0438\u043e\u0434';
+      licLine.style.color = '#888';
+      srvLine.textContent = '\ud83d\udce1 Server \u2014 \u043d\u0435\u0442 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0438';
+      srvLine.style.color = '#888';
+    } else {
+      card.style.display = 'block';
+      card.style.background = '#1e1e1e';
+      badge.textContent = '\ud83d\udd12 \u041b\u0438\u0446\u0435\u043d\u0437\u0438\u044f \u043d\u0435 \u0430\u043a\u0442\u0438\u0432\u043d\u0430';
+      badge.style.color = '#FF5252';
+      licLine.textContent = '\ud83d\udcf1 Navigator Pro \u2014 \u043d\u0435\u0442 \u043b\u0438\u0446\u0435\u043d\u0437\u0438\u0438';
+      licLine.style.color = '#888';
+      srvLine.textContent = '\ud83d\udce1 Server \u2014 \u043d\u0435\u0442 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0438';
+      srvLine.style.color = '#888';
+    }
+    return;
+  }
+
+  card.style.display = 'block';
+  if (info.isFull) {
+    card.style.background = '#1a1a2e';
+    badge.textContent = '\u2b50 Navigator Pro';
+    badge.style.color = '#FFD700';
+  } else if (info.licenseActive) {
+    card.style.background = '#1e1e1e';
+    badge.textContent = '\ud83d\udcbb Navigator Pro';
+    badge.style.color = '#4CAF50';
+  } else {
+    card.style.background = '#1e1e1e';
+    badge.textContent = '\ud83d\udd12 \u041b\u0438\u0446\u0435\u043d\u0437\u0438\u044f \u0438\u0441\u0442\u0435\u043a\u043b\u0430';
+    badge.style.color = '#FF5252';
+  }
+
+  const licDate = fmtDate(info.licenseUntil);
+  licLine.textContent = info.licenseActive
+    ? '\ud83d\udcbb Navigator Pro \u2014 \u0434\u043e ' + (licDate || '\u0430\u043a\u0442\u0438\u0432\u0438\u0440\u043e\u0432\u0430\u043d\u0430')
+    : '\ud83d\udcbb Navigator Pro \u2014 \u0438\u0441\u0442\u0435\u043a\u043b\u0430';
+  licLine.style.color = info.licenseActive ? '#4CAF50' : '#888';
+
+  const srvDate = fmtDate(info.serverUntil);
+  srvLine.textContent = info.serverActive
+    ? '\ud83d\udce1 Server \u2014 \u0434\u043e ' + (srvDate || '\u0430\u043a\u0442\u0438\u0432\u0435\u043d')
+    : '\ud83d\udce1 Server \u2014 \u043d\u0435\u0442 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0438';
+  srvLine.style.color = info.serverActive ? '#4CAF50' : '#888';
 }
 
 function updateSyncCounts() {
@@ -5546,8 +5630,64 @@ function isLicensed() {
   } catch { return false; }
 }
 
+function getLicenseInfo() {
+  const lic = localStorage.getItem('tnd-license');
+  if (!lic) return null;
+  try {
+    const data = JSON.parse(lic);
+    const now = new Date();
+    const licExpiry = data.expiry ? new Date(data.expiry) : null;
+    const srvExpiry = data.serverUntil ? new Date(data.serverUntil) : null;
+    return {
+      plan: data.plan || null,
+      licenseActive: licExpiry && licExpiry > now,
+      licenseUntil: data.expiry || null,
+      serverActive: srvExpiry && srvExpiry > now,
+      serverUntil: data.serverUntil || null,
+      isFull: data.plan === 'full',
+      email: localStorage.getItem('tnd-sync-email') || null
+    };
+  } catch { return null; }
+}
+
 async function checkLicenseOnServer() {
   const machineId = await getMachineIdAsync();
+  // Сначала пробуем email-based (новый API)
+  const email = localStorage.getItem('tnd-sync-email') || document.getElementById('sync-email')?.value?.trim();
+  if (email) {
+    try {
+      const resp = await fetch(`${LICENSE_SERVER}/api/desktop/check-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          machineId,
+          hostname: navigator.userAgent?.slice(0, 80) || '',
+          os: navigator.platform || ''
+        })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.licensed) {
+          const expiry = data.licenseUntil || new Date(Date.now() + (data.daysLeft || 365) * 86400000).toISOString();
+          localStorage.setItem('tnd-license', JSON.stringify({
+            plan: data.plan,
+            expiry: expiry,
+            serverUntil: data.serverUntil || null,
+            serverActive: data.serverActive || false,
+            checkedAt: new Date().toISOString()
+          }));
+          localStorage.setItem('tnd-sync-email', email);
+        } else if (data.message === 'device_limit') {
+          showToast('Превышен лимит устройств (' + data.maxDevices + ') для ' + email);
+        }
+        return data;
+      }
+    } catch (e) {
+      console.warn('Email license check failed:', e);
+    }
+  }
+  // Fallback: старый machineId-based API
   try {
     const resp = await fetch(`${LICENSE_SERVER}/api/desktop/license/${encodeURIComponent(machineId)}`, {
       headers: { 'X-Client-Id': 'desktop', 'X-Machine-Id': machineId }
@@ -5555,11 +5695,12 @@ async function checkLicenseOnServer() {
     if (!resp.ok) return null;
     const data = await resp.json();
     if (data.licensed) {
-      // Рассчитать expiry из daysLeft если сервер не вернул его напрямую
-      const expiry = data.expiry || new Date(Date.now() + (data.daysLeft || 365) * 86400000).toISOString();
+      const expiry = data.expiry || data.licenseExpiry || new Date(Date.now() + (data.daysLeft || 365) * 86400000).toISOString();
       localStorage.setItem('tnd-license', JSON.stringify({
         plan: data.plan,
         expiry: expiry,
+        serverUntil: data.serverUntil || null,
+        serverActive: data.serverActive || false,
         checkedAt: new Date().toISOString()
       }));
     }
@@ -5592,12 +5733,12 @@ function showTrialBanner() {
   banner.id = 'trial-banner';
   banner.style.cssText = `position:fixed;bottom:32px;right:12px;background:rgba(42,30,8,0.95);border:1px solid #e0a050;border-radius:8px;padding:10px 16px;font-size:12px;color:#f0c060;z-index:4000;box-shadow:0 4px 16px rgba(0,0,0,0.4);max-width:300px;`;
   if (daysLeft === 0) {
-    banner.innerHTML = `⚠ Пробный период истёк.<br><span style="font-size:11px;color:#9ab8d0">Для продолжения работы активируйте лицензию (1000₽/год)</span>`;
+    banner.innerHTML = `⚠ Пробный период истёк.<br><span style="font-size:11px;color:#9ab8d0">Для продолжения — Navigator Pro (2000₽/год) или Full с Android (5000₽/год)</span>`;
     banner.style.borderColor = '#e07070';
     banner.style.background = 'rgba(42,13,13,0.95)';
     banner.style.color = '#f08080';
   } else {
-    banner.innerHTML = `⏳ Пробный период: осталось ${daysLeft} дн.<br><span style="font-size:11px;color:#9ab8d0">Лицензия: 1000₽/год или бесплатно с Trophy Navigator Full</span>`;
+    banner.innerHTML = `⏳ Пробный период: осталось ${daysLeft} дн.<br><span style="font-size:11px;color:#9ab8d0">Navigator Pro: 2000₽/год · Full (Android+Desktop+Server): 5000₽/год</span>`;
   }
   banner.innerHTML += `<span onclick="this.parentElement.remove()" style="position:absolute;top:4px;right:8px;cursor:pointer;color:#7a9aba;font-size:14px">✕</span>`;
   document.body.appendChild(banner);
