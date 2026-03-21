@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use serde::Serialize;
-use tauri::{Manager, Runtime, Webview};
+use tauri::{Emitter, Manager, Runtime, Webview};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
 #[derive(Serialize)]
