@@ -46,6 +46,13 @@ async fn check_app_update<R: Runtime>(webview: Webview<R>) -> Result<Option<Upda
     Ok(Some(info))
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DownloadProgress {
+    downloaded: usize,
+    total: Option<u64>,
+}
+
 #[tauri::command]
 async fn install_app_update<R: Runtime>(webview: Webview<R>, rid: u32) -> Result<(), String> {
     let update = webview
@@ -55,8 +62,14 @@ async fn install_app_update<R: Runtime>(webview: Webview<R>, rid: u32) -> Result
     let update = (*update).clone();
     let _ = webview.resources_table().close(rid);
 
+    let webview_clone = webview.clone();
     update
-        .download_and_install(|_: usize, _: Option<u64>| {}, || {})
+        .download_and_install(
+            move |downloaded: usize, total: Option<u64>| {
+                let _ = webview_clone.emit("update-progress", DownloadProgress { downloaded, total });
+            },
+            || {},
+        )
         .await
         .map_err(|e| e.to_string())
 }

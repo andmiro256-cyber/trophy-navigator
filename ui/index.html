@@ -5402,17 +5402,40 @@ async function installPendingUpdate() {
   const btn = getUpdateButton();
   const status = getUpdateStatus();
   btn.disabled = true;
-  btn.textContent = '⏳ Устанавливаем...';
+  btn.textContent = '⏳ Скачиваем...';
   status.style.color = '#5a7aaa';
-  status.textContent = 'Скачиваем и устанавливаем обновление...';
+  status.innerHTML = '<div style="margin-bottom:4px">Скачиваем обновление...</div>' +
+    '<div style="background:#1a2a3a;border-radius:4px;height:8px;overflow:hidden">' +
+    '<div id="update-progress-bar" style="background:#4a8adf;height:100%;width:0%;transition:width 0.3s;border-radius:4px"></div></div>' +
+    '<div id="update-progress-text" style="font-size:10px;margin-top:3px;color:#5a7aaa">0%</div>';
+
+  // Слушаем прогресс скачивания
+  let unlisten = null;
+  if (window.__TAURI__?.event?.listen) {
+    unlisten = await window.__TAURI__.event.listen('update-progress', (e) => {
+      const { downloaded, total } = e.payload;
+      const bar = document.getElementById('update-progress-bar');
+      const text = document.getElementById('update-progress-text');
+      if (bar && total) {
+        const pct = Math.min(100, Math.round(downloaded / total * 100));
+        bar.style.width = pct + '%';
+        if (text) text.textContent = pct + '% (' + (downloaded / 1048576).toFixed(1) + ' / ' + (total / 1048576).toFixed(1) + ' МБ)';
+      } else if (bar) {
+        bar.style.width = '50%';
+        if (text) text.textContent = (downloaded / 1048576).toFixed(1) + ' МБ';
+      }
+    });
+  }
 
   try {
     await tauriInvoke('install_app_update', { rid: pendingUpdateRid });
+    if (unlisten) unlisten();
     status.style.color = '#4adf7a';
     status.textContent = '✓ Обновление установлено. Если приложение не перезапустилось само, запустите его снова.';
     pendingUpdateRid = null;
     pendingUpdateVersion = null;
   } catch (e) {
+    if (unlisten) unlisten();
     status.style.color = '#df7a4a';
     status.textContent = '✗ ' + getErrorMessage(e, 'Не удалось установить обновление');
   } finally {
