@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🧭 Trophy Navigator Desktop v0.6.3</title>
+<title>🧭 Trophy Navigator Desktop v0.7.0</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -560,7 +560,7 @@
   <div class="tb-sep"></div>
 
   <!-- Синхронизация -->
-  <button class="tb-btn sync-btn" onclick="openSyncModal()" title="Синхронизация с планшетом">⟲ Синхр.</button>
+  <button class="tb-btn sync-btn" onclick="openSyncModal()" title="Облачная синхронизация">☁ Синхр.</button>
 
   <!-- Правая часть тулбара -->
   <div style="margin-left:auto"></div>
@@ -600,7 +600,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.6.3</span>
+  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.7.0</span>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -1270,7 +1270,7 @@
 <div class="modal-overlay" id="modal-sync">
   <div class="modal" id="modal-sync-win" style="top:60px;left:350px;width:380px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-sync-win')">
-      ⟲ Синхронизация с планшетом
+      ☁ Облачная синхронизация
       <span class="modal-close" onclick="closeModal('modal-sync')">✕</span>
     </div>
     <div class="modal-body">
@@ -1281,20 +1281,10 @@
           <div class="sync-label">Статус: <span class="sync-val" id="sync-status-text">Не подключено</span></div>
           <div class="sync-label" style="font-size:11px;margin-top:2px">Последняя: <span id="sync-last-time" style="color:#7a9aba">никогда</span></div>
         </div>
-        <button class="btn-primary" style="margin-left:auto;padding:5px 12px" onclick="testSync()">Подключиться</button>
+        <button class="btn-primary" style="margin-left:auto;padding:5px 12px" onclick="testSync()">Проверить</button>
       </div>
 
-      <div class="sync-section-title">Подключение (HTTP)</div>
-      <div style="display:flex;gap:8px">
-        <div class="prop-field" style="flex:3">
-          <label>Сервер</label>
-          <input id="sync-server" value="87.120.84.254" placeholder="IP или hostname">
-        </div>
-        <div class="prop-field" style="flex:1">
-          <label>Порт</label>
-          <input id="sync-port" type="number" value="9222">
-        </div>
-      </div>
+      <div style="font-size:11px;color:#5a7aaa;margin-bottom:8px;text-align:center">Сервер: trophynav.ru</div>
 
       <div class="sync-section-title">Аккаунт</div>
       <div class="prop-field">
@@ -1318,8 +1308,8 @@
         <input id="sync-api-key" value="" placeholder="TND-XXXX-XXXX-XXXX" readonly style="opacity:0.7">
       </div>
 
-      <!-- Отправить на Android -->
-      <div class="sync-section-title">⬆ Отправить на Android</div>
+      <!-- Отправить в облако -->
+      <div class="sync-section-title">⬆ Отправить в облако</div>
       <div style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#c0d8ff;margin-bottom:8px">
         <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
           <input type="checkbox" id="sync-cb-waypoints" checked style="accent-color:#4a8adf"> 📍 Точки (<span id="sync-wpt-count">0</span>)
@@ -1331,15 +1321,15 @@
           <input type="checkbox" id="sync-cb-routes" checked style="accent-color:#4a8adf"> ⚑ Маршруты (<span id="sync-rte-count">0</span>)
         </label>
       </div>
-      <button class="btn-primary" style="width:100%;background:#1a3a4a;border-color:#2a7a8a" onclick="syncPush()">⬆ Отправить выбранное на сервер</button>
+      <button class="btn-primary" style="width:100%;background:#1a3a4a;border-color:#2a7a8a" onclick="syncPush()">⬆ Отправить в облако</button>
 
-      <!-- Загрузить с Android -->
-      <div class="sync-section-title" style="margin-top:12px">⬇ Загрузить с Android</div>
-      <div id="sync-server-info" style="font-size:11px;color:#5a7aaa;margin-bottom:8px">Нажмите для проверки данных на сервере</div>
-      <button class="btn-primary" style="width:100%;background:#1a4a1a;border-color:#2a8a2a" onclick="syncPull()">⬇ Загрузить все данные с сервера</button>
+      <!-- Загрузить из облака -->
+      <div class="sync-section-title" style="margin-top:12px">⬇ Загрузить из облака</div>
+      <div id="sync-server-info" style="font-size:11px;color:#5a7aaa;margin-bottom:8px">Нажмите «Проверить» для просмотра данных</div>
+      <button class="btn-primary" style="width:100%;background:#1a4a1a;border-color:#2a8a2a" onclick="syncPull()">⬇ Загрузить из облака</button>
 
       <div style="font-size:10px;color:#5a7aaa;margin-top:10px;text-align:center">
-        Синхронизация доступна для лицензированных устройств
+        Облачная синхронизация через trophynav.ru · Доступна по лицензии
       </div>
 
       <div class="btn-row" style="margin-top:8px">
@@ -5035,10 +5025,8 @@ setInterval(saveState, 30000);
 
 function getSyncConfig() {
   return {
-    server: document.getElementById('sync-server').value.trim(),
-    port: document.getElementById('sync-port').value.trim(),
-    apiKey: document.getElementById('sync-api-key').value.trim(),
-    email: document.getElementById('sync-email').value.trim()
+    email: document.getElementById('sync-email').value.trim(),
+    syncKey: document.getElementById('sync-api-key').value.trim()
   };
 }
 
@@ -5051,16 +5039,20 @@ function loadSyncConfig() {
     const raw = localStorage.getItem('tnd-sync-config');
     if (!raw) return;
     const cfg = JSON.parse(raw);
-    if (cfg.server) document.getElementById('sync-server').value = cfg.server;
-    if (cfg.port) document.getElementById('sync-port').value = cfg.port;
-    if (cfg.apiKey) document.getElementById('sync-api-key').value = cfg.apiKey;
     if (cfg.email) document.getElementById('sync-email').value = cfg.email;
+    if (cfg.syncKey) document.getElementById('sync-api-key').value = cfg.syncKey;
+    // Backwards compat: old apiKey field
+    if (!cfg.syncKey && cfg.apiKey) document.getElementById('sync-api-key').value = cfg.apiKey;
   } catch (e) {}
 }
 
-function syncApiUrl(path) {
+function syncHeaders() {
   const cfg = getSyncConfig();
-  return `http://${cfg.server}:${cfg.port}${path}`;
+  return { 'X-Sync-Email': cfg.email, 'X-Sync-Key': cfg.syncKey };
+}
+
+function syncApiUrl(path) {
+  return `${SYNC_SERVER}${path}`;
 }
 
 function updateSyncStatus(text, online) {
@@ -5072,19 +5064,27 @@ function updateSyncStatus(text, online) {
 
 async function testSync() {
   saveSyncConfig();
+  const cfg = getSyncConfig();
+  if (!cfg.email || !cfg.syncKey) {
+    showToast('Введите email и привяжите аккаунт');
+    return;
+  }
   updateSyncStatus('Подключение...', false);
   try {
-    const resp = await fetch(syncApiUrl('/api/ping'), { signal: AbortSignal.timeout(5000) });
-    const data = await resp.json();
-    if (data.ok) {
+    const resp = await fetch(syncApiUrl('/api/sync/pull'), {
+      headers: syncHeaders(),
+      signal: AbortSignal.timeout(5000)
+    });
+    if (resp.ok) {
       updateSyncStatus('Подключено', true);
       showToast('Соединение установлено');
     } else {
-      updateSyncStatus('Ошибка ответа', false);
+      const data = await resp.json().catch(() => ({}));
+      updateSyncStatus('Ошибка: ' + (data.error || resp.status), false);
     }
   } catch (e) {
     updateSyncStatus('Нет связи', false);
-    showToast('Не удалось подключиться к серверу');
+    showToast('Не удалось подключиться к trophynav.ru');
   }
 }
 
@@ -5105,11 +5105,10 @@ async function registerSyncEmail() {
   const statusEl = document.getElementById('sync-email-status');
   statusEl.textContent = 'Регистрация...';
   try {
-    const cfg = getSyncConfig();
-    const resp = await fetch(`http://${cfg.server}:${cfg.port}/api/email/register`, {
+    const resp = await fetch(`${SYNC_SERVER}/api/email/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, deviceId: machineId, deviceType: 'desktop', syncKey: cfg.apiKey || undefined })
+      body: JSON.stringify({ email, deviceId: machineId, deviceType: 'desktop' })
     });
     const data = await resp.json();
     if (data.ok) {
@@ -5119,14 +5118,13 @@ async function registerSyncEmail() {
       saveSyncConfig();
       localStorage.setItem('tnd-sync-email', email);
       showToast('Email привязан: ' + email);
-      // Проверяем лицензию по email
       await checkLicenseOnServer();
       updateLicenseCard();
     } else {
       statusEl.innerHTML = `<span style="color:#e07070">Ошибка: ${escapeHtml(String(data.error))}</span>`;
     }
   } catch (e) {
-    statusEl.innerHTML = '<span style="color:#e07070">Нет связи с сервером</span>';
+    statusEl.innerHTML = '<span style="color:#e07070">Нет связи с trophynav.ru</span>';
   }
 }
 
@@ -5217,22 +5215,30 @@ function updateSyncCounts() {
 
 async function checkSyncServerInfo() {
   const cfg = getSyncConfig();
+  if (!cfg.email || !cfg.syncKey) {
+    document.getElementById('sync-server-info').innerHTML = '<span style="color:#5a7aaa">Привяжите email для синхронизации</span>';
+    return;
+  }
   try {
-    const resp = await fetch(syncApiUrl('/api/state/meta'), {
-      headers: { 'X-Api-Key': cfg.apiKey }
+    const resp = await fetch(syncApiUrl('/api/sync/pull'), {
+      headers: syncHeaders()
     });
-    const meta = await resp.json();
-    if (meta.error) {
+    if (!resp.ok) {
       document.getElementById('sync-server-info').innerHTML = '<span style="color:#e07070">Ключ не найден</span>';
+      return;
+    }
+    const state = await resp.json();
+    if (state.error) {
+      document.getElementById('sync-server-info').innerHTML = `<span style="color:#e07070">${escapeHtml(state.error)}</span>`;
     } else {
-      const updated = meta.updatedAt ? new Date(meta.updatedAt).toLocaleString('ru-RU') : 'никогда';
-      const by = meta.updatedBy === 'android' ? '📱 Android' : meta.updatedBy === 'desktop' ? '💻 Desktop' : meta.updatedBy || '—';
+      const wpts = (state.waypoints || []).length;
+      const trks = (state.tracks || []).length;
+      const rtes = (state.routes || []).length;
       document.getElementById('sync-server-info').innerHTML =
-        `На сервере: ${meta.waypoints || 0} точек, ${meta.tracks || 0} треков, ${meta.routes || 0} маршрутов<br>` +
-        `<span style="font-size:10px">Обновлено: ${escapeHtml(updated)} · ${escapeHtml(by)}</span>`;
+        `На сервере: ${wpts} точек, ${trks} треков, ${rtes} маршрутов`;
     }
   } catch (e) {
-    document.getElementById('sync-server-info').innerHTML = '<span style="color:#e07070">Нет связи с сервером</span>';
+    document.getElementById('sync-server-info').innerHTML = '<span style="color:#e07070">Нет связи с trophynav.ru</span>';
   }
 }
 
@@ -5240,6 +5246,7 @@ async function syncPush() {
   if (!isPremiumAvailable()) { showToast('Синхронизация доступна по лицензии'); return; }
   saveSyncConfig();
   const cfg = getSyncConfig();
+  if (!cfg.email || !cfg.syncKey) { showToast('Привяжите email для синхронизации'); return; }
   const checks = getSyncChecks();
   const fullState = collectState();
 
@@ -5255,16 +5262,17 @@ async function syncPush() {
 
   updateSyncStatus('Отправка...', false);
   try {
-    const resp = await fetch(syncApiUrl('/api/state'), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-Api-Key': cfg.apiKey, 'X-Client-Id': 'desktop' },
+    const resp = await fetch(syncApiUrl('/api/sync/push'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...syncHeaders() },
       body: JSON.stringify(state)
     });
     const data = await resp.json();
     if (data.ok) {
       updateSyncStatus('Подключено', true);
       document.getElementById('sync-last-time').textContent = new Date().toLocaleString('ru-RU');
-      showToast(`Данные отправлены на сервер`);
+      localStorage.setItem('tnd-sync-last', new Date().toISOString());
+      showToast('Данные отправлены на trophynav.ru');
     } else {
       updateSyncStatus('Ошибка: ' + (data.error || ''), false);
       showToast('Ошибка отправки');
@@ -5275,19 +5283,24 @@ async function syncPush() {
   }
 }
 
-async function syncPull() {
-  if (!isPremiumAvailable()) { showToast('Синхронизация доступна по лицензии'); return; }
+async function syncPull(silent) {
+  if (!isPremiumAvailable()) { if (!silent) showToast('Синхронизация доступна по лицензии'); return; }
   saveSyncConfig();
   const cfg = getSyncConfig();
+  if (!cfg.email || !cfg.syncKey) { if (!silent) showToast('Привяжите email для синхронизации'); return; }
   const checks = getSyncChecks();
 
-  if (!confirm('Загрузить данные с сервера? Текущие данные выбранных типов будут заменены.')) return;
+  if (!silent && !confirm('Загрузить данные с сервера? Текущие данные выбранных типов будут заменены.')) return;
 
   updateSyncStatus('Загрузка...', false);
   try {
-    const resp = await fetch(syncApiUrl('/api/state'), {
-      headers: { 'X-Api-Key': cfg.apiKey }
+    const resp = await fetch(syncApiUrl('/api/sync/pull'), {
+      headers: syncHeaders()
     });
+    if (!resp.ok) {
+      updateSyncStatus('Ошибка: ' + resp.status, false);
+      return;
+    }
     const state = await resp.json();
     if (state.error) {
       updateSyncStatus('Ошибка: ' + state.error, false);
@@ -5305,10 +5318,11 @@ async function syncPull() {
 
     updateSyncStatus('Подключено', true);
     document.getElementById('sync-last-time').textContent = new Date().toLocaleString('ru-RU');
-    showToast(`Данные загружены с сервера`);
+    localStorage.setItem('tnd-sync-last', new Date().toISOString());
+    if (!silent) showToast('Данные загружены с trophynav.ru');
   } catch (e) {
     updateSyncStatus('Нет связи', false);
-    showToast('Не удалось загрузить данные');
+    if (!silent) showToast('Не удалось загрузить данные');
   }
 }
 
@@ -5580,6 +5594,7 @@ setInterval(saveStateToFile, 60000);
 // ═══════════════════════════════════════════
 
 const LICENSE_SERVER = 'http://87.120.84.254:9222';
+const SYNC_SERVER = 'https://trophynav.ru';
 const TRIAL_DAYS = 20;
 
 let _cachedMachineId = null;
@@ -5943,6 +5958,9 @@ renderCustomLayers();
   setTimeout(showTrialBanner, 3000);
   updatePremiumUI();
   console.log('Machine ID:', machineId, '(hw:', machineId.startsWith('HW-'), ') | Trial days left:', getTrialDaysLeft(), '| Licensed:', isLicensed());
+  // Auto-sync: загрузить данные из облака при запуске (silent mode)
+  loadSyncConfig();
+  setTimeout(() => { syncPull(true); }, 2000);
 })();
 
 </script>
@@ -5967,7 +5985,7 @@ renderCustomLayers();
       <!-- Информация -->
       <div style="background:#0d1e38;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.6.3</span>
+          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.7.0</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:#5a7aaa">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
