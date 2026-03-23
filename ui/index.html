@@ -1320,6 +1320,9 @@
         <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
           <input type="checkbox" id="sync-cb-routes" checked style="accent-color:#4a8adf"> ⚑ Маршруты (<span id="sync-rte-count">0</span>)
         </label>
+        <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
+          <input type="checkbox" id="sync-cb-gpx" checked style="accent-color:#4a8adf"> 📄 GPX файлы (<span id="sync-gpx-count">0</span>)
+        </label>
       </div>
       <button class="btn-primary" style="width:100%;background:#1a3a4a;border-color:#2a7a8a" onclick="syncPush()">⬆ Отправить в облако</button>
 
@@ -1904,11 +1907,13 @@ function updateWptTable() {
   tbody.innerHTML = filtered.map(m => {
     const d = m.wpData;
     const idx = waypoints.indexOf(m);
+    const syncBadge = d.syncedAt ? `<span title="Синхр. с ${d.source === 'android' ? 'Android' : 'desktop'} · ${new Date(d.syncedAt).toLocaleString('ru-RU')}" style="font-size:10px;opacity:0.7;margin-left:2px">☁</span>` : '';
+    const srcHint = d.source && d.source !== 'desktop' ? `<span style="font-size:9px;color:#5a7aaa;margin-left:3px">${d.source}</span>` : '';
     return `<tr oncontextmenu="showCtxMenuTable(event,${idx})" onclick="map.panTo([${d.lat},${d.lng}])">
       <td onclick="event.stopPropagation()"><input type="checkbox" class="wpt-cb" data-idx="${idx}" style="accent-color:#4a8adf"></td>
       <td><span class="wpt-icon" style="background:${d.color}"></span></td>
       <td style="color:#5a7aaa">${d.num}</td>
-      <td style="font-weight:500">${d.name}</td>
+      <td style="font-weight:500">${d.name}${syncBadge}${srcHint}</td>
       <td style="font-family:monospace;font-size:11px">${formatDm(d.lat, 'N', 'S')} ${formatDm(d.lng, 'E', 'W')}</td>
       <td style="text-align:center">${d.radius}м</td>
     </tr>`;
@@ -2852,6 +2857,14 @@ function loadGPXFile(text, fname) {
   if (wCount > 0) openModal('modal-wpts');
   if (tCount > 0) openModal('modal-tracks');
   if (rCount > 0) openModal('modal-routes');
+  // Сохраняем импортированный GPX для синхронизации
+  importedGpxFiles.push({
+    name: fname,
+    content: text,
+    importedAt: new Date().toISOString(),
+    source: 'desktop',
+    syncedAt: null
+  });
   showToast(`✓ GPX: ${wCount} точек, ${tCount} треков, ${rCount} маршрутов — ${fname}`);
 }
 function loadWPT(text, fname) {
@@ -3533,14 +3546,16 @@ function updateTrackList() {
   }
   el.innerHTML = tracks.map(t => {
     const km = trackLen(t).toFixed(1), sel = t.id === selectedTrackId;
+    const syncInfo = t.syncedAt ? `<span title="Синхр. с ${t.source === 'android' ? 'Android' : 'desktop'} · ${new Date(t.syncedAt).toLocaleString('ru-RU')}" style="font-size:10px;opacity:0.7;margin-left:4px">☁</span>` : '';
+    const srcTag = t.source && t.source !== 'desktop' ? ` · <span style="font-size:10px;color:#7a9aba">${t.source}</span>` : '';
     return `<div class="track-item${sel ? ' selected' : ''}" style="${sel ? 'background:#1a3a6a;border-left:3px solid #4a8adf;' : ''}" onclick="selectTrackById(${t.id})">
       <input type="checkbox" class="track-play-cb" data-track-id="${t.id}" onclick="event.stopPropagation()" style="accent-color:${t.color};margin-right:4px" title="Выбрать для плеера">
       <div class="track-color" style="background:${t.color};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px" title="Скрыть/показать" onclick="event.stopPropagation();toggleTrackVisible(${t.id})">${t.visible !== false ? '👁' : '○'}</div>
       <div class="track-info">
         <input class="track-name" value="${escapeHtml(t.name)}" onclick="event.stopPropagation()" onchange="renameTrack(${t.id},this.value)"
           style="background:transparent;border:none;border-bottom:1px solid transparent;color:#c0d8ff;font-size:13px;font-weight:500;outline:none;width:100%;padding:0"
-          onfocus="this.style.borderBottomColor='#4a8adf'" onblur="this.style.borderBottomColor='transparent'">
-        <div class="track-meta">${t.points.length} точек · ${km} км</div>
+          onfocus="this.style.borderBottomColor='#4a8adf'" onblur="this.style.borderBottomColor='transparent'">${syncInfo}
+        <div class="track-meta">${t.points.length} точек · ${km} км${srcTag}</div>
       </div>
     </div>`;
   }).join('');
@@ -3753,6 +3768,8 @@ function onTrackSpeedChange(val) {
 // МАРШРУТЫ
 // ─────────────────────────────────────────────
 let routes = [], routeIdCounter = 1;
+// Импортированные GPX файлы (хранятся для синхронизации)
+let importedGpxFiles = [];
 let currentRouteDraw = null;
 const routePalette = ['#df4a4a','#4a8adf','#dfdf4a','#4adf7a','#df7a4a','#df4adf'];
 
@@ -3970,6 +3987,8 @@ function updateRouteList() {
   }
   el.innerHTML = routes.map(r => {
     const km = routeLen(r).toFixed(1);
+    const syncInfo = r.syncedAt ? `<span title="Синхр. с ${r.source === 'android' ? 'Android' : 'desktop'} · ${new Date(r.syncedAt).toLocaleString('ru-RU')}" style="font-size:10px;opacity:0.7;margin-left:4px">☁</span>` : '';
+    const srcTag = r.source && r.source !== 'desktop' ? ` · <span style="font-size:10px;color:#7a9aba">${r.source}</span>` : '';
     const kpRows = r.points.map((p, i) => {
       const prev = i > 0 ? r.points[i-1] : null;
       const dist = prev ? (prev.distanceTo(p)/1000).toFixed(1) + ' км' : '—';
@@ -3993,10 +4012,10 @@ function updateRouteList() {
           <span class="route-color-dot" style="background:${r.color}"></span>
           <input id="route-name-${r.id}" value="${escapeHtml(r.name)}" onclick="event.stopPropagation()" onchange="renameRoute(${r.id})"
             style="font-size:13px;color:#c0d8ff;background:transparent;border:none;border-bottom:1px solid transparent;outline:none;width:120px;padding:0"
-            onfocus="this.style.borderBottomColor='#4a8adf'" onblur="this.style.borderBottomColor='transparent'">
+            onfocus="this.style.borderBottomColor='#4a8adf'" onblur="this.style.borderBottomColor='transparent'">${syncInfo}
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:11px;color:#5a7aaa">${r.points.length} КП · ${km} км <span class="route-arrow">▸</span></span>
+          <span style="font-size:11px;color:#5a7aaa">${r.points.length} КП · ${km} км${srcTag} <span class="route-arrow">▸</span></span>
           <span style="font-size:12px;color:#7a9aba;cursor:pointer;padding:0 4px" onclick="event.stopPropagation();toggleRouteVisible(${r.id})" title="Скрыть/показать">👁</span>
           <span style="font-size:12px;color:#7a9aba;cursor:pointer;padding:0 4px" onclick="event.stopPropagation();centerRoute(${r.id})" title="Центрировать">🎯</span>
           <span style="font-size:12px;color:#e07070;cursor:pointer;padding:0 4px" onclick="event.stopPropagation();deleteRoute(${r.id})" title="Удалить">✕</span>
@@ -4757,7 +4776,9 @@ function collectState() {
       color: m.wpData.color,
       radius: m.wpData.radius,
       num: m.wpData.num,
-      setId: m._setId
+      setId: m._setId,
+      source: m.wpData.source || 'desktop',
+      syncedAt: m.wpData.syncedAt || null
     })),
     tracks: tracks.filter(t => !t.isNew).map(t => ({
       id: t.id,
@@ -4767,14 +4788,18 @@ function collectState() {
       pointSize: t.pointSize,
       points: t.points.map(p => ({ lat: p.lat, lng: p.lng })),
       pointsData: t.pointsData || [],
-      visible: t.visible
+      visible: t.visible,
+      source: t.source || 'desktop',
+      syncedAt: t.syncedAt || null
     })),
     routes: routes.map(r => ({
       id: r.id,
       name: r.name,
       color: r.color,
       points: r.points.map(p => ({ lat: p.lat, lng: p.lng })),
-      labels: r.labels || []
+      labels: r.labels || [],
+      source: r.source || 'desktop',
+      syncedAt: r.syncedAt || null
     })),
     settings: {
       defaultRadius: getDefaultRadius(),
@@ -4788,7 +4813,14 @@ function collectState() {
       colorSearch: document.getElementById('setting-color-search')?.value || '#4a8adf',
       iconSize: parseInt(document.getElementById('setting-icon-size')?.value) || 16,
       trackWidth: parseInt(document.getElementById('setting-track-width')?.value) || 3
-    }
+    },
+    gpxFiles: importedGpxFiles.map(g => ({
+      name: g.name,
+      content: g.content,
+      importedAt: g.importedAt,
+      source: g.source || 'desktop',
+      syncedAt: g.syncedAt || null
+    }))
   };
   return state;
 }
@@ -4819,6 +4851,7 @@ function clearCurrentData() {
   routes.forEach(r => { if (r.polyline) map.removeLayer(r.polyline); });
   routes = [];
   routeIdCounter = 1;
+  importedGpxFiles = [];
 }
 
 function showClearConfirm() {
@@ -4866,7 +4899,9 @@ function applyState(state) {
       marker.wpData = {
         name: wp.name, desc: wp.desc || '', icon: wp.icon || '⬤',
         color: wp.color, radius: wp.radius || 0,
-        lat: wp.lat, lng: wp.lng, num: wp.num
+        lat: wp.lat, lng: wp.lng, num: wp.num,
+        source: wp.source || 'desktop',
+        syncedAt: wp.syncedAt || null
       };
       marker.addTo(map);
       refreshWaypoint(marker);
@@ -4898,6 +4933,8 @@ function applyState(state) {
       track.id = t.id;
       track.pointsData = t.pointsData || [];
       track.visible = t.visible !== false;
+      track.source = t.source || 'desktop';
+      track.syncedAt = t.syncedAt || null;
       if (!track.visible) {
         if (track.polyline) map.removeLayer(track.polyline);
         if (track.markers) track.markers.forEach(m => map.removeLayer(m));
@@ -4912,6 +4949,8 @@ function applyState(state) {
       const points = r.points.map(p => L.latLng(p.lat, p.lng));
       const route = createRouteFromPoints(points, r.name, r.labels, { color: r.color });
       route.id = r.id;
+      route.source = r.source || 'desktop';
+      route.syncedAt = r.syncedAt || null;
     });
     routeIdCounter = state.counters?.routeIdCounter || routeIdCounter;
   }
@@ -4934,6 +4973,19 @@ function applyState(state) {
     if (s.iconSize != null) document.getElementById('icon-size-val').textContent = s.iconSize + 'px';
     setVal('setting-track-width', s.trackWidth);
     if (s.trackWidth != null) document.getElementById('trk-width-val').textContent = s.trackWidth + 'px';
+  }
+
+  // 4.7. Restore imported GPX files
+  if (state.gpxFiles && state.gpxFiles.length > 0) {
+    importedGpxFiles = state.gpxFiles.map(g => ({
+      name: g.name,
+      content: g.content,
+      importedAt: g.importedAt,
+      source: g.source || 'desktop',
+      syncedAt: g.syncedAt || null
+    }));
+  } else {
+    importedGpxFiles = [];
   }
 
   // 5. Restore map view and layer
@@ -5092,7 +5144,8 @@ function getSyncChecks() {
   return {
     waypoints: document.getElementById('sync-cb-waypoints').checked,
     tracks: document.getElementById('sync-cb-tracks').checked,
-    routes: document.getElementById('sync-cb-routes').checked
+    routes: document.getElementById('sync-cb-routes').checked,
+    gpx: document.getElementById('sync-cb-gpx')?.checked ?? true
   };
 }
 
@@ -5211,6 +5264,7 @@ function updateSyncCounts() {
   el('sync-wpt-count', waypoints.length);
   el('sync-trk-count', tracks.length);
   el('sync-rte-count', routes.length);
+  el('sync-gpx-count', importedGpxFiles.length);
 }
 
 async function checkSyncServerInfo() {
@@ -5234,8 +5288,9 @@ async function checkSyncServerInfo() {
       const wpts = (state.waypoints || []).length;
       const trks = (state.tracks || []).length;
       const rtes = (state.routes || []).length;
+      const gpxs = (state.gpxFiles || []).length;
       document.getElementById('sync-server-info').innerHTML =
-        `На сервере: ${wpts} точек, ${trks} треков, ${rtes} маршрутов`;
+        `На сервере: ${wpts} точек, ${trks} треков, ${rtes} маршрутов${gpxs > 0 ? `, ${gpxs} GPX` : ''}`;
     }
   } catch (e) {
     document.getElementById('sync-server-info').innerHTML = '<span style="color:#e07070">Нет связи с trophynav.ru</span>';
@@ -5258,7 +5313,9 @@ async function syncPush() {
   }
   if (checks.tracks) state.tracks = fullState.tracks;
   if (checks.routes) state.routes = fullState.routes;
+  if (checks.gpx) state.gpxFiles = fullState.gpxFiles;
   state.map = fullState.map;
+  state.settings = fullState.settings;
 
   updateSyncStatus('Отправка...', false);
   try {
@@ -5280,6 +5337,95 @@ async function syncPush() {
   } catch (e) {
     updateSyncStatus('Нет связи', false);
     showToast('Не удалось отправить данные');
+  }
+}
+
+// ─── Сохранение синхронизированных данных как GPX файлы ───
+async function saveSyncedGPXFiles(state, checks) {
+  if (!window.__TAURI__ || !appDataPath) return;
+  try {
+    const { writeTextFile } = window.__TAURI__.fs;
+    const escXml = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+    // Сохраняем точки
+    if (checks.waypoints && state.waypoints && state.waypoints.length > 0) {
+      const sets = state.waypointSets || [{ id: 1, name: 'Synced' }];
+      for (const set of sets) {
+        const setWpts = state.waypoints.filter(wp => wp.setId === set.id);
+        if (setWpts.length === 0) continue;
+        let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="TND-Sync" xmlns:tnd="http://trophy-nav.ru/gpx/ext">\n';
+        for (const wp of setWpts) {
+          gpx += `  <wpt lat="${wp.lat.toFixed(6)}" lon="${wp.lng.toFixed(6)}">\n`;
+          gpx += `    <name>${escXml(wp.name)}</name>\n`;
+          if (wp.desc) gpx += `    <desc>${escXml(wp.desc)}</desc>\n`;
+          gpx += `    <sym>${escXml(wp.icon || '⬤')}</sym>\n`;
+          gpx += `    <extensions>\n`;
+          gpx += `      <tnd:color>${escXml(wp.color)}</tnd:color>\n`;
+          if (wp.radius) gpx += `      <tnd:radius>${wp.radius}</tnd:radius>\n`;
+          if (wp.source) gpx += `      <tnd:source>${escXml(wp.source)}</tnd:source>\n`;
+          if (wp.syncedAt) gpx += `      <tnd:syncedAt>${escXml(wp.syncedAt)}</tnd:syncedAt>\n`;
+          gpx += `    </extensions>\n`;
+          gpx += `  </wpt>\n`;
+        }
+        gpx += '</gpx>';
+        const fname = (set.name || 'waypoints').replace(/[^a-zA-Zа-яА-Я0-9_\- ]/g, '_');
+        await writeTextFile(appDataPath + '/waypoints/' + fname + '.gpx', gpx);
+      }
+    }
+
+    // Сохраняем треки
+    if (checks.tracks && state.tracks && state.tracks.length > 0) {
+      for (const t of state.tracks) {
+        let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="TND-Sync" xmlns:tnd="http://trophy-nav.ru/gpx/ext">\n';
+        gpx += `  <trk>\n    <name>${escXml(t.name)}</name>\n`;
+        gpx += `    <extensions>\n      <tnd:color>${escXml(t.color || '#4a8adf')}</tnd:color>\n`;
+        if (t.source) gpx += `      <tnd:source>${escXml(t.source)}</tnd:source>\n`;
+        if (t.syncedAt) gpx += `      <tnd:syncedAt>${escXml(t.syncedAt)}</tnd:syncedAt>\n`;
+        gpx += `    </extensions>\n    <trkseg>\n`;
+        (t.points || []).forEach((p, i) => {
+          gpx += `      <trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
+          const d = t.pointsData?.[i];
+          if (d?.ele != null) gpx += `<ele>${d.ele.toFixed(1)}</ele>`;
+          if (d?.time) gpx += `<time>${d.time}</time>`;
+          gpx += `</trkpt>\n`;
+        });
+        gpx += `    </trkseg>\n  </trk>\n</gpx>`;
+        const fname = (t.name || 'track_' + t.id).replace(/[^a-zA-Zа-яА-Я0-9_\- ]/g, '_');
+        await writeTextFile(appDataPath + '/tracks/' + fname + '.gpx', gpx);
+      }
+    }
+
+    // Сохраняем маршруты
+    if (checks.routes && state.routes && state.routes.length > 0) {
+      for (const r of state.routes) {
+        let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="TND-Sync" xmlns:tnd="http://trophy-nav.ru/gpx/ext">\n';
+        gpx += `  <rte>\n    <name>${escXml(r.name)}</name>\n`;
+        gpx += `    <extensions>\n      <tnd:color>${escXml(r.color || '#4a8adf')}</tnd:color>\n`;
+        if (r.source) gpx += `      <tnd:source>${escXml(r.source)}</tnd:source>\n`;
+        if (r.syncedAt) gpx += `      <tnd:syncedAt>${escXml(r.syncedAt)}</tnd:syncedAt>\n`;
+        gpx += `    </extensions>\n`;
+        (r.points || []).forEach((p, i) => {
+          gpx += `    <rtept lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
+          if (r.labels?.[i]) gpx += `<name>${escXml(r.labels[i])}</name>`;
+          gpx += `</rtept>\n`;
+        });
+        gpx += `  </rte>\n</gpx>`;
+        const fname = (r.name || 'route_' + r.id).replace(/[^a-zA-Zа-яА-Я0-9_\- ]/g, '_');
+        await writeTextFile(appDataPath + '/routes/' + fname + '.gpx', gpx);
+      }
+    }
+
+    // Сохраняем импортированные GPX файлы
+    if (checks.gpx && state.gpxFiles && state.gpxFiles.length > 0) {
+      for (const g of state.gpxFiles) {
+        const fname = (g.name || 'imported.gpx').replace(/[^a-zA-Zа-яА-Я0-9_.\- ]/g, '_');
+        await writeTextFile(appDataPath + '/gpx/' + fname, g.content);
+      }
+    }
+
+    console.log('Synced GPX files saved to', appDataPath);
+  } catch (e) {
+    console.warn('Failed to save synced GPX files:', e);
   }
 }
 
@@ -5309,12 +5455,51 @@ async function syncPull(silent) {
 
     // Filter by checkboxes — сохраняем локальные данные для незатронутых типов
     const localState = collectState();
+    const syncTime = new Date().toISOString();
+    const serverSource = state._source || 'android';
+
+    // Помечаем синхронизированные элементы
+    if (checks.waypoints && state.waypoints) {
+      state.waypoints = state.waypoints.map(wp => ({
+        ...wp,
+        source: wp.source || serverSource,
+        syncedAt: wp.syncedAt || syncTime
+      }));
+    }
+    if (checks.tracks && state.tracks) {
+      state.tracks = state.tracks.map(t => ({
+        ...t,
+        source: t.source || serverSource,
+        syncedAt: t.syncedAt || syncTime
+      }));
+    }
+    if (checks.routes && state.routes) {
+      state.routes = state.routes.map(r => ({
+        ...r,
+        source: r.source || serverSource,
+        syncedAt: r.syncedAt || syncTime
+      }));
+    }
+
+    // Помечаем GPX файлы
+    if (checks.gpx && state.gpxFiles) {
+      state.gpxFiles = state.gpxFiles.map(g => ({
+        ...g,
+        source: g.source || serverSource,
+        syncedAt: g.syncedAt || syncTime
+      }));
+    }
+
     if (!checks.waypoints) { state.waypoints = localState.waypoints; state.waypointSets = localState.waypointSets; state.activeSetId = localState.activeSetId; }
     if (!checks.tracks) state.tracks = localState.tracks;
     if (!checks.routes) state.routes = localState.routes;
+    if (!checks.gpx) state.gpxFiles = localState.gpxFiles;
 
     applyState(state);
     saveState();
+
+    // Сохраняем синхронизированные данные как GPX файлы
+    saveSyncedGPXFiles(state, checks);
 
     updateSyncStatus('Подключено', true);
     document.getElementById('sync-last-time').textContent = new Date().toLocaleString('ru-RU');
