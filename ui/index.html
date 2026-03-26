@@ -464,7 +464,8 @@
   .live-device .live-dev-name.pro { color: #FFD700; }
   .live-device .live-dev-meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
   .live-device .live-dev-speed { font-size: 11px; color: var(--accent-blue); font-weight: 600; flex-shrink: 0; }
-  .live-marker-arrow { font-size: 18px; line-height: 1; color: #fff; text-shadow: 0 0 4px rgba(0,0,0,0.6); }
+  .live-icon-wrapper { background: none !important; border: none !important; }
+  .live-marker-arrow { line-height: 1; color: #fff; text-shadow: 0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9); }
   .live-marker-arrow.pro { color: #FFD700; text-shadow: 0 0 6px rgba(255,215,0,0.5); }
   .live-marker-label { font-size: 9px; color: #fff; background: rgba(0,0,0,0.6); padding: 1px 4px; border-radius: 3px; white-space: nowrap; text-align: center; margin-top: 2px; }
   .tb-btn.live-active { background: #1a5c1a !important; color: #4CAF50 !important; }
@@ -6708,12 +6709,12 @@ function liveUpdateMarker(dev, isOffline) {
   const name = liveEsc((dev.name || 'Unknown').substring(0, 15));
 
   const html = `
-    <div style="text-align:center;transform:translate(-12px,-12px)">
-      <div class="live-marker-arrow ${isPro ? 'pro' : ''}" style="transform:rotate(${course}deg)">▲</div>
+    <div style="text-align:center">
+      <div class="live-marker-arrow ${isPro ? 'pro' : ''}" style="transform:rotate(${course}deg);font-size:22px">▲</div>
       <div class="live-marker-label">${name}${speed > 1 ? ' · ' + speed + ' км/ч' : ''}</div>
     </div>`;
 
-  const icon = L.divIcon({ className: '', html, iconSize: [0, 0] });
+  const icon = L.divIcon({ className: 'live-icon-wrapper', html, iconSize: [60, 40], iconAnchor: [30, 20] });
 
   if (liveState.markers[id]) {
     liveState.markers[id].setLatLng(latlng).setIcon(icon);
