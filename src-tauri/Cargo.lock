@@ -4427,7 +4427,7 @@ dependencies = [
 
 [[package]]
 name = "trophy-navigator-desktop"
-version = "0.6.3"
+version = "0.8.0"
 dependencies = [
  "serde",
  "serde_json",
