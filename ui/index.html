@@ -2710,11 +2710,10 @@ function setLayer(name, el) {
 // ─────────────────────────────────────────────
 // ОВЕРЛЕЙНЫЕ СЛОИ
 // ─────────────────────────────────────────────
-// Wikimapia: сервер = (x%4 + (y%4)*4), тип=hybrid для прозрачного оверлея
+// Wikimapia: через прокси на сервере (ресайз 531→256, кэш)
 const WikimapiaLayer = L.TileLayer.extend({
   getTileUrl: function(coords) {
-    const s = (((coords.x % 4) + 4) % 4) + ((((coords.y % 4) + 4) % 4) * 4);
-    return 'https://i' + s + '.wikimapia.org/?x=' + coords.x + '&y=' + coords.y + '&zoom=' + coords.z + '&r=0&type=hybrid&lng=1';
+    return 'http://87.120.84.254:9222/tiles/wikimapia_hybrid/' + coords.z + '/' + coords.x + '/' + coords.y;
   }
 });
 
@@ -4686,7 +4685,7 @@ function getTileUrl(layerName, x, y, z) {
     case 'Windy рельеф':   return `https://tiles.windy.com/tiles/v8.1/darkmap/${z}/${x}/${y}.png`;
     case 'Горнолыжные трассы': return `https://tiles.opensnowmap.org/pistes/${z}/${x}/${y}.png`;
     case 'Лыжные трассы':  return `https://tiles.opensnowmap.org/piste/${z}/${x}/${y}.png`;
-    case 'Wikimapia':      { const s = (x % 4) + (y % 4) * 4; return `https://i${s}.wikimapia.org/?x=${x}&y=${y}&zoom=${z}&r=0&type=hybrid&lng=1`; }
+    case 'Wikimapia':      return `http://87.120.84.254:9222/tiles/wikimapia_hybrid/${z}/${x}/${y}`;
     case 'Bing дороги':    { const q = bingQuadKey(x, y, z); return `https://ecn.t0.tiles.virtualearth.net/tiles/r${q}?g=14000&mkt=ru-RU&shading=hill`; }
     default: return null;
   }
