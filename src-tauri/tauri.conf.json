@@ -28,7 +28,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDk1NjExQzVFNzJBODA5QzAKUldUQUNhaHlYaHhobFJHZjlxUS9XNDRCUlQ0Sys4SE83K2huWUpTUkkvRTAxVzhQK25FOExRMW4K",
       "endpoints": [
-        "https://github.com/andmiro256-cyber/trophy-navigator/releases/latest/download/latest.json"
+        "https://trophynav.ru/releases/latest.json"
       ]
     }
   },
