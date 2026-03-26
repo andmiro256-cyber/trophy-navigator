@@ -430,6 +430,39 @@
   /* ─── CUSTOM LAYER FORM ─── */
   #custom-layer-form code { background: var(--bg-surface); padding: 1px 4px; border-radius: 3px; font-size: 11px; color: var(--accent-blue); }
 
+  /* ─── LIVE MONITORING ─── */
+  #live-sidebar {
+    position: absolute; top: 42px; right: 0; bottom: 0; width: 280px; z-index: 800;
+    background: var(--bg-dark); border-left: 1px solid var(--border); overflow-y: auto;
+    transition: transform 0.25s ease; transform: translateX(100%);
+  }
+  #live-sidebar.open { transform: translateX(0); }
+  #live-sidebar .live-header {
+    padding: 10px 14px; font-size: 13px; font-weight: 600; color: var(--text);
+    border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;
+  }
+  #live-sidebar .live-header .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #4CAF50; }
+  #live-sidebar .live-header .live-dot.error { background: #F44336; }
+  #live-sidebar .live-header .live-dot.off { background: #666; }
+  .live-device {
+    padding: 8px 14px; border-bottom: 1px solid var(--border); cursor: pointer;
+    display: flex; align-items: center; gap: 10px; transition: background 0.15s;
+  }
+  .live-device:hover { background: var(--bg-surface); }
+  .live-device.offline { opacity: 0.4; }
+  .live-device .live-dev-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .live-device .live-dev-dot.online { background: #4CAF50; }
+  .live-device .live-dev-dot.offline { background: #666; }
+  .live-device .live-dev-info { flex: 1; min-width: 0; }
+  .live-device .live-dev-name { font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .live-device .live-dev-name.pro { color: #FFD700; }
+  .live-device .live-dev-meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+  .live-device .live-dev-speed { font-size: 11px; color: var(--accent-blue); font-weight: 600; flex-shrink: 0; }
+  .live-marker-arrow { font-size: 18px; line-height: 1; color: #fff; text-shadow: 0 0 4px rgba(0,0,0,0.6); }
+  .live-marker-arrow.pro { color: #FFD700; text-shadow: 0 0 6px rgba(255,215,0,0.5); }
+  .live-marker-label { font-size: 9px; color: #fff; background: rgba(0,0,0,0.6); padding: 1px 4px; border-radius: 3px; white-space: nowrap; text-align: center; margin-top: 2px; }
+  .tb-btn.live-active { background: #1a5c1a !important; color: #4CAF50 !important; }
+
   /* ─── ЛИНЕЙКА ─── */
   .ruler-label {
     background: rgba(255,106,0,0.9) !important;
@@ -562,6 +595,11 @@
   <!-- Синхронизация -->
   <button class="tb-btn sync-btn" onclick="openSyncModal()" title="Облачная синхронизация">☁ Синхр.</button>
 
+  <div class="tb-sep"></div>
+
+  <!-- Live мониторинг -->
+  <button class="tb-btn" id="btn-live" onclick="toggleLive()" title="Мониторинг участников">📡 Live</button>
+
   <!-- Правая часть тулбара -->
   <div style="margin-left:auto"></div>
 
@@ -600,7 +638,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.7.0</span>
+  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.8.0</span>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -6547,7 +6585,216 @@ function clearOsrmRoute() {
   document.getElementById('route-pick-a').classList.remove('picking');
   document.getElementById('route-pick-b').classList.remove('picking');
 }
+
+
+// ═══════════════════════════════════════════════════════════════
+// ═══ LIVE MONITORING ══════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+
+const LIVE_API = 'http://87.120.84.254:9222/api/live2/devices';
+const LIVE_POLL_MS = 4000;
+const LIVE_OFFLINE_TIMEOUT = 30000;
+
+const liveState = {
+  timer: null, markers: {}, isOpen: false, isPolling: false, consecutiveErrors: 0
+};
+
+function liveEsc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function toggleLive() {
+  const sidebar = document.getElementById('live-sidebar');
+  const btn = document.getElementById('btn-live');
+  liveState.isOpen = !liveState.isOpen;
+  sidebar.classList.toggle('open', liveState.isOpen);
+  btn.classList.toggle('live-active', liveState.isOpen);
+  if (liveState.isOpen) {
+    liveStartPolling();
+  } else {
+    liveStopPolling();
+  }
+}
+
+function liveStartPolling() {
+  if (liveState.isPolling) return;
+  liveState.isPolling = true;
+  liveState.consecutiveErrors = 0;
+  liveFetch();
+  liveState.timer = setInterval(liveFetch, LIVE_POLL_MS);
+}
+
+function liveStopPolling() {
+  liveState.isPolling = false;
+  if (liveState.timer) { clearInterval(liveState.timer); liveState.timer = null; }
+  // Remove all markers from map
+  Object.values(liveState.markers).forEach(m => map.removeLayer(m));
+  liveState.markers = {};
+}
+
+async function liveFetch() {
+  try {
+    const resp = await fetch(LIVE_API, { signal: AbortSignal.timeout(5000) });
+    const data = await resp.json();
+    if (data.ok && Array.isArray(data.devices)) {
+      liveState.consecutiveErrors = 0;
+      liveProcessDevices(data.devices);
+      liveUpdateDot('online');
+    } else {
+      throw new Error('bad response');
+    }
+  } catch (e) {
+    liveState.consecutiveErrors++;
+    if (liveState.consecutiveErrors >= 3) {
+      liveUpdateDot('error');
+      // Dim all markers
+      Object.values(liveState.markers).forEach(m => {
+        if (m._icon) m._icon.style.opacity = '0.3';
+      });
+    }
+  }
+}
+
+function liveProcessDevices(devices) {
+  const now = Date.now();
+  const activeIds = new Set();
+
+  devices.forEach(dev => {
+    if (!dev.lat || !dev.lon) return;
+    const id = dev.deviceId || dev.name;
+    activeIds.add(id);
+    const lastUpdate = dev.lastUpdate ? new Date(dev.lastUpdate).getTime() : 0;
+    const isOffline = lastUpdate > 0 && (now - lastUpdate) > LIVE_OFFLINE_TIMEOUT;
+
+    liveUpdateMarker(dev, isOffline);
+  });
+
+  // Remove markers for devices that disappeared
+  Object.keys(liveState.markers).forEach(id => {
+    if (!activeIds.has(id)) {
+      map.removeLayer(liveState.markers[id]);
+      delete liveState.markers[id];
+    }
+  });
+
+  liveRenderSidebar(devices, now);
+}
+
+function liveUpdateMarker(dev, isOffline) {
+  const id = dev.deviceId || dev.name;
+  const latlng = [dev.lat, dev.lon];
+  const isPro = dev.plan === 'full';
+  const course = dev.course || 0;
+  const speed = dev.speed ? Math.round(dev.speed) : 0;
+  const name = liveEsc((dev.name || 'Unknown').substring(0, 15));
+
+  const html = `
+    <div style="text-align:center;transform:translate(-12px,-12px)">
+      <div class="live-marker-arrow ${isPro ? 'pro' : ''}" style="transform:rotate(${course}deg)">▲</div>
+      <div class="live-marker-label">${name}${speed > 1 ? ' · ' + speed + ' км/ч' : ''}</div>
+    </div>`;
+
+  const icon = L.divIcon({ className: '', html, iconSize: [0, 0] });
+
+  if (liveState.markers[id]) {
+    liveState.markers[id].setLatLng(latlng).setIcon(icon);
+    liveState.markers[id]._liveDev = dev;  // update data for popup
+    if (liveState.markers[id]._icon) {
+      liveState.markers[id]._icon.style.opacity = isOffline ? '0.3' : '1';
+    }
+  } else {
+    const marker = L.marker(latlng, { icon, zIndexOffset: 1000 }).addTo(map);
+    marker._liveDev = dev;
+    marker.on('click', () => liveShowPopup(marker._liveDev));
+    liveState.markers[id] = marker;
+  }
+}
+
+function liveShowPopup(dev) {
+  const speed = dev.speed ? Math.round(dev.speed) + ' км/ч' : '—';
+  const battery = dev.battery != null ? dev.battery + '%' : '—';
+  const alt = dev.altitude ? Math.round(dev.altitude) + ' м' : '—';
+  const time = dev.lastUpdate ? new Date(dev.lastUpdate).toLocaleTimeString('ru-RU') : '—';
+  const isPro = dev.plan === 'full';
+  const name = liveEsc(isPro ? `⭐ ${dev.name}` : dev.name);
+
+  L.popup({ offset: [0, -15] })
+    .setLatLng([dev.lat, dev.lon])
+    .setContent(`
+      <div style="min-width:160px">
+        <b style="color:${isPro ? '#FFD700' : '#fff'}">${name}</b><br>
+        🏎 ${speed} · 📡 ${alt}<br>
+        🔋 ${battery} · 🕐 ${time}<br>
+        <small style="color:#888">${dev.lat.toFixed(5)}, ${dev.lon.toFixed(5)}</small>
+      </div>`)
+    .openOn(map);
+}
+
+function liveRenderSidebar(devices, now) {
+  const container = document.getElementById('live-devices-list');
+  if (!container) return;
+
+  const sorted = [...devices].sort((a, b) => {
+    const aOnline = a.lastUpdate && (now - new Date(a.lastUpdate).getTime()) < LIVE_OFFLINE_TIMEOUT;
+    const bOnline = b.lastUpdate && (now - new Date(b.lastUpdate).getTime()) < LIVE_OFFLINE_TIMEOUT;
+    if (aOnline !== bOnline) return bOnline ? 1 : -1;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
+  container.innerHTML = sorted.filter(dev => dev.lat && dev.lon).map(dev => {
+    const lastUpdate = dev.lastUpdate ? new Date(dev.lastUpdate).getTime() : 0;
+    const isOffline = lastUpdate > 0 && (now - lastUpdate) > LIVE_OFFLINE_TIMEOUT;
+    const speed = dev.speed ? Math.round(dev.speed) + ' км/ч' : '';
+    const battery = dev.battery != null ? '🔋' + dev.battery + '%' : '';
+    const time = dev.lastUpdate ? new Date(dev.lastUpdate).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'}) : '';
+    const isPro = dev.plan === 'full';
+    const id = dev.deviceId || dev.name;
+
+    return `<div class="live-device ${isOffline ? 'offline' : ''}" onclick="liveZoomTo(${dev.lat},${dev.lon})">
+      <div class="live-dev-dot ${isOffline ? 'offline' : 'online'}"></div>
+      <div class="live-dev-info">
+        <div class="live-dev-name ${isPro ? 'pro' : ''}">${isPro ? '⭐ ' : ''}${liveEsc(dev.name || 'Unknown')}</div>
+        <div class="live-dev-meta">${[time, battery].filter(Boolean).join(' · ')}</div>
+      </div>
+      ${speed ? `<div class="live-dev-speed">${speed}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  // Update header count
+  const onlineCount = devices.filter(d => d.lastUpdate && (now - new Date(d.lastUpdate).getTime()) < LIVE_OFFLINE_TIMEOUT).length;
+  const headerText = document.getElementById('live-header-text');
+  if (headerText) headerText.textContent = `Участники (${onlineCount}/${devices.length})`;
+}
+
+function liveUpdateDot(status) {
+  const dot = document.getElementById('live-status-dot');
+  if (!dot) return;
+  dot.className = 'live-dot' + (status === 'error' ? ' error' : status === 'off' ? ' off' : '');
+}
+
+function liveZoomTo(lat, lon) {
+  map.setView([lat, lon], Math.max(map.getZoom(), 14), { animate: true });
+}
+
+function liveShowAll() {
+  const markers = Object.values(liveState.markers);
+  if (markers.length === 0) return;
+  const group = L.featureGroup(markers);
+  map.fitBounds(group.getBounds().pad(0.1));
+}
+
 </script>
+
+<!-- Live monitoring sidebar -->
+<div id="live-sidebar">
+  <div class="live-header">
+    <div class="live-dot off" id="live-status-dot"></div>
+    <span id="live-header-text">Участники</span>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <button onclick="liveShowAll()" title="Показать всех" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">🎯</button>
+      <button onclick="toggleLive()" title="Закрыть" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">✕</button>
+    </div>
+  </div>
+  <div id="live-devices-list"></div>
+</div>
 
 </body>
 </html>
