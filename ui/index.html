@@ -432,15 +432,21 @@
 
   /* ─── LIVE MONITORING ─── */
   #live-sidebar {
-    position: absolute; top: 42px; right: 0; bottom: 0; width: 280px; z-index: 800;
-    background: var(--bg-dark); border-left: 1px solid var(--border); overflow-y: auto;
-    transition: transform 0.25s ease; transform: translateX(100%);
+    position: absolute; top: 60px; right: 16px; width: 260px; max-height: 70vh; z-index: 800;
+    background: rgba(10, 22, 40, 0.88); border: 1px solid rgba(42, 74, 122, 0.5);
+    border-radius: 10px; overflow: hidden; backdrop-filter: blur(8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    opacity: 0; transform: scale(0.95); pointer-events: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
   }
-  #live-sidebar.open { transform: translateX(0); }
+  #live-sidebar.open { opacity: 1; transform: scale(1); pointer-events: auto; }
+  #live-sidebar .live-devices-scroll { max-height: calc(70vh - 40px); overflow-y: auto; }
   #live-sidebar .live-header {
-    padding: 10px 14px; font-size: 13px; font-weight: 600; color: var(--text);
-    border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; font-size: 12px; font-weight: 600; color: var(--text);
+    border-bottom: 1px solid rgba(42, 74, 122, 0.4); display: flex; align-items: center; gap: 6px;
+    cursor: grab; user-select: none;
   }
+  #live-sidebar .live-header:active { cursor: grabbing; }
   #live-sidebar .live-header .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #4CAF50; }
   #live-sidebar .live-header .live-dot.error { background: #F44336; }
   #live-sidebar .live-header .live-dot.off { background: #666; }
@@ -2190,10 +2196,16 @@ function makeBaseLayer(name) {
   if (tileCatalog) {
     const entry = tileCatalog.base.find(e => e.label === name);
     if (entry) {
+      let subdomains = entry.subdomains || '';
+      if (!subdomains && entry.url.includes('{s}')) {
+        if (entry.url.includes('mt{s}.google')) subdomains = '0123';
+        else if (entry.url.includes('sat0{s}')) subdomains = '1234';
+        else subdomains = 'abc';
+      }
       const opts = {
         maxZoom: 22,
         maxNativeZoom: entry.maxZoom || 18,
-        subdomains: entry.subdomains || '',
+        subdomains: subdomains,
         tms: !!entry.tms
       };
       return L.tileLayer(entry.url, opts);
@@ -2355,9 +2367,16 @@ function buildLayerUI() {
 
         // Create overlay layer object if not already existing
         if (!overlayLayers[e.label]) {
+          // Auto-detect subdomains from URL pattern {s}
+          let subdomains = e.subdomains || '';
+          if (!subdomains && e.url.includes('{s}')) {
+            if (e.url.includes('i{s}.wikimapia')) subdomains = '0123';
+            else if (e.url.includes('{s}.core-')) subdomains = '01234';
+            else subdomains = 'abc';
+          }
           overlayLayers[e.label] = L.tileLayer(e.url, {
             maxZoom: e.maxZoom || 18,
-            subdomains: e.subdomains || '',
+            subdomains: subdomains,
             tms: !!e.tms,
             opacity: (e.opacity != null ? e.opacity : 0.7),
             pane: 'overlayTiles'
@@ -6608,6 +6627,8 @@ function toggleLive() {
   sidebar.classList.toggle('open', liveState.isOpen);
   btn.classList.toggle('live-active', liveState.isOpen);
   if (liveState.isOpen) {
+    // Reset position to default top-right
+    sidebar.style.left = ''; sidebar.style.top = ''; sidebar.style.right = '';
     liveStartPolling();
   } else {
     liveStopPolling();
@@ -6781,6 +6802,30 @@ function liveShowAll() {
   map.fitBounds(group.getBounds().pad(0.1));
 }
 
+// Drag the live panel
+(function() {
+  const panel = document.getElementById('live-sidebar');
+  const header = panel?.querySelector('.live-header');
+  if (!header) return;
+  let dragging = false, startX, startY, startLeft, startTop;
+  header.addEventListener('mousedown', e => {
+    if (e.target.tagName === 'BUTTON') return;
+    dragging = true;
+    const rect = panel.getBoundingClientRect();
+    startX = e.clientX; startY = e.clientY;
+    startLeft = rect.left; startTop = rect.top;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const dx = e.clientX - startX, dy = e.clientY - startY;
+    panel.style.left = (startLeft + dx) + 'px';
+    panel.style.top = (startTop + dy) + 'px';
+    panel.style.right = 'auto';
+  });
+  document.addEventListener('mouseup', () => { dragging = false; });
+})();
+
 </script>
 
 <!-- Live monitoring sidebar -->
@@ -6793,7 +6838,9 @@ function liveShowAll() {
       <button onclick="toggleLive()" title="Закрыть" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">✕</button>
     </div>
   </div>
-  <div id="live-devices-list"></div>
+  <div class="live-devices-scroll">
+    <div id="live-devices-list"></div>
+  </div>
 </div>
 
 </body>
