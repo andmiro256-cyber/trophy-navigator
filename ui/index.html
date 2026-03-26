@@ -3,11 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🧭 Trophy Navigator Desktop v0.7.0</title>
+<title>🧭 Trophy Navigator Desktop v0.8.0</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
 <style>
   /* ─── CSS Variables (дизайн-система) ─── */
   :root {
@@ -464,11 +466,94 @@
   .live-device .live-dev-name.pro { color: #FFD700; }
   .live-device .live-dev-meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
   .live-device .live-dev-speed { font-size: 11px; color: var(--accent-blue); font-weight: 600; flex-shrink: 0; }
-  .live-icon-wrapper { background: none !important; border: none !important; }
-  .live-marker-arrow { line-height: 1; color: #fff; text-shadow: 0 0 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9); }
-  .live-marker-arrow.pro { color: #FFD700; text-shadow: 0 0 6px rgba(255,215,0,0.5); }
-  .live-marker-label { font-size: 9px; color: #fff; background: rgba(0,0,0,0.6); padding: 1px 4px; border-radius: 3px; white-space: nowrap; text-align: center; margin-top: 2px; }
+  .live-icon-wrapper { background: none !important; border: none !important; overflow: visible !important; }
+  .live-icon-wrapper > div { pointer-events: auto; }
+  .live-diamond {
+    width: 28px; height: 28px; transform: rotate(45deg);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto; border: 2px solid #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  }
+  .live-diamond.pro { border-color: #FFD700; box-shadow: 0 0 8px rgba(255,215,0,0.5), 0 2px 6px rgba(0,0,0,0.5); border-width: 3px; }
+  .live-diamond-star { transform: rotate(-45deg); color: #fff; font-size: 14px; line-height: 1; }
+  .live-marker-label {
+    font-size: 10px; color: #fff; font-weight: 700; white-space: nowrap; text-align: center;
+    margin-top: 3px; text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 6px rgba(0,0,0,0.7);
+  }
+  .live-marker-label.pro { color: #FFD700; }
+  .live-marker-speed { font-size: 9px; color: #ccc; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
   .tb-btn.live-active { background: #1a5c1a !important; color: #4CAF50 !important; }
+
+  /* ─── RACE REPORT ─── */
+  #race-report-panel {
+    display: none; flex-shrink: 0; background: var(--bg-elevated);
+    border-top: 2px solid var(--accent-blue); overflow: hidden;
+    position: relative; flex-direction: column;
+  }
+  #race-report-panel.open { display: flex; }
+  .rr-resize-handle {
+    height: 5px; cursor: ns-resize; background: transparent; position: absolute; top: 0; left: 0; right: 0; z-index: 2;
+  }
+  .rr-resize-handle:hover { background: var(--accent-blue); opacity: 0.5; }
+  .rr-header {
+    display: flex; align-items: center; gap: 10px; padding: 6px 12px;
+    background: var(--bg-sunken); border-bottom: 1px solid var(--border-subtle); flex-shrink: 0;
+  }
+  .rr-header-title { font-size: 13px; font-weight: 600; color: var(--accent-blue); }
+  .rr-header-info { font-size: 11px; color: var(--text-secondary); }
+  .rr-tabs { display: flex; gap: 2px; margin-left: auto; }
+  .rr-tab {
+    padding: 3px 10px; font-size: 11px; cursor: pointer; border-radius: 4px 4px 0 0;
+    background: var(--bg-surface); color: var(--text-secondary); border: 1px solid var(--border-subtle); border-bottom: none;
+  }
+  .rr-tab.active { background: var(--bg-elevated); color: var(--accent-blue); border-color: var(--accent-blue); }
+  .rr-tab:hover { color: var(--text-primary); }
+  .rr-close { cursor: pointer; color: var(--text-muted); font-size: 16px; margin-left: 8px; }
+  .rr-close:hover { color: var(--accent-red); }
+  .rr-body { flex: 1; overflow: auto; padding: 8px 12px; }
+  .rr-tab-content { display: none; height: 100%; }
+  .rr-tab-content.active { display: flex; flex-direction: column; }
+  /* Overview cards */
+  .rr-overview { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .rr-card {
+    background: var(--bg-sunken); border: 1px solid var(--border-subtle); border-radius: 6px;
+    padding: 6px 12px; min-width: 100px; text-align: center;
+  }
+  .rr-card-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+  .rr-card-value { font-size: 16px; font-weight: 700; color: var(--text-primary); margin-top: 2px; }
+  .rr-card-value.accent { color: var(--accent-blue); }
+  /* Segments table */
+  .rr-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .rr-table th {
+    background: var(--bg-sunken); color: var(--text-muted); font-weight: 600;
+    padding: 5px 8px; text-align: left; border-bottom: 1px solid var(--border-normal);
+    position: sticky; top: 0; z-index: 1; font-size: 10px; text-transform: uppercase;
+  }
+  .rr-table td { padding: 5px 8px; border-bottom: 1px solid var(--border-subtle); }
+  .rr-table tr { cursor: pointer; transition: background 0.1s; }
+  .rr-table tr:hover { background: var(--bg-surface); }
+  .rr-table tr.seg-fast { border-left: 3px solid var(--accent-green); }
+  .rr-table tr.seg-slow { border-left: 3px solid var(--accent-red); }
+  .rr-table tr.seg-skip { opacity: 0.4; border-left: 3px solid var(--text-muted); }
+  /* Timeline */
+  .rr-timeline { display: flex; height: 28px; border-radius: 4px; overflow: hidden; margin-bottom: 4px; background: var(--bg-sunken); }
+  .rr-tl-seg { position: relative; min-width: 2px; transition: opacity 0.15s; cursor: pointer; }
+  .rr-tl-seg:hover { opacity: 0.8; }
+  .rr-tl-seg .rr-tl-tip {
+    display: none; position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
+    background: var(--bg-base); border: 1px solid var(--border-normal); border-radius: 4px;
+    padding: 4px 8px; font-size: 10px; color: var(--text-primary); white-space: nowrap; z-index: 5;
+  }
+  .rr-tl-seg:hover .rr-tl-tip { display: block; }
+  .rr-tl-labels { display: flex; font-size: 9px; color: var(--text-muted); position: relative; height: 14px; }
+  /* Charts */
+  .rr-charts { display: flex; gap: 12px; flex: 1; min-height: 0; }
+  .rr-chart-wrap { flex: 1; position: relative; min-height: 120px; }
+  /* Stop markers */
+  .rr-stop-icon {
+    background: rgba(224, 112, 112, 0.9) !important; border: 2px solid #e07070 !important;
+    border-radius: 50% !important; width: 12px !important; height: 12px !important;
+  }
 
   /* ─── ЛИНЕЙКА ─── */
   .ruler-label {
@@ -636,6 +721,88 @@
      КАРТА
 ════════════════════════════════════════════ -->
 <div id="map"></div>
+
+<!-- ═══════════════════════════════════════════
+     RACE REPORT PANEL
+════════════════════════════════════════════ -->
+<div id="race-report-panel">
+  <div class="rr-resize-handle" id="rr-resize-handle"></div>
+  <div class="rr-header">
+    <span class="rr-header-title">Race Report</span>
+    <span class="rr-header-info" id="rr-header-info"></span>
+    <button onclick="rrExportHTML()" style="background:var(--bg-surface);border:1px solid var(--border-subtle);color:var(--text-secondary);border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer" title="Сохранить как HTML">Экспорт</button>
+    <div class="rr-tabs">
+      <div class="rr-tab active" data-tab="segments" onclick="rrSwitchTab('segments')">Сегменты</div>
+      <div class="rr-tab" data-tab="charts" onclick="rrSwitchTab('charts')">Графики</div>
+      <div class="rr-tab" data-tab="timeline" onclick="rrSwitchTab('timeline')">Timeline</div>
+    </div>
+    <span class="rr-close" onclick="rrClose()" title="Закрыть отчёт">✕</span>
+  </div>
+  <div class="rr-body">
+    <!-- Overview cards -->
+    <div class="rr-overview" id="rr-overview"></div>
+    <!-- Tab: Segments -->
+    <div class="rr-tab-content active" id="rr-content-segments">
+      <div style="overflow:auto;flex:1"><table class="rr-table" id="rr-segments-table"></table></div>
+    </div>
+    <!-- Tab: Charts -->
+    <div class="rr-tab-content" id="rr-content-charts">
+      <div class="rr-charts">
+        <div class="rr-chart-wrap"><canvas id="rr-chart-speed"></canvas></div>
+        <div class="rr-chart-wrap"><canvas id="rr-chart-seg-speed"></canvas></div>
+      </div>
+    </div>
+    <!-- Tab: Timeline -->
+    <div class="rr-tab-content" id="rr-content-timeline">
+      <div id="rr-timeline-bar"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     МОДАЛ: ОТЧЁТ ПО ГОНКЕ (диалог настроек)
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-race-report">
+  <div class="modal" id="modal-race-report-win" style="top:120px;left:50%;transform:translateX(-50%);width:380px">
+    <div class="modal-header" onmousedown="startDrag(event,'modal-race-report-win')">
+      Race Report
+      <span class="modal-close" onclick="closeModal('modal-race-report')">✕</span>
+    </div>
+    <div class="modal-body" style="padding:14px">
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Трек</div>
+        <select id="rr-select-track" style="width:100%;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:6px 8px;font-size:12px"></select>
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Маршрут</div>
+        <select id="rr-select-route" style="width:100%;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:6px 8px;font-size:12px"></select>
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Время старта</div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-primary);margin-bottom:4px;cursor:pointer">
+          <input type="radio" name="rr-start-mode" value="auto" checked style="accent-color:var(--accent-blue)"> Авто (по первому КП)
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-primary);margin-bottom:4px;cursor:pointer">
+          <input type="radio" name="rr-start-mode" value="manual" style="accent-color:var(--accent-blue)"> Ручное:
+          <input id="rr-start-h" type="number" min="0" max="23" value="10" style="width:40px;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:3px;padding:2px 4px;font-size:12px;text-align:center"> :
+          <input id="rr-start-m" type="number" min="0" max="59" value="0" style="width:40px;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:3px;padding:2px 4px;font-size:12px;text-align:center"> :
+          <input id="rr-start-s" type="number" min="0" max="59" value="0" style="width:40px;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:3px;padding:2px 4px;font-size:12px;text-align:center">
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-primary);cursor:pointer">
+          <input type="radio" name="rr-start-mode" value="track" style="accent-color:var(--accent-blue)"> По треку (от начала до конца)
+        </label>
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Радиус взятия КП (м)</div>
+        <input id="rr-cp-radius" type="number" min="10" max="1000" value="30" style="width:100px;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:4px 8px;font-size:12px">
+      </div>
+      <div class="btn-row" style="justify-content:flex-end">
+        <button class="btn-secondary" onclick="closeModal('modal-race-report')">Отмена</button>
+        <button class="btn-primary" onclick="rrGenerate()">Сформировать</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════════
      СТРОКА СОСТОЯНИЯ
@@ -916,6 +1083,7 @@
         </div>
         <div style="font-size:10px;color:#5a7aaa;margin-top:4px">отметьте треки чекбоксами для воспроизведения</div>
       </div>
+      <button class="btn-secondary" style="width:100%;margin-top:8px;color:var(--accent-blue);border-color:var(--accent-blue)" onclick="rrOpenDialog()">Race Report</button>
       <button class="btn-primary" style="width:100%;margin-top:8px" onclick="startNewTrack()">+ Новый трек</button>
     </div>
     <div class="modal-footer">
@@ -990,12 +1158,12 @@
         </div>
       </div>
       <div class="save-section" style="margin-top:12px">
-        <h4>Открыть</h4>
+        <h4>Загрузить</h4>
         <div class="save-btns">
-          <div class="save-btn-grid" onclick="openFile('.wpt', loadWPT)">📂 Точки (.wpt)</div>
-          <div class="save-btn-grid" onclick="openFile('.plt', loadPLT)">📂 Треки (.plt)</div>
-          <div class="save-btn-grid" onclick="openFile('.rte', loadRTE)">📂 Маршруты (.rte)</div>
-          <div class="save-btn-grid" onclick="openFile('.gpx,.GPX', loadGPXFile)">📂 GPX файл</div>
+          <div class="save-btn-grid" onclick="openFile('.wpt', loadWPT)">📥 Точки (.wpt)</div>
+          <div class="save-btn-grid" onclick="openFile('.plt', loadPLT)">📥 Треки (.plt)</div>
+          <div class="save-btn-grid" onclick="openFile('.rte', loadRTE)">📥 Маршруты (.rte)</div>
+          <div class="save-btn-grid" onclick="openFile('.gpx,.GPX', loadGPXFile)">📥 GPX файл</div>
         </div>
       </div>
       <div class="btn-row">
@@ -1037,6 +1205,20 @@
         <div class="setting-row">
           <span class="setting-label">Радиус сближения по умолчанию</span>
           <div class="setting-control"><input id="setting-default-radius" type="number" value="50" min="0" max="5000" style="width:70px"> м</div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Размер маркеров Live</span>
+          <div class="setting-control">
+            <input id="setting-live-marker-size" type="range" min="1" max="10" value="3" oninput="document.getElementById('live-marker-size-val').textContent=this.value;applyLiveMarkerSize(this.value)">
+            <span id="live-marker-size-val" style="font-size:11px;color:#5a7aaa;min-width:24px">3</span>
+          </div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Размер подписей Live</span>
+          <div class="setting-control">
+            <input id="setting-live-label-size" type="range" min="1" max="10" value="3" oninput="document.getElementById('live-label-size-val').textContent=this.value;applyLiveMarkerSize(this.value)">
+            <span id="live-label-size-val" style="font-size:11px;color:#5a7aaa;min-width:24px">3</span>
+          </div>
         </div>
         <div class="setting-row">
           <span class="setting-label">Формат координат</span>
@@ -1348,10 +1530,7 @@
         <div id="server-line" style="font-size:12px;color:#888"></div>
       </div>
 
-      <div class="prop-field">
-        <label>Ключ синхронизации (автоматически по email)</label>
-        <input id="sync-api-key" value="" placeholder="TND-XXXX-XXXX-XXXX" readonly style="opacity:0.7">
-      </div>
+      <input id="sync-api-key" type="hidden" value="">
 
       <!-- Отправить в облако -->
       <div class="sync-section-title">⬆ Отправить в облако</div>
@@ -1376,8 +1555,9 @@
       <div id="sync-server-info" style="font-size:11px;color:#5a7aaa;margin-bottom:8px">Нажмите «Проверить» для просмотра данных</div>
       <button class="btn-primary" style="width:100%;background:#1a4a1a;border-color:#2a8a2a" onclick="syncPull()">⬇ Загрузить из облака</button>
 
-      <div style="font-size:10px;color:#5a7aaa;margin-top:10px;text-align:center">
-        Облачная синхронизация через trophynav.ru · Доступна по лицензии
+      <div style="font-size:10px;color:#5a7aaa;margin-top:10px;text-align:center;line-height:1.6">
+        Облачная синхронизация через trophynav.ru<br>
+        Почта: <span style="color:#a0c8e0">info@trophynav.ru</span> · Сайт: <span style="color:#a0c8e0">trophynav.ru</span>
       </div>
 
       <div class="btn-row" style="margin-top:8px">
@@ -4870,7 +5050,9 @@ function collectState() {
       colorOsrm: document.getElementById('setting-color-osrm')?.value || '#4a8adf',
       colorSearch: document.getElementById('setting-color-search')?.value || '#4a8adf',
       iconSize: parseInt(document.getElementById('setting-icon-size')?.value) || 16,
-      trackWidth: parseInt(document.getElementById('setting-track-width')?.value) || 3
+      trackWidth: parseInt(document.getElementById('setting-track-width')?.value) || 3,
+      liveMarkerSize: parseInt(document.getElementById('setting-live-marker-size')?.value) || 3,
+      liveLabelSize: parseInt(document.getElementById('setting-live-label-size')?.value) || 3
     },
     gpxFiles: importedGpxFiles.map(g => ({
       name: g.name,
@@ -5031,6 +5213,10 @@ function applyState(state) {
     if (s.iconSize != null) document.getElementById('icon-size-val').textContent = s.iconSize + 'px';
     setVal('setting-track-width', s.trackWidth);
     if (s.trackWidth != null) document.getElementById('trk-width-val').textContent = s.trackWidth + 'px';
+    setVal('setting-live-marker-size', s.liveMarkerSize);
+    if (s.liveMarkerSize != null) document.getElementById('live-marker-size-val').textContent = s.liveMarkerSize;
+    setVal('setting-live-label-size', s.liveLabelSize);
+    if (s.liveLabelSize != null) document.getElementById('live-label-size-val').textContent = s.liveLabelSize;
   }
 
   // 4.7. Restore imported GPX files
@@ -6206,6 +6392,655 @@ renderCustomLayers();
   setTimeout(() => { syncPull(true); }, 2000);
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// RACE REPORT — анализ гонки (трек × маршрут)
+// ═══════════════════════════════════════════════════════════════
+
+let rrData = null;        // current report data
+let rrOverlays = [];      // map overlays for the report
+let rrChartSpeed = null;
+let rrChartSeg = null;
+let rrCursorMarker = null;
+
+// ─── Open dialog ───
+function rrOpenDialog() {
+  const selTrack = document.getElementById('rr-select-track');
+  const selRoute = document.getElementById('rr-select-route');
+  // Populate tracks (only with timestamps)
+  const tracksWithTime = tracks.filter(t => t.pointsData && t.pointsData.some(d => d.time));
+  selTrack.innerHTML = tracksWithTime.length === 0
+    ? '<option value="">Нет треков с таймштампами</option>'
+    : tracksWithTime.map(t => `<option value="${t.id}">${escapeHtml(t.name)} (${trackLen(t).toFixed(1)} км)</option>`).join('');
+  // Populate routes
+  selRoute.innerHTML = routes.length === 0
+    ? '<option value="">Нет маршрутов</option>'
+    : routes.map(r => `<option value="${r.id}">${escapeHtml(r.name)} (${r.points.length} КП)</option>`).join('');
+  // Default radius from settings
+  const defR = document.getElementById('rr-cp-radius');
+  if (defR && !defR.dataset.userSet) defR.value = 30;
+  openModal('modal-race-report');
+}
+
+// ─── Helpers ───
+function rrFmtTime(sec) {
+  if (sec == null || isNaN(sec) || sec < 0) return '—';
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = Math.floor(sec % 60);
+  return h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`;
+}
+function rrFmtSpeed(mps) { return mps != null && !isNaN(mps) ? (mps * 3.6).toFixed(1) : '—'; }
+function rrFmtDist(m) { return m != null ? (m / 1000).toFixed(2) : '—'; }
+
+// ─── Match track to route (хронологический порядок) ───
+function rrMatchTrackToRoute(track, route, radius) {
+  const cpHits = [];
+  let searchFrom = 0; // начинаем поиск с начала трека, сдвигаем после каждого найденного КП
+
+  for (let ci = 0; ci < route.points.length; ci++) {
+    const cp = route.points[ci];
+    let foundIdx = -1, foundDist = Infinity;
+
+    // Ищем ПЕРВОЕ попадание трека в радиус КП, начиная с searchFrom
+    for (let ti = searchFrom; ti < track.points.length; ti++) {
+      const d = cp.distanceTo(track.points[ti]);
+      if (d < radius) {
+        // Нашли вход в радиус — теперь ищем ближайшую точку в этом "проходе"
+        foundIdx = ti;
+        foundDist = d;
+        // Продолжаем пока трек внутри радиуса, берём ближайшую
+        for (let tj = ti + 1; tj < track.points.length; tj++) {
+          const d2 = cp.distanceTo(track.points[tj]);
+          if (d2 >= radius) break; // вышли из радиуса
+          if (d2 < foundDist) { foundIdx = tj; foundDist = d2; }
+        }
+        break;
+      }
+    }
+
+    cpHits.push({
+      cpIdx: ci,
+      label: route.labels?.[ci] || ('КП' + (ci + 1)),
+      trackIdx: foundIdx,
+      dist: foundDist,
+      time: foundIdx >= 0 && track.pointsData[foundIdx]?.time ? new Date(track.pointsData[foundIdx].time) : null,
+      hit: foundIdx >= 0
+    });
+
+    // Сдвигаем поиск следующего КП дальше по треку
+    if (foundIdx >= 0) searchFrom = foundIdx + 1;
+  }
+  return cpHits;
+}
+
+// ─── Analyze a segment of track points ───
+function rrAnalyzeSlice(track, fromIdx, toIdx) {
+  const pts = track.points, pd = track.pointsData;
+  let dist = 0, elevGain = 0, elevLoss = 0, maxSpeed = 0, stopTime = 0;
+  let stopStart = null;
+  const STOP_SPEED = 1 / 3.6; // 1 km/h in m/s
+  const STOP_MIN = 30; // seconds
+  const stops = [];
+
+  for (let i = fromIdx + 1; i <= toIdx; i++) {
+    const segDist = pts[i - 1].distanceTo(pts[i]);
+    dist += segDist;
+    const d = pd[i], dPrev = pd[i - 1];
+    if (d?.ele != null && dPrev?.ele != null) {
+      const dEle = d.ele - dPrev.ele;
+      if (dEle > 0) elevGain += dEle; else elevLoss += Math.abs(dEle);
+    }
+    // Speed: из данных, или рассчитать из расстояния/времени
+    let spd = d?.speed;
+    if (spd == null && d?.time && dPrev?.time) {
+      const dt = (new Date(d.time) - new Date(dPrev.time)) / 1000;
+      spd = dt > 0 ? segDist / dt : 0;
+    }
+    if (spd == null) spd = 0;
+    if (spd > maxSpeed) maxSpeed = spd;
+    // Stop detection
+    if (spd < STOP_SPEED) {
+      if (stopStart == null) stopStart = i - 1;
+    } else {
+      if (stopStart != null) {
+        const t0 = pd[stopStart]?.time ? new Date(pd[stopStart].time) : null;
+        const t1 = pd[i - 1]?.time ? new Date(pd[i - 1].time) : null;
+        if (t0 && t1) {
+          const dur = (t1 - t0) / 1000;
+          if (dur >= STOP_MIN) {
+            stopTime += dur;
+            stops.push({ fromIdx: stopStart, toIdx: i - 1, duration: dur, lat: pts[stopStart].lat, lng: pts[stopStart].lng });
+          }
+        }
+        stopStart = null;
+      }
+    }
+  }
+  // Handle trailing stop
+  if (stopStart != null) {
+    const t0 = pd[stopStart]?.time ? new Date(pd[stopStart].time) : null;
+    const t1 = pd[toIdx]?.time ? new Date(pd[toIdx].time) : null;
+    if (t0 && t1) {
+      const dur = (t1 - t0) / 1000;
+      if (dur >= STOP_MIN) {
+        stopTime += dur;
+        stops.push({ fromIdx: stopStart, toIdx: toIdx, duration: dur, lat: pts[stopStart].lat, lng: pts[stopStart].lng });
+      }
+    }
+  }
+
+  const t0 = pd[fromIdx]?.time ? new Date(pd[fromIdx].time) : null;
+  const t1 = pd[toIdx]?.time ? new Date(pd[toIdx].time) : null;
+  const totalTime = t0 && t1 ? (t1 - t0) / 1000 : null;
+  const moveTime = totalTime != null ? totalTime - stopTime : null;
+  const straightDist = pts[fromIdx].distanceTo(pts[toIdx]);
+  const efficiency = dist > 0 ? (straightDist / dist * 100) : 100;
+
+  return {
+    dist, totalTime, moveTime, stopTime, stops,
+    avgSpeed: totalTime > 0 ? dist / totalTime : 0,
+    moveSpeed: moveTime > 0 ? dist / moveTime : 0,
+    maxSpeed, elevGain, elevLoss, efficiency, straightDist
+  };
+}
+
+// ─── Detect stops on entire track ───
+function rrDetectStops(track) {
+  if (track.points.length < 2) return [];
+  return rrAnalyzeSlice(track, 0, track.points.length - 1).stops;
+}
+
+// ─── Generate report ───
+function rrGenerate() {
+  const trackId = parseInt(document.getElementById('rr-select-track').value);
+  const routeId = parseInt(document.getElementById('rr-select-route').value);
+  const radius = parseInt(document.getElementById('rr-cp-radius').value) || 30;
+  const startMode = document.querySelector('input[name="rr-start-mode"]:checked')?.value || 'auto';
+
+  const track = tracks.find(t => t.id === trackId);
+  const route = routes.find(r => r.id === routeId);
+  if (!track) { showToast('Выберите трек с таймштампами'); return; }
+  if (!route) { showToast('Выберите маршрут'); return; }
+
+  // Match CPs
+  const cpHits = rrMatchTrackToRoute(track, route, radius);
+
+  // Determine start/end
+  let raceStartTime, raceEndTime, raceStartIdx, raceEndIdx;
+  const firstHit = cpHits.find(c => c.hit);
+  const lastHit = [...cpHits].reverse().find(c => c.hit);
+
+  if (!firstHit || !lastHit) { showToast('Трек не проходит через КП маршрута. Увеличьте радиус.'); return; }
+  if (firstHit === lastHit) { showToast('Найден только 1 КП (' + firstHit.label + '). Нужно минимум 2 для анализа.'); return; }
+
+  // Конец гонки — всегда последний КП маршрута, который был взят
+  raceEndIdx = lastHit.trackIdx;
+  raceEndTime = lastHit.time;
+
+  if (startMode === 'manual') {
+    const h = parseInt(document.getElementById('rr-start-h').value) || 0;
+    const m = parseInt(document.getElementById('rr-start-m').value) || 0;
+    const s = parseInt(document.getElementById('rr-start-s').value) || 0;
+    const firstTime = track.pointsData.find(d => d.time)?.time;
+    if (firstTime) {
+      const d = new Date(firstTime);
+      d.setHours(h, m, s, 0);
+      raceStartTime = d;
+    }
+    // Найти ближайшую точку трека к моменту старта
+    raceStartIdx = 0;
+    if (raceStartTime) {
+      const startMs = raceStartTime.getTime();
+      for (let i = 0; i < track.pointsData.length; i++) {
+        if (track.pointsData[i]?.time && new Date(track.pointsData[i].time).getTime() >= startMs) {
+          raceStartIdx = i;
+          break;
+        }
+      }
+    }
+  } else if (startMode === 'track') {
+    raceStartIdx = 0;
+    raceStartTime = track.pointsData[0]?.time ? new Date(track.pointsData[0].time) : null;
+  } else { // auto — от первого КП
+    raceStartIdx = firstHit.trackIdx;
+    raceStartTime = firstHit.time;
+  }
+
+  // hitCPs уже отсортированы хронологически (searchFrom сдвигается)
+  const hitCPs = cpHits.filter(c => c.hit);
+
+  // Build segments between consecutive hit CPs
+  const segments = [];
+  for (let i = 0; i < hitCPs.length - 1; i++) {
+    const from = hitCPs[i], to = hitCPs[i + 1];
+    const stats = rrAnalyzeSlice(track, from.trackIdx, to.trackIdx);
+    segments.push({
+      num: i + 1,
+      fromLabel: from.label,
+      toLabel: to.label,
+      fromIdx: from.trackIdx,
+      toIdx: to.trackIdx,
+      ...stats
+    });
+  }
+
+  // Overall stats — от старта до последнего КП
+  const overall = rrAnalyzeSlice(track, raceStartIdx, raceEndIdx);
+  // Время гонки: от raceStartTime до raceEndTime
+  const raceTimeSec = raceStartTime && raceEndTime ? (raceEndTime - raceStartTime) / 1000 : overall.totalTime;
+
+  // Missed CPs
+  const missedCPs = cpHits.filter(c => !c.hit).map(c => c.label);
+
+  rrData = { track, route, cpHits, segments, overall, raceTimeSec, missedCPs, hitCPs, raceStartIdx, raceEndIdx, raceStartTime, radius };
+
+  closeModal('modal-race-report');
+  rrRender();
+}
+
+// ─── Render report ───
+function rrRender() {
+  if (!rrData) return;
+  const { track, route, segments, overall, raceTimeSec, missedCPs, hitCPs, raceStartIdx, raceEndIdx } = rrData;
+
+  // Show panel
+  const panel = document.getElementById('race-report-panel');
+  panel.classList.add('open');
+  panel.style.height = '280px';
+
+  // Header info
+  document.getElementById('rr-header-info').textContent =
+    `${track.name} × ${route.name} · ${hitCPs.length}/${rrData.cpHits.length} КП`;
+
+  // Overview cards
+  document.getElementById('rr-overview').innerHTML = [
+    { l: 'Дистанция', v: rrFmtDist(overall.dist) + ' км' },
+    { l: 'Время гонки', v: rrFmtTime(raceTimeSec), cls: 'accent' },
+    { l: 'В движении', v: rrFmtTime(overall.moveTime) },
+    { l: 'Стоянки', v: rrFmtTime(overall.stopTime) },
+    { l: 'Ср. скорость', v: rrFmtSpeed(overall.avgSpeed) + ' км/ч' },
+    { l: 'Ср. в движении', v: rrFmtSpeed(overall.moveSpeed) + ' км/ч' },
+    { l: 'Макс. скорость', v: rrFmtSpeed(overall.maxSpeed) + ' км/ч' },
+    { l: 'Набор ↑', v: Math.round(overall.elevGain) + ' м' },
+    { l: 'Сброс ↓', v: Math.round(overall.elevLoss) + ' м' },
+    { l: 'Пропущено КП', v: missedCPs.length > 0 ? missedCPs.join(', ') : '—' },
+  ].map(c => `<div class="rr-card"><div class="rr-card-label">${c.l}</div><div class="rr-card-value${c.cls ? ' ' + c.cls : ''}">${c.v}</div></div>`).join('');
+
+  // Segments table
+  rrRenderSegments();
+  // Charts
+  rrRenderCharts();
+  // Timeline
+  rrRenderTimeline();
+  // Map overlays
+  rrRenderMapOverlays();
+
+  // Resize handle
+  rrInitResize();
+  // Switch to segments tab
+  rrSwitchTab('segments');
+}
+
+// ─── Segments table ───
+function rrRenderSegments() {
+  const { segments } = rrData;
+  if (segments.length === 0) {
+    document.getElementById('rr-segments-table').innerHTML = '<tr><td style="color:var(--text-muted);padding:20px;text-align:center">Нет сегментов (трек не проходит через КП)</td></tr>';
+    return;
+  }
+  const avgSpd = segments.reduce((s, sg) => s + sg.avgSpeed, 0) / segments.length;
+  const html = `<thead><tr>
+    <th>#</th><th>Участок</th><th>Расст.</th><th>Время</th><th>Ср.V</th><th>Стоянки</th><th>Набор↑</th><th>Эфф.</th>
+  </tr></thead><tbody>${segments.map(sg => {
+    const cls = sg.avgSpeed > avgSpd * 1.15 ? 'seg-fast' : sg.avgSpeed < avgSpd * 0.85 ? 'seg-slow' : '';
+    return `<tr class="${cls}" onclick="rrZoomSegment(${sg.fromIdx},${sg.toIdx})" title="Клик — показать на карте">
+      <td>${sg.num}</td>
+      <td>${escapeHtml(sg.fromLabel)} → ${escapeHtml(sg.toLabel)}</td>
+      <td>${rrFmtDist(sg.dist)} км</td>
+      <td>${rrFmtTime(sg.totalTime)}</td>
+      <td>${rrFmtSpeed(sg.avgSpeed)}</td>
+      <td>${sg.stopTime > 0 ? rrFmtTime(sg.stopTime) : '—'}</td>
+      <td>+${Math.round(sg.elevGain)}м</td>
+      <td>${sg.efficiency.toFixed(0)}%</td>
+    </tr>`;
+  }).join('')}</tbody>`;
+  document.getElementById('rr-segments-table').innerHTML = html;
+}
+
+// ─── Charts ───
+function rrRenderCharts() {
+  const { track, raceStartIdx, raceEndIdx, hitCPs, segments } = rrData;
+  const pts = track.points, pd = track.pointsData;
+
+  // Build distance array for speed line chart
+  const distances = [0];
+  for (let i = raceStartIdx + 1; i <= raceEndIdx; i++) {
+    distances.push(distances[distances.length - 1] + pts[i - 1].distanceTo(pts[i]));
+  }
+  const distKm = distances.map(d => +(d / 1000).toFixed(3));
+
+  // Speed data (km/h) — рассчитываем из расстояния/времени если нет поля speed
+  const speeds = [];
+  for (let i = raceStartIdx; i <= raceEndIdx; i++) {
+    let spd = pd[i]?.speed;
+    if (spd == null && i > raceStartIdx && pd[i]?.time && pd[i-1]?.time) {
+      const dt = (new Date(pd[i].time) - new Date(pd[i-1].time)) / 1000;
+      const d = pts[i-1].distanceTo(pts[i]);
+      spd = dt > 0 ? d / dt : 0;
+    }
+    speeds.push(spd != null ? spd * 3.6 : 0);
+  }
+
+  // CP annotations for speed chart
+  const cpAnnotations = {};
+  hitCPs.forEach(cp => {
+    if (cp.trackIdx >= raceStartIdx && cp.trackIdx <= raceEndIdx) {
+      const idx = cp.trackIdx - raceStartIdx;
+      if (idx < distKm.length) {
+        cpAnnotations['cp_' + cp.cpIdx] = {
+          type: 'line', xMin: distKm[idx], xMax: distKm[idx],
+          borderColor: 'rgba(255,255,255,0.3)', borderWidth: 1, borderDash: [4, 4],
+          label: { content: cp.label, display: true, position: 'start', font: { size: 9 }, color: '#9ab8d0' }
+        };
+      }
+    }
+  });
+
+  // Destroy old charts
+  if (rrChartSpeed) rrChartSpeed.destroy();
+  if (rrChartSeg) rrChartSeg.destroy();
+
+  // Chart 1: Speed line
+  const ctxSpeed = document.getElementById('rr-chart-speed').getContext('2d');
+  rrChartSpeed = new Chart(ctxSpeed, {
+    type: 'line',
+    data: { labels: distKm, datasets: [{ label: 'Скорость (км/ч)', data: speeds, borderColor: '#4adf7a', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        annotation: { annotations: cpAnnotations },
+        tooltip: { callbacks: { title: items => items[0] ? items[0].label + ' км' : '', label: item => 'Скорость: ' + (item.raw?.toFixed(1) || '—') + ' км/ч' } }
+      },
+      scales: {
+        x: { title: { display: true, text: 'км', color: '#5a7aaa', font: { size: 10 } }, ticks: { color: '#5a7aaa', font: { size: 9 }, maxTicksLimit: 15 }, grid: { color: 'rgba(42,74,122,0.3)' } },
+        y: { title: { display: true, text: 'км/ч', color: '#5a7aaa', font: { size: 10 } }, ticks: { color: '#5a7aaa', font: { size: 9 } }, grid: { color: 'rgba(42,74,122,0.3)' } }
+      },
+      onHover: (e, elements) => {
+        if (elements.length > 0) {
+          const idx = elements[0].index + raceStartIdx;
+          if (idx < pts.length) rrShowCursor(pts[idx].lat, pts[idx].lng);
+        }
+      }
+    }
+  });
+
+  // Chart 2: Segment avg speed (bar chart)
+  if (segments.length > 0) {
+    const segLabels = segments.map(s => s.fromLabel + '→' + s.toLabel);
+    const segSpeeds = segments.map(s => +(s.avgSpeed * 3.6).toFixed(1));
+    const avgAll = segSpeeds.reduce((a, b) => a + b, 0) / segSpeeds.length;
+    const segColors = segSpeeds.map(s => s > avgAll * 1.15 ? '#4adf7a' : s < avgAll * 0.85 ? '#e07070' : '#e0a050');
+
+    const ctxSeg = document.getElementById('rr-chart-seg-speed').getContext('2d');
+    rrChartSeg = new Chart(ctxSeg, {
+      type: 'bar',
+      data: { labels: segLabels, datasets: [{ label: 'Ср. скорость (км/ч)', data: segSpeeds, backgroundColor: segColors, borderRadius: 4 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: item => item.raw + ' км/ч' } }
+        },
+        scales: {
+          x: { ticks: { color: '#5a7aaa', font: { size: 9 } }, grid: { display: false } },
+          y: { title: { display: true, text: 'км/ч', color: '#5a7aaa', font: { size: 10 } }, ticks: { color: '#5a7aaa', font: { size: 9 } }, grid: { color: 'rgba(42,74,122,0.3)' } }
+        },
+        onClick: (e, elements) => {
+          if (elements.length > 0) {
+            const sg = segments[elements[0].index];
+            rrZoomSegment(sg.fromIdx, sg.toIdx);
+          }
+        }
+      }
+    });
+  }
+}
+
+// ─── Cursor marker on map ───
+function rrShowCursor(lat, lng) {
+  if (!rrCursorMarker) {
+    rrCursorMarker = L.circleMarker([lat, lng], {
+      radius: 6, color: '#fff', fillColor: '#4a8adf', fillOpacity: 1, weight: 2, pane: 'markerPane'
+    }).addTo(map);
+  } else {
+    rrCursorMarker.setLatLng([lat, lng]);
+  }
+}
+
+// ─── Timeline ───
+function rrRenderTimeline() {
+  const { segments, overall, raceTimeSec } = rrData;
+  if (!raceTimeSec || segments.length === 0) {
+    document.getElementById('rr-timeline-bar').innerHTML = '<div style="color:var(--text-muted);font-size:11px;padding:8px">Недостаточно данных</div>';
+    return;
+  }
+
+  // Collect all stop and move intervals
+  const intervals = [];
+  segments.forEach(sg => {
+    const segStart = sg.fromIdx, segEnd = sg.toIdx;
+    // Sort stops by fromIdx
+    const stops = (sg.stops || []).sort((a, b) => a.fromIdx - b.fromIdx);
+    let cursor = segStart;
+    stops.forEach(stop => {
+      if (stop.fromIdx > cursor) {
+        intervals.push({ type: 'move', fromIdx: cursor, toIdx: stop.fromIdx, segment: sg });
+      }
+      intervals.push({ type: 'stop', fromIdx: stop.fromIdx, toIdx: stop.toIdx, duration: stop.duration, segment: sg });
+      cursor = stop.toIdx;
+    });
+    if (cursor < segEnd) {
+      intervals.push({ type: 'move', fromIdx: cursor, toIdx: segEnd, segment: sg });
+    }
+  });
+
+  // Render
+  const pd = rrData.track.pointsData;
+  const getTime = idx => pd[idx]?.time ? new Date(pd[idx].time).getTime() : 0;
+  const totalMs = getTime(rrData.raceEndIdx) - getTime(rrData.raceStartIdx);
+  if (!totalMs || totalMs <= 0 || isNaN(totalMs)) {
+    document.getElementById('rr-timeline-bar').innerHTML = '<div style="color:var(--text-muted);font-size:11px;padding:8px">Нет временных данных</div>';
+    return;
+  }
+  const startMs = getTime(rrData.raceStartIdx);
+
+  let barHtml = '<div class="rr-timeline">';
+  intervals.forEach(iv => {
+    const t0 = getTime(iv.fromIdx) - startMs, t1 = getTime(iv.toIdx) - startMs;
+    const pct = ((t1 - t0) / totalMs * 100).toFixed(2);
+    const bg = iv.type === 'stop' ? 'var(--accent-red)' : 'var(--accent-green)';
+    const label = iv.type === 'stop' ? `Стоянка ${rrFmtTime(iv.duration)}` : `${iv.segment.fromLabel}→${iv.segment.toLabel}`;
+    barHtml += `<div class="rr-tl-seg" style="width:${pct}%;background:${bg}" onclick="rrZoomSegment(${iv.fromIdx},${iv.toIdx})">
+      <div class="rr-tl-tip">${label}</div>
+    </div>`;
+  });
+  barHtml += '</div>';
+
+  // CP labels
+  barHtml += '<div class="rr-tl-labels">';
+  rrData.hitCPs.forEach(cp => {
+    const cpMs = getTime(cp.trackIdx) - startMs;
+    const pct = (cpMs / totalMs * 100).toFixed(2);
+    barHtml += `<span style="position:absolute;left:${pct}%;transform:translateX(-50%)">${cp.label}</span>`;
+  });
+  barHtml += '</div>';
+
+  document.getElementById('rr-timeline-bar').innerHTML = barHtml;
+}
+
+// ─── Map overlays ───
+function rrRenderMapOverlays() {
+  rrClearOverlays();
+  const { track, hitCPs, segments, overall } = rrData;
+  const pts = track.points, pd = track.pointsData;
+
+  // 1. Speed-colored track
+  const rStart = rrData.raceStartIdx, rEnd = rrData.raceEndIdx;
+  const speeds = [];
+  for (let i = rStart; i <= rEnd; i++) {
+    let spd = pd[i]?.speed;
+    if (spd == null && i > rStart && pd[i]?.time && pd[i-1]?.time) {
+      const dt = (new Date(pd[i].time) - new Date(pd[i-1].time)) / 1000;
+      spd = dt > 0 ? pts[i-1].distanceTo(pts[i]) / dt : 0;
+    }
+    speeds.push(spd != null ? spd * 3.6 : 0);
+  }
+  let maxSpd = 1;
+  for (let i = 0; i < speeds.length; i++) { if (speeds[i] > maxSpd) maxSpd = speeds[i]; }
+  // Draw in chunks of ~20 points for smooth gradient
+  const chunkSize = 5;
+  for (let i = 0; i < speeds.length - 1; i += chunkSize) {
+    const end = Math.min(i + chunkSize + 1, speeds.length);
+    const slice = [];
+    for (let j = i; j < end; j++) slice.push(pts[rStart + j]);
+    const avgSpd = speeds.slice(i, end).reduce((s, v) => s + v, 0) / (end - i);
+    const ratio = Math.min(avgSpd / maxSpd, 1);
+    const r = Math.round(224 * (1 - ratio) + 74 * ratio);
+    const g = Math.round(112 * (1 - ratio) + 223 * ratio);
+    const b = Math.round(112 * (1 - ratio) + 122 * ratio);
+    const line = L.polyline(slice, { color: `rgb(${r},${g},${b})`, weight: 5, opacity: 0.85 }).addTo(map);
+    rrOverlays.push(line);
+  }
+
+  // 2. Stop markers
+  overall.stops.forEach(stop => {
+    const marker = L.circleMarker([stop.lat, stop.lng], {
+      radius: 8, color: '#e07070', fillColor: '#e07070', fillOpacity: 0.7, weight: 2
+    }).addTo(map).bindPopup(`<b>Стоянка</b><br>${rrFmtTime(stop.duration)}`);
+    rrOverlays.push(marker);
+  });
+
+  // 3. CP time labels
+  hitCPs.forEach(cp => {
+    const pt = pts[cp.trackIdx];
+    const timeStr = cp.time ? cp.time.toLocaleTimeString('ru-RU') : '';
+    const label = L.marker(pt, {
+      icon: L.divIcon({
+        className: '',
+        html: `<div style="background:rgba(10,22,40,0.85);border:1px solid var(--accent-blue);border-radius:4px;padding:2px 6px;font-size:10px;color:#7ec8ff;white-space:nowrap;font-weight:600">${cp.label} ${timeStr}</div>`,
+        iconSize: [0, 0], iconAnchor: [-8, 12]
+      })
+    }).addTo(map);
+    rrOverlays.push(label);
+  });
+
+  // 4. Missed CPs (grey X)
+  rrData.cpHits.filter(c => !c.hit).forEach(cp => {
+    const pt = rrData.route.points[cp.cpIdx];
+    const label = L.marker(pt, {
+      icon: L.divIcon({
+        className: '',
+        html: `<div style="background:rgba(90,90,90,0.7);border:1px solid #666;border-radius:4px;padding:2px 6px;font-size:10px;color:#999;white-space:nowrap">✕ ${cp.label}</div>`,
+        iconSize: [0, 0], iconAnchor: [-8, 12]
+      })
+    }).addTo(map);
+    rrOverlays.push(label);
+  });
+}
+
+function rrClearOverlays() {
+  rrOverlays.forEach(o => map.removeLayer(o));
+  rrOverlays = [];
+  if (rrCursorMarker) { map.removeLayer(rrCursorMarker); rrCursorMarker = null; }
+}
+
+// ─── Zoom to segment ───
+function rrZoomSegment(fromIdx, toIdx) {
+  if (!rrData) return;
+  const pts = rrData.track.points.slice(fromIdx, toIdx + 1);
+  if (pts.length > 0) {
+    const bounds = L.latLngBounds(pts);
+    map.fitBounds(bounds.pad(0.15));
+  }
+}
+
+// ─── Tab switching ───
+function rrSwitchTab(tabName) {
+  document.querySelectorAll('.rr-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+  document.querySelectorAll('.rr-tab-content').forEach(c => c.classList.toggle('active', c.id === 'rr-content-' + tabName));
+  // Пересоздаём графики при переключении на вкладку
+  if (tabName === 'charts') {
+    setTimeout(() => rrRenderCharts(), 50);
+  }
+}
+
+// ─── Close report ───
+function rrClose() {
+  document.getElementById('race-report-panel').classList.remove('open');
+  rrClearOverlays();
+  if (rrChartSpeed) { rrChartSpeed.destroy(); rrChartSpeed = null; }
+  if (rrChartSeg) { rrChartSeg.destroy(); rrChartSeg = null; }
+  rrData = null;
+}
+
+// ─── Resize handle ───
+let rrResizeInited = false;
+let rrResizing = false, rrStartY = 0, rrStartH = 0;
+function rrInitResize() {
+  if (rrResizeInited) return;
+  rrResizeInited = true;
+  const handle = document.getElementById('rr-resize-handle');
+  const panel = document.getElementById('race-report-panel');
+  handle.onmousedown = e => {
+    rrResizing = true; rrStartY = e.clientY; rrStartH = panel.offsetHeight; e.preventDefault();
+  };
+  document.addEventListener('mousemove', e => {
+    if (!rrResizing) return;
+    const newH = Math.max(150, Math.min(window.innerHeight * 0.7, rrStartH - (e.clientY - rrStartY)));
+    panel.style.height = newH + 'px';
+  });
+  document.addEventListener('mouseup', () => {
+    if (rrResizing) {
+      rrResizing = false;
+      if (rrChartSpeed) rrChartSpeed.resize();
+      if (rrChartSeg) rrChartSeg.resize();
+    }
+  });
+}
+
+// ─── Export report as HTML ───
+function rrExportHTML() {
+  if (!rrData) return;
+  const { track, route, segments, overall, raceTimeSec, missedCPs } = rrData;
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Race Report: ${escapeHtml(track.name)}</title>
+<style>body{font-family:sans-serif;background:#1a1a2e;color:#e0e0e0;padding:20px;max-width:900px;margin:0 auto}
+table{width:100%;border-collapse:collapse;margin:16px 0}th,td{padding:6px 10px;border:1px solid #333;text-align:left;font-size:13px}
+th{background:#2a2a4a}.fast{border-left:3px solid #4adf7a}.slow{border-left:3px solid #e07070}
+.card{display:inline-block;background:#2a2a4a;border-radius:6px;padding:8px 16px;margin:4px;text-align:center}
+.card-label{font-size:10px;color:#888;text-transform:uppercase}.card-val{font-size:18px;font-weight:700;margin-top:4px}</style></head>
+<body><h1>Race Report</h1><h2>${escapeHtml(track.name)} &times; ${escapeHtml(route.name)}</h2>
+<div>${[
+    ['Дистанция', rrFmtDist(overall.dist) + ' км'],
+    ['Время', rrFmtTime(raceTimeSec)],
+    ['В движении', rrFmtTime(overall.moveTime)],
+    ['Стоянки', rrFmtTime(overall.stopTime)],
+    ['Ср. скорость', rrFmtSpeed(overall.avgSpeed) + ' км/ч'],
+    ['Макс. скорость', rrFmtSpeed(overall.maxSpeed) + ' км/ч'],
+    ['Набор ↑', Math.round(overall.elevGain) + ' м'],
+  ].map(([l, v]) => `<div class="card"><div class="card-label">${l}</div><div class="card-val">${v}</div></div>`).join('')}</div>
+<table><tr><th>#</th><th>Участок</th><th>Расст.</th><th>Время</th><th>Ср.V</th><th>Стоянки</th><th>Набор↑</th><th>Эфф.</th></tr>
+${segments.map(sg => {
+    const avgSpd = segments.reduce((s, x) => s + x.avgSpeed, 0) / segments.length;
+    const cls = sg.avgSpeed > avgSpd * 1.15 ? 'fast' : sg.avgSpeed < avgSpd * 0.85 ? 'slow' : '';
+    return `<tr class="${cls}"><td>${sg.num}</td><td>${escapeHtml(sg.fromLabel)}→${escapeHtml(sg.toLabel)}</td><td>${rrFmtDist(sg.dist)} км</td><td>${rrFmtTime(sg.totalTime)}</td><td>${rrFmtSpeed(sg.avgSpeed)}</td><td>${sg.stopTime > 0 ? rrFmtTime(sg.stopTime) : '—'}</td><td>+${Math.round(sg.elevGain)}м</td><td>${sg.efficiency.toFixed(0)}%</td></tr>`;
+  }).join('')}</table>
+${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')}</p>` : ''}
+<p style="color:#666;font-size:11px;margin-top:20px">Trophy Navigator Desktop · ${new Date().toLocaleDateString('ru-RU')}</p>
+</body></html>`;
+  downloadText(`report_${track.name.replace(/[^a-zA-ZёЁа-яА-Я0-9]/g, '_')}.html`, 'text/html', html);
+  showToast('✓ Отчёт сохранён');
+}
+
 </script>
 
 <!-- ═══════════════════════════════════════════
@@ -6228,13 +7063,19 @@ renderCustomLayers();
       <!-- Информация -->
       <div style="background:#0d1e38;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.7.0</span>
+          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.8.0</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:#5a7aaa">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
         </div>
-        <div style="display:flex;justify-content:space-between;padding:3px 0">
+        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:#5a7aaa">Лицензия</span><span id="about-license" style="color:#4adf7a">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
+          <span style="color:#5a7aaa">Сайт</span><span style="color:#7ec8ff">trophynav.ru</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:3px 0">
+          <span style="color:#5a7aaa">Почта</span><span style="color:#7ec8ff">info@trophynav.ru</span>
         </div>
       </div>
 
@@ -6650,6 +7491,7 @@ function liveStopPolling() {
   // Remove all markers from map
   Object.values(liveState.markers).forEach(m => map.removeLayer(m));
   liveState.markers = {};
+  liveState._firstFitDone = false;
 }
 
 async function liveFetch() {
@@ -6667,7 +7509,6 @@ async function liveFetch() {
     liveState.consecutiveErrors++;
     if (liveState.consecutiveErrors >= 3) {
       liveUpdateDot('error');
-      // Dim all markers
       Object.values(liveState.markers).forEach(m => {
         if (m._icon) m._icon.style.opacity = '0.3';
       });
@@ -6678,16 +7519,23 @@ async function liveFetch() {
 function liveProcessDevices(devices) {
   const now = Date.now();
   const activeIds = new Set();
+  let created = 0, skipped = 0;
 
   devices.forEach(dev => {
-    if (!dev.lat || !dev.lon) return;
-    const id = dev.deviceId || dev.name;
+    if (!dev.lat || !dev.lon) { skipped++; return; }
+    const id = String(dev.deviceId || dev.name);
     activeIds.add(id);
     const lastUpdate = dev.lastUpdate ? new Date(dev.lastUpdate).getTime() : 0;
     const isOffline = lastUpdate > 0 && (now - lastUpdate) > LIVE_OFFLINE_TIMEOUT;
 
     liveUpdateMarker(dev, isOffline);
+    created++;
   });
+  // Автоматически показать всех при первом fetch
+  if (!liveState._firstFitDone && Object.keys(liveState.markers).length > 0) {
+    liveState._firstFitDone = true;
+    liveShowAll();
+  }
 
   // Remove markers for devices that disappeared
   Object.keys(liveState.markers).forEach(id => {
@@ -6700,28 +7548,63 @@ function liveProcessDevices(devices) {
   liveRenderSidebar(devices, now);
 }
 
+function liveGetMarkerSize() {
+  return parseInt(document.getElementById('setting-live-marker-size')?.value) || 3;
+}
+function liveGetLabelSize() {
+  return parseInt(document.getElementById('setting-live-label-size')?.value) || 3;
+}
+
+function applyLiveMarkerSize(val) {
+  // Re-render all existing markers with new size
+  Object.values(liveState.markers).forEach(m => {
+    if (m._liveDev) liveUpdateMarker(m._liveDev, false);
+  });
+}
+
+function liveMarkerColor(dev) {
+  const now = Date.now();
+  if (dev.status === 'online') return '#22C55E'; // green
+  if (dev.lastUpdate) {
+    const minAgo = (now - new Date(dev.lastUpdate).getTime()) / 60000;
+    if (minAgo <= 5) return '#FFD600';   // yellow
+    if (minAgo <= 30) return '#FF9800';  // orange
+  }
+  return '#888888'; // gray
+}
+
 function liveUpdateMarker(dev, isOffline) {
-  const id = dev.deviceId || dev.name;
+  const id = String(dev.deviceId || dev.name);
   const latlng = [dev.lat, dev.lon];
-  const isPro = dev.plan === 'full';
-  const course = dev.course || 0;
+  const isPro = dev.plan === 'full' || dev.plan === 'license';
   const speed = dev.speed ? Math.round(dev.speed) : 0;
-  const name = liveEsc((dev.name || 'Unknown').substring(0, 15));
+  const rawName = (dev.name || 'Unknown');
+  const shortName = rawName.length > 14 ? rawName.substring(0, 13) + '…' : rawName;
+  const name = liveEsc(isPro ? '⭐ ' + shortName : shortName);
+  const color = liveMarkerColor(dev);
+
+  const scale = liveGetMarkerSize();
+  const labelScale = liveGetLabelSize();
+  const diamondSize = scale * 3 + 8; // scale 1→11, 3→17, 5→23, 10→38
+  const starSize = Math.round(diamondSize * 0.44);
+  const labelSize = Math.round(labelScale * 1.2 + 7); // scale 1→8, 3→11, 5→13, 10→19
+  const iconW = Math.max(diamondSize + 8, 100);
+  const iconH = diamondSize + labelSize + 20;
 
   const html = `
     <div style="text-align:center">
-      <div class="live-marker-arrow ${isPro ? 'pro' : ''}" style="transform:rotate(${course}deg);font-size:22px">▲</div>
-      <div class="live-marker-label">${name}${speed > 1 ? ' · ' + speed + ' км/ч' : ''}</div>
+      <div class="live-diamond ${isPro ? 'pro' : ''}" style="background:${color};width:${diamondSize}px;height:${diamondSize}px">
+        <span class="live-diamond-star" style="font-size:${starSize}px">✴</span>
+      </div>
+      <div class="live-marker-label ${isPro ? 'pro' : ''}" style="font-size:${labelSize}px">${name}</div>
+      ${speed > 1 ? `<div class="live-marker-speed" style="font-size:${Math.max(labelSize - 2, 8)}px">${speed} км/ч</div>` : ''}
     </div>`;
 
-  const icon = L.divIcon({ className: 'live-icon-wrapper', html, iconSize: [60, 40], iconAnchor: [30, 20] });
+  const icon = L.divIcon({ className: 'live-icon-wrapper', html, iconSize: [iconW, iconH], iconAnchor: [iconW / 2, diamondSize / 2 + 4] });
 
   if (liveState.markers[id]) {
     liveState.markers[id].setLatLng(latlng).setIcon(icon);
-    liveState.markers[id]._liveDev = dev;  // update data for popup
-    if (liveState.markers[id]._icon) {
-      liveState.markers[id]._icon.style.opacity = isOffline ? '0.3' : '1';
-    }
+    liveState.markers[id]._liveDev = dev;
   } else {
     const marker = L.marker(latlng, { icon, zIndexOffset: 1000 }).addTo(map);
     marker._liveDev = dev;
