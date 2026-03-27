@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🧭 Trophy Navigator Desktop v0.8.1</title>
+<title>🧭 Trophy Navigator Desktop v0.8.2</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -77,7 +77,7 @@
     font-size: 12px;
   }
   #btn-map-layer:hover { background: #2a5a8a; border-color: #4a8adf; }
-  #btn-map-layer .layer-name { font-weight: 500; }
+  #btn-map-layer .layer-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; max-width: 160px; display: inline-block; }
   .tb-label { font-size: 10px; color: #5a7aaa; text-transform: uppercase; letter-spacing: 0.5px; padding: 0 4px; }
 
   /* ─── Группы инструментов — один ряд ─── */
@@ -812,7 +812,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.8.1</span>
+  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.8.2</span>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -1492,6 +1492,28 @@
 </div>
 
 <!-- ═══════════════════════════════════════════
+     УНИВЕРСАЛЬНЫЙ CONFIRM / PROMPT
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-dialog">
+  <div class="modal" style="top:30%;left:50%;transform:translateX(-50%);width:360px;z-index:6000">
+    <div class="modal-header" id="modal-dialog-header">
+      <span id="modal-dialog-title">Подтверждение</span>
+      <span class="modal-close" onclick="dialogCancel()">✕</span>
+    </div>
+    <div class="modal-body" style="padding:16px">
+      <div id="modal-dialog-message" style="font-size:13px;color:#e0e0e0;margin-bottom:12px;white-space:pre-wrap"></div>
+      <div id="modal-dialog-input-wrap" style="display:none;margin-bottom:12px">
+        <input id="modal-dialog-input" type="text" style="width:100%;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:6px 10px;font-size:13px">
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-secondary" style="flex:1" onclick="dialogCancel()">Отмена</button>
+        <button class="btn-primary" id="modal-dialog-ok" style="flex:1" onclick="dialogOk()">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
      МОДАЛЬНОЕ ОКНО: СИНХРОНИЗАЦИЯ
 ════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-sync">
@@ -1575,8 +1597,8 @@
     <div class="modal-header" onmousedown="startDrag(event,'modal-layers-win')">
       🗺 Карта и слои
       <span style="display:flex;align-items:center;gap:6px">
-        <span style="font-size:11px;color:#5a7aaa;cursor:pointer" onclick="event.stopPropagation();showHiddenLayersManager()" title="Показать скрытые карты">👁</span>
-        <span style="font-size:11px;color:#5a7aaa;cursor:pointer" onclick="event.stopPropagation();refreshTileCatalog()" title="Обновить каталог с сервера">🔄</span>
+        <span style="font-size:14px;color:#7a9aba;cursor:pointer;padding:2px 4px" onclick="event.stopPropagation();showHiddenLayersManager()" title="Показать скрытые карты">👁</span>
+        <span style="font-size:14px;color:#7a9aba;cursor:pointer;padding:2px 4px" onclick="event.stopPropagation();refreshTileCatalog()" title="Обновить каталог с сервера">🔄</span>
         <span class="modal-close" onclick="closeModal('modal-layers')">✕</span>
       </span>
     </div>
@@ -1809,10 +1831,10 @@ function toggleSetVisibility(id) {
   showToast(set.visible ? `Набор "${set.name}" показан` : `Набор "${set.name}" скрыт`);
 }
 
-function deleteWaypointSet(id) {
+async function deleteWaypointSet(id) {
   const set = waypointSets.find(s => s.id === id);
   if (!set) return;
-  if (!confirm(`Удалить набор "${set.name}" и все его ${set.waypoints.length} точек?`)) return;
+  if (!await tndConfirmDanger(`Удалить набор "${set.name}" и все его ${set.waypoints.length} точек?`)) return;
   set.waypoints.forEach(m => {
     if (m.wpCircle) map.removeLayer(m.wpCircle);
     m.remove();
@@ -1825,10 +1847,10 @@ function deleteWaypointSet(id) {
   showToast(`Набор "${set.name}" удалён`);
 }
 
-function renameWaypointSet(id) {
+async function renameWaypointSet(id) {
   const set = waypointSets.find(s => s.id === id);
   if (!set) return;
-  const name = prompt('Название набора:', set.name);
+  const name = await tndPrompt('Название набора:', set.name);
   if (name && name.trim()) {
     set.name = name.trim();
     updateSetSelector();
@@ -1848,8 +1870,8 @@ function onSetSelectChange(sel) {
   updateWptTable();
 }
 
-function promptNewSet() {
-  const name = prompt('Название нового набора:');
+async function promptNewSet() {
+  const name = await tndPrompt('Название нового набора:');
   if (!name || !name.trim()) return;
   createWaypointSet(name.trim());
   updateWptTable();
@@ -2213,7 +2235,7 @@ document.addEventListener('keydown', e => {
     return;
   }
   switch(e.key) {
-    case 'Escape': closeAllModals(); setMode('hand'); break;
+    case 'Escape': dialogCancel(); closeAllModals(); setMode('hand'); break;
     case ' ':
     case 'h': case 'H':
       e.preventDefault();
@@ -2390,14 +2412,14 @@ function toggleLayerHidden(key) {
   saveHiddenLayers(hidden);
   buildLayerUI();
 }
-function showHiddenLayersManager() {
+async function showHiddenLayersManager() {
   const hidden = getHiddenLayers();
   if (hidden.length === 0) { showToast('Нет скрытых карт'); return; }
   const names = hidden.map(k => {
     const e = tileCatalog?.base?.find(b => b.key === k) || tileCatalog?.overlays?.find(o => o.key === k);
     return e ? e.label : k;
   });
-  if (confirm('Скрытые карты:\n\n' + names.join('\n') + '\n\nПоказать все?')) {
+  if (await tndConfirm('Скрытые карты:\n\n' + names.join('\n') + '\n\nПоказать все?')) {
     saveHiddenLayers([]);
     buildLayerUI();
     showToast('Все карты показаны');
@@ -2569,6 +2591,11 @@ function refreshTileCatalog() {
     })
     .then(data => {
       tileCatalog = normalizeCatalog(data);
+      // Очистить кэшированные оверлей-слои чтобы пересоздались с новыми URL
+      Object.keys(overlayLayers).forEach(name => {
+        if (map.hasLayer(overlayLayers[name])) map.removeLayer(overlayLayers[name]);
+        delete overlayLayers[name];
+      });
       buildLayerUI();
       showToast(`✅ Каталог обновлён: ${tileCatalog.base.length} карт, ${(tileCatalog.overlays || []).length} оверлеев`);
     })
@@ -3629,6 +3656,7 @@ function reverseSelectedTrack() {
   const t = tracks.find(track => track.id === selectedTrackId);
   if (!t || t.points.length < 2) return;
   t.points = [...t.points].reverse();
+  if (t.pointsData) t.pointsData = [...t.pointsData].reverse();
   if (t.polyline) t.polyline.setLatLngs(t.points);
   addTrackMarkers(t);
   if (currentTrackDraw?.id === t.id) {
@@ -3980,7 +4008,7 @@ function updateRouteBuildList() {
     const lbl = currentRouteDraw.labels[i] || ('КП' + (i+1));
     const coord = p.lat.toFixed(4) + ', ' + p.lng.toFixed(4);
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 4px;font-size:11px;color:#c0d8ff;border-bottom:1px solid #1a2a4a">'
-      + '<span>' + (i+1) + '. <b>' + lbl + '</b> <span style="color:#5a7aaa">' + coord + '</span></span>'
+      + '<span>' + (i+1) + '. <b>' + escapeHtml(lbl) + '</b> <span style="color:#5a7aaa">' + coord + '</span></span>'
       + '<span style="cursor:pointer;color:#e07070;padding:0 4px" onclick="removeRouteBuildPoint(' + i + ')" title="Удалить">✕</span>'
       + '</div>';
   }).join('');
@@ -4255,11 +4283,11 @@ function deleteSelectedWaypoints() {
   updateWptTable();
   showToast('Удалено ' + indices.size + ' точек');
 }
-function clearAllWaypoints() {
+async function clearAllWaypoints() {
   const activeSet = getActiveSet();
   const list = activeSet ? activeSet.waypoints : waypoints;
   if (list.length === 0) { showToast('Точек нет'); return; }
-  if (!confirm(`Удалить ${list.length} точек${activeSet ? ` из набора "${activeSet.name}"` : ''}?`)) return;
+  if (!await tndConfirmDanger(`Удалить ${list.length} точек${activeSet ? ` из набора "${activeSet.name}"` : ''}?`)) return;
   const toRemove = new Set(list);
   list.forEach(m => {
     if (m.wpCircle) map.removeLayer(m.wpCircle);
@@ -4303,6 +4331,69 @@ function applyBulkEdit() {
 // TOAST
 // ─────────────────────────────────────────────
 let toastTimer;
+// ─── Кастомный confirm / prompt (заменяет нативный) ───
+let _dialogResolve = null;
+function tndConfirm(message, title) {
+  return new Promise(resolve => {
+    _dialogResolve = resolve;
+    document.getElementById('modal-dialog-title').textContent = title || 'Подтверждение';
+    document.getElementById('modal-dialog-message').textContent = message;
+    document.getElementById('modal-dialog-input-wrap').style.display = 'none';
+    document.getElementById('modal-dialog-ok').textContent = 'OK';
+    document.getElementById('modal-dialog-ok').style.background = '';
+    document.getElementById('modal-dialog-header').style.background = '';
+    openModal('modal-dialog');
+  });
+}
+function tndPrompt(message, defaultVal, title) {
+  return new Promise(resolve => {
+    _dialogResolve = resolve;
+    document.getElementById('modal-dialog-title').textContent = title || 'Ввод';
+    document.getElementById('modal-dialog-message').textContent = message;
+    const inp = document.getElementById('modal-dialog-input');
+    inp.value = defaultVal || '';
+    document.getElementById('modal-dialog-input-wrap').style.display = 'block';
+    document.getElementById('modal-dialog-ok').textContent = 'OK';
+    document.getElementById('modal-dialog-ok').style.background = '';
+    document.getElementById('modal-dialog-header').style.background = '';
+    openModal('modal-dialog');
+    setTimeout(() => inp.focus(), 100);
+  });
+}
+function tndConfirmDanger(message, title) {
+  return new Promise(resolve => {
+    _dialogResolve = resolve;
+    document.getElementById('modal-dialog-title').textContent = title || 'Удаление';
+    document.getElementById('modal-dialog-message').textContent = message;
+    document.getElementById('modal-dialog-input-wrap').style.display = 'none';
+    document.getElementById('modal-dialog-ok').textContent = 'Удалить';
+    document.getElementById('modal-dialog-ok').style.background = '#8a2a2a';
+    document.getElementById('modal-dialog-header').style.background = '#6a2a2a';
+    openModal('modal-dialog');
+  });
+}
+function dialogOk() {
+  closeModal('modal-dialog');
+  document.getElementById('modal-dialog-ok').style.background = '';
+  if (_dialogResolve) {
+    const inp = document.getElementById('modal-dialog-input');
+    const isPrompt = document.getElementById('modal-dialog-input-wrap').style.display !== 'none';
+    _dialogResolve(isPrompt ? inp.value : true);
+    _dialogResolve = null;
+  }
+}
+function dialogCancel() {
+  closeModal('modal-dialog');
+  document.getElementById('modal-dialog-ok').style.background = '';
+  if (_dialogResolve) {
+    const isPrompt = document.getElementById('modal-dialog-input-wrap').style.display !== 'none';
+    _dialogResolve(isPrompt ? null : false);
+    _dialogResolve = null;
+  }
+}
+// Enter = OK в диалоге
+document.getElementById('modal-dialog-input')?.addEventListener('keydown', e => { if (e.key === 'Enter') dialogOk(); });
+
 function showToast(msg, type) {
   const t = document.getElementById('toast');
   // Автоопределение типа по маркерам
@@ -5595,7 +5686,7 @@ async function syncPull(silent) {
   if (!cfg.email || !cfg.syncKey) { if (!silent) showToast('Привяжите email для синхронизации'); return; }
   const checks = getSyncChecks();
 
-  if (!silent && !confirm('Загрузить данные с сервера? Текущие данные выбранных типов будут заменены.')) return;
+  if (!silent && !await tndConfirm('Загрузить данные с сервера? Текущие данные выбранных типов будут заменены.')) return;
 
   updateSyncStatus('Загрузка...', false);
   try {
@@ -5754,7 +5845,7 @@ async function fallbackCheckForUpdates(silent = false) {
 
 async function installPendingUpdate() {
   if (updateCheckBusy || !pendingUpdateRid) return;
-  if (!confirm(`Установить обновление ${pendingUpdateVersion || ''}?`.trim())) return;
+  if (!await tndConfirm(`Установить обновление ${pendingUpdateVersion || ''}?`.trim())) return;
 
   updateCheckBusy = true;
   const btn = getUpdateButton();
@@ -6285,6 +6376,95 @@ function updatePremiumUI() {
 loadCustomLayers();
 renderCustomLayers();
 
+// ─── Drag & Drop GPX на карту ───
+const mapEl = document.getElementById('map');
+mapEl.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; mapEl.style.outline = '3px dashed var(--accent-blue)'; });
+mapEl.addEventListener('dragleave', () => { mapEl.style.outline = ''; });
+mapEl.addEventListener('drop', e => {
+  e.preventDefault(); mapEl.style.outline = '';
+  const files = e.dataTransfer.files;
+  for (const f of files) {
+    const ext = f.name.toLowerCase().split('.').pop();
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const text = ev.target.result;
+      if (ext === 'gpx') loadGPXFile(text, f.name);
+      else if (ext === 'wpt') loadWPT(text, f.name);
+      else if (ext === 'plt') loadPLT(text, f.name);
+      else if (ext === 'rte') loadRTE(text, f.name);
+      else showToast('Формат не поддерживается: .' + ext);
+    };
+    reader.readAsText(f);
+  }
+});
+
+// ─── Справка горячих клавиш (?) ───
+function showShortcutsHelp() {
+  if (document.getElementById('shortcuts-overlay')) return;
+  const shortcuts = [
+    ['H / Пробел', 'Навигация (рука)'],
+    ['W', 'Добавить точку'],
+    ['T', 'Новый трек'],
+    ['R', 'Новый маршрут'],
+    ['M', 'Линейка'],
+    ['D', 'Выделить область (скачивание)'],
+    ['L', 'Слои и карты'],
+    ['K', 'Блокировка объектов'],
+    ['F', 'Вписать все объекты'],
+    ['Delete', 'Удалить выбранный объект'],
+    ['Ctrl+Z', 'Отменить'],
+    ['Ctrl+S', 'Сохранить GPX'],
+    ['ESC', 'Отмена / закрыть'],
+    ['?', 'Эта справка'],
+  ];
+  const html = shortcuts.map(([key, desc]) =>
+    `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-subtle)">
+      <kbd style="background:var(--bg-sunken);border:1px solid var(--border-normal);border-radius:3px;padding:1px 8px;font-size:12px;color:var(--accent-blue);font-family:monospace">${key}</kbd>
+      <span style="font-size:12px;color:var(--text-secondary)">${desc}</span>
+    </div>`
+  ).join('');
+  const overlay = document.createElement('div');
+  overlay.id = 'shortcuts-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:7000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)';
+  overlay.innerHTML = `<div style="background:var(--bg-elevated);border:1px solid var(--border-normal);border-radius:12px;padding:20px;width:340px;max-height:80vh;overflow-y:auto">
+    <div style="font-size:15px;font-weight:600;color:var(--accent-blue);margin-bottom:12px;text-align:center">Горячие клавиши</div>
+    ${html}
+    <div style="text-align:center;margin-top:12px"><button class="btn-secondary" onclick="document.getElementById('shortcuts-overlay').remove()" style="font-size:12px">Закрыть</button></div>
+  </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+// Добавим ? в обработчик клавиш
+const _origKeyHandler = document.onkeydown;
+document.addEventListener('keydown', e => {
+  if (e.key === '?' && !['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) {
+    e.preventDefault(); showShortcutsHelp();
+  }
+});
+
+// ─── Onboarding при первом запуске ───
+function showOnboarding() {
+  if (localStorage.getItem('tnd-onboarding-done')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'onboarding-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:7000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6)';
+  overlay.innerHTML = `<div style="background:var(--bg-elevated);border:1px solid var(--border-bright);border-radius:16px;padding:28px;width:420px;text-align:center">
+    <div style="font-size:36px;margin-bottom:8px">🏆</div>
+    <div style="font-size:20px;font-weight:700;color:#7ec8ff;margin-bottom:4px">Trophy Navigator Desktop</div>
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:20px">Навигация для трофи-рейдов и экспедиций</div>
+    <div style="text-align:left;font-size:13px;color:var(--text-primary);line-height:2">
+      <div>📍 <b>W</b> — добавить точку на карту</div>
+      <div>〜 <b>T</b> — нарисовать трек</div>
+      <div>⚑ <b>R</b> — создать маршрут по точкам</div>
+      <div>📥 Перетащите GPX-файл на карту для импорта</div>
+      <div>🗺 Переключайте карты кнопкой в тулбаре</div>
+      <div>❓ Нажмите <kbd style="background:var(--bg-sunken);border:1px solid var(--border-normal);border-radius:3px;padding:0 4px;font-family:monospace">?</kbd> для списка горячих клавиш</div>
+    </div>
+    <button class="btn-primary" onclick="document.getElementById('onboarding-overlay').remove();localStorage.setItem('tnd-onboarding-done','1')" style="width:100%;margin-top:16px;font-size:14px;padding:10px">Начать работу</button>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
 // Инициализация при загрузке
 (async function initApp() {
   await initWorkingDirectory();
@@ -6295,6 +6475,16 @@ renderCustomLayers();
   } else {
     restoreState(); // fallback на localStorage
   }
+  // Восстановить позицию карты из localStorage
+  const savedView = localStorage.getItem('tnd-map-view');
+  if (savedView) {
+    try { const v = JSON.parse(savedView); map.setView([v.lat, v.lng], v.zoom); } catch {}
+  }
+  // Сохранять позицию карты при перемещении
+  map.on('moveend', () => {
+    const c = map.getCenter();
+    localStorage.setItem('tnd-map-view', JSON.stringify({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }));
+  });
   // Trial / License — используем аппаратный ID
   const machineId = await getMachineIdAsync();
   registerTrialOnServer();
@@ -6305,6 +6495,8 @@ renderCustomLayers();
   // Auto-sync: загрузить данные из облака при запуске (silent mode)
   loadSyncConfig();
   setTimeout(() => { syncPull(true); }, 2000);
+  // Onboarding при первом запуске
+  setTimeout(showOnboarding, 500);
 })();
 
 // ═══════════════════════════════════════════════════════════════
@@ -6978,7 +7170,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <!-- Информация -->
       <div style="background:#0d1e38;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.8.1</span>
+          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.8.2</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:#5a7aaa">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
