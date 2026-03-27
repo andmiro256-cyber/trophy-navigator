@@ -1656,51 +1656,8 @@
       <div class="layer-section-title" style="margin-top:8px">Оверлейные слои</div>
       <div style="font-size:10px;color:#4a6a8a;margin-bottom:4px">Ползунок = прозрачность</div>
       <div id="catalog-overlay-layers">
-        <div class="overlay-layer">
-          <input type="checkbox" data-overlay="OSM GPS треки" onchange="toggleOverlay('OSM GPS треки', this)"> <span class="overlay-name">OSM GPS треки</span>
-          <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('OSM GPS треки', this)">
-          <span class="opacity-val">100%</span>
-        </div>
-        <div class="overlay-layer">
-          <input type="checkbox" data-overlay="Hiking тропы" onchange="toggleOverlay('Hiking тропы', this)"> <span class="overlay-name">Hiking тропы</span>
-          <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('Hiking тропы', this)">
-          <span class="opacity-val">100%</span>
-        </div>
-        <div class="overlay-layer">
-          <input type="checkbox" data-overlay="MTB тропы" onchange="toggleOverlay('MTB тропы', this)"> <span class="overlay-name">MTB тропы</span>
-          <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('MTB тропы', this)">
-          <span class="opacity-val">100%</span>
-        </div>
-        <div class="overlay-layer">
-          <input type="checkbox" data-overlay="ESRI транспорт" onchange="toggleOverlay('ESRI транспорт', this)"> <span class="overlay-name">ESRI транспорт</span>
-          <input type="range" class="opacity-slider" min="0" max="100" value="80" oninput="setOverlayOpacity('ESRI транспорт', this)">
-          <span class="opacity-val">80%</span>
-        </div>
-        <div class="overlay-layer">
-          <input type="checkbox" data-overlay="Wikimapia" onchange="toggleOverlay('Wikimapia', this)"> <span class="overlay-name">Wikimapia</span>
-          <input type="range" class="opacity-slider" min="0" max="100" value="80" oninput="setOverlayOpacity('Wikimapia', this)">
-          <span class="opacity-val">80%</span>
-        </div>
-        <div class="overlay-layer">
-          <input type="checkbox" data-overlay="Bing дороги" onchange="toggleOverlay('Bing дороги', this)"> <span class="overlay-name">Bing дороги</span>
-          <input type="range" class="opacity-slider" min="0" max="100" value="70" oninput="setOverlayOpacity('Bing дороги', this)">
-          <span class="opacity-val">70%</span>
-        </div>
-        <div class="overlay-layer">
-          <input type="checkbox" data-overlay="Windy рельеф" onchange="toggleOverlay('Windy рельеф', this)"> <span class="overlay-name">Windy рельеф</span>
-          <input type="range" class="opacity-slider" min="0" max="100" value="50" oninput="setOverlayOpacity('Windy рельеф', this)">
-          <span class="opacity-val">50%</span>
-        </div>
-        <div class="overlay-layer">
-          <input type="checkbox" data-overlay="Горнолыжные трассы" onchange="toggleOverlay('Горнолыжные трассы', this)"> <span class="overlay-name">Горнолыжные трассы</span>
-          <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('Горнолыжные трассы', this)">
-          <span class="opacity-val">100%</span>
-        </div>
-        <div class="overlay-layer">
-          <input type="checkbox" data-overlay="Лыжные трассы" onchange="toggleOverlay('Лыжные трассы', this)"> <span class="overlay-name">Лыжные трассы</span>
-          <input type="range" class="opacity-slider" min="0" max="100" value="100" oninput="setOverlayOpacity('Лыжные трассы', this)">
-          <span class="opacity-val">100%</span>
-        </div>
+        <!-- Заполняется из серверного каталога -->
+        <div style="color:#4a6a8a;font-size:11px;text-align:center;padding:8px">Загрузка каталога...</div>
       </div>
     </div>
   </div>
@@ -2373,23 +2330,16 @@ function makeBaseLayer(name) {
     case 'Гибрид Bing':    return new BingTileLayer('https://ecn.t0.tiles.virtualearth.net/tiles/h{q}?g=14000&mkt=ru-RU', { maxNativeZoom: 19, maxZoom: 22 });
   }
 
-  // Try catalog lookup by label
+  // Lookup from server catalog — используем proxy URL
   if (tileCatalog) {
     const entry = tileCatalog.base.find(e => e.label === name);
     if (entry) {
-      let subdomains = entry.subdomains || '';
-      if (!subdomains && entry.url.includes('{s}')) {
-        if (entry.url.includes('mt{s}.google')) subdomains = '0123';
-        else if (entry.url.includes('sat0{s}')) subdomains = '1234';
-        else subdomains = 'abc';
-      }
-      const opts = {
+      const tileUrl = entry.proxy || entry.url;
+      return L.tileLayer(tileUrl, {
         maxZoom: 22,
         maxNativeZoom: entry.maxZoom || 18,
-        subdomains: subdomains,
         tms: !!entry.tms
-      };
-      return L.tileLayer(entry.url, opts);
+      });
     }
   }
 
@@ -2532,8 +2482,6 @@ function buildLayerUI() {
   // --- Overlay layers ---
   const overlayContainer = document.getElementById('catalog-overlay-layers');
   if (overlayContainer) {
-    // Keep hardcoded special overlays (Wikimapia, Bing дороги) that use custom tile classes
-    const hardcodedOverlayNames = new Set(['Wikimapia', 'Bing дороги']);
     const catalogOverlays = tileCatalog.overlays || [];
 
     if (catalogOverlays.length > 0) {
@@ -2544,22 +2492,15 @@ function buildLayerUI() {
       overlayContainer.innerHTML = '';
 
       catalogOverlays.forEach(e => {
-        const defaultOpacity = e.opacity != null ? Math.round(e.opacity * 100) : 100;
+        const defaultOpacity = e.opacity != null ? Math.round(e.opacity * 100) : 70;
 
-        // Create overlay layer object if not already existing
+        // Create overlay layer — используем proxy URL
         if (!overlayLayers[e.label]) {
-          // Auto-detect subdomains from URL pattern {s}
-          let subdomains = e.subdomains || '';
-          if (!subdomains && e.url.includes('{s}')) {
-            if (e.url.includes('i{s}.wikimapia')) subdomains = '0123';
-            else if (e.url.includes('{s}.core-')) subdomains = '01234';
-            else subdomains = 'abc';
-          }
-          overlayLayers[e.label] = L.tileLayer(e.url, {
+          const tileUrl = e.proxy || e.url;
+          overlayLayers[e.label] = L.tileLayer(tileUrl, {
             maxZoom: e.maxZoom || 18,
-            subdomains: subdomains,
             tms: !!e.tms,
-            opacity: (e.opacity != null ? e.opacity : 0.7),
+            opacity: defaultOpacity / 100,
             pane: 'overlayTiles'
           });
         }
@@ -2573,56 +2514,31 @@ function buildLayerUI() {
           '<span class="opacity-val">' + defaultOpacity + '%</span>';
         overlayContainer.appendChild(div);
       });
-
-      // Re-add hardcoded special overlays that aren't in catalog
-      hardcodedOverlayNames.forEach(name => {
-        if (!catalogOverlays.find(e => e.label === name) && overlayLayers[name]) {
-          const defaultOpacity = name === 'Wikimapia' ? 80 : 70;
-          const div = document.createElement('div');
-          div.className = 'overlay-layer';
-          div.innerHTML = '<input type="checkbox" data-overlay="' + name + '" onchange="toggleOverlay(\'' + name.replace(/'/g, "\\'") + '\', this)"> ' +
-            '<span class="overlay-name">' + name + '</span>' +
-            '<input type="range" class="opacity-slider" min="0" max="100" value="' + defaultOpacity + '" oninput="setOverlayOpacity(\'' + name.replace(/'/g, "\\'") + '\', this)">' +
-            '<span class="opacity-val">' + defaultOpacity + '%</span>';
-          overlayContainer.appendChild(div);
-        }
-      });
     }
   }
 
-  // --- Update download layer lists ---
+  // --- Update download layer lists (только из каталога) ---
   dlLayerList.length = 0;
   tileCatalog.base.forEach(e => dlLayerList.push(e.label));
-  // Add Bing layers if not already in catalog
-  if (!tileCatalog.base.find(e => e.label === 'Спутник Bing')) dlLayerList.push('Спутник Bing');
-  if (!tileCatalog.base.find(e => e.label === 'Гибрид Bing')) dlLayerList.push('Гибрид Bing');
-  // Add Яндекс Гибрид if not in catalog (uses layerGroup)
-  if (!tileCatalog.base.find(e => e.label === 'Яндекс Гибрид')) dlLayerList.push('Яндекс Гибрид');
-
   dlOverlayList.length = 0;
   (tileCatalog.overlays || []).forEach(e => dlOverlayList.push(e.label));
-  // Re-add hardcoded overlays not in catalog
-  if (!(tileCatalog.overlays || []).find(e => e.label === 'Wikimapia')) dlOverlayList.push('Wikimapia');
-  if (!(tileCatalog.overlays || []).find(e => e.label === 'Bing дороги')) dlOverlayList.push('Bing дороги');
 
   // Update premium UI if function exists
   if (typeof updatePremiumUI === 'function') updatePremiumUI();
 }
 
 function normalizeCatalog(data) {
-  // Поддержка обоих форматов: key/label (ручной) и id/name (parse_zmp)
-  if (data.base && data.base[0]?.id && !data.base[0]?.key) {
-    data.base = data.base.map(e => ({
-      key: e.id, label: e.name, url: e.url,
-      subdomains: e.subdomains || '', tms: !!e.tms, maxZoom: e.maxZoom || e.maxzoom || 18
-    }));
-  }
-  if (data.overlays && data.overlays[0]?.id && !data.overlays[0]?.key) {
-    data.overlays = data.overlays.map(e => ({
-      key: e.id, label: e.name, url: e.url,
-      subdomains: e.subdomains || '', tms: !!e.tms, opacity: e.opacity || 0.7, maxZoom: e.maxZoom || e.maxzoom || 18
-    }));
-  }
+  // Нормализация: id→key, name→label, добавление proxy URL
+  const SERVER = 'http://87.120.84.254:9222';
+  const norm = e => ({
+    key: e.key || e.id, label: e.label || e.name,
+    url: e.proxy ? SERVER + e.proxy : e.url,
+    subdomains: e.subdomains || '', tms: e.url_type === 'tms' || !!e.tms,
+    maxZoom: e.maxZoom || e.maxzoom || 18, opacity: e.opacity,
+    proxy: e.proxy ? SERVER + e.proxy : null
+  });
+  if (data.base) data.base = data.base.map(norm);
+  if (data.overlays) data.overlays = data.overlays.map(norm);
   return data;
 }
 
