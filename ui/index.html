@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="ru">
+<script>(function(){var t=localStorage.getItem('tnd-theme');if(t)document.documentElement.setAttribute('data-theme',t)})()</script>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🧭 Trophy Navigator Desktop v0.8.2</title>
+<title>🧭 Trophy Navigator Desktop v0.9.0</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -28,8 +29,78 @@
     --accent-amber: #e0a050;
     --accent-red: #e07070;
   }
+
+  /* ─── Светлая тема ─── */
+  [data-theme="light"] {
+    --bg-base: #f0f2f5;
+    --bg-elevated: #ffffff;
+    --bg-surface: #e8ecf0;
+    --bg-sunken: #dde1e6;
+    --border-subtle: #d0d5dc;
+    --border-normal: #b0b8c4;
+    --border-bright: #3a78c4;
+    --text-primary: #1a2030;
+    --text-secondary: #4a5568;
+    --text-muted: #6a7585;
+    --accent-blue: #3a78c4;
+    --accent-green: #1e7a38;
+    --accent-amber: #9a6010;
+    --accent-red: #c04040;
+  }
+  [data-theme="light"] * { scrollbar-color: #b0b8c4 transparent; }
+  [data-theme="light"] #toolbar { background: #fff; border-bottom-color: #d0d5dc; }
+  [data-theme="light"] .tb-sep { background: #d0d5dc; }
+  [data-theme="light"] .tb-btn { background: #e8ecf0; border-color: #b0b8c4; color: #2a3548; }
+  [data-theme="light"] .tb-btn:hover { background: #d0d8e4; border-color: #3a78c4; color: #1a2030; }
+  [data-theme="light"] .tb-btn.active { background: #d0e0f5; border-color: #3a78c4; color: #2a5a9a; }
+  [data-theme="light"] .tb-btn.settings-btn { background: #e0f0e0; border-color: #8aba8a; color: #2a6a2a; }
+  [data-theme="light"] .tb-btn.list-btn { background: #f0f0e0; border-color: #baba80; color: #5a5a2a; }
+  [data-theme="light"] .tb-label { color: #6a7a8a; }
+  [data-theme="light"] #statusbar { background: #fff; border-top-color: #d0d5dc; color: #5a6a7a; }
+  [data-theme="light"] .modal { background: #fff !important; border-color: #d0d5dc; box-shadow: 0 8px 32px rgba(0,0,0,0.15) !important; }
+  [data-theme="light"] .modal-header { background: #e8ecf0 !important; color: #1a2030; border-bottom-color: #d0d5dc; }
+  [data-theme="light"] .modal-close:hover { background: #e0e4ea; color: #1a2030; }
+  [data-theme="light"] .wpt-table th { background: #e8ecf0; color: #2a4060; border-bottom-color: #d0d5dc; }
+  [data-theme="light"] .wpt-table td { border-bottom-color: #e8ecf0; color: #1a2030; }
+  [data-theme="light"] .wpt-table tr:hover td { background: #e4eaf2; }
+  [data-theme="light"] .tab-btn { background: #e8ecf0; border-color: #b0b8c4; color: #5a6a7a; }
+  [data-theme="light"] .tab-btn.active { background: #fff; color: #1a2030; }
+  [data-theme="light"] .setting-row { border-bottom-color: #e8ecf0; }
+  [data-theme="light"] .setting-label { color: #3a4a5a; }
+  [data-theme="light"] .setting-control select,
+  [data-theme="light"] .prop-field input,
+  [data-theme="light"] .prop-field select,
+  [data-theme="light"] .prop-field textarea { background: #f0f2f5; border-color: #b0b8c4; color: #1a2030; }
+  [data-theme="light"] .btn-primary { background: #3a78c4; border-color: #2a68b4; color: #fff; }
+  [data-theme="light"] .btn-secondary { background: #e8ecf0; border-color: #b0b8c4; color: #3a5068; }
+  [data-theme="light"] .ctx-menu { background: #fff; border-color: #d0d5dc; }
+  [data-theme="light"] .ctx-item { color: #1a2030; }
+  [data-theme="light"] .ctx-item:hover { background: #e4eaf2; }
+  [data-theme="light"] .ctx-sep { background: #e0e4ea; }
+  [data-theme="light"] #toast { background: rgba(255,255,255,0.95); border-color: #3a78c4; color: #2a4060; }
+  [data-theme="light"] .leaflet-popup-content-wrapper { background: #fff !important; color: #1a2030 !important; border-color: #d0d5dc !important; }
+  [data-theme="light"] .leaflet-popup-content { color: #1a2030 !important; }
+  [data-theme="light"] .leaflet-popup-tip { background: #fff !important; }
+  [data-theme="light"] .brand-control { background: rgba(255,255,255,0.88) !important; border-color: #d0d5dc !important; color: #2a4a7a !important; }
+  [data-theme="light"] .zoom-display-ctrl { background: #fff; border-color: #d0d5dc; color: #2a4a7a; }
+  [data-theme="light"] .leaflet-control-scale-line { background: rgba(255,255,255,0.85) !important; color: #2a4060 !important; }
+  [data-theme="light"] .base-layer { background: #e8ecf0; border-color: #d0d5dc; color: #1a2030; }
+  [data-theme="light"] .base-layer.active { background: #d0e0f5; border-color: #3a78c4; }
+  [data-theme="light"] .base-layer:hover { background: #dce4f0; }
+  [data-theme="light"] .overlay-layer { color: #1a2030; }
+  [data-theme="light"] #live-sidebar { background: rgba(255,255,255,0.95); border-color: #d0d5dc; }
+  [data-theme="light"] .live-device-card { background: #f5f7fa; border-color: #d0d5dc; color: #1a2030; }
+  [data-theme="light"] #polygon-toolbar { background: #fff; border-color: #d0d5dc; }
+  [data-theme="light"] #polygon-toolbar button { background: #e8ecf0; border-color: #b0b8c4; color: #1a2030; }
+  [data-theme="light"] #polygon-toolbar button.pt-done { background: #e0f5e0; border-color: #8aba8a; color: #2a6a2a; }
+  [data-theme="light"] #polygon-toolbar button.pt-cancel { color: #c04040; border-color: #d0a0a0; }
+  [data-theme="light"] .dl-prog-bar { background: linear-gradient(90deg, #3a78c4, #5a98e4); }
+  [data-theme="light"] select { color-scheme: light !important; }
+  [data-theme="light"] input[type=range] { color-scheme: light; }
+
   * { margin: 0; padding: 0; box-sizing: border-box; scrollbar-width: thin; scrollbar-color: #2a4a7a transparent; }
-  body { font-family: 'Segoe UI', sans-serif; background: var(--bg-base); color: var(--text-primary); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  body { font-family: 'Segoe UI', sans-serif; background: var(--bg-base); color: var(--text-primary); height: 100vh; display: flex; flex-direction: column; overflow: hidden; transition: background 0.2s, color 0.2s; }
+  #toolbar, .modal, .modal-header, #statusbar, .tab-btn, .btn-primary, .btn-secondary, #toast, #polygon-toolbar { transition: background 0.2s, color 0.2s, border-color 0.2s; }
 
   /* ─── Убрать attribution Leaflet ─── */
   .leaflet-control-attribution { display: none !important; }
@@ -37,7 +108,7 @@
   /* ─── ТУЛБАР ─── */
   #toolbar {
     background: #16213e;
-    border-bottom: 1px solid #0f3460;
+    border-bottom: 1px solid var(--border-subtle);
     padding: 6px 10px;
     display: flex;
     align-items: center;
@@ -46,7 +117,7 @@
     height: 58px;
     user-select: none;
   }
-  .tb-sep { width: 1px; background: #0f3460; height: 38px; margin: 0 7px; flex-shrink: 0; }
+  .tb-sep { width: 1px; background: var(--bg-sunken); height: 38px; margin: 0 7px; flex-shrink: 0; }
   .tb-btn {
     background: #1a2a4a;
     border: 1px solid #2a4a7a;
@@ -61,7 +132,7 @@
     height: 38px;
   }
   .tb-btn:hover { background: #2a4a7a; border-color: #4a8adf; color: #fff; }
-  .tb-btn.active { background: #0f3460; border-color: #4a8adf; color: #7ec8ff; box-shadow: 0 0 8px rgba(74,138,223,0.4); }
+  .tb-btn.active { background: var(--bg-sunken); border-color: #4a8adf; color: #7ec8ff; box-shadow: 0 0 8px rgba(74,138,223,0.4); }
   .tb-btn.settings-btn { background: #1e3a1e; border-color: #2a6a2a; color: #a0d8a0; }
   .tb-btn.settings-btn:hover { background: #2a5a2a; border-color: #4aaa4a; }
   .tb-btn.list-btn { background: #2a2a1a; border-color: #5a5a2a; color: #d8d8a0; }
@@ -121,7 +192,7 @@
     flex-shrink: 0;
   }
   .tb-tag:hover { background: #2a4a7a; border-color: #4a8adf; color: #fff; }
-  .tb-tag.active { background: #0f3460; border-color: #4a8adf; color: #7ec8ff; box-shadow: 0 0 8px rgba(74,138,223,0.4); animation: tag-pulse 1.5s ease-in-out infinite; }
+  .tb-tag.active { background: var(--bg-sunken); border-color: #4a8adf; color: #7ec8ff; box-shadow: 0 0 8px rgba(74,138,223,0.4); animation: tag-pulse 1.5s ease-in-out infinite; }
   @keyframes tag-pulse { 0%,100% { box-shadow: 0 0 6px rgba(74,138,223,0.4); } 50% { box-shadow: 0 0 14px rgba(74,138,223,0.8); } }
 
   /* ─── КАРТА ─── */
@@ -130,7 +201,7 @@
   /* ─── Плашка бренда в углу карты ─── */
   .brand-control {
     background: rgba(22,33,62,0.88) !important;
-    border: 1px solid #0f3460 !important;
+    border: 1px solid var(--border-subtle) !important;
     border-radius: 6px !important;
     padding: 5px 10px !important;
     color: #7ec8ff !important;
@@ -142,7 +213,7 @@
   /* ─── Дисплей зума ─── */
   .zoom-display-ctrl {
     background: #16213e;
-    border: 2px solid #0f3460;
+    border: 2px solid var(--border-subtle);
     border-radius: 4px;
     color: #7ec8ff;
     font-size: 14px;
@@ -159,7 +230,7 @@
   /* ─── СТРОКА СТАТУСА ─── */
   #statusbar {
     background: #16213e;
-    border-top: 1px solid #0f3460;
+    border-top: 1px solid var(--border-subtle);
     padding: 4px 12px;
     display: flex;
     gap: 20px;
@@ -178,7 +249,7 @@
   .modal {
     position: absolute;
     background: #16213e;
-    border: 1px solid #0f3460;
+    border: 1px solid var(--border-subtle);
     border-radius: 8px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.6);
     min-width: 320px;
@@ -188,7 +259,7 @@
     max-height: 80vh;
   }
   .modal-header {
-    background: #0f3460;
+    background: var(--bg-sunken);
     padding: 8px 12px;
     border-radius: 7px 7px 0 0;
     display: flex;
@@ -205,7 +276,7 @@
   .modal-body { padding: 12px; overflow-y: auto; flex: 1; }
   .modal-footer {
     padding: 8px 12px;
-    border-top: 1px solid #0f3460;
+    border-top: 1px solid var(--border-subtle);
     background: #0d1e38;
     border-radius: 0 0 7px 7px;
     display: flex;
@@ -228,10 +299,10 @@
 
   /* ─── ТАБЛИЦА ТОЧЕК ─── */
   .wpt-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .wpt-table th { background: #0f3460; color: #7abadf; padding: 6px 8px; text-align: left; font-weight: 500; border-bottom: 1px solid #1a4a7a; }
+  .wpt-table th { background: var(--bg-sunken); color: #7abadf; padding: 6px 8px; text-align: left; font-weight: 500; border-bottom: 1px solid #1a4a7a; }
   .wpt-table td { padding: 5px 8px; border-bottom: 1px solid #1a2a4a; color: #c0d8ff; }
   .wpt-table tr:hover td { background: #1a3a6a; cursor: pointer; }
-  .wpt-table tr.selected td { background: #0f3460; }
+  .wpt-table tr.selected td { background: var(--bg-sunken); }
   .wpt-icon { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: middle; }
 
   /* ─── СПИСОК МАРШРУТОВ ─── */
@@ -247,14 +318,14 @@
   /* ─── НАСТРОЙКИ ─── */
   .settings-tabs { display: flex; gap: 2px; margin-bottom: 12px; }
   .tab-btn { background: #1a2a4a; border: 1px solid #2a4a7a; border-radius: 4px 4px 0 0; padding: 5px 12px; cursor: pointer; font-size: 12px; color: #7a9aba; }
-  .tab-btn.active { background: #0f3460; color: #c0d8ff; border-bottom-color: #0f3460; }
+  .tab-btn.active { background: var(--bg-sunken); color: #c0d8ff; border-bottom-color: var(--border-subtle); }
   .tab-content { display: none; }
   .tab-content.active { display: block; }
   .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #1a2a4a; }
   .setting-label { font-size: 12px; color: #a0c0e0; }
   .setting-control { display: flex; align-items: center; gap: 6px; }
   .setting-control input[type=number], .setting-control select {
-    background: #0f3460; border: 1px solid #2a4a7a; color: #c0d8ff;
+    background: var(--bg-sunken); border: 1px solid #2a4a7a; color: #c0d8ff;
     border-radius: 4px; padding: 3px 6px; width: 80px; font-size: 12px;
   }
   .setting-control input[type=range] { width: 100px; accent-color: #4a8adf; }
@@ -283,7 +354,7 @@
   /* ─── КОНТЕКСТНОЕ МЕНЮ ─── */
   #ctx-menu, #ctx-menu-map, #ctx-menu-track {
     display: none; position: fixed;
-    background: #16213e; border: 1px solid #0f3460; border-radius: 6px;
+    background: #16213e; border: 1px solid var(--border-subtle); border-radius: 6px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.5); z-index: 2000; min-width: 160px; overflow: hidden;
   }
   #ctx-menu.open, #ctx-menu-map.open, #ctx-menu-track.open { display: block; }
@@ -291,20 +362,20 @@
   .ctx-item:hover { background: #1a3a6a; }
   .ctx-item.danger { color: #e07070; }
   .ctx-item.danger:hover { background: #3a1a1a; }
-  .ctx-sep { height: 1px; background: #0f3460; margin: 2px 0; }
+  .ctx-sep { height: 1px; background: var(--bg-sunken); margin: 2px 0; }
 
   /* ─── СВОЙСТВА ТОЧКИ ─── */
   .prop-field { margin-bottom: 10px; }
   .prop-field label { font-size: 11px; color: #7a9aba; display: block; margin-bottom: 3px; }
   .prop-field input, .prop-field textarea, .prop-field select {
-    width: 100%; background: #0f3460; border: 1px solid #2a4a7a;
+    width: 100%; background: var(--bg-sunken); border: 1px solid #2a4a7a;
     color: #c0d8ff; border-radius: 4px; padding: 5px 8px; font-size: 12px;
   }
   .prop-field input:focus, .prop-field textarea:focus { outline: none; border-color: #4a8adf; }
   .icon-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-top: 4px; }
   .icon-cell { width: 28px; height: 28px; border: 1px solid #2a4a7a; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; }
   .icon-cell:hover { background: #2a4a7a; border-color: #4a8adf; }
-  .icon-cell.selected { background: #0f3460; border-color: #4a8adf; box-shadow: 0 0 0 2px rgba(74,138,223,0.3); }
+  .icon-cell.selected { background: var(--bg-sunken); border-color: #4a8adf; box-shadow: 0 0 0 2px rgba(74,138,223,0.3); }
   .prop-coords { display: flex; gap: 6px; }
   .prop-coords input { flex: 1; }
   .btn-row { display: flex; gap: 6px; margin-top: 12px; justify-content: flex-end; }
@@ -413,6 +484,138 @@
     padding: 2px 8px !important;
     border-radius: 0 0 4px 4px !important;
   }
+
+  /* ─── POLYGON AREA PICKER ─── */
+  #polygon-toolbar {
+    display: none;
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-normal);
+    border-radius: 10px;
+    padding: 10px 16px;
+    gap: 10px;
+    align-items: center;
+    z-index: 2000;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    font-size: 12px;
+    color: var(--text-primary);
+  }
+  #polygon-toolbar .pt-count {
+    color: var(--accent-amber);
+    font-weight: 600;
+    min-width: 70px;
+  }
+  #polygon-toolbar button {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  #polygon-toolbar button:hover { background: var(--border-subtle); }
+  #polygon-toolbar button:disabled { opacity: 0.4; cursor: default; }
+  #polygon-toolbar button.pt-done {
+    background: #1a4a2a;
+    border-color: #2a6a3a;
+    color: var(--accent-green);
+  }
+  #polygon-toolbar button.pt-done:hover { background: #2a5a3a; }
+  #polygon-toolbar button.pt-cancel { color: var(--accent-red); border-color: #4a2a2a; }
+
+  /* ─── ZOOM RANGE SLIDERS ─── */
+  .dl-range-row { display: flex; align-items: center; gap: 8px; }
+  .dl-range-row input[type=range] {
+    flex: 1;
+    accent-color: var(--accent-blue);
+    height: 6px;
+  }
+  .dl-range-row .dl-range-val {
+    color: var(--accent-blue);
+    font-weight: 600;
+    font-size: 13px;
+    min-width: 24px;
+    text-align: center;
+  }
+
+  /* ─── OVERLAY OPACITY IN DOWNLOAD MODAL ─── */
+  .dl-overlay-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+    font-size: 11px;
+    color: var(--text-primary);
+  }
+  .dl-overlay-item .dl-ov-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-primary) !important;
+  }
+  .dl-overlay-item input[type=checkbox] {
+    width: auto !important;
+    padding: 0 !important;
+    border: none !important;
+    background: none !important;
+    flex-shrink: 0;
+  }
+  .dl-overlay-item input[type=range] {
+    width: 50px !important;
+    padding: 0 !important;
+    border: none !important;
+    background: none !important;
+    accent-color: var(--accent-amber);
+    height: 4px;
+    flex-shrink: 0;
+    padding: 0;
+    border: none;
+    background: none;
+  }
+  .dl-overlay-item .dl-ov-pct {
+    color: var(--text-muted);
+    font-size: 10px;
+    min-width: 28px;
+    flex-shrink: 0;
+  }
+
+  /* ─── OFFLINE MAP CARDS ─── */
+  .offline-map-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    font-size: 12px;
+  }
+  .offline-map-card .omc-icon { font-size: 20px; flex-shrink: 0; }
+  .offline-map-card .omc-info { flex: 1; min-width: 0; }
+  .offline-map-card .omc-name { color: var(--text-primary); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .offline-map-card .omc-meta { color: var(--text-muted); font-size: 10px; margin-top: 2px; }
+  .offline-map-card .omc-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .offline-map-card .omc-btn {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    cursor: pointer;
+  }
+  .offline-map-card .omc-btn:hover { background: var(--border-subtle); color: var(--text-primary); }
+  .offline-map-card .omc-btn.active { background: #1a4a2a; border-color: #2a6a3a; color: var(--accent-green); }
+  .offline-map-card .omc-btn.delete { color: var(--accent-red); }
+  .offline-map-card .omc-btn.delete:hover { background: #4a1a1a; }
 
   /* ─── TOOLBAR OVERFLOW PROTECTION ─── */
   #toolbar { overflow: hidden; }
@@ -568,11 +771,11 @@
   }
   .ruler-label::before { display: none !important; }
 
-  /* ─── SELECT — глобальная тёмная тема ─── */
+  /* ─── SELECT — глобальная тема ─── */
   select {
-    background: #0f3460 !important;
-    color: #c0d8ff !important;
-    border: 1px solid #2a4a7a !important;
+    background: var(--bg-sunken) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-normal) !important;
     border-radius: 4px !important;
     font-size: 12px !important;
     color-scheme: dark;
@@ -584,7 +787,7 @@
     background-position: right 8px center;
   }
   select option {
-    background: #0f3460;
+    background: var(--bg-sunken);
     color: #c0d8ff;
   }
   select optgroup {
@@ -596,37 +799,37 @@
   /* ─── ПОИСК ─── */
   .search-control { position:absolute;top:10px;right:60px;z-index:800;display:none; }
   .search-control.open { display:block; }
-  .search-box { display:flex;align-items:center;background:rgba(22,33,62,0.95);border:1px solid #2a4a7a;border-radius:8px;padding:4px 8px;gap:6px;backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,0.5);width:320px; }
-  .search-box input { flex:1;background:transparent;border:none;color:#c0d8ff;font-size:13px;outline:none;padding:6px 4px; }
-  .search-box input::placeholder { color:#5a7aaa; }
-  .search-box .search-clear { color:#5a7aaa;cursor:pointer;font-size:16px;padding:0 4px;display:none; }
-  .search-box .search-clear:hover { color:#c0d8ff; }
-  .search-results { background:rgba(22,33,62,0.97);border:1px solid #2a4a7a;border-top:none;border-radius:0 0 8px 8px;max-height:240px;overflow-y:auto;display:none;box-shadow:0 4px 16px rgba(0,0,0,0.5); }
+  .search-box { display:flex;align-items:center;background:rgba(22,33,62,0.95);border:1px solid var(--border-normal);border-radius:8px;padding:4px 8px;gap:6px;backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,0.5);width:320px; }
+  .search-box input { flex:1;background:transparent;border:none;color:var(--text-primary);font-size:13px;outline:none;padding:6px 4px; }
+  .search-box input::placeholder { color:var(--text-muted); }
+  .search-box .search-clear { color:var(--text-muted);cursor:pointer;font-size:16px;padding:0 4px;display:none; }
+  .search-box .search-clear:hover { color:var(--text-primary); }
+  .search-results { background:rgba(22,33,62,0.97);border:1px solid var(--border-normal);border-top:none;border-radius:0 0 8px 8px;max-height:240px;overflow-y:auto;display:none;box-shadow:0 4px 16px rgba(0,0,0,0.5); }
   .search-results.has-results { display:block; }
-  .search-result-item { padding:8px 12px;cursor:pointer;font-size:12px;color:#c0d8ff;border-bottom:1px solid #1a2a4a;display:flex;gap:8px; }
+  .search-result-item { padding:8px 12px;cursor:pointer;font-size:12px;color:var(--text-primary);border-bottom:1px solid #1a2a4a;display:flex;gap:8px; }
   .search-result-item:hover { background:#1a3a6a; }
   .search-result-item:last-child { border-bottom:none; }
-  .search-result-name { color:#c0d8ff;font-size:12px; }
-  .search-result-type { color:#5a7aaa;font-size:10px;margin-top:2px; }
+  .search-result-name { color:var(--text-primary);font-size:12px; }
+  .search-result-type { color:var(--text-muted);font-size:10px;margin-top:2px; }
 
   /* ─── РОУТИНГ ─── */
   .route-endpoint { display:flex;gap:8px;align-items:center;margin-bottom:8px; }
   .route-endpoint .ep-marker { width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0; }
   .route-endpoint .ep-marker.ep-a { background:#1a5a1a;border:2px solid #4adf7a;color:#4adf7a; }
   .route-endpoint .ep-marker.ep-b { background:#5a1a1a;border:2px solid #e07070;color:#e07070; }
-  .route-endpoint input { flex:1;background:#0f3460;border:1px solid #2a4a7a;color:#c0d8ff;border-radius:4px;padding:6px 8px;font-size:12px; }
+  .route-endpoint input { flex:1;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:6px 8px;font-size:12px; }
   .route-endpoint input:focus { outline:none;border-color:#4a8adf; }
-  .route-endpoint .ep-pick { background:#1a2a4a;border:1px solid #2a4a7a;color:#7a9aba;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:14px;flex-shrink:0; }
-  .route-endpoint .ep-pick:hover { background:#2a4a7a;color:#c0d8ff; }
+  .route-endpoint .ep-pick { background:#1a2a4a;border:1px solid var(--border-normal);color:var(--text-secondary);border-radius:4px;padding:4px 8px;cursor:pointer;font-size:14px;flex-shrink:0; }
+  .route-endpoint .ep-pick:hover { background:#2a4a7a;color:var(--text-primary); }
   .route-endpoint .ep-pick.picking { background:#0f4a8a;border-color:#4a8adf;color:#7ec8ff; }
-  .routing-info { background:#0d1e38;border-radius:6px;padding:12px;display:none;margin-top:8px; }
+  .routing-info { background:var(--bg-sunken);border-radius:6px;padding:12px;display:none;margin-top:8px; }
   .routing-info.has-route { display:block; }
   .routing-info-row { display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a2a4a; }
   .routing-info-row:last-child { border-bottom:none; }
-  .routing-info-label { color:#5a7aaa;font-size:12px; }
-  .routing-info-value { color:#c0d8ff;font-size:14px;font-weight:600; }
-  .routing-swap { background:none;border:1px solid #2a4a7a;color:#7a9aba;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:16px; }
-  .routing-swap:hover { background:#1a3a6a;color:#c0d8ff; }
+  .routing-info-label { color:var(--text-muted);font-size:12px; }
+  .routing-info-value { color:var(--text-primary);font-size:14px;font-weight:600; }
+  .routing-swap { background:none;border:1px solid var(--border-normal);color:var(--text-secondary);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:16px; }
+  .routing-swap:hover { background:#1a3a6a;color:var(--text-primary); }
 </style>
 </head>
 <body>
@@ -680,7 +883,7 @@
   <div class="tb-sep"></div>
 
   <!-- Инструменты -->
-  <button class="tb-btn" onclick="openModal('modal-offline')" title="Офлайн карты — скачать и загрузить (D)">⬇ Офлайн карты</button>
+  <button class="tb-btn" onclick="openModal('modal-offline');scanOfflineMaps()" title="Офлайн карты — скачать и загрузить (D)">⬇ Офлайн карты</button>
 
   <div class="tb-sep"></div>
 
@@ -697,12 +900,12 @@
 
   <!-- Поиск встроенный -->
   <div style="position:relative;display:flex;align-items:center">
-    <div style="display:flex;align-items:center;background:#0f3460;border:1px solid #2a4a7a;border-radius:6px;padding:2px 6px;gap:4px">
-      <span style="color:#5a7aaa;font-size:12px">🔍</span>
+    <div style="display:flex;align-items:center;background:var(--bg-sunken);border:1px solid var(--border-normal);border-radius:6px;padding:2px 6px;gap:4px">
+      <span style="color:var(--text-muted);font-size:12px">🔍</span>
       <input type="text" id="search-input" placeholder="Поиск места..."
         autocomplete="off" spellcheck="false"
-        style="background:transparent;border:none;color:#c0d8ff;font-size:12px;outline:none;width:200px;padding:4px 0">
-      <span id="search-clear" onclick="clearSearch()" style="color:#5a7aaa;cursor:pointer;font-size:14px;display:none">✕</span>
+        style="background:transparent;border:none;color:var(--text-primary);font-size:12px;outline:none;width:200px;padding:4px 0">
+      <span id="search-clear" onclick="clearSearch()" style="color:var(--text-muted);cursor:pointer;font-size:14px;display:none">✕</span>
     </div>
     <div class="search-results" id="search-results" style="position:absolute;top:100%;right:0;width:340px;margin-top:2px"></div>
   </div>
@@ -812,7 +1015,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.8.2</span>
+  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.0</span>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -852,19 +1055,19 @@
     </div>
     <div class="modal-body">
       <!-- Панель наборов точек -->
-      <div style="margin-bottom:8px;display:flex;gap:6px;align-items:center;background:#0d1e38;border-radius:6px;padding:6px 8px">
-        <span style="font-size:11px;color:#5a7aaa;white-space:nowrap">Набор:</span>
-        <select id="wpt-set-select" onchange="onSetSelectChange(this)" style="flex:1;background:#0f3460;border:1px solid #2a4a7a;color:#c0d8ff;border-radius:4px;padding:3px 6px;font-size:12px"></select>
+      <div style="margin-bottom:8px;display:flex;gap:6px;align-items:center;background:var(--bg-sunken);border-radius:6px;padding:6px 8px">
+        <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">Набор:</span>
+        <select id="wpt-set-select" onchange="onSetSelectChange(this)" style="flex:1;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:3px 6px;font-size:12px"></select>
         <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="promptNewSet()" title="Новый набор">+</button>
         <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="if(activeSetId)toggleSetVisibility(activeSetId)" title="Скрыть/показать">👁</button>
         <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="if(activeSetId)renameWaypointSet(activeSetId)" title="Переименовать">✏</button>
         <button class="btn-secondary" style="padding:3px 8px;font-size:11px;color:#e07070;border-color:#6a2a2a" onclick="if(activeSetId)deleteWaypointSet(activeSetId)" title="Удалить набор">✕</button>
       </div>
       <div style="margin-bottom:8px;display:flex;gap:6px;align-items:center">
-        <input id="wpt-search" placeholder="🔍 Поиск по названию..." oninput="updateWptTable()" style="flex:1;background:#0f3460;border:1px solid #2a4a7a;color:#c0d8ff;border-radius:4px;padding:4px 8px;font-size:12px">
+        <input id="wpt-search" placeholder="🔍 Поиск по названию..." oninput="updateWptTable()" style="flex:1;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:4px 8px;font-size:12px">
       </div>
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
-        <label style="font-size:12px;color:#7a9aba;display:flex;align-items:center;gap:4px;cursor:pointer">
+        <label style="font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:4px;cursor:pointer">
           <input type="checkbox" id="wpt-select-all" style="accent-color:#4a8adf" onchange="selectAllWaypoints(this)"> Все
         </label>
         <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="toggleBulkEditPanel()">✏ Редактировать</button>
@@ -873,20 +1076,20 @@
       </div>
       <!-- Панель массового редактирования -->
       <div id="bulk-edit-panel" style="display:none;background:#1a2a4a;border:1px solid #2a5a8a;border-radius:6px;padding:8px;margin-bottom:8px">
-        <div style="font-size:12px;color:#a0c8e0;margin-bottom:6px">✏ Массовое редактирование</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">✏ Массовое редактирование</div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:4px">
-            <span style="font-size:11px;color:#5a7aaa">Радиус:</span>
-            <input id="bulk-radius" type="number" min="0" placeholder="—" style="width:60px;background:#0f3460;border:1px solid #2a4a7a;color:#c0d8ff;border-radius:4px;padding:2px 6px;font-size:11px">
+            <span style="font-size:11px;color:var(--text-muted)">Радиус:</span>
+            <input id="bulk-radius" type="number" min="0" placeholder="—" style="width:60px;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:2px 6px;font-size:11px">
           </div>
           <div style="display:flex;align-items:center;gap:4px">
-            <span style="font-size:11px;color:#5a7aaa">Цвет:</span>
+            <span style="font-size:11px;color:var(--text-muted)">Цвет:</span>
             <input id="bulk-color" type="color" value="#4a8adf" style="width:28px;height:22px;border:none;background:none;cursor:pointer">
-            <label style="font-size:10px;color:#5a7aaa;display:flex;align-items:center;gap:2px"><input type="checkbox" id="bulk-color-apply" style="accent-color:#4a8adf">применить</label>
+            <label style="font-size:10px;color:var(--text-muted);display:flex;align-items:center;gap:2px"><input type="checkbox" id="bulk-color-apply" style="accent-color:#4a8adf">применить</label>
           </div>
           <div style="display:flex;align-items:center;gap:4px">
-            <span style="font-size:11px;color:#5a7aaa">Иконка:</span>
-            <select id="bulk-icon" style="background:#0f3460;border:1px solid #2a4a7a;color:#c0d8ff;border-radius:4px;padding:2px 4px;font-size:12px">
+            <span style="font-size:11px;color:var(--text-muted)">Иконка:</span>
+            <select id="bulk-icon" style="background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:2px 4px;font-size:12px">
               <option value="">— не менять</option>
               <option value="⬤">⬤ Кружок</option><option value="◆">◆ Ромб</option><option value="▲">▲ Треугольник</option><option value="■">■ Квадрат</option>
               <option value="★">★ Звезда</option><option value="✚">✚ Крест</option><option value="🚩">🚩 Флажок</option><option value="🏁">🏁 Финиш</option>
@@ -907,10 +1110,10 @@
       </table>
     </div>
     <div class="modal-footer">
-      <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-right:4px">Сохранить:</span>
+      <span style="font-size:11px;color:var(--text-muted);align-self:center;margin-right:4px">Сохранить:</span>
       <div class="save-btn" onclick="saveWaypointsWPT()">💾 .wpt</div>
       <div class="save-btn" onclick="saveWaypointsGPX()">💾 .gpx</div>
-      <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Загрузить:</span>
+      <span style="font-size:11px;color:var(--text-muted);align-self:center;margin-left:8px;margin-right:4px">Загрузить:</span>
       <div class="open-btn" onclick="openFile('.wpt', loadWPT)">📥 .wpt</div>
       <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXFile)">📥 .gpx</div>
     </div>
@@ -993,7 +1196,7 @@
       <div style="display:flex;gap:10px">
         <div class="prop-field" style="flex:1">
           <label>Цвет маркера</label>
-          <input id="prop-color" type="color" value="#4a8adf" style="width:100%;height:30px;border-radius:4px;border:1px solid #2a4a7a;cursor:pointer">
+          <input id="prop-color" type="color" value="#4a8adf" style="width:100%;height:30px;border-radius:4px;border:1px solid var(--border-normal);cursor:pointer">
         </div>
         <div class="prop-field" style="flex:1">
           <label>Радиус сближения, м</label>
@@ -1028,8 +1231,8 @@
       <!-- Панель рисования трека -->
       <div id="track-build-panel" style="display:none;background:#1a3a1a;border:1px solid #2a6a2a;border-radius:6px;padding:8px;margin-bottom:8px">
         <div style="font-size:12px;color:#a0d8a0;margin-bottom:4px">✏ Рисование трека</div>
-        <div style="font-size:11px;color:#5a7aaa;margin-bottom:6px">Кликайте на карту · двойной клик — завершить</div>
-        <div style="font-size:12px;color:#c0d8ff;margin-bottom:4px">Точек: <span id="track-build-count">0</span> &nbsp;·&nbsp; <span id="track-build-len">0.0 км</span></div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Кликайте на карту · двойной клик — завершить</div>
+        <div style="font-size:12px;color:var(--text-primary);margin-bottom:4px">Точек: <span id="track-build-count">0</span> &nbsp;·&nbsp; <span id="track-build-len">0.0 км</span></div>
         <div id="track-build-extra" style="font-size:11px;color:#90c890;margin-bottom:4px;display:none"></div>
         <div class="btn-row">
           <button class="btn-secondary" onclick="cancelTrackDraw()" style="font-size:11px;color:#e07070;border-color:#6a2a2a">✕ Отмена</button>
@@ -1042,7 +1245,7 @@
       <div id="track-controls" class="track-controls" style="display:none;margin-top:8px;border-top:1px solid #1a3a5a;padding-top:8px">
         <div class="ctrl-row">
           <span style="min-width:60px;font-size:12px">Название</span>
-          <input id="track-name-input" type="text" style="flex:1;background:#0f3460;border:1px solid #2a4a7a;color:#c0d8ff;border-radius:4px;padding:3px 6px;font-size:12px">
+          <input id="track-name-input" type="text" style="flex:1;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:3px 6px;font-size:12px">
         </div>
         <div class="ctrl-row">
           <span style="min-width:60px;font-size:12px">Цвет</span>
@@ -1069,28 +1272,28 @@
         </div>
       </div>
       <!-- Плеер треков -->
-      <div id="track-player-panel" style="background:#1a2a3a;border:1px solid #2a4a7a;border-radius:6px;padding:8px;margin-top:8px">
-        <div style="font-size:12px;color:#a0c8e0;margin-bottom:6px">▶ Плеер треков</div>
+      <div id="track-player-panel" style="background:#1a2a3a;border:1px solid var(--border-normal);border-radius:6px;padding:8px;margin-top:8px">
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">▶ Плеер треков</div>
         <div class="btn-row" style="margin-bottom:6px">
           <button class="btn-primary" onclick="playSelectedTracks()" style="font-size:11px">▶ Старт</button>
           <button class="btn-secondary" onclick="pauseTrackPlayer()" style="font-size:11px">⏸ Пауза</button>
           <button class="btn-secondary" onclick="stopTrackPlayer()" style="font-size:11px;color:#e07070;border-color:#6a2a2a">⏹ Стоп</button>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:11px;color:#5a7aaa">Скорость:</span>
+          <span style="font-size:11px;color:var(--text-muted)">Скорость:</span>
           <input type="range" id="track-speed" min="1" max="50" value="1" oninput="onTrackSpeedChange(this.value)" style="flex:1;accent-color:#4a8adf">
-          <span id="track-speed-val" style="font-size:12px;color:#c0d8ff;min-width:28px">1x</span>
+          <span id="track-speed-val" style="font-size:12px;color:var(--text-primary);min-width:28px">1x</span>
         </div>
-        <div style="font-size:10px;color:#5a7aaa;margin-top:4px">отметьте треки чекбоксами для воспроизведения</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">отметьте треки чекбоксами для воспроизведения</div>
       </div>
       <button class="btn-secondary" style="width:100%;margin-top:8px;color:var(--accent-blue);border-color:var(--accent-blue)" onclick="rrOpenDialog()">Race Report</button>
       <button class="btn-primary" style="width:100%;margin-top:8px" onclick="startNewTrack()">+ Новый трек</button>
     </div>
     <div class="modal-footer">
-      <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-right:4px">Сохранить:</span>
+      <span style="font-size:11px;color:var(--text-muted);align-self:center;margin-right:4px">Сохранить:</span>
       <div class="save-btn" onclick="saveTracksPLT()">💾 .plt</div>
       <div class="save-btn" onclick="saveTracksGPX()">💾 .gpx</div>
-      <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Загрузить:</span>
+      <span style="font-size:11px;color:var(--text-muted);align-self:center;margin-left:8px;margin-right:4px">Загрузить:</span>
       <div class="open-btn" onclick="openFile('.plt', loadPLT)">📥 .plt</div>
       <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXTracks)">📥 .gpx</div>
     </div>
@@ -1109,11 +1312,11 @@
     <div class="modal-body">
       <!-- Панель создания маршрута -->
       <div id="route-build-panel" style="display:none;background:#1a2a4a;border:1px solid #2a5a8a;border-radius:6px;padding:8px;margin-bottom:8px">
-        <div style="font-size:12px;color:#a0c8e0;margin-bottom:4px">⚑ Создание маршрута</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px">⚑ Создание маршрута</div>
         <input id="route-build-name" type="text" placeholder="Название маршрута..."
-          style="width:100%;background:#0f3460;border:1px solid #2a4a7a;color:#c0d8ff;border-radius:4px;padding:4px 8px;font-size:12px;margin-bottom:6px">
-        <div style="font-size:11px;color:#5a7aaa;margin-bottom:6px">Кликайте по точкам (КП) для добавления · двойной клик — завершить</div>
-        <div style="font-size:12px;color:#c0d8ff;margin-bottom:6px">КП: <span id="route-build-count">0</span> · Длина: <span id="route-build-dist">0 км</span></div>
+          style="width:100%;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:4px 8px;font-size:12px;margin-bottom:6px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Кликайте по точкам (КП) для добавления · двойной клик — завершить</div>
+        <div style="font-size:12px;color:var(--text-primary);margin-bottom:6px">КП: <span id="route-build-count">0</span> · Длина: <span id="route-build-dist">0 км</span></div>
         <div id="route-build-kp-list" style="max-height:150px;overflow-y:auto;margin-bottom:6px"></div>
         <div class="btn-row">
           <button class="btn-secondary" onclick="cancelRouteDraw()" style="font-size:11px;color:#e07070;border-color:#6a2a2a">✕ Отмена</button>
@@ -1125,10 +1328,10 @@
       <button class="btn-primary" style="width:100%;margin-top:8px" onclick="startNewRoute()">+ Новый маршрут</button>
     </div>
     <div class="modal-footer">
-      <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-right:4px">Сохранить:</span>
+      <span style="font-size:11px;color:var(--text-muted);align-self:center;margin-right:4px">Сохранить:</span>
       <div class="save-btn" onclick="saveRoutesRTE()">💾 .rte</div>
       <div class="save-btn" onclick="saveRoutesGPX()">💾 .gpx</div>
-      <span style="font-size:11px;color:#5a7aaa;align-self:center;margin-left:8px;margin-right:4px">Загрузить:</span>
+      <span style="font-size:11px;color:var(--text-muted);align-self:center;margin-left:8px;margin-right:4px">Загрузить:</span>
       <div class="open-btn" onclick="openFile('.rte', loadRTE)">📥 .rte</div>
       <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXRoutes)">📥 .gpx</div>
     </div>
@@ -1154,7 +1357,7 @@
           <div class="save-btn-grid" onclick="saveTracksGPX()">💾 Треки (.gpx)</div>
           <div class="save-btn-grid" onclick="saveRoutesRTE()">💾 Маршруты (.rte)</div>
           <div class="save-btn-grid" onclick="saveRoutesGPX()">💾 Маршруты (.gpx)</div>
-          <div class="save-btn-grid" style="grid-column:span 2;background:#1a3a5a;border-color:#2a6a9a;color:#a0c8e0" onclick="showSaveGPXDialog()">💾 Сохранить в .gpx</div>
+          <div class="save-btn-grid" style="grid-column:span 2;background:#1a3a5a;border-color:#2a6a9a;color:var(--text-secondary)" onclick="showSaveGPXDialog()">💾 Сохранить в .gpx</div>
         </div>
       </div>
       <div class="save-section" style="margin-top:12px">
@@ -1186,38 +1389,48 @@
       <div class="settings-tabs">
         <div class="tab-btn active" onclick="switchTab(this,'tab-display')">Отображение</div>
         <div class="tab-btn" onclick="switchTab(this,'tab-colors')">Цвета</div>
+        <div class="tab-btn" onclick="switchTab(this,'tab-cache');updateCacheUI()">Кэш карт</div>
       </div>
       <div class="tab-content active" id="tab-display">
+        <div class="setting-row">
+          <span class="setting-label">Тема оформления</span>
+          <div class="setting-control">
+            <select id="setting-theme" onchange="setTheme(this.value)">
+              <option value="dark">🌙 Тёмная</option>
+              <option value="light">☀️ Светлая</option>
+            </select>
+          </div>
+        </div>
         <div class="setting-row">
           <span class="setting-label">Размер иконок точек</span>
           <div class="setting-control">
             <input id="setting-icon-size" type="range" min="8" max="32" value="16" oninput="document.getElementById('icon-size-val').textContent=this.value+'px'">
-            <span id="icon-size-val" style="font-size:11px;color:#5a7aaa;min-width:32px">16px</span>
+            <span id="icon-size-val" style="font-size:11px;color:var(--text-muted);min-width:32px">16px</span>
           </div>
         </div>
         <div class="setting-row">
           <span class="setting-label">Толщина треков по умолчанию</span>
           <div class="setting-control">
             <input id="setting-track-width" type="range" min="1" max="8" value="3" oninput="document.getElementById('trk-width-val').textContent=this.value+'px'">
-            <span id="trk-width-val" style="font-size:11px;color:#5a7aaa;min-width:32px">3px</span>
+            <span id="trk-width-val" style="font-size:11px;color:var(--text-muted);min-width:32px">3px</span>
           </div>
         </div>
         <div class="setting-row">
           <span class="setting-label">Радиус сближения по умолчанию</span>
-          <div class="setting-control"><input id="setting-default-radius" type="number" value="50" min="0" max="5000" style="width:70px"> м</div>
+          <div class="setting-control"><input id="setting-default-radius" type="number" value="30" min="0" max="5000" style="width:70px"> м</div>
         </div>
         <div class="setting-row">
           <span class="setting-label">Размер маркеров Live</span>
           <div class="setting-control">
             <input id="setting-live-marker-size" type="range" min="1" max="10" value="3" oninput="document.getElementById('live-marker-size-val').textContent=this.value;applyLiveMarkerSize(this.value)">
-            <span id="live-marker-size-val" style="font-size:11px;color:#5a7aaa;min-width:24px">3</span>
+            <span id="live-marker-size-val" style="font-size:11px;color:var(--text-muted);min-width:24px">3</span>
           </div>
         </div>
         <div class="setting-row">
           <span class="setting-label">Размер подписей Live</span>
           <div class="setting-control">
             <input id="setting-live-label-size" type="range" min="1" max="10" value="3" oninput="document.getElementById('live-label-size-val').textContent=this.value;applyLiveMarkerSize(this.value)">
-            <span id="live-label-size-val" style="font-size:11px;color:#5a7aaa;min-width:24px">3</span>
+            <span id="live-label-size-val" style="font-size:11px;color:var(--text-muted);min-width:24px">3</span>
           </div>
         </div>
         <div class="setting-row">
@@ -1239,7 +1452,7 @@
       </div>
 
       <div class="tab-content" id="tab-colors">
-        <div style="font-size:11px;color:#5a7aaa;margin-bottom:8px">Цвета по умолчанию для новых объектов</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Цвета по умолчанию для новых объектов</div>
 
         <div class="setting-row">
           <span class="setting-label">Точки — цвет</span>
@@ -1254,7 +1467,7 @@
           <div class="setting-control"><input id="setting-color-route" type="color" value="#4a8adf" class="color-swatch"></div>
         </div>
 
-        <div style="font-size:11px;color:#5a7aaa;margin-top:12px;margin-bottom:8px">Радиус сближения</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:12px;margin-bottom:8px">Радиус сближения</div>
 
         <div class="setting-row">
           <span class="setting-label">Цвет заливки радиуса</span>
@@ -1269,28 +1482,78 @@
           <div class="setting-control">
             <input id="setting-radius-opacity" type="range" min="5" max="80" value="15" step="5"
               oninput="document.getElementById('radius-opacity-val').textContent=this.value+'%'">
-            <span id="radius-opacity-val" style="font-size:11px;color:#5a7aaa;min-width:32px">15%</span>
+            <span id="radius-opacity-val" style="font-size:11px;color:var(--text-muted);min-width:32px">15%</span>
           </div>
         </div>
 
-        <div style="font-size:11px;color:#5a7aaa;margin-top:12px;margin-bottom:8px">Маршрут по дорогам (OSRM)</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:12px;margin-bottom:8px">Маршрут по дорогам (OSRM)</div>
 
         <div class="setting-row">
           <span class="setting-label">Цвет маршрута</span>
           <div class="setting-control"><input id="setting-color-osrm" type="color" value="#4a8adf" class="color-swatch"></div>
         </div>
 
-        <div style="font-size:11px;color:#5a7aaa;margin-top:12px;margin-bottom:8px">Поиск</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:12px;margin-bottom:8px">Поиск</div>
 
         <div class="setting-row">
           <span class="setting-label">Цвет маркера поиска</span>
           <div class="setting-control"><input id="setting-color-search" type="color" value="#4a8adf" class="color-swatch"></div>
         </div>
       </div>
-      <div style="margin-top:12px;padding:8px;background:#0d1e38;border-radius:6px">
-        <div style="font-size:11px;color:#5a7aaa;margin-bottom:6px">📁 Рабочая папка</div>
-        <div style="font-size:12px;color:#c0d8ff;word-break:break-all" id="setting-workdir-path">—</div>
-        <div style="font-size:10px;color:#3a5a7a;margin-top:4px">Подпапки: waypoints, tracks, routes, maps, gpx</div>
+
+      <!-- ВКЛАДКА: КЭШ КАРТ -->
+      <div class="tab-content" id="tab-cache">
+        <div class="setting-row">
+          <span class="setting-label">Включить кэш тайлов</span>
+          <div class="setting-control">
+            <input type="checkbox" id="setting-cache-enabled" checked onchange="TileCache._enabled=this.checked;TileCache.saveSettings()">
+          </div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Максимальный размер</span>
+          <div class="setting-control">
+            <input type="range" id="setting-cache-max-size" min="1" max="10" value="3" step="1"
+              oninput="document.getElementById('cache-max-val').textContent=this.value+' ГБ';TileCache._maxBytes=this.value*1024*1024*1024;TileCache.saveSettings()">
+            <span id="cache-max-val" style="font-size:11px;color:var(--text-muted);min-width:36px">3 ГБ</span>
+          </div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Предзагрузка соседних тайлов</span>
+          <div class="setting-control">
+            <input type="checkbox" id="setting-cache-prefetch" onchange="TileCache._prefetch=this.checked;TileCache.saveSettings()">
+          </div>
+        </div>
+
+        <!-- Текущий размер -->
+        <div style="background:var(--bg-sunken);border:1px solid var(--border-subtle);border-radius:6px;padding:10px;margin:10px 0">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-primary);margin-bottom:6px">
+            <span>Занято: <b id="cache-current-size">—</b></span>
+            <span id="cache-tile-count">— тайлов</span>
+          </div>
+          <div style="background:var(--bg-base);border-radius:4px;height:8px;overflow:hidden">
+            <div id="cache-fill-bar" style="height:100%;background:var(--accent-blue);border-radius:4px;width:0%;transition:width 0.3s"></div>
+          </div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:4px">
+            Сессия: <span id="cache-hits">0</span> попаданий / <span id="cache-misses">0</span> промахов
+          </div>
+        </div>
+
+        <!-- Статистика по слоям -->
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Статистика по слоям:</div>
+        <div id="cache-layer-stats" style="max-height:120px;overflow-y:auto;background:var(--bg-sunken);border:1px solid var(--border-subtle);border-radius:4px;padding:4px 8px;font-size:11px;margin-bottom:10px">
+          <div style="color:var(--text-muted);text-align:center;padding:8px">—</div>
+        </div>
+
+        <!-- Кнопки -->
+        <div style="display:flex;gap:8px">
+          <button class="btn-secondary" style="flex:1;font-size:11px;color:var(--accent-red)" onclick="clearTileCache()">🗑 Очистить весь кэш</button>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;padding:8px;background:var(--bg-sunken);border-radius:6px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">📁 Рабочая папка</div>
+        <div style="font-size:12px;color:var(--text-primary);word-break:break-all" id="setting-workdir-path">—</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">Подпапки: waypoints, tracks, routes, maps, gpx</div>
         <button class="btn-secondary" style="font-size:11px;margin-top:6px" onclick="openWorkDir()">📂 Открыть в проводнике</button>
       </div>
       <div class="btn-row">
@@ -1319,20 +1582,22 @@
 
       <!-- ВКЛАДКА: МОИ КАРТЫ -->
       <div class="tab-content active" id="tab-offline-list">
-        <div style="background:#0d1e38;border:1px dashed #2a4a7a;border-radius:6px;padding:24px;text-align:center;color:#3a5a7a;font-size:12px">
+        <div id="offline-maps-list"></div>
+        <div id="offline-maps-empty" style="background:var(--bg-sunken);border:1px dashed var(--border-normal);border-radius:6px;padding:24px;text-align:center;color:var(--text-muted);font-size:12px">
           <div style="font-size:28px;margin-bottom:8px">🗺</div>
-          <div style="color:#5a7aaa;margin-bottom:4px">Офлайн карты не загружены</div>
+          <div style="color:var(--text-secondary);margin-bottom:4px">Офлайн карты не найдены</div>
           <div style="font-size:11px">Скачайте карту через «⬇ Скачать» или загрузите .sqlitedb файл</div>
         </div>
+        <button class="btn-secondary" style="width:100%;margin-top:8px;font-size:11px" onclick="scanOfflineMaps()">🔄 Обновить список</button>
       </div>
 
       <!-- ВКЛАДКА: СКАЧАТЬ -->
       <div class="tab-content" id="tab-offline-download">
         <div style="text-align:center;padding:20px">
           <div style="font-size:32px;margin-bottom:10px">⬇</div>
-          <div style="color:#a0c8e0;font-size:13px;margin-bottom:8px">Для скачивания тайлов используйте кнопку <b>«⬇ Скачать»</b> на панели инструментов</div>
-          <div style="font-size:11px;color:#5a7aaa;margin-bottom:14px">Выделите прямоугольную область на карте, затем настройте параметры и скачайте тайлы в формате SQLiteDB (OsmAnd)</div>
-          <button class="btn-primary" onclick="closeModal('modal-offline');startAreaSelect()">⬇ Выделить область</button>
+          <div style="color:var(--text-secondary);font-size:13px;margin-bottom:8px">Для скачивания тайлов используйте кнопку <b>«⬇ Скачать»</b> на панели инструментов</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px">Отметьте 3-8 точек на карте для выделения области, выберите слои и скачайте тайлы в формате SQLiteDB</div>
+          <button class="btn-primary" onclick="closeModal('modal-offline');startAreaSelect()">📍 Выделить область</button>
         </div>
       </div>
 
@@ -1340,15 +1605,15 @@
       <div class="tab-content" id="tab-offline-load">
         <div style="border:2px dashed #2a4a7a;border-radius:8px;padding:30px;text-align:center;cursor:pointer;margin-bottom:12px" onclick="showToast('Открываем диалог выбора файла...')">
           <div style="font-size:32px;margin-bottom:8px">📂</div>
-          <div style="color:#a0c8e0;font-size:13px;margin-bottom:4px">Нажмите или перетащите файл</div>
-          <div style="color:#4a6a8a;font-size:11px">.sqlitedb · .mbtiles · .rmap</div>
+          <div style="color:var(--text-secondary);font-size:13px;margin-bottom:4px">Нажмите или перетащите файл</div>
+          <div style="color:var(--text-muted);font-size:11px">.sqlitedb · .mbtiles · .rmap</div>
         </div>
-        <div style="font-size:11px;color:#5a7aaa">
+        <div style="font-size:11px;color:var(--text-muted)">
           <div style="margin-bottom:4px">Поддерживаемые форматы:</div>
-          <div>• <b style="color:#7a9aba">.sqlitedb</b> — RMaps / Locus Maps</div>
-          <div>• <b style="color:#7a9aba">.mbtiles</b> — стандарт MBTiles</div>
-          <div>• <b style="color:#7a9aba">.rmap</b> — OziExplorer растровые карты</div>
-          <div style="margin-top:8px;color:#3a5a7a">После загрузки карта появится в списке "Мои карты" и будет доступна в переключателе слоёв</div>
+          <div>• <b style="color:var(--text-secondary)">.sqlitedb</b> — RMaps / Locus Maps</div>
+          <div>• <b style="color:var(--text-secondary)">.mbtiles</b> — стандарт MBTiles</div>
+          <div>• <b style="color:var(--text-secondary)">.rmap</b> — OziExplorer растровые карты</div>
+          <div style="margin-top:8px;color:var(--text-muted)">После загрузки карта появится в списке "Мои карты" и будет доступна в переключателе слоёв</div>
         </div>
       </div>
 
@@ -1367,39 +1632,35 @@
     </div>
     <div class="modal-body">
       <!-- Координаты области -->
-      <div style="background:#0d1e38;border:1px solid #1a3a5a;border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:11px">
-        <div style="color:#5a7aaa;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Область</div>
-        <div style="display:flex;justify-content:space-between;color:#c0d8ff">
+      <div style="background:var(--bg-sunken);border:1px solid var(--border-subtle);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:11px">
+        <div style="color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">
+          <span id="dl-area-label">Область</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;color:var(--text-primary)">
           <span>SW: <span id="dl-sw">—</span></span>
           <span>NE: <span id="dl-ne">—</span></span>
         </div>
       </div>
 
-      <!-- Базовая карта + зум в одном ряду -->
+      <!-- Базовая карта (radio buttons) -->
       <div class="prop-field">
         <label>Базовая карта</label>
-        <select id="dl-layer-select" onchange="updateDownloadEstimate()" style="font-size:13px;padding:7px 28px 7px 8px"></select>
+        <div id="dl-layer-radios" style="max-height:140px;overflow-y:auto;background:var(--bg-sunken);border:1px solid var(--border-subtle);border-radius:4px;padding:4px 8px"></div>
       </div>
 
-      <div style="display:flex;gap:8px">
+      <!-- Зум (range sliders) + Формат -->
+      <div style="display:flex;gap:8px;margin-bottom:8px">
         <div class="prop-field" style="flex:1">
-          <label>Зум от</label>
-          <select id="dl-zoom-min" onchange="updateDownloadEstimate()">
-            <option value="6">z6</option><option value="7">z7</option><option value="8">z8</option>
-            <option value="9" selected>z9</option><option value="10">z10</option><option value="11">z11</option>
-            <option value="12">z12</option><option value="13">z13</option><option value="14">z14</option>
-          </select>
+          <label>Зум от: <span id="dl-zoom-min-val" style="color:var(--accent-blue);font-weight:600">9</span></label>
+          <input type="range" id="dl-zoom-min" min="1" max="18" value="9" style="width:100%;accent-color:var(--accent-blue)"
+            oninput="onDlZoomMinChange(this)">
         </div>
         <div class="prop-field" style="flex:1">
-          <label>Зум до</label>
-          <select id="dl-zoom-max" onchange="updateDownloadEstimate()">
-            <option value="9">z9</option><option value="10">z10</option><option value="11">z11</option>
-            <option value="12">z12</option><option value="13" selected>z13</option><option value="14">z14</option>
-            <option value="15">z15</option><option value="16">z16</option><option value="17">z17</option>
-            <option value="18">z18</option>
-          </select>
+          <label>Зум до: <span id="dl-zoom-max-val" style="color:var(--accent-blue);font-weight:600">13</span></label>
+          <input type="range" id="dl-zoom-max" min="1" max="18" value="13" style="width:100%;accent-color:var(--accent-blue)"
+            oninput="onDlZoomMaxChange(this)">
         </div>
-        <div class="prop-field" style="flex:1">
+        <div class="prop-field" style="flex:0 0 80px">
           <label>Формат</label>
           <select id="dl-format">
             <option value="locus">RMaps</option>
@@ -1408,9 +1669,9 @@
         </div>
       </div>
 
-      <!-- Наложение слоёв (спойлер) -->
-      <details style="margin-bottom:8px">
-        <summary style="font-size:11px;color:#5a7aaa;cursor:pointer;padding:4px 0;user-select:none">▸ Наложить слои (второй слой + оверлеи)</summary>
+      <!-- Наложение слоёв — открыто по умолчанию -->
+      <details open style="margin-bottom:8px">
+        <summary style="font-size:11px;color:var(--text-muted);cursor:pointer;padding:4px 0;user-select:none">▸ Наложить слои (второй слой + оверлеи)</summary>
         <div style="padding:6px 0">
           <div class="prop-field">
             <label>Второй слой</label>
@@ -1428,15 +1689,15 @@
           </div>
           <div class="prop-field">
             <label>Оверлеи</label>
-            <div id="dl-overlay-checks" style="max-height:80px;overflow-y:auto;background:#0d1e38;border:1px solid #1a3a5a;border-radius:4px;padding:4px 8px"></div>
+            <div id="dl-overlay-checks" style="max-height:120px;overflow-y:auto;background:var(--bg-sunken);border:1px solid var(--border-subtle);border-radius:4px;padding:4px 8px"></div>
           </div>
         </div>
       </details>
 
       <!-- Оценка -->
-      <div id="dl-estimate-box" style="background:#0d1e38;border:1px solid #1a3a5a;border-radius:6px;padding:10px;margin-bottom:10px;font-size:12px">
-        <div style="color:#5a7aaa;margin-bottom:6px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px">Оценка</div>
-        <div style="display:flex;justify-content:space-between;color:#c0d8ff">
+      <div id="dl-estimate-box" style="background:var(--bg-sunken);border:1px solid var(--border-subtle);border-radius:6px;padding:10px;margin-bottom:10px;font-size:12px">
+        <div style="color:var(--text-muted);margin-bottom:6px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px">Оценка</div>
+        <div style="display:flex;justify-content:space-between;color:var(--text-primary)">
           <span id="dl-est-tiles">— тайлов</span>
           <span id="dl-est-size">— МБ</span>
         </div>
@@ -1457,7 +1718,7 @@
 
       <!-- Прогресс (скрыт) -->
       <div id="dl-progress-area" style="display:none;margin-top:10px">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:#7a9aba;margin-bottom:4px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-secondary);margin-bottom:4px">
           <span id="dl-prog-status">Подготовка...</span>
           <span id="dl-prog-speed"></span>
         </div>
@@ -1481,7 +1742,7 @@
     </div>
     <div class="modal-body" style="text-align:center;padding:20px">
       <div style="font-size:13px;color:#e0e0e0;margin-bottom:12px">Удалить все данные с карты?</div>
-      <div id="clear-confirm-info" style="font-size:12px;color:#7a9aba;margin-bottom:16px"></div>
+      <div id="clear-confirm-info" style="font-size:12px;color:var(--text-secondary);margin-bottom:16px"></div>
       <div style="font-size:11px;color:#e07070;margin-bottom:16px">Это действие нельзя отменить</div>
       <div style="display:flex;gap:8px">
         <button class="btn-secondary" style="flex:1" onclick="closeModal('modal-clear-confirm')">Отмена</button>
@@ -1528,12 +1789,12 @@
         <div class="sync-dot offline" id="sync-dot"></div>
         <div class="sync-info">
           <div class="sync-label">Статус: <span class="sync-val" id="sync-status-text">Не подключено</span></div>
-          <div class="sync-label" style="font-size:11px;margin-top:2px">Последняя: <span id="sync-last-time" style="color:#7a9aba">никогда</span></div>
+          <div class="sync-label" style="font-size:11px;margin-top:2px">Последняя: <span id="sync-last-time" style="color:var(--text-secondary)">никогда</span></div>
         </div>
         <button class="btn-primary" style="margin-left:auto;padding:5px 12px" onclick="testSync()">Проверить</button>
       </div>
 
-      <div style="font-size:11px;color:#5a7aaa;margin-bottom:8px;text-align:center">Сервер: trophynav.ru</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;text-align:center">Сервер: trophynav.ru</div>
 
       <div class="sync-section-title">Аккаунт</div>
       <div class="prop-field">
@@ -1543,7 +1804,7 @@
           <button class="btn-primary" style="padding:4px 10px;font-size:11px;white-space:nowrap" onclick="registerSyncEmail()">Привязать</button>
         </div>
       </div>
-      <div id="sync-email-status" style="font-size:11px;color:#5a7aaa;margin-bottom:8px"></div>
+      <div id="sync-email-status" style="font-size:11px;color:var(--text-muted);margin-bottom:8px"></div>
 
       <!-- Карточка лицензии -->
       <div id="license-card" style="background:#1a1a2e;border-radius:8px;padding:10px 14px;margin-bottom:10px;display:none">
@@ -1556,7 +1817,7 @@
 
       <!-- Отправить в облако -->
       <div class="sync-section-title">⬆ Отправить в облако</div>
-      <div style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#c0d8ff;margin-bottom:8px">
+      <div style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text-primary);margin-bottom:8px">
         <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
           <input type="checkbox" id="sync-cb-waypoints" checked style="accent-color:#4a8adf"> 📍 Точки (<span id="sync-wpt-count">0</span>)
         </label>
@@ -1574,12 +1835,12 @@
 
       <!-- Загрузить из облака -->
       <div class="sync-section-title" style="margin-top:12px">⬇ Загрузить из облака</div>
-      <div id="sync-server-info" style="font-size:11px;color:#5a7aaa;margin-bottom:8px">Нажмите «Проверить» для просмотра данных</div>
+      <div id="sync-server-info" style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Нажмите «Проверить» для просмотра данных</div>
       <button class="btn-primary" style="width:100%;background:#1a4a1a;border-color:#2a8a2a" onclick="syncPull()">⬇ Загрузить из облака</button>
 
-      <div style="font-size:10px;color:#5a7aaa;margin-top:10px;text-align:center;line-height:1.6">
+      <div style="font-size:10px;color:var(--text-muted);margin-top:10px;text-align:center;line-height:1.6">
         Облачная синхронизация через trophynav.ru<br>
-        Почта: <span style="color:#a0c8e0">info@trophynav.ru</span> · Сайт: <span style="color:#a0c8e0">trophynav.ru</span>
+        Почта: <span style="color:var(--text-secondary)">info@trophynav.ru</span> · Сайт: <span style="color:var(--text-secondary)">trophynav.ru</span>
       </div>
 
       <div class="btn-row" style="margin-top:8px">
@@ -1597,8 +1858,8 @@
     <div class="modal-header" onmousedown="startDrag(event,'modal-layers-win')">
       🗺 Карта и слои
       <span style="display:flex;align-items:center;gap:6px">
-        <span style="font-size:14px;color:#7a9aba;cursor:pointer;padding:2px 4px" onclick="event.stopPropagation();showHiddenLayersManager()" title="Показать скрытые карты">👁</span>
-        <span style="font-size:14px;color:#7a9aba;cursor:pointer;padding:2px 4px" onclick="event.stopPropagation();refreshTileCatalog()" title="Обновить каталог с сервера">🔄</span>
+        <span style="font-size:14px;color:var(--text-secondary);cursor:pointer;padding:2px 4px" onclick="event.stopPropagation();showHiddenLayersManager()" title="Показать скрытые карты">👁</span>
+        <span style="font-size:14px;color:var(--text-secondary);cursor:pointer;padding:2px 4px" onclick="event.stopPropagation();refreshTileCatalog()" title="Обновить каталог с сервера">🔄</span>
         <span class="modal-close" onclick="closeModal('modal-layers')">✕</span>
       </span>
     </div>
@@ -1676,10 +1937,16 @@
       </div>
 
       <div class="layer-section-title" style="margin-top:8px">Оверлейные слои</div>
-      <div style="font-size:10px;color:#4a6a8a;margin-bottom:4px">Ползунок = прозрачность</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">Ползунок = прозрачность</div>
       <div id="catalog-overlay-layers">
         <!-- Заполняется из серверного каталога -->
-        <div style="color:#4a6a8a;font-size:11px;text-align:center;padding:8px">Загрузка каталога...</div>
+        <div style="color:var(--text-muted);font-size:11px;text-align:center;padding:8px">Загрузка каталога...</div>
+      </div>
+
+      <!-- Скачанные офлайн-карты -->
+      <div id="offline-layers-section" style="display:none">
+        <div class="layer-section-title" style="margin-top:8px">📦 Скачанные карты</div>
+        <div id="offline-layers-list"></div>
       </div>
     </div>
   </div>
@@ -2018,11 +2285,11 @@ function openQuickRename(marker) {
   const value = escapeHtml(marker.wpData.name);
   marker.bindPopup(`
     <div style="min-width:180px">
-      <div style="font-size:11px;color:#5a7aaa;margin-bottom:6px">Быстрое переименование</div>
-      <input id="${popupId}" value="${value}" maxlength="16" style="width:100%;padding:5px 6px;border:1px solid #2a4a7a;border-radius:4px;background:#0f3460;color:#c0d8ff">
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Быстрое переименование</div>
+      <input id="${popupId}" value="${value}" maxlength="16" style="width:100%;padding:5px 6px;border:1px solid var(--border-normal);border-radius:4px;background:var(--bg-sunken);color:var(--text-primary)">
       <div style="display:flex;gap:6px;margin-top:8px">
-        <button onclick="applyQuickRename(${marker.wpData.num})" style="flex:1;padding:5px 6px;border:1px solid #1a6adf;border-radius:4px;background:#0f4a8a;color:#c0d8ff;cursor:pointer">Сохранить</button>
-        <button onclick="openWaypointPropsByNum(${marker.wpData.num})" style="flex:1;padding:5px 6px;border:1px solid #2a4a7a;border-radius:4px;background:#1a2a4a;color:#7a9aba;cursor:pointer">Свойства</button>
+        <button onclick="applyQuickRename(${marker.wpData.num})" style="flex:1;padding:5px 6px;border:1px solid #1a6adf;border-radius:4px;background:#0f4a8a;color:var(--text-primary);cursor:pointer">Сохранить</button>
+        <button onclick="openWaypointPropsByNum(${marker.wpData.num})" style="flex:1;padding:5px 6px;border:1px solid var(--border-normal);border-radius:4px;background:#1a2a4a;color:var(--text-secondary);cursor:pointer">Свойства</button>
       </div>
     </div>
   `, { closeButton: false, offset: [0, -12] }).openPopup();
@@ -2040,8 +2307,8 @@ function openQuickRename(marker) {
 
 function getDefaultRadius() {
   const el = document.getElementById('setting-default-radius');
-  const v = el ? parseInt(el.value) : 50;
-  return Number.isFinite(v) && v >= 0 ? v : 50;
+  const v = el ? parseInt(el.value) : 30;
+  return Number.isFinite(v) && v >= 0 ? v : 30;
 }
 
 function addWaypoint(latlng, nameHint, extra = {}) {
@@ -2112,11 +2379,11 @@ function updateWptTable() {
     const d = m.wpData;
     const idx = waypoints.indexOf(m);
     const syncBadge = d.syncedAt ? `<span title="Синхр. с ${d.source === 'android' ? 'Android' : 'desktop'} · ${new Date(d.syncedAt).toLocaleString('ru-RU')}" style="font-size:10px;opacity:0.7;margin-left:2px">☁</span>` : '';
-    const srcHint = d.source && d.source !== 'desktop' ? `<span style="font-size:9px;color:#5a7aaa;margin-left:3px">${d.source}</span>` : '';
+    const srcHint = d.source && d.source !== 'desktop' ? `<span style="font-size:9px;color:var(--text-muted);margin-left:3px">${d.source}</span>` : '';
     return `<tr oncontextmenu="showCtxMenuTable(event,${idx})" onclick="map.panTo([${d.lat},${d.lng}])">
       <td onclick="event.stopPropagation()"><input type="checkbox" class="wpt-cb" data-idx="${idx}" style="accent-color:#4a8adf"></td>
       <td><span class="wpt-icon" style="background:${d.color}"></span></td>
-      <td style="color:#5a7aaa">${d.num}</td>
+      <td style="color:var(--text-muted)">${d.num}</td>
       <td style="font-weight:500">${d.name}${syncBadge}${srcHint}</td>
       <td style="font-family:monospace;font-size:11px">${formatDm(d.lat, 'N', 'S')} ${formatDm(d.lng, 'E', 'W')}</td>
       <td style="text-align:center">${d.radius}м</td>
@@ -2150,6 +2417,7 @@ function applyQuickRename(num) {
   const input = document.getElementById(`wp-rename-${num}`);
   if (!marker || !input) return;
   marker.wpData.name = input.value.trim().slice(0, 16) || marker.wpData.name;
+  refreshWaypoint(marker);
   updateWptTable();
   marker.closePopup();
   showToast('Название точки обновлено');
@@ -2317,6 +2585,331 @@ function bingQuadKey(x, y, z) {
 }
 
 // Bing тайлы используют quadkey вместо x/y/z
+// ─────────────────────────────────────────────
+// КЭШ ТАЙЛОВ КАРТ (IndexedDB + LRU)
+// ─────────────────────────────────────────────
+const TileCache = {
+  db: null,
+  _totalSize: 0,
+  _tileCount: 0,
+  _enabled: true,
+  _maxBytes: 3 * 1024 * 1024 * 1024, // 3 GB default
+  _prefetch: false,
+  _prefetchQueue: [],
+  _prefetching: false,
+  _sessionHits: 0,
+  _sessionMisses: 0,
+
+  async open() {
+    if (this.db) return;
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('tnd-tile-cache', 1);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('tiles')) {
+          const store = db.createObjectStore('tiles', { keyPath: 'url' });
+          store.createIndex('by-access', 'lastAccess');
+          store.createIndex('by-layer', 'layerName');
+        }
+      };
+      req.onsuccess = (e) => {
+        this.db = e.target.result;
+        this._loadSettings();
+        this._calcSize().then(resolve);
+      };
+      req.onerror = () => { console.warn('TileCache: IndexedDB error'); resolve(); };
+    });
+  },
+
+  _loadSettings() {
+    try {
+      const s = JSON.parse(localStorage.getItem('tnd-cache-settings') || '{}');
+      this._enabled = s.enabled !== false;
+      this._maxBytes = (s.maxSizeGB || 3) * 1024 * 1024 * 1024;
+      this._prefetch = !!s.prefetch;
+    } catch {}
+  },
+
+  saveSettings() {
+    localStorage.setItem('tnd-cache-settings', JSON.stringify({
+      enabled: this._enabled,
+      maxSizeGB: Math.round(this._maxBytes / (1024 * 1024 * 1024)),
+      prefetch: this._prefetch
+    }));
+  },
+
+  async _calcSize() {
+    if (!this.db) return;
+    return new Promise(resolve => {
+      const tx = this.db.transaction('tiles', 'readonly');
+      const store = tx.objectStore('tiles');
+      let total = 0, count = 0;
+      const cur = store.openCursor();
+      cur.onsuccess = (e) => {
+        const c = e.target.result;
+        if (c) { total += c.value.size || 0; count++; c.continue(); }
+        else { this._totalSize = total; this._tileCount = count; resolve(); }
+      };
+      cur.onerror = () => resolve();
+    });
+  },
+
+  async get(url) {
+    if (!this.db || !this._enabled) return null;
+    return new Promise(resolve => {
+      const tx = this.db.transaction('tiles', 'readwrite');
+      const store = tx.objectStore('tiles');
+      const req = store.get(url);
+      req.onsuccess = (e) => {
+        const rec = e.target.result;
+        if (rec) {
+          rec.lastAccess = Date.now();
+          rec.accessCount = (rec.accessCount || 0) + 1;
+          store.put(rec);
+          this._sessionHits++;
+          resolve(rec.blob);
+        } else {
+          this._sessionMisses++;
+          resolve(null);
+        }
+      };
+      req.onerror = () => resolve(null);
+    });
+  },
+
+  async has(url) {
+    if (!this.db) return false;
+    return new Promise(resolve => {
+      const tx = this.db.transaction('tiles', 'readonly');
+      const req = tx.objectStore('tiles').count(IDBKeyRange.only(url));
+      req.onsuccess = () => resolve(req.result > 0);
+      req.onerror = () => resolve(false);
+    });
+  },
+
+  async put(url, blob, layerName) {
+    if (!this.db || !this._enabled) return;
+    const size = blob.size || 0;
+    return new Promise(resolve => {
+      const tx = this.db.transaction('tiles', 'readwrite');
+      const store = tx.objectStore('tiles');
+      // Check existing to avoid totalSize drift
+      const getReq = store.get(url);
+      getReq.onsuccess = () => {
+        const old = getReq.result;
+        if (old) {
+          this._totalSize -= old.size || 0;
+          this._tileCount--;
+        }
+        const rec = { url, blob, size, layerName, lastAccess: Date.now(), accessCount: old ? (old.accessCount || 0) + 1 : 1, createdAt: old ? old.createdAt : Date.now() };
+        store.put(rec);
+      };
+      tx.oncomplete = () => {
+        this._totalSize += size;
+        this._tileCount++;
+        if (this._totalSize > this._maxBytes) this._evict();
+        resolve();
+      };
+      tx.onerror = () => resolve();
+    });
+  },
+
+  _evicting: false,
+  async _evict() {
+    if (!this.db || this._evicting) return;
+    this._evicting = true;
+    const target = this._maxBytes * 0.85;
+    return new Promise(resolve => {
+      const tx = this.db.transaction('tiles', 'readwrite');
+      const store = tx.objectStore('tiles');
+      const idx = store.index('by-access');
+      const cur = idx.openCursor();
+      cur.onsuccess = (e) => {
+        const c = e.target.result;
+        if (!c || this._totalSize <= target) { this._evicting = false; resolve(); return; }
+        const rec = c.value;
+        this._totalSize -= rec.size || 0;
+        this._tileCount--;
+        c.delete();
+        c.continue();
+      };
+      cur.onerror = () => { this._evicting = false; resolve(); };
+    });
+  },
+
+  async getLayerStats() {
+    if (!this.db) return [];
+    return new Promise(resolve => {
+      const tx = this.db.transaction('tiles', 'readonly');
+      const store = tx.objectStore('tiles');
+      const stats = {};
+      const cur = store.openCursor();
+      cur.onsuccess = (e) => {
+        const c = e.target.result;
+        if (c) {
+          const ln = c.value.layerName || '?';
+          if (!stats[ln]) stats[ln] = { name: ln, count: 0, size: 0 };
+          stats[ln].count++;
+          stats[ln].size += c.value.size || 0;
+          c.continue();
+        } else {
+          resolve(Object.values(stats).sort((a, b) => b.size - a.size));
+        }
+      };
+      cur.onerror = () => resolve([]);
+    });
+  },
+
+  async clearAll() {
+    if (!this.db) return;
+    return new Promise(resolve => {
+      const tx = this.db.transaction('tiles', 'readwrite');
+      tx.objectStore('tiles').clear();
+      tx.oncomplete = () => { this._totalSize = 0; this._tileCount = 0; resolve(); };
+      tx.onerror = () => resolve();
+    });
+  },
+
+  async clearLayer(layerName) {
+    if (!this.db) return;
+    return new Promise(resolve => {
+      const tx = this.db.transaction('tiles', 'readwrite');
+      const store = tx.objectStore('tiles');
+      const idx = store.index('by-layer');
+      const cur = idx.openCursor(IDBKeyRange.only(layerName));
+      cur.onsuccess = (e) => {
+        const c = e.target.result;
+        if (c) {
+          this._totalSize -= c.value.size || 0;
+          this._tileCount--;
+          c.delete();
+          c.continue();
+        } else { resolve(); }
+      };
+      cur.onerror = () => resolve();
+    });
+  },
+
+  queuePrefetch(url, layerName) {
+    if (!this._prefetch || !this._enabled) return;
+    if (this._prefetchQueue.length > 64) this._prefetchQueue.length = 64; // LIFO limit
+    this._prefetchQueue.push({ url, layerName });
+    if (!this._prefetching) this._processPrefetch();
+  },
+
+  clearPrefetchQueue() { this._prefetchQueue.length = 0; },
+
+  async _processPrefetch() {
+    this._prefetching = true;
+    while (this._prefetchQueue.length > 0) {
+      const { url, layerName } = this._prefetchQueue.pop(); // LIFO — newest first
+      try {
+        const exists = await this.has(url); // readonly, no stats pollution
+        if (!exists) {
+          const blob = await _imgToBlob(url);
+          if (blob) await this.put(url, blob, layerName);
+        }
+      } catch {}
+      await new Promise(r => setTimeout(r, 100));
+    }
+    this._prefetching = false;
+  },
+
+  formatSize(bytes) {
+    if (bytes >= 1024 * 1024 * 1024) return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' ГБ';
+    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(0) + ' МБ';
+    return (bytes / 1024).toFixed(0) + ' КБ';
+  }
+};
+
+// Init cache on load
+TileCache.open();
+
+// ─── img → canvas → blob (обход CORS) ───
+function _imgToBlob(url) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth || 256;
+        c.height = img.naturalHeight || 256;
+        c.getContext('2d').drawImage(img, 0, 0);
+        c.toBlob(blob => resolve(blob), 'image/png');
+      } catch { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
+// ─── Cached TileLayer ───
+const CachedTileLayer = L.TileLayer.extend({
+  createTile: function(coords, done) {
+    const tile = document.createElement('img');
+    tile.setAttribute('role', 'presentation');
+    const url = this.getTileUrl(coords);
+    const cacheName = this.options._cacheName || 'unknown';
+    const self = this;
+
+    if (!TileCache._enabled || !TileCache.db) {
+      tile.crossOrigin = 'anonymous';
+      tile.src = url;
+      tile.onload = () => done(null, tile);
+      tile.onerror = () => done(new Error('tile'), tile);
+      return tile;
+    }
+
+    TileCache.get(url).then(cached => {
+      if (cached) {
+        // Cache hit — load from blob
+        const blobUrl = URL.createObjectURL(cached);
+        tile.onload = () => { URL.revokeObjectURL(blobUrl); done(null, tile); };
+        tile.onerror = () => { URL.revokeObjectURL(blobUrl); done(new Error('cached tile err'), tile); };
+        tile.src = blobUrl;
+      } else {
+        // Cache miss — load via img (no CORS issues), then cache via canvas
+        tile.crossOrigin = 'anonymous';
+        tile.onload = () => {
+          done(null, tile);
+          // Background: convert to blob and cache
+          try {
+            const c = document.createElement('canvas');
+            c.width = tile.naturalWidth || 256;
+            c.height = tile.naturalHeight || 256;
+            c.getContext('2d').drawImage(tile, 0, 0);
+            c.toBlob(blob => {
+              if (blob) TileCache.put(url, blob, cacheName);
+            }, 'image/png');
+          } catch {}
+          // Prefetch neighbors
+          if (TileCache._prefetch) {
+            const z = coords.z, x = coords.x, y = coords.y;
+            for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+              if (dx === 0 && dy === 0) continue;
+              try {
+                const nUrl = self.getTileUrl({ x: x + dx, y: y + dy, z });
+                TileCache.queuePrefetch(nUrl, cacheName);
+              } catch {}
+            }
+          }
+        };
+        tile.onerror = () => done(new Error('tile'), tile);
+        tile.src = url;
+      }
+    });
+    return tile;
+  }
+});
+
+function cachedTileLayer(url, opts, name) {
+  if (TileCache._enabled) {
+    return new CachedTileLayer(url, { ...opts, _cacheName: name });
+  }
+  return L.tileLayer(url, opts);
+}
+
 const BingTileLayer = L.TileLayer.extend({
   getTileUrl: function(coords) {
     const z = coords.z, x = coords.x, y = coords.y;
@@ -2340,12 +2933,11 @@ const yandexLayers = new Set(['Яндекс Схема', 'Яндекс Гибр�
 function makeBaseLayer(name) {
   // Hardcoded layers that need special handling (CRS, layerGroup, BingTileLayer)
   switch (name) {
-    case 'Яндекс Схема':   return L.tileLayer('https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', { maxNativeZoom: 19, maxZoom: 22 });
+    case 'Яндекс Схема':   return cachedTileLayer('https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', { maxNativeZoom: 19, maxZoom: 22 }, name);
     case 'Яндекс Гибрид': {
-      // Гибрид = спутник + подписи (два слоя)
       return L.layerGroup([
-        L.tileLayer('https://core-sat.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', { maxNativeZoom: 19, maxZoom: 22 }),
-        L.tileLayer('https://core-renderer-tiles.maps.yandex.net/tiles?l=skl&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', { maxNativeZoom: 19, maxZoom: 22 })
+        cachedTileLayer('https://core-sat.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', { maxNativeZoom: 19, maxZoom: 22 }, 'Яндекс Спутник'),
+        cachedTileLayer('https://core-renderer-tiles.maps.yandex.net/tiles?l=skl&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', { maxNativeZoom: 19, maxZoom: 22 }, 'Яндекс Подписи')
       ]);
     }
     case 'Спутник Bing':   return new BingTileLayer('https://ecn.t0.tiles.virtualearth.net/tiles/a{q}?g=14000', { maxNativeZoom: 19, maxZoom: 22 });
@@ -2357,40 +2949,40 @@ function makeBaseLayer(name) {
     const entry = tileCatalog.base.find(e => e.label === name);
     if (entry) {
       const tileUrl = entry.proxy || entry.url;
-      return L.tileLayer(tileUrl, {
+      return cachedTileLayer(tileUrl, {
         maxZoom: 22,
         maxNativeZoom: entry.maxZoom || 18,
         tms: !!entry.tms
-      });
+      }, name);
     }
   }
 
   // Fallback: hardcoded switch for when catalog isn't loaded yet
   switch (name) {
-    case 'OpenStreetMap':  return L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 22, subdomains: 'abc' });
-    case 'OpenTopoMap':    return L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxNativeZoom: 17, maxZoom: 22, subdomains: 'abc' });
-    case '2GIS':           return L.tileLayer('https://tile2.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1', { maxNativeZoom: 18, maxZoom: 22 });
-    case 'Спутник Google': return L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxNativeZoom: 20, maxZoom: 22, subdomains: ['0','1','2','3'] });
-    case 'Гибрид Google':  return L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxNativeZoom: 20, maxZoom: 22, subdomains: ['0','1','2','3'] });
-    case 'Спутник ESRI':   return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxNativeZoom: 18, maxZoom: 22 });
-    case 'ESRI Clarity':   return L.tileLayer('https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false', { maxNativeZoom: 19, maxZoom: 22 });
-    case 'Яндекс Спутник': return L.tileLayer('https://sat0{s}.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&lang=ru_RU', { maxNativeZoom: 19, maxZoom: 22, subdomains: '1234' });
-    case 'Космоснимки рельеф': return L.tileLayer('https://{s}tilecart.kosmosnimki.ru/rw/{z}/{x}/{y}.png', { maxNativeZoom: 14, maxZoom: 22, subdomains: 'ab' });
-    case 'Карты Google':   return L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&hl=ru&x={x}&y={y}&z={z}', { maxNativeZoom: 20, maxZoom: 22, subdomains: ['0','1','2','3'] });
-    case 'Рельеф Google':  return L.tileLayer('https://mt{s}.google.com/vt/lyrs=t&hl=ru&x={x}&y={y}&z={z}', { maxNativeZoom: 20, maxZoom: 22, subdomains: ['0','1','2','3'] });
-    case 'CyclOSM':        return L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 22, subdomains: 'abc' });
-    case 'OSM Humanitarian': return L.tileLayer('https://tile-{s}.openstreetmap.fr/hot/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 22, subdomains: 'ab' });
-    case 'TF Outdoors':    return L.tileLayer('https://{s}.tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38', { maxNativeZoom: 22, maxZoom: 22, subdomains: 'abc' });
-    case 'LoMaps':         return L.tileLayer('https://{s}.tile.thunderforest.com/locus-4za/{z}/{x}/{y}.png?apikey=7c352c8ff1244dd8b732e349e0b0fe8d', { maxNativeZoom: 22, maxZoom: 22, subdomains: 'abc' });
-    case 'TF Transport':   return L.tileLayer('https://{s}.tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38', { maxNativeZoom: 22, maxZoom: 22, subdomains: 'abc' });
-    case 'TF Велосипед':   return L.tileLayer('https://{s}.tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38', { maxNativeZoom: 22, maxZoom: 22, subdomains: 'abc' });
-    case 'MTB Map':        return L.tileLayer('http://tile.mtbmap.cz/mtbmap_tiles/{z}/{x}/{y}.png', { maxNativeZoom: 18, maxZoom: 22 });
-    case 'Michelin':       return L.tileLayer('https://map1.viamichelin.com/map/mapdirect?map=viamichelin&z={z}&x={x}&y={y}&format=png&version=201901161110&layer=background&locale=default&cs=1&protocol=https', { maxNativeZoom: 18, maxZoom: 22 });
-    case 'ГГЦ 250м':       return L.tileLayer('https://tiles.nakarte.me/ggc250/{z}/{x}/{y}', { maxNativeZoom: 15, maxZoom: 22, tms: true });
-    case 'ГГЦ 500м':       return L.tileLayer('https://tiles.nakarte.me/ggc500/{z}/{x}/{y}', { maxNativeZoom: 14, maxZoom: 22, tms: true });
-    case 'ГГЦ 1км':        return L.tileLayer('https://tiles.nakarte.me/ggc1000/{z}/{x}/{y}', { maxNativeZoom: 13, maxZoom: 22, tms: true });
-    case 'ГГЦ 2км':        return L.tileLayer('https://tiles.nakarte.me/ggc2000/{z}/{x}/{y}', { maxNativeZoom: 12, maxZoom: 22, tms: true });
-    case 'Генштаб 250м':   return L.tileLayer('https://tiles.nakarte.me/topo001m/{z}/{x}/{y}', { maxNativeZoom: 15, maxZoom: 22, tms: true });
+    case 'OpenStreetMap':  return cachedTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 22, subdomains: 'abc' }, name);
+    case 'OpenTopoMap':    return cachedTileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxNativeZoom: 17, maxZoom: 22, subdomains: 'abc' }, name);
+    case '2GIS':           return cachedTileLayer('https://tile2.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1', { maxNativeZoom: 18, maxZoom: 22 }, name);
+    case 'Спутник Google': return cachedTileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxNativeZoom: 20, maxZoom: 22, subdomains: ['0','1','2','3'] }, name);
+    case 'Гибрид Google':  return cachedTileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxNativeZoom: 20, maxZoom: 22, subdomains: ['0','1','2','3'] }, name);
+    case 'Спутник ESRI':   return cachedTileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxNativeZoom: 18, maxZoom: 22 }, name);
+    case 'ESRI Clarity':   return cachedTileLayer('https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false', { maxNativeZoom: 19, maxZoom: 22 }, name);
+    case 'Яндекс Спутник': return cachedTileLayer('https://sat0{s}.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&lang=ru_RU', { maxNativeZoom: 19, maxZoom: 22, subdomains: '1234' }, name);
+    case 'Космоснимки рельеф': return cachedTileLayer('https://{s}tilecart.kosmosnimki.ru/rw/{z}/{x}/{y}.png', { maxNativeZoom: 14, maxZoom: 22, subdomains: 'ab' }, name);
+    case 'Карты Google':   return cachedTileLayer('https://mt{s}.google.com/vt/lyrs=m&hl=ru&x={x}&y={y}&z={z}', { maxNativeZoom: 20, maxZoom: 22, subdomains: ['0','1','2','3'] }, name);
+    case 'Рельеф Google':  return cachedTileLayer('https://mt{s}.google.com/vt/lyrs=t&hl=ru&x={x}&y={y}&z={z}', { maxNativeZoom: 20, maxZoom: 22, subdomains: ['0','1','2','3'] }, name);
+    case 'CyclOSM':        return cachedTileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 22, subdomains: 'abc' }, name);
+    case 'OSM Humanitarian': return cachedTileLayer('https://tile-{s}.openstreetmap.fr/hot/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 22, subdomains: 'ab' }, name);
+    case 'TF Outdoors':    return cachedTileLayer('https://{s}.tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38', { maxNativeZoom: 22, maxZoom: 22, subdomains: 'abc' }, name);
+    case 'LoMaps':         return cachedTileLayer('https://{s}.tile.thunderforest.com/locus-4za/{z}/{x}/{y}.png?apikey=7c352c8ff1244dd8b732e349e0b0fe8d', { maxNativeZoom: 22, maxZoom: 22, subdomains: 'abc' }, name);
+    case 'TF Transport':   return cachedTileLayer('https://{s}.tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38', { maxNativeZoom: 22, maxZoom: 22, subdomains: 'abc' }, name);
+    case 'TF Велосипед':   return cachedTileLayer('https://{s}.tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38', { maxNativeZoom: 22, maxZoom: 22, subdomains: 'abc' }, name);
+    case 'MTB Map':        return cachedTileLayer('http://tile.mtbmap.cz/mtbmap_tiles/{z}/{x}/{y}.png', { maxNativeZoom: 18, maxZoom: 22 }, name);
+    case 'Michelin':       return cachedTileLayer('https://map1.viamichelin.com/map/mapdirect?map=viamichelin&z={z}&x={x}&y={y}&format=png&version=201901161110&layer=background&locale=default&cs=1&protocol=https', { maxNativeZoom: 18, maxZoom: 22 }, name);
+    case 'ГГЦ 250м':       return cachedTileLayer('https://tiles.nakarte.me/ggc250/{z}/{x}/{y}', { maxNativeZoom: 15, maxZoom: 22, tms: true }, name);
+    case 'ГГЦ 500м':       return cachedTileLayer('https://tiles.nakarte.me/ggc500/{z}/{x}/{y}', { maxNativeZoom: 14, maxZoom: 22, tms: true }, name);
+    case 'ГГЦ 1км':        return cachedTileLayer('https://tiles.nakarte.me/ggc1000/{z}/{x}/{y}', { maxNativeZoom: 13, maxZoom: 22, tms: true }, name);
+    case 'ГГЦ 2км':        return cachedTileLayer('https://tiles.nakarte.me/ggc2000/{z}/{x}/{y}', { maxNativeZoom: 12, maxZoom: 22, tms: true }, name);
+    case 'Генштаб 250м':   return cachedTileLayer('https://tiles.nakarte.me/topo001m/{z}/{x}/{y}', { maxNativeZoom: 15, maxZoom: 22, tms: true }, name);
     default: return null;
   }
 }
@@ -2475,7 +3067,7 @@ function buildLayerUI() {
         div.innerHTML = `<span onclick="setLayer('${e.label.replace(/'/g,"\\'")}', this.parentElement)"
           style="flex:1;cursor:pointer">${getLayerEmoji(e.label)} ${e.label}</span>
           <span onclick="event.stopPropagation();toggleLayerHidden('${e.key}')" title="Скрыть"
-          style="color:#3a5a7a;font-size:10px;cursor:pointer;padding:0 4px">✕</span>`;
+          style="color:var(--text-muted);font-size:10px;cursor:pointer;padding:0 4px">✕</span>`;
         freeContainer.appendChild(div);
       });
     }
@@ -2495,7 +3087,7 @@ function buildLayerUI() {
         div.innerHTML = `<span onclick="setLayerPremium('${e.label.replace(/'/g,"\\'")}', this.parentElement)"
           style="flex:1;cursor:pointer">${getLayerEmoji(e.label)} ${e.label}</span>
           <span onclick="event.stopPropagation();toggleLayerHidden('${e.key}')" title="Скрыть"
-          style="color:#3a5a7a;font-size:10px;cursor:pointer;padding:0 4px">✕</span>`;
+          style="color:var(--text-muted);font-size:10px;cursor:pointer;padding:0 4px">✕</span>`;
         premiumContainer.appendChild(div);
       });
     }
@@ -2862,35 +3454,35 @@ function showSaveGPXDialog() {
 
   // Наборы точек
   if (waypointSets.length > 0) {
-    html += '<div style="font-size:11px;color:#5a7aaa;margin:8px 0 4px;text-transform:uppercase">📍 Наборы точек</div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);margin:8px 0 4px;text-transform:uppercase">📍 Наборы точек</div>';
     waypointSets.forEach(s => {
       const wps = waypoints.filter(m => m._setId === s.id);
       const dis = wps.length === 0 ? 'disabled' : '';
-      html += `<label style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;color:#c0d8ff;cursor:pointer">
+      html += `<label style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;color:var(--text-primary);cursor:pointer">
         <input type="checkbox" class="save-gpx-set-cb" data-set-id="${s.id}" ${wps.length > 0 ? 'checked' : ''} ${dis} style="accent-color:#4a8adf">
-        ${escapeHtml(s.name)} <span style="color:#5a7aaa">(${wps.length})</span>
+        ${escapeHtml(s.name)} <span style="color:var(--text-muted)">(${wps.length})</span>
       </label>`;
     });
   }
 
   // Треки
   if (tracks.length > 0) {
-    html += '<div style="font-size:11px;color:#5a7aaa;margin:8px 0 4px;text-transform:uppercase">〜 Треки</div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);margin:8px 0 4px;text-transform:uppercase">〜 Треки</div>';
     tracks.forEach(t => {
-      html += `<label style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;color:#c0d8ff;cursor:pointer">
+      html += `<label style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;color:var(--text-primary);cursor:pointer">
         <input type="checkbox" class="save-gpx-trk-cb" data-track-id="${t.id}" checked style="accent-color:#4a8adf">
-        <span style="color:${t.color};font-size:10px">●</span> ${escapeHtml(t.name)} <span style="color:#5a7aaa">(${t.points.length} точек)</span>
+        <span style="color:${t.color};font-size:10px">●</span> ${escapeHtml(t.name)} <span style="color:var(--text-muted)">(${t.points.length} точек)</span>
       </label>`;
     });
   }
 
   // Маршруты
   if (routes.length > 0) {
-    html += '<div style="font-size:11px;color:#5a7aaa;margin:8px 0 4px;text-transform:uppercase">⚑ Маршруты</div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);margin:8px 0 4px;text-transform:uppercase">⚑ Маршруты</div>';
     routes.forEach(r => {
-      html += `<label style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;color:#c0d8ff;cursor:pointer">
+      html += `<label style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;color:var(--text-primary);cursor:pointer">
         <input type="checkbox" class="save-gpx-rte-cb" data-route-id="${r.id}" checked style="accent-color:#4a8adf">
-        <span style="color:${r.color};font-size:10px">●</span> ${escapeHtml(r.name)} <span style="color:#5a7aaa">(${r.points.length} КП)</span>
+        <span style="color:${r.color};font-size:10px">●</span> ${escapeHtml(r.name)} <span style="color:var(--text-muted)">(${r.points.length} КП)</span>
       </label>`;
     });
   }
@@ -3722,19 +4314,19 @@ function updateTrackList() {
   const el = document.getElementById('track-list');
   if (!el) return;
   if (tracks.length === 0) {
-    el.innerHTML = '<div style="color:#5a7aaa;font-size:12px;text-align:center;padding:12px">Треков нет. Нажмите «+ Новый трек»</div>';
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:12px">Треков нет. Нажмите «+ Новый трек»</div>';
     return;
   }
   el.innerHTML = tracks.map(t => {
     const km = trackLen(t).toFixed(1), sel = t.id === selectedTrackId;
     const syncInfo = t.syncedAt ? `<span title="Синхр. с ${t.source === 'android' ? 'Android' : 'desktop'} · ${new Date(t.syncedAt).toLocaleString('ru-RU')}" style="font-size:10px;opacity:0.7;margin-left:4px">☁</span>` : '';
-    const srcTag = t.source && t.source !== 'desktop' ? ` · <span style="font-size:10px;color:#7a9aba">${t.source}</span>` : '';
+    const srcTag = t.source && t.source !== 'desktop' ? ` · <span style="font-size:10px;color:var(--text-secondary)">${t.source}</span>` : '';
     return `<div class="track-item${sel ? ' selected' : ''}" style="${sel ? 'background:#1a3a6a;border-left:3px solid #4a8adf;' : ''}" onclick="selectTrackById(${t.id})">
       <input type="checkbox" class="track-play-cb" data-track-id="${t.id}" onclick="event.stopPropagation()" style="accent-color:${t.color};margin-right:4px" title="Выбрать для плеера">
       <div class="track-color" style="background:${t.color};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px" title="Скрыть/показать" onclick="event.stopPropagation();toggleTrackVisible(${t.id})">${t.visible !== false ? '👁' : '○'}</div>
       <div class="track-info">
         <input class="track-name" value="${escapeHtml(t.name)}" onclick="event.stopPropagation()" onchange="renameTrack(${t.id},this.value)"
-          style="background:transparent;border:none;border-bottom:1px solid transparent;color:#c0d8ff;font-size:13px;font-weight:500;outline:none;width:100%;padding:0"
+          style="background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text-primary);font-size:13px;font-weight:500;outline:none;width:100%;padding:0"
           onfocus="this.style.borderBottomColor='#4a8adf'" onblur="this.style.borderBottomColor='transparent'">${syncInfo}
         <div class="track-meta">${t.points.length} точек · ${km} км${srcTag}</div>
       </div>
@@ -4007,8 +4599,8 @@ function updateRouteBuildList() {
   el.innerHTML = currentRouteDraw.points.map((p, i) => {
     const lbl = currentRouteDraw.labels[i] || ('КП' + (i+1));
     const coord = p.lat.toFixed(4) + ', ' + p.lng.toFixed(4);
-    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 4px;font-size:11px;color:#c0d8ff;border-bottom:1px solid #1a2a4a">'
-      + '<span>' + (i+1) + '. <b>' + escapeHtml(lbl) + '</b> <span style="color:#5a7aaa">' + coord + '</span></span>'
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 4px;font-size:11px;color:var(--text-primary);border-bottom:1px solid #1a2a4a">'
+      + '<span>' + (i+1) + '. <b>' + escapeHtml(lbl) + '</b> <span style="color:var(--text-muted)">' + coord + '</span></span>'
       + '<span style="cursor:pointer;color:#e07070;padding:0 4px" onclick="removeRouteBuildPoint(' + i + ')" title="Удалить">✕</span>'
       + '</div>';
   }).join('');
@@ -4163,26 +4755,26 @@ function updateRouteList() {
   const el = document.getElementById('route-list');
   if (!el) return;
   if (routes.length === 0) {
-    el.innerHTML = '<div style="color:#5a7aaa;font-size:12px;text-align:center;padding:12px">Маршрутов нет. Нажмите «+ Новый маршрут»</div>';
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:12px">Маршрутов нет. Нажмите «+ Новый маршрут»</div>';
     return;
   }
   el.innerHTML = routes.map(r => {
     const km = routeLen(r).toFixed(1);
     const syncInfo = r.syncedAt ? `<span title="Синхр. с ${r.source === 'android' ? 'Android' : 'desktop'} · ${new Date(r.syncedAt).toLocaleString('ru-RU')}" style="font-size:10px;opacity:0.7;margin-left:4px">☁</span>` : '';
-    const srcTag = r.source && r.source !== 'desktop' ? ` · <span style="font-size:10px;color:#7a9aba">${r.source}</span>` : '';
+    const srcTag = r.source && r.source !== 'desktop' ? ` · <span style="font-size:10px;color:var(--text-secondary)">${r.source}</span>` : '';
     const kpRows = r.points.map((p, i) => {
       const prev = i > 0 ? r.points[i-1] : null;
       const dist = prev ? (prev.distanceTo(p)/1000).toFixed(1) + ' км' : '—';
       const bear = prev ? calcBearing(prev.lat, prev.lng, p.lat, p.lng).toFixed(0) + '°' : '';
-      const upBtn = i > 0 ? `<span style="cursor:pointer;color:#7a9aba;font-size:11px;padding:0 2px" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},-1)" title="Вверх">▲</span>` : '<span style="width:16px;display:inline-block"></span>';
-      const dnBtn = i < r.points.length - 1 ? `<span style="cursor:pointer;color:#7a9aba;font-size:11px;padding:0 2px" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},1)" title="Вниз">▼</span>` : '<span style="width:16px;display:inline-block"></span>';
+      const upBtn = i > 0 ? `<span style="cursor:pointer;color:var(--text-secondary);font-size:11px;padding:0 2px" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},-1)" title="Вверх">▲</span>` : '<span style="width:16px;display:inline-block"></span>';
+      const dnBtn = i < r.points.length - 1 ? `<span style="cursor:pointer;color:var(--text-secondary);font-size:11px;padding:0 2px" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},1)" title="Вниз">▼</span>` : '<span style="width:16px;display:inline-block"></span>';
       const delBtn = `<span style="cursor:pointer;color:#e07070;font-size:11px;padding:0 2px" onclick="event.stopPropagation();deleteRoutePoint(${r.id},${i})" title="Удалить">✕</span>`;
       return `<div class="route-kp" draggable="true" data-route-id="${r.id}" data-kp-idx="${i}"
         ondragstart="onRouteKpDragStart(event)" ondragover="onRouteKpDragOver(event)" ondrop="onRouteKpDrop(event)"
         style="cursor:grab">
-        <span style="color:#3a5a7a;font-size:10px;cursor:grab;margin-right:2px">☰</span>
+        <span style="color:var(--text-muted);font-size:10px;cursor:grab;margin-right:2px">☰</span>
         <span class="route-kp-num" style="background:${r.color}22;color:${r.color}">${escapeHtml(r.labels?.[i] || `КП${i+1}`)}</span>
-        <span style="font-size:11px;color:#c0d8ff;flex:1">${p.lat.toFixed(4)}°N ${p.lng.toFixed(4)}°E</span>
+        <span style="font-size:11px;color:var(--text-primary);flex:1">${p.lat.toFixed(4)}°N ${p.lng.toFixed(4)}°E</span>
         <span class="route-dist">${dist}${bear ? ' · ' + bear : ''}</span>
         <span style="display:flex;gap:2px;margin-left:4px">${delBtn}</span>
       </div>`;
@@ -4192,13 +4784,13 @@ function updateRouteList() {
         <div style="display:flex;align-items:center;gap:8px">
           <span class="route-color-dot" style="background:${r.color}"></span>
           <input id="route-name-${r.id}" value="${escapeHtml(r.name)}" onclick="event.stopPropagation()" onchange="renameRoute(${r.id})"
-            style="font-size:13px;color:#c0d8ff;background:transparent;border:none;border-bottom:1px solid transparent;outline:none;width:120px;padding:0"
+            style="font-size:13px;color:var(--text-primary);background:transparent;border:none;border-bottom:1px solid transparent;outline:none;width:120px;padding:0"
             onfocus="this.style.borderBottomColor='#4a8adf'" onblur="this.style.borderBottomColor='transparent'">${syncInfo}
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:11px;color:#5a7aaa">${r.points.length} КП · ${km} км${srcTag} <span class="route-arrow">▸</span></span>
-          <span style="font-size:12px;color:#7a9aba;cursor:pointer;padding:0 4px" onclick="event.stopPropagation();toggleRouteVisible(${r.id})" title="Скрыть/показать">👁</span>
-          <span style="font-size:12px;color:#7a9aba;cursor:pointer;padding:0 4px" onclick="event.stopPropagation();centerRoute(${r.id})" title="Центрировать">🎯</span>
+          <span style="font-size:11px;color:var(--text-muted)">${r.points.length} КП · ${km} км${srcTag} <span class="route-arrow">▸</span></span>
+          <span style="font-size:12px;color:var(--text-secondary);cursor:pointer;padding:0 4px" onclick="event.stopPropagation();toggleRouteVisible(${r.id})" title="Скрыть/показать">👁</span>
+          <span style="font-size:12px;color:var(--text-secondary);cursor:pointer;padding:0 4px" onclick="event.stopPropagation();centerRoute(${r.id})" title="Центрировать">🎯</span>
           <span style="font-size:12px;color:#e07070;cursor:pointer;padding:0 4px" onclick="event.stopPropagation();deleteRoute(${r.id})" title="Удалить">✕</span>
         </div>
       </div>
@@ -4430,100 +5022,216 @@ let dlSelectActive = false;
 let dlStartLatLng = null;
 let dlAbortController = null;
 
-// Список базовых слоёв для скачивания (обновляется из каталога через buildLayerUI)
-let dlLayerList = [
-  'OpenStreetMap', 'OpenTopoMap', 'CyclOSM', 'OSM Humanitarian', '2GIS',
-  'Яндекс Схема', 'Яндекс Гибрид', 'Яндекс Спутник',
-  'Спутник Google', 'Гибрид Google', 'Карты Google', 'Рельеф Google',
-  'Спутник Bing', 'Гибрид Bing', 'Спутник ESRI', 'ESRI Clarity',
-  'TF Outdoors', 'TF Transport', 'TF Велосипед', 'LoMaps',
-  'ГГЦ 250м', 'ГГЦ 500м', 'ГГЦ 1км', 'ГГЦ 2км', 'Генштаб 250м',
-];
-// Оверлейные слои (тайловые) для скачивания (обновляется из каталога через buildLayerUI)
-let dlOverlayList = [
-  'OSM GPS треки', 'Hiking тропы', 'MTB тропы', 'ESRI транспорт',
-  'Bing дороги', 'Windy рельеф', 'Горнолыжные трассы', 'Лыжные трассы',
-];
+// Polygon area picker state
+let dlPolygonPoints = [];
+let dlPolygonMarkers = [];
+let dlPolygonShape = null;
+let dlPolygonMode = false;
 
+// Списки слоёв (обновляются из каталога через buildLayerUI)
+let dlLayerList = [];
+let dlOverlayList = [];
+
+// ─── Graham Scan (Convex Hull) ───
+function grahamScan(points) {
+  if (points.length < 3) return points.slice();
+  const pts = points.map((p, i) => ({ lat: p.lat, lng: p.lng, idx: i }));
+  // Find lowest-leftmost point
+  pts.sort((a, b) => a.lat - b.lat || a.lng - b.lng);
+  const pivot = pts[0];
+  // Sort by polar angle
+  const rest = pts.slice(1).sort((a, b) => {
+    const angA = Math.atan2(a.lat - pivot.lat, a.lng - pivot.lng);
+    const angB = Math.atan2(b.lat - pivot.lat, b.lng - pivot.lng);
+    if (angA !== angB) return angA - angB;
+    const dA = (a.lng - pivot.lng) ** 2 + (a.lat - pivot.lat) ** 2;
+    const dB = (b.lng - pivot.lng) ** 2 + (b.lat - pivot.lat) ** 2;
+    return dA - dB;
+  });
+  const stack = [pivot, rest[0]];
+  for (let i = 1; i < rest.length; i++) {
+    while (stack.length > 1) {
+      const a = stack[stack.length - 2], b = stack[stack.length - 1], c = rest[i];
+      const cross = (b.lng - a.lng) * (c.lat - a.lat) - (b.lat - a.lat) * (c.lng - a.lng);
+      if (cross > 0) break;
+      stack.pop();
+    }
+    stack.push(rest[i]);
+  }
+  return stack.map(p => L.latLng(p.lat, p.lng));
+}
+
+// ─── Point-in-Polygon (ray casting) ───
+function pointInPolygon(lat, lng, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const yi = poly[i].lat, xi = poly[i].lng;
+    const yj = poly[j].lat, xj = poly[j].lng;
+    if ((yi > lat) !== (yj > lat) && lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)
+      inside = !inside;
+  }
+  return inside;
+}
+
+// ─── Tile ↔ LatLng converters ───
+function tile2lat(y, z) { const n = Math.PI - 2 * Math.PI * y / Math.pow(2, z); return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n))); }
+function tile2lng(x, z) { return x / Math.pow(2, z) * 360 - 180; }
+
+// ─── Polygon Area Picker ───
 function startAreaSelect() {
-  if (dlSelectActive) return;
-  dlSelectActive = true;
+  if (dlPolygonMode) return;
+  dlPolygonMode = true;
+  dlPolygonPoints = [];
+  dlPolygonMarkers = [];
+  dlPolygonShape = null;
   map.getContainer().style.cursor = 'crosshair';
-  showToast('Выделите область: зажмите ЛКМ и протяните. Escape — отмена.');
   map.dragging.disable();
-  map.on('mousedown', onDlMouseDown);
+  map.on('click', onPolygonClick);
   document.addEventListener('keydown', onDlEscape);
+  // Show toolbar
+  const tb = document.getElementById('polygon-toolbar');
+  tb.style.display = 'flex';
+  updatePolygonToolbar();
+  showToast('Кликайте на карту для выделения области (3-8 точек). Escape — отмена.');
 }
 
 function onDlEscape(e) {
   if (e.key === 'Escape') cancelAreaSelect();
 }
 
-function cancelAreaSelect() {
-  dlSelectActive = false;
-  map.getContainer().style.cursor = '';
-  map.dragging.enable();
-  map.off('mousedown', onDlMouseDown);
-  map.off('mousemove', onDlMouseMove);
-  map.off('mouseup', onDlMouseUp);
-  document.removeEventListener('keydown', onDlEscape);
-  if (dlSelectRect) { map.removeLayer(dlSelectRect); dlSelectRect = null; }
-}
-
-function onDlMouseDown(e) {
-  dlStartLatLng = e.latlng;
-  if (dlSelectRect) { map.removeLayer(dlSelectRect); dlSelectRect = null; }
-  dlSelectRect = L.rectangle([dlStartLatLng, dlStartLatLng], {
-    color: '#4a8adf', weight: 2, dashArray: '8,4', fillOpacity: 0.15
-  }).addTo(map);
-  map.on('mousemove', onDlMouseMove);
-  map.on('mouseup', onDlMouseUp);
-}
-
-function onDlMouseMove(e) {
-  if (dlSelectRect && dlStartLatLng) {
-    dlSelectRect.setBounds(L.latLngBounds(dlStartLatLng, e.latlng));
-  }
-}
-
-function onDlMouseUp(e) {
-  map.off('mousemove', onDlMouseMove);
-  map.off('mouseup', onDlMouseUp);
-  map.off('mousedown', onDlMouseDown);
-  document.removeEventListener('keydown', onDlEscape);
-  map.getContainer().style.cursor = '';
-  map.dragging.enable();
-  dlSelectActive = false;
-
-  if (!dlStartLatLng) return;
-  const bounds = L.latLngBounds(dlStartLatLng, e.latlng);
-  if (bounds.getNorthEast().equals(bounds.getSouthWest())) {
-    cancelAreaSelect();
+function onPolygonClick(e) {
+  if (dlPolygonPoints.length >= 8) {
+    showToast('Максимум 8 точек');
     return;
   }
+  dlPolygonPoints.push(e.latlng);
+  // Add orange marker
+  const marker = L.circleMarker(e.latlng, {
+    radius: 7, color: '#e0a050', fillColor: '#e0a050', fillOpacity: 0.85,
+    weight: 2, pane: 'markerPane'
+  }).addTo(map);
+  dlPolygonMarkers.push(marker);
+  updatePolygonShape();
+  updatePolygonToolbar();
+}
+
+function updatePolygonShape() {
+  if (dlPolygonShape) { map.removeLayer(dlPolygonShape); dlPolygonShape = null; }
+  if (dlPolygonPoints.length >= 3) {
+    const hull = grahamScan(dlPolygonPoints);
+    dlPolygonShape = L.polygon(hull, {
+      color: '#e0a050', weight: 2, dashArray: '6,4',
+      fillColor: '#e0a050', fillOpacity: 0.15
+    }).addTo(map);
+  }
+}
+
+function updatePolygonToolbar() {
+  document.getElementById('pt-count').textContent = `${dlPolygonPoints.length} / 8 точек`;
+  document.getElementById('btn-polygon-done').disabled = dlPolygonPoints.length < 3;
+}
+
+function undoPolygonPoint() {
+  if (dlPolygonPoints.length === 0) return;
+  dlPolygonPoints.pop();
+  const m = dlPolygonMarkers.pop();
+  if (m) map.removeLayer(m);
+  updatePolygonShape();
+  updatePolygonToolbar();
+}
+
+function finishPolygon() {
+  if (dlPolygonPoints.length < 3) return;
+  const hull = grahamScan(dlPolygonPoints);
+  if (hull.length < 3) {
+    showToast('Точки лежат на одной линии — добавьте ещё точку в стороне');
+    return;
+  }
+  // Compute bounding box
+  const lats = hull.map(p => p.lat), lngs = hull.map(p => p.lng);
+  const bounds = L.latLngBounds(
+    [Math.min(...lats), Math.min(...lngs)],
+    [Math.max(...lats), Math.max(...lngs)]
+  );
+  // Exit polygon mode but keep shapes visible
+  dlPolygonMode = false;
+  map.getContainer().style.cursor = '';
+  map.dragging.enable();
+  map.off('click', onPolygonClick);
+  document.removeEventListener('keydown', onDlEscape);
+  document.getElementById('polygon-toolbar').style.display = 'none';
+  // Store polygon for filtering
+  window._dlPolygon = hull;
   openDownloadSettings(bounds);
 }
 
+function cancelAreaSelect() {
+  dlPolygonMode = false;
+  map.getContainer().style.cursor = '';
+  map.dragging.enable();
+  map.off('click', onPolygonClick);
+  document.removeEventListener('keydown', onDlEscape);
+  document.getElementById('polygon-toolbar').style.display = 'none';
+  // Cleanup markers & shape
+  dlPolygonMarkers.forEach(m => map.removeLayer(m));
+  dlPolygonMarkers = [];
+  dlPolygonPoints = [];
+  if (dlPolygonShape) { map.removeLayer(dlPolygonShape); dlPolygonShape = null; }
+  window._dlPolygon = null;
+  // Legacy rect cleanup
+  if (dlSelectRect) { map.removeLayer(dlSelectRect); dlSelectRect = null; }
+}
+
 function openDownloadSettings(bounds) {
-  // Заполнить координаты
   const sw = bounds.getSouthWest(), ne = bounds.getNorthEast();
   document.getElementById('dl-sw').textContent = `${sw.lat.toFixed(4)}, ${sw.lng.toFixed(4)}`;
   document.getElementById('dl-ne').textContent = `${ne.lat.toFixed(4)}, ${ne.lng.toFixed(4)}`;
 
-  // Заполнить select базовых слоёв
-  const sel = document.getElementById('dl-layer-select');
-  sel.innerHTML = '';
-  dlLayerList.forEach(name => {
-    const opt = document.createElement('option');
-    opt.value = name; opt.textContent = name;
-    if (name === currentBaseLayerName) opt.selected = true;
-    sel.appendChild(opt);
-  });
+  // Show polygon info if polygon mode
+  const areaLabel = document.getElementById('dl-area-label');
+  if (window._dlPolygon) {
+    areaLabel.textContent = `Полигон (${window._dlPolygon.length} точек)`;
+  } else {
+    areaLabel.textContent = 'Область';
+  }
 
-  // Второй базовый слой
+  // --- Radio buttons for base layers (dynamic from catalog) ---
+  const radioBox = document.getElementById('dl-layer-radios');
+  radioBox.innerHTML = '';
+  const baseList = (tileCatalog && tileCatalog.base) ? tileCatalog.base : [];
+  baseList.forEach(entry => {
+    const lbl = document.createElement('label');
+    lbl.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;color:var(--text-primary);cursor:pointer';
+    const rb = document.createElement('input');
+    rb.type = 'radio'; rb.name = 'dl-base-layer'; rb.value = entry.label;
+    if (entry.label === currentBaseLayerName) rb.checked = true;
+    rb.onchange = updateDownloadEstimate;
+    lbl.appendChild(rb);
+    const maxZ = entry.maxZoom || 18;
+    lbl.appendChild(document.createTextNode(
+      `${getLayerEmoji(entry.label)} ${entry.label} (z${maxZ})`
+    ));
+    radioBox.appendChild(lbl);
+  });
+  // Fallback: if catalog not loaded, use dlLayerList
+  if (baseList.length === 0 && dlLayerList.length > 0) {
+    dlLayerList.forEach(name => {
+      const lbl = document.createElement('label');
+      lbl.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;color:var(--text-primary);cursor:pointer';
+      const rb = document.createElement('input');
+      rb.type = 'radio'; rb.name = 'dl-base-layer'; rb.value = name;
+      if (name === currentBaseLayerName) rb.checked = true;
+      rb.onchange = updateDownloadEstimate;
+      lbl.appendChild(rb);
+      lbl.appendChild(document.createTextNode(name));
+      radioBox.appendChild(lbl);
+    });
+  }
+
+  // --- Second base layer (select) ---
   const sel2 = document.getElementById('dl-layer2-select');
   sel2.innerHTML = '<option value="">— нет —</option>';
-  dlLayerList.forEach(name => {
+  (baseList.length > 0 ? baseList.map(e => e.label) : dlLayerList).forEach(name => {
     const opt = document.createElement('option');
     opt.value = name; opt.textContent = name;
     sel2.appendChild(opt);
@@ -4534,24 +5242,47 @@ function openDownloadSettings(bounds) {
   };
   document.getElementById('dl-layer2-opacity-row').style.display = 'none';
 
-  // Заполнить чекбоксы оверлеев
+  // --- Overlay checkboxes with per-overlay opacity sliders ---
   const overlayBox = document.getElementById('dl-overlay-checks');
   overlayBox.innerHTML = '';
-  dlOverlayList.forEach(name => {
-    const lbl = document.createElement('label');
-    lbl.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;color:#c0d8ff;cursor:pointer';
+  const overlayEntries = (tileCatalog && tileCatalog.overlays) ? tileCatalog.overlays : [];
+  const ovNames = overlayEntries.length > 0 ? overlayEntries.map(e => e.label) : dlOverlayList;
+
+  ovNames.forEach(name => {
+    const entry = overlayEntries.find(e => e.label === name);
+    const defaultOp = entry && entry.opacity != null ? Math.round(entry.opacity * 100) : 70;
+
+    const div = document.createElement('div');
+    div.className = 'dl-overlay-item';
+
     const cb = document.createElement('input');
     cb.type = 'checkbox'; cb.value = name; cb.className = 'dl-overlay-cb';
     cb.onchange = updateDownloadEstimate;
-    lbl.appendChild(cb);
-    lbl.appendChild(document.createTextNode(name));
-    overlayBox.appendChild(lbl);
+
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = name;
+    nameSpan.className = 'dl-ov-name';
+
+    const slider = document.createElement('input');
+    slider.type = 'range'; slider.min = '10'; slider.max = '100'; slider.value = String(defaultOp);
+    slider.dataset.overlay = name;
+    slider.className = 'dl-ov-opacity';
+    const pct = document.createElement('span');
+    pct.className = 'dl-ov-pct';
+    pct.textContent = defaultOp + '%';
+    slider.oninput = () => { pct.textContent = slider.value + '%'; };
+
+    div.appendChild(cb);
+    div.appendChild(nameSpan);
+    div.appendChild(slider);
+    div.appendChild(pct);
+    overlayBox.appendChild(div);
   });
 
-  // Сохранить bounds
+  // Store bounds
   window._dlBounds = bounds;
 
-  // Сбросить прогресс
+  // Reset progress
   document.getElementById('dl-progress-area').style.display = 'none';
   document.getElementById('dl-buttons').style.display = 'flex';
 
@@ -4559,10 +5290,38 @@ function openDownloadSettings(bounds) {
   openModal('modal-download-settings');
 }
 
+// ─── Zoom range handlers ───
+function onDlZoomMinChange(el) {
+  const maxEl = document.getElementById('dl-zoom-max');
+  if (parseInt(el.value) > parseInt(maxEl.value)) maxEl.value = el.value;
+  document.getElementById('dl-zoom-min-val').textContent = el.value;
+  document.getElementById('dl-zoom-max-val').textContent = maxEl.value;
+  updateDownloadEstimate();
+}
+function onDlZoomMaxChange(el) {
+  const minEl = document.getElementById('dl-zoom-min');
+  if (parseInt(el.value) < parseInt(minEl.value)) minEl.value = el.value;
+  document.getElementById('dl-zoom-max-val').textContent = el.value;
+  document.getElementById('dl-zoom-min-val').textContent = minEl.value;
+  updateDownloadEstimate();
+}
+
+// ─── Get selected base layer (radio) ───
+function getSelectedBaseLayer() {
+  const rb = document.querySelector('input[name="dl-base-layer"]:checked');
+  return rb ? rb.value : currentBaseLayerName;
+}
+
 function cancelDownloadSettings() {
   closeModal('modal-download-settings');
   if (dlSelectRect) { map.removeLayer(dlSelectRect); dlSelectRect = null; }
   if (dlAbortController) { dlAbortController.abort(); dlAbortController = null; }
+  // Cleanup polygon
+  dlPolygonMarkers.forEach(m => map.removeLayer(m));
+  dlPolygonMarkers = [];
+  dlPolygonPoints = [];
+  if (dlPolygonShape) { map.removeLayer(dlPolygonShape); dlPolygonShape = null; }
+  window._dlPolygon = null;
 }
 
 // ─── Оценка кол-ва тайлов ───
@@ -4570,16 +5329,31 @@ function cancelDownloadSettings() {
 function lng2tile(lng, z) { return Math.floor((lng + 180) / 360 * Math.pow(2, z)); }
 function lat2tile(lat, z) { return Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, z)); }
 
-function estimateTiles(bounds, zMin, zMax) {
+const DL_BASE_TILE_BYTES = 25 * 1024;    // ~25 KB спутник/схема
+const DL_OVERLAY_TILE_BYTES = 8 * 1024;  // ~8 KB оверлей
+
+function estimateTiles(bounds, zMin, zMax, polygon) {
   const sw = bounds.getSouthWest(), ne = bounds.getNorthEast();
   let total = 0;
   const ranges = [];
   for (let z = zMin; z <= zMax; z++) {
     const xMin = lng2tile(sw.lng, z);
     const xMax = lng2tile(ne.lng, z);
-    const yMin = lat2tile(ne.lat, z); // NE lat → smaller y
+    const yMin = lat2tile(ne.lat, z);
     const yMax = lat2tile(sw.lat, z);
-    const count = (xMax - xMin + 1) * (yMax - yMin + 1);
+    let count = 0;
+    if (polygon && polygon.length >= 3) {
+      // Count only tiles whose center is inside polygon
+      for (let x = xMin; x <= xMax; x++) {
+        for (let y = yMin; y <= yMax; y++) {
+          const cLat = tile2lat(y + 0.5, z);
+          const cLng = tile2lng(x + 0.5, z);
+          if (pointInPolygon(cLat, cLng, polygon)) count++;
+        }
+      }
+    } else {
+      count = (xMax - xMin + 1) * (yMax - yMin + 1);
+    }
     total += count;
     ranges.push({ z, xMin, xMax, yMin, yMax, count });
   }
@@ -4590,32 +5364,52 @@ function getSelectedOverlays() {
   return [...document.querySelectorAll('.dl-overlay-cb:checked')].map(cb => cb.value);
 }
 
+function getOverlayOpacities() {
+  const result = {};
+  document.querySelectorAll('.dl-ov-opacity').forEach(sl => {
+    result[sl.dataset.overlay] = parseInt(sl.value) / 100;
+  });
+  return result;
+}
+
 function updateDownloadEstimate() {
   if (!window._dlBounds) return;
   const zMin = parseInt(document.getElementById('dl-zoom-min').value);
   const zMax = parseInt(document.getElementById('dl-zoom-max').value);
-  const est = estimateTiles(window._dlBounds, zMin, zMax);
+  const polygon = window._dlPolygon || null;
+  const est = estimateTiles(window._dlBounds, zMin, zMax, polygon);
 
-  const overlayCount = getSelectedOverlays().length;
-  const layerCount = 1 + overlayCount; // базовый + оверлеи
-  const totalTiles = est.total * layerCount;
+  const overlays = getSelectedOverlays();
+  const hasLayer2 = !!document.getElementById('dl-layer2-select').value;
+  const baseLayers = 1 + (hasLayer2 ? 1 : 0);
 
-  document.getElementById('dl-est-tiles').textContent = totalTiles.toLocaleString('ru') + ' тайлов';
-  const sizeMB = (totalTiles * 0.025).toFixed(1);
+  // Size estimate: base layers × base size + overlays × overlay size
+  const baseTiles = est.total * baseLayers;
+  const overlayTiles = est.total * overlays.length;
+  const sizeBytes = baseTiles * DL_BASE_TILE_BYTES + overlayTiles * DL_OVERLAY_TILE_BYTES;
+  const sizeMB = (sizeBytes / (1024 * 1024)).toFixed(1);
+  const downloadTiles = est.total; // unique tile positions (merge into one)
+
+  document.getElementById('dl-est-tiles').textContent = downloadTiles.toLocaleString('ru') + ' тайлов';
   document.getElementById('dl-est-size').textContent = '~' + sizeMB + ' МБ';
 
   const warn = document.getElementById('dl-est-warn');
-  if (totalTiles > 50000) {
+  if (sizeBytes > 500 * 1024 * 1024) {
+    warn.textContent = '⚠️ Размер превышает 500 МБ! Уменьшите зум или область.';
+    warn.style.color = '#e07070';
+    warn.style.display = 'block';
+  } else if (downloadTiles > 50000) {
     warn.textContent = '⚠️ Много тайлов! Скачивание может занять значительное время.';
+    warn.style.color = '#e0a050';
     warn.style.display = 'block';
   } else {
     warn.style.display = 'none';
   }
 
-  // Автоимя файла
-  const layerName = document.getElementById('dl-layer-select').value;
+  // Auto filename
+  const layerName = getSelectedBaseLayer();
   const safeName = layerName.replace(/\s+/g, '_');
-  const overlayTag = overlayCount > 0 ? `+${overlayCount}ov` : '';
+  const overlayTag = overlays.length > 0 ? `+${overlays.length}ов` : '';
   document.getElementById('dl-filename').value = `${safeName}${overlayTag}_z${zMin}-${zMax}.sqlitedb`;
 }
 
@@ -4624,18 +5418,6 @@ function updateDownloadEstimate() {
 function getTileUrl(layerName, x, y, z) {
   const tmsY = (y, z) => Math.pow(2, z) - 1 - y;
   const pickS = (pool) => pool[Math.floor(Math.random() * pool.length)];
-
-  function bingQuadkey(x, y, z) {
-    let q = '';
-    for (let i = z; i > 0; i--) {
-      let d = 0;
-      const m = 1 << (i - 1);
-      if ((x & m) !== 0) d++;
-      if ((y & m) !== 0) d += 2;
-      q += d;
-    }
-    return q;
-  }
 
   // Catalog lookup: search both base and overlays by label
   if (tileCatalog) {
@@ -4663,8 +5445,8 @@ function getTileUrl(layerName, x, y, z) {
     case 'Яндекс Гибрид':  return `https://core-sat.maps.yandex.net/tiles?l=sat&x=${x}&y=${y}&z=${z}&scale=1&lang=ru_RU`;
     case 'Спутник Google': return `https://mt${pickS(['0','1','2','3'])}.google.com/vt/lyrs=s&x=${x}&y=${y}&z=${z}`;
     case 'Гибрид Google':  return `https://mt${pickS(['0','1','2','3'])}.google.com/vt/lyrs=y&x=${x}&y=${y}&z=${z}`;
-    case 'Спутник Bing':   return `https://ecn.t0.tiles.virtualearth.net/tiles/a${bingQuadkey(x,y,z)}?g=14000`;
-    case 'Гибрид Bing':    return `https://ecn.t0.tiles.virtualearth.net/tiles/h${bingQuadkey(x,y,z)}?g=14000&mkt=ru-RU`;
+    case 'Спутник Bing':   return `https://ecn.t0.tiles.virtualearth.net/tiles/a${bingQuadKey(x,y,z)}?g=14000`;
+    case 'Гибрид Bing':    return `https://ecn.t0.tiles.virtualearth.net/tiles/h${bingQuadKey(x,y,z)}?g=14000&mkt=ru-RU`;
     case 'Спутник ESRI':   return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`;
     case 'ESRI Clarity':   return `https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}?blankTile=false`;
     case 'Яндекс Спутник': return `https://sat0${pickS('1234')}.maps.yandex.net/tiles?l=sat&x=${x}&y=${y}&z=${z}&lang=ru_RU`;
@@ -4708,17 +5490,20 @@ async function downloadTiles() {
   const zMax = parseInt(document.getElementById('dl-zoom-max').value);
   if (zMin > zMax) { showToast('Зум "от" должен быть ≤ зум "до"'); return; }
 
-  const layerName = document.getElementById('dl-layer-select').value;
+  const layerName = getSelectedBaseLayer();
   const filename = document.getElementById('dl-filename').value || 'map.sqlitedb';
-  const est = estimateTiles(bounds, zMin, zMax);
+  const polygon = window._dlPolygon || null;
+  const est = estimateTiles(bounds, zMin, zMax, polygon);
 
-  // Tauri save dialog
+  // Tauri save dialog — default to maps/ subfolder
   let savePath = null;
   if (window.__TAURI__) {
     try {
       const { save } = window.__TAURI__.dialog;
+      const mapsDir = appDataPath ? appDataPath + '/maps' : lastSaveDir;
+      const defaultDir = lastSaveDir || mapsDir;
       savePath = await save({
-        defaultPath: lastSaveDir ? lastSaveDir + '/' + filename : filename,
+        defaultPath: defaultDir ? defaultDir + '/' + filename : filename,
         filters: [{ name: 'SQLiteDB', extensions: ['sqlitedb'] }]
       });
       if (!savePath) return;
@@ -4740,13 +5525,14 @@ async function downloadTiles() {
 
   dlAbortController = new AbortController();
   const signal = dlAbortController.signal;
+  let db = null;
 
   try {
     // Инициализация sql.js
     const SQL = await initSqlJs({
       locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
     });
-    const db = new SQL.Database();
+    db = new SQL.Database();
 
     const dlFormat = document.getElementById('dl-format').value; // 'osmand' or 'locus'
     const zStore = (z) => dlFormat === 'locus' ? 17 - z : z;
@@ -4759,6 +5545,7 @@ async function downloadTiles() {
 
     // Скачивание тайлов (базовый + второй слой + оверлеи → merge через Canvas)
     const overlays = getSelectedOverlays();
+    const overlayOpacities = getOverlayOpacities();
     const layer2Name = document.getElementById('dl-layer2-select').value;
     const layer2Opacity = parseInt(document.getElementById('dl-layer2-opacity').value) / 100;
     const needMerge = overlays.length > 0 || !!layer2Name;
@@ -4823,12 +5610,18 @@ async function downloadTiles() {
         }
       }
 
-      // 3. Оверлеи (полная прозрачность — как есть)
+      // 3. Оверлеи (с индивидуальной прозрачностью из слайдеров)
       for (const ovName of overlays) {
         const ovUrl = getTileUrl(ovName, x, y, z);
         if (!ovUrl) continue;
         const img = await fetchTileAsImage(ovUrl, sig);
-        if (img) { ctx.drawImage(img, 0, 0, 256, 256); hasContent = true; }
+        if (img) {
+          const ovOp = overlayOpacities[ovName];
+          if (ovOp != null && ovOp < 1) ctx.globalAlpha = ovOp;
+          ctx.drawImage(img, 0, 0, 256, 256);
+          ctx.globalAlpha = 1.0;
+          hasContent = true;
+        }
       }
 
       if (!hasContent) return null;
@@ -4841,11 +5634,16 @@ async function downloadTiles() {
       });
     }
 
-    // Генерируем все задачи
+    // Генерируем все задачи (с фильтрацией по полигону)
     const tasks = [];
     for (const r of est.ranges) {
       for (let x = r.xMin; x <= r.xMax; x++) {
         for (let y = r.yMin; y <= r.yMax; y++) {
+          if (polygon && polygon.length >= 3) {
+            const cLat = tile2lat(y + 0.5, r.z);
+            const cLng = tile2lng(x + 0.5, r.z);
+            if (!pointInPolygon(cLat, cLng, polygon)) continue;
+          }
           tasks.push({ x, y, z: r.z });
         }
       }
@@ -4936,7 +5734,6 @@ async function downloadTiles() {
       showToast('Не удалось скачать ни одного тайла');
     }
 
-    db.close();
     if (dlSelectRect) { map.removeLayer(dlSelectRect); dlSelectRect = null; }
 
   } catch (e) {
@@ -4944,7 +5741,16 @@ async function downloadTiles() {
       console.error('Download error:', e);
       showToast('Ошибка скачивания: ' + e.message);
     }
+  } finally {
+    try { if (db) db.close(); } catch {}
   }
+
+  // Cleanup polygon (always — даже при ошибке)
+  dlPolygonMarkers.forEach(m => map.removeLayer(m));
+  dlPolygonMarkers = [];
+  dlPolygonPoints = [];
+  if (dlPolygonShape) { map.removeLayer(dlPolygonShape); dlPolygonShape = null; }
+  window._dlPolygon = null;
 
   // Восстановить UI
   document.getElementById('dl-progress-area').style.display = 'none';
@@ -4961,6 +5767,292 @@ function stopTileDownload() {
 }
 
 
+
+// ─────────────────────────────────────────────
+// ОФЛАЙН КАРТЫ — СКАНИРОВАНИЕ И ОТОБРАЖЕНИЕ
+// ─────────────────────────────────────────────
+
+let offlineMaps = {};       // { filename: { db, layer, active } }
+let offlineSqlJsReady = null; // Promise<SQL>
+
+async function getOfflineSqlJs() {
+  if (!offlineSqlJsReady) {
+    offlineSqlJsReady = initSqlJs({
+      locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
+    });
+  }
+  return offlineSqlJsReady;
+}
+
+async function scanOfflineMaps() {
+  if (!window.__TAURI__ || !appDataPath) {
+    showToast('Рабочая папка недоступна');
+    return;
+  }
+  const { readDir, readFile } = window.__TAURI__.fs;
+  const mapsDir = appDataPath + '/maps';
+
+  try {
+    const entries = await readDir(mapsDir);
+    const sqlFiles = entries.filter(e =>
+      e.name && (e.name.endsWith('.sqlitedb') || e.name.endsWith('.mbtiles'))
+    );
+
+    const listEl = document.getElementById('offline-maps-list');
+    const emptyEl = document.getElementById('offline-maps-empty');
+    listEl.innerHTML = '';
+
+    if (sqlFiles.length === 0) {
+      emptyEl.style.display = 'block';
+      return;
+    }
+    emptyEl.style.display = 'none';
+
+    for (const file of sqlFiles) {
+      const fname = file.name;
+      const fpath = mapsDir + '/' + fname;
+      const isActive = offlineMaps[fname] && offlineMaps[fname].active;
+
+      // Get file size via stat (не читаем весь файл в память)
+      let sizeStr = '';
+      try {
+        const { stat } = window.__TAURI__.fs;
+        const meta = await stat(fpath);
+        const sizeMB = (meta.size / (1024 * 1024)).toFixed(1);
+        sizeStr = sizeMB + ' МБ';
+      } catch {
+        sizeStr = '?';
+      }
+      if (!offlineMaps[fname]) offlineMaps[fname] = {};
+      offlineMaps[fname]._path = fpath;
+
+      // Escape filename for safe HTML insertion
+      const safeName = fname.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+      const card = document.createElement('div');
+      card.className = 'offline-map-card';
+      card.innerHTML = `
+        <span class="omc-icon">🗺</span>
+        <div class="omc-info">
+          <div class="omc-name" title="${safeName}">${safeName}</div>
+          <div class="omc-meta">${sizeStr}</div>
+        </div>
+        <div class="omc-actions">
+          <button class="omc-btn ${isActive ? 'active' : ''}" onclick="toggleOfflineMap('${fname.replace(/'/g, "\\'")}', this)">
+            ${isActive ? '✓ Вкл' : '◯ Выкл'}
+          </button>
+          <button class="omc-btn delete" onclick="deleteOfflineMap('${fname.replace(/'/g, "\\'")}')">🗑</button>
+        </div>
+      `;
+      listEl.appendChild(card);
+    }
+  } catch (e) {
+    console.warn('scanOfflineMaps error:', e);
+    document.getElementById('offline-maps-empty').style.display = 'block';
+  }
+}
+
+async function toggleOfflineMap(fname, btn) {
+  const entry = offlineMaps[fname];
+  if (!entry || entry._loading) return;
+
+  if (entry.active) {
+    // Deactivate
+    if (entry.layer) { map.removeLayer(entry.layer); entry.layer = null; }
+    if (entry.db) { entry.db.close(); entry.db = null; }
+    entry.active = false;
+    if (btn) { btn.textContent = '◯ Выкл'; btn.classList.remove('active'); }
+    showToast(`Карта ${fname} отключена`);
+    updateOfflineLayersList();
+    return;
+  }
+
+  // Activate — load SQLite and create tile layer
+  entry._loading = true;
+  if (btn) btn.disabled = true;
+  try {
+    showToast('Загрузка карты...');
+    const SQL = await getOfflineSqlJs();
+
+    const { readFile } = window.__TAURI__.fs;
+    const data = await readFile(entry._path);
+    const db = new SQL.Database(new Uint8Array(data));
+    entry.db = db;
+
+    // Detect format: try info table, fallback to tiles table
+    let minZ = 1, maxZ = 18, isLocus = false;
+    try {
+      const infoRes = db.exec('SELECT minzoom, maxzoom FROM info LIMIT 1');
+      if (infoRes.length > 0) {
+        const row = infoRes[0].values[0];
+        const z1 = row[0], z2 = row[1];
+        if (z1 > z2) {
+          isLocus = true;
+          minZ = 17 - z1;
+          maxZ = 17 - z2;
+        } else {
+          minZ = z1;
+          maxZ = z2;
+        }
+      }
+    } catch {
+      // Fallback: probe tiles table directly
+      try {
+        const probe = db.exec('SELECT MIN(z), MAX(z) FROM tiles');
+        if (probe.length > 0) {
+          const [zMin, zMax] = probe[0].values[0];
+          if (zMin > 10) { isLocus = true; minZ = 17 - zMax; maxZ = 17 - zMin; }
+          else { minZ = zMin; maxZ = zMax; }
+        }
+      } catch {}
+    }
+
+    // Create custom Leaflet TileLayer from SQLite
+    const EMPTY_TILE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+    const OfflineTileLayer = L.TileLayer.extend({
+      createTile: function(coords, done) {
+        const tile = document.createElement('img');
+        tile.setAttribute('role', 'presentation');
+
+        const z = isLocus ? 17 - coords.z : coords.z;
+        const x = coords.x;
+        const y = coords.y;
+
+        let stmt = null;
+        try {
+          stmt = db.prepare('SELECT image FROM tiles WHERE x=? AND y=? AND z=?');
+          stmt.bind([x, y, z]);
+          if (stmt.step()) {
+            const imgData = stmt.get()[0];
+            const blob = new Blob([imgData], { type: 'image/png' });
+            tile.src = URL.createObjectURL(blob);
+            tile.onload = () => { URL.revokeObjectURL(tile.src); done(null, tile); };
+            tile.onerror = () => { URL.revokeObjectURL(tile.src); done(new Error('tile error'), tile); };
+          } else {
+            tile.src = EMPTY_TILE;
+            done(null, tile);
+          }
+        } catch (e) {
+          tile.src = EMPTY_TILE;
+          done(null, tile);
+        } finally {
+          if (stmt) stmt.free();
+        }
+        return tile;
+      }
+    });
+
+    const layer = new OfflineTileLayer('', {
+      minZoom: minZ,
+      maxZoom: maxZ,
+      maxNativeZoom: maxZ,
+      tms: false,
+      errorTileUrl: ''
+    });
+
+    layer.addTo(map);
+    entry.layer = layer;
+    entry.active = true;
+
+    if (btn) { btn.textContent = '✓ Вкл'; btn.classList.add('active'); }
+    showToast(`✅ Карта ${fname} подключена (z${minZ}-${maxZ})`);
+    updateOfflineLayersList();
+  } catch (e) {
+    console.error('toggleOfflineMap error:', e);
+    showToast('Ошибка загрузки карты: ' + e.message);
+  } finally {
+    entry._loading = false;
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function deleteOfflineMap(fname) {
+  const ok = await tndConfirmDanger(`Удалить офлайн-карту «${fname}»?`, 'Удалить');
+  if (!ok) return;
+
+  // Deactivate first
+  const entry = offlineMaps[fname];
+  if (entry) {
+    if (entry.layer) map.removeLayer(entry.layer);
+    if (entry.db) entry.db.close();
+    delete offlineMaps[fname];
+  }
+
+  // Delete file
+  if (window.__TAURI__ && appDataPath) {
+    try {
+      const { remove } = window.__TAURI__.fs;
+      await remove(appDataPath + '/maps/' + fname);
+      showToast(`🗑 Карта ${fname} удалена`);
+    } catch (e) {
+      showToast('Ошибка удаления: ' + e.message);
+    }
+  }
+  updateOfflineLayersList();
+  scanOfflineMaps();
+}
+
+// ─── Обновление списка офлайн-карт в переключателе слоёв ───
+function updateOfflineLayersList() {
+  const section = document.getElementById('offline-layers-section');
+  const list = document.getElementById('offline-layers-list');
+  if (!section || !list) return;
+
+  // Собираем активные офлайн-карты
+  const activeEntries = Object.entries(offlineMaps).filter(([, e]) => e.active && e.layer);
+
+  if (activeEntries.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+  list.innerHTML = '';
+
+  activeEntries.forEach(([fname, entry]) => {
+    const shortName = fname.replace(/\.(sqlitedb|mbtiles)$/i, '');
+    const div = document.createElement('div');
+    div.className = 'overlay-layer';
+    div.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0';
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = map.hasLayer(entry.layer);
+    cb.onchange = () => {
+      if (cb.checked) {
+        entry.layer.addTo(map);
+      } else {
+        map.removeLayer(entry.layer);
+      }
+    };
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'overlay-name';
+    nameEl.textContent = shortName;
+    nameEl.title = fname;
+
+    const opSlider = document.createElement('input');
+    opSlider.type = 'range';
+    opSlider.className = 'opacity-slider';
+    opSlider.min = '0';
+    opSlider.max = '100';
+    opSlider.value = '100';
+    opSlider.oninput = () => {
+      entry.layer.setOpacity(parseInt(opSlider.value) / 100);
+      opVal.textContent = opSlider.value + '%';
+    };
+
+    const opVal = document.createElement('span');
+    opVal.className = 'opacity-val';
+    opVal.textContent = '100%';
+
+    div.appendChild(cb);
+    div.appendChild(nameEl);
+    div.appendChild(opSlider);
+    div.appendChild(opVal);
+    list.appendChild(div);
+  });
+}
 
 // ─────────────────────────────────────────────
 // ПРОВЕРКА ОБНОВЛЕНИЙ
@@ -5058,7 +6150,8 @@ function collectState() {
       iconSize: parseInt(document.getElementById('setting-icon-size')?.value) || 16,
       trackWidth: parseInt(document.getElementById('setting-track-width')?.value) || 3,
       liveMarkerSize: parseInt(document.getElementById('setting-live-marker-size')?.value) || 3,
-      liveLabelSize: parseInt(document.getElementById('setting-live-label-size')?.value) || 3
+      liveLabelSize: parseInt(document.getElementById('setting-live-label-size')?.value) || 3,
+      theme: getTheme()
     },
     gpxFiles: importedGpxFiles.map(g => ({
       name: g.name,
@@ -5223,6 +6316,7 @@ function applyState(state) {
     if (s.liveMarkerSize != null) document.getElementById('live-marker-size-val').textContent = s.liveMarkerSize;
     setVal('setting-live-label-size', s.liveLabelSize);
     if (s.liveLabelSize != null) document.getElementById('live-label-size-val').textContent = s.liveLabelSize;
+    if (s.theme) { setTheme(s.theme); document.getElementById('setting-theme').value = s.theme; }
   }
 
   // 4.7. Restore imported GPX files
@@ -5520,7 +6614,7 @@ function updateSyncCounts() {
 async function checkSyncServerInfo() {
   const cfg = getSyncConfig();
   if (!cfg.email || !cfg.syncKey) {
-    document.getElementById('sync-server-info').innerHTML = '<span style="color:#5a7aaa">Привяжите email для синхронизации</span>';
+    document.getElementById('sync-server-info').innerHTML = '<span style="color:var(--text-muted)">Привяжите email для синхронизации</span>';
     return;
   }
   try {
@@ -5569,10 +6663,16 @@ async function syncPush() {
 
   updateSyncStatus('Отправка...', false);
   try {
+    const machineId = await getMachineIdAsync();
     const resp = await fetch(syncApiUrl('/api/sync/push'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...syncHeaders() },
-      body: JSON.stringify(state)
+      body: JSON.stringify({
+        data: state,
+        deviceId: machineId,
+        deviceType: 'desktop',
+        timestamp: new Date().toISOString()
+      })
     });
     const data = await resp.json();
     if (data.ok) {
@@ -5856,7 +6956,7 @@ async function installPendingUpdate() {
   status.innerHTML = '<div style="margin-bottom:4px">Скачиваем обновление...</div>' +
     '<div style="background:#1a2a3a;border-radius:4px;height:8px;overflow:hidden">' +
     '<div id="update-progress-bar" style="background:#4a8adf;height:100%;width:0%;transition:width 0.3s;border-radius:4px"></div></div>' +
-    '<div id="update-progress-text" style="font-size:10px;margin-top:3px;color:#5a7aaa">0%</div>';
+    '<div id="update-progress-text" style="font-size:10px;margin-top:3px;color:var(--text-muted)">0%</div>';
 
   // Слушаем прогресс скачивания
   let unlisten = null;
@@ -6213,7 +7313,7 @@ function showTrialBanner() {
   } else {
     banner.innerHTML = `⏳ Пробный период: осталось ${daysLeft} дн.<br><span style="font-size:11px;color:#9ab8d0">Navigator Pro: 2000₽/год · Full (Android+Desktop+Server): 5000₽/год</span>`;
   }
-  banner.innerHTML += `<span onclick="this.parentElement.remove()" style="position:absolute;top:4px;right:8px;cursor:pointer;color:#7a9aba;font-size:14px">✕</span>`;
+  banner.innerHTML += `<span onclick="this.parentElement.remove()" style="position:absolute;top:4px;right:8px;cursor:pointer;color:var(--text-secondary);font-size:14px">✕</span>`;
   document.body.appendChild(banner);
 }
 
@@ -6465,6 +7565,55 @@ function showOnboarding() {
   document.body.appendChild(overlay);
 }
 
+// ─── Кэш карт — UI обновление ───
+async function updateCacheUI() {
+  document.getElementById('setting-cache-enabled').checked = TileCache._enabled;
+  const maxGB = Math.round(TileCache._maxBytes / (1024 * 1024 * 1024));
+  document.getElementById('setting-cache-max-size').value = maxGB;
+  document.getElementById('cache-max-val').textContent = maxGB + ' ГБ';
+  document.getElementById('setting-cache-prefetch').checked = TileCache._prefetch;
+
+  await TileCache._calcSize();
+  document.getElementById('cache-current-size').textContent = TileCache.formatSize(TileCache._totalSize);
+  document.getElementById('cache-tile-count').textContent = TileCache._tileCount.toLocaleString('ru') + ' тайлов';
+  const pct = TileCache._maxBytes > 0 ? Math.min(100, Math.round(TileCache._totalSize / TileCache._maxBytes * 100)) : 0;
+  document.getElementById('cache-fill-bar').style.width = pct + '%';
+  document.getElementById('cache-hits').textContent = TileCache._sessionHits;
+  document.getElementById('cache-misses').textContent = TileCache._sessionMisses;
+
+  // Layer stats
+  const stats = await TileCache.getLayerStats();
+  const box = document.getElementById('cache-layer-stats');
+  if (stats.length === 0) {
+    box.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:8px">Кэш пуст</div>';
+  } else {
+    box.innerHTML = stats.map(s =>
+      `<div style="display:flex;justify-content:space-between;padding:2px 0;color:var(--text-primary)">
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name}</span>
+        <span style="color:var(--text-secondary);min-width:60px;text-align:right">${TileCache.formatSize(s.size)}</span>
+        <span style="color:var(--text-muted);min-width:70px;text-align:right">${s.count.toLocaleString('ru')} т.</span>
+      </div>`
+    ).join('');
+  }
+}
+
+async function clearTileCache() {
+  const ok = await tndConfirmDanger('Очистить весь кэш карт?', 'Очистить');
+  if (!ok) return;
+  await TileCache.clearAll();
+  showToast('🗑 Кэш карт очищен');
+  updateCacheUI();
+}
+
+// ─── Тема оформления ───
+function getTheme() { return localStorage.getItem('tnd-theme') || 'dark'; }
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('tnd-theme', theme);
+  const sel = document.getElementById('setting-theme');
+  if (sel && sel.value !== theme) sel.value = theme;
+}
+
 // Инициализация при загрузке
 (async function initApp() {
   await initWorkingDirectory();
@@ -6484,6 +7633,7 @@ function showOnboarding() {
   map.on('moveend', () => {
     const c = map.getCenter();
     localStorage.setItem('tnd-map-view', JSON.stringify({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }));
+    TileCache.clearPrefetchQueue(); // сброс устаревшей очереди
   });
   // Trial / License — используем аппаратный ID
   const machineId = await getMachineIdAsync();
@@ -6491,12 +7641,14 @@ function showOnboarding() {
   checkLicenseOnServer();
   setTimeout(showTrialBanner, 3000);
   updatePremiumUI();
-  console.log('Machine ID:', machineId, '(hw:', machineId.startsWith('HW-'), ') | Trial days left:', getTrialDaysLeft(), '| Licensed:', isLicensed());
+  console.log('TND init OK | Trial:', getTrialDaysLeft(), 'd | Licensed:', isLicensed());
   // Auto-sync: загрузить данные из облака при запуске (silent mode)
   loadSyncConfig();
   setTimeout(() => { syncPull(true); }, 2000);
   // Onboarding при первом запуске
   setTimeout(showOnboarding, 500);
+  // Scan offline maps
+  setTimeout(scanOfflineMaps, 1500);
 })();
 
 // ═══════════════════════════════════════════════════════════════
@@ -7164,88 +8316,88 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <div style="text-align:center;margin-bottom:16px">
         <div style="font-size:36px;margin-bottom:6px">🏆</div>
         <div style="font-size:18px;font-weight:700;color:#7ec8ff">Trophy Navigator Desktop</div>
-        <div style="font-size:12px;color:#5a7aaa">Навигация для трофи-рейдов и экспедиций</div>
+        <div style="font-size:12px;color:var(--text-muted)">Навигация для трофи-рейдов и экспедиций</div>
       </div>
 
       <!-- Информация -->
-      <div style="background:#0d1e38;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
+      <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:#5a7aaa">Версия</span><span id="about-version" style="color:#e0e0e0">0.8.2</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.0</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:#5a7aaa">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
+          <span style="color:var(--text-muted)">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:#5a7aaa">Лицензия</span><span id="about-license" style="color:#4adf7a">—</span>
+          <span style="color:var(--text-muted)">Лицензия</span><span id="about-license" style="color:#4adf7a">—</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:#5a7aaa">Сайт</span><span style="color:#7ec8ff">trophynav.ru</span>
+          <span style="color:var(--text-muted)">Сайт</span><span style="color:#7ec8ff">trophynav.ru</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0">
-          <span style="color:#5a7aaa">Почта</span><span style="color:#7ec8ff">info@trophynav.ru</span>
+          <span style="color:var(--text-muted)">Почта</span><span style="color:#7ec8ff">info@trophynav.ru</span>
         </div>
       </div>
 
       <button class="tb-btn" id="btn-check-update" onclick="checkForUpdates()" style="width:100%;justify-content:center;margin-bottom:12px">
         🔄 Проверить обновление
       </button>
-      <div id="update-status" style="font-size:12px;color:#5a7aaa;min-height:18px;text-align:center;margin-bottom:12px"></div>
+      <div id="update-status" style="font-size:12px;color:var(--text-muted);min-height:18px;text-align:center;margin-bottom:12px"></div>
 
       <!-- Описание функций -->
       <details open style="margin-bottom:8px">
         <summary style="font-size:13px;color:#7ec8ff;cursor:pointer;padding:6px 0;font-weight:600">Возможности программы</summary>
-        <div style="font-size:12px;color:#c0d8ff;line-height:1.8;padding:8px 0">
+        <div style="font-size:12px;color:var(--text-primary);line-height:1.8;padding:8px 0">
 
-          <div style="color:#5a7aaa;font-size:11px;text-transform:uppercase;margin:8px 0 4px">🗺 Карты</div>
+          <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:8px 0 4px">🗺 Карты</div>
           <div>• 26+ базовых карт (Google, Яндекс, OSM, ESRI, ГГЦ, Генштаб и др.)</div>
           <div>• 11 оверлейных слоёв (GPS треки, тропы, подписи, Wikimapia)</div>
           <div>• Пользовательские карты — добавьте любой тайловый сервер</div>
           <div>• Каталог карт обновляется с сервера автоматически</div>
           <div>• Скачивание карт для офлайн (RMaps/OsmAnd) с наложением слоёв</div>
 
-          <div style="color:#5a7aaa;font-size:11px;text-transform:uppercase;margin:12px 0 4px">📍 Точки (Waypoints)</div>
+          <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:12px 0 4px">📍 Точки (Waypoints)</div>
           <div>• Создание точек кликом на карту или по координатам</div>
           <div>• Наборы точек — группировка по категориям</div>
           <div>• Радиус сближения — настраиваемый для каждой точки</div>
           <div>• Иконки Garmin — автоматическое преобразование символов</div>
           <div>• Импорт/экспорт: GPX, WPT (OziExplorer), CSV</div>
 
-          <div style="color:#5a7aaa;font-size:11px;text-transform:uppercase;margin:12px 0 4px">〜 Треки</div>
+          <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:12px 0 4px">〜 Треки</div>
           <div>• Рисование треков на карте с отображением длины</div>
           <div>• Редактирование: перетаскивание точек, удаление, разбиение</div>
           <div>• Импорт GPX/PLT с сохранением высоты и скорости</div>
           <div>• Настраиваемый цвет, толщина, размер точек</div>
 
-          <div style="color:#5a7aaa;font-size:11px;text-transform:uppercase;margin:12px 0 4px">⚑ Маршруты</div>
+          <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:12px 0 4px">⚑ Маршруты</div>
           <div>• Создание маршрутов по контрольным точкам</div>
           <div>• Перетаскивание точек в списке (drag & drop)</div>
           <div>• Расстояние и азимут между точками</div>
           <div>• Импорт/экспорт: GPX, RTE (OziExplorer)</div>
 
-          <div style="color:#5a7aaa;font-size:11px;text-transform:uppercase;margin:12px 0 4px">🔍 Поиск и роутинг</div>
+          <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:12px 0 4px">🔍 Поиск и роутинг</div>
           <div>• Поиск по адресу (Nominatim / OpenStreetMap)</div>
           <div>• Результаты поиска → сразу в маршрут (A/B) или точку</div>
           <div>• Маршрут по дорогам (OSRM) — расстояние, время, скорость</div>
           <div>• ПКМ на карте → «Маршрут отсюда / сюда»</div>
 
-          <div style="color:#5a7aaa;font-size:11px;text-transform:uppercase;margin:12px 0 4px">📐 Инструменты</div>
+          <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:12px 0 4px">📐 Инструменты</div>
           <div>• Линейка (M) — измерение расстояний с азимутом</div>
           <div>• Блокировка объектов (K) — защита от случайного перемещения</div>
           <div>• Очистка карты — удаление всех данных с подтверждением</div>
           <div>• Undo (Ctrl+Z) — отмена последнего действия</div>
 
-          <div style="color:#5a7aaa;font-size:11px;text-transform:uppercase;margin:12px 0 4px">⟲ Синхронизация</div>
+          <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:12px 0 4px">⟲ Синхронизация</div>
           <div>• Синхронизация с Android (Trophy Navigator) через сервер</div>
           <div>• Привязка по email — одна учётка на все устройства</div>
           <div>• Выбор данных для отправки/получения</div>
 
-          <div style="color:#5a7aaa;font-size:11px;text-transform:uppercase;margin:12px 0 4px">⚙ Настройки</div>
+          <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:12px 0 4px">⚙ Настройки</div>
           <div>• Цвета: точки, треки, маршруты, радиус, OSRM</div>
           <div>• Прозрачность заливки радиуса</div>
           <div>• Размер иконок, толщина треков</div>
           <div>• Автосохранение каждые 30 сек</div>
 
-          <div style="color:#5a7aaa;font-size:11px;text-transform:uppercase;margin:12px 0 4px">⌨ Горячие клавиши</div>
+          <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:12px 0 4px">⌨ Горячие клавиши</div>
           <div>• <b>H / Пробел</b> — навигация &nbsp; <b>W</b> — добавить точку</div>
           <div>• <b>T</b> — новый трек &nbsp; <b>R</b> — новый маршрут</div>
           <div>• <b>M</b> — линейка &nbsp; <b>K</b> — блокировка</div>
@@ -7255,7 +8407,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
         </div>
       </details>
 
-      <div style="text-align:center;font-size:11px;color:#3a5a7a;margin-top:8px">
+      <div style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:8px">
         trophynav.ru · info@trophynav.ru
       </div>
     </div>
@@ -7272,7 +8424,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <span class="modal-close" onclick="closeModal('modal-save-gpx')">✕</span>
     </div>
     <div class="modal-body" style="max-height:60vh;overflow-y:auto">
-      <div style="font-size:12px;color:#c0d8ff;margin-bottom:8px">Выберите данные для сохранения:</div>
+      <div style="font-size:12px;color:var(--text-primary);margin-bottom:8px">Выберите данные для сохранения:</div>
       <div id="save-gpx-details"></div>
       <div style="display:flex;gap:8px;margin-top:12px">
         <button class="btn-secondary" style="flex:1" onclick="closeModal('modal-save-gpx')">Отмена</button>
@@ -7366,7 +8518,7 @@ document.getElementById('search-input').addEventListener('keydown', function(e) 
 
 async function nominatimSearch(query) {
   const resultsEl = document.getElementById('search-results');
-  resultsEl.innerHTML = '<div style="padding:10px 12px;color:#5a7aaa;font-size:12px">Поиск...</div>';
+  resultsEl.innerHTML = '<div style="padding:10px 12px;color:var(--text-muted);font-size:12px">Поиск...</div>';
   resultsEl.classList.add('has-results');
   try {
     const resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&accept-language=ru`, {
@@ -7374,7 +8526,7 @@ async function nominatimSearch(query) {
     });
     const data = await resp.json();
     if (!data.length) {
-      resultsEl.innerHTML = '<div style="padding:10px 12px;color:#5a7aaa;font-size:12px">Ничего не найдено</div>';
+      resultsEl.innerHTML = '<div style="padding:10px 12px;color:var(--text-muted);font-size:12px">Ничего не найдено</div>';
       return;
     }
     resultsEl.innerHTML = data.map((r, i) => {
@@ -7408,7 +8560,7 @@ function goToSearchResult(lat, lon, name) {
       html: '<div style="background:#4a8adf;width:14px;height:14px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(74,138,223,0.8)"></div>',
       iconSize: [14,14], iconAnchor: [7,7]
     })
-  }).addTo(map).bindPopup(`<b>${safeName}</b><br><span style="font-size:11px;color:#7a9aba">${lat.toFixed(5)}, ${lon.toFixed(5)}</span>`).openPopup();
+  }).addTo(map).bindPopup(`<b>${safeName}</b><br><span style="font-size:11px;color:var(--text-secondary)">${lat.toFixed(5)}, ${lon.toFixed(5)}</span>`).openPopup();
   document.getElementById('search-results').classList.remove('has-results');
   showToast('✓ ' + name);
 }
@@ -7832,6 +8984,16 @@ function liveShowAll() {
   <div class="live-devices-scroll">
     <div id="live-devices-list"></div>
   </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     ПОЛИГОН-ТУЛБАР (выделение области скачивания)
+════════════════════════════════════════════ -->
+<div id="polygon-toolbar">
+  <span class="pt-count" id="pt-count">0 / 8 точек</span>
+  <button onclick="undoPolygonPoint()" title="Отменить последнюю точку">↩ Отменить</button>
+  <button class="pt-done" id="btn-polygon-done" disabled onclick="finishPolygon()">✓ Готово</button>
+  <button class="pt-cancel" onclick="cancelAreaSelect()">✕ Отмена</button>
 </div>
 
 </body>
