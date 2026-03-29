@@ -617,10 +617,95 @@
   .offline-map-card .omc-btn.delete { color: var(--accent-red); }
   .offline-map-card .omc-btn.delete:hover { background: #4a1a1a; }
 
+  /* ─── Search input default width ─── */
+  #search-input { width: 200px; }
+
   /* ─── TOOLBAR OVERFLOW PROTECTION ─── */
-  #toolbar { overflow: hidden; }
-  @media (max-width: 1100px) { .tb-btn.sync-btn { display: none; } }
-  @media (max-width: 950px) { #btn-ruler { display: none; } .tb-group-label { font-size: 14px !important; } }
+  #toolbar { overflow-x: auto; overflow-y: hidden; flex-wrap: nowrap; }
+  #toolbar::-webkit-scrollbar { height: 3px; }
+  #toolbar::-webkit-scrollbar-thumb { background: var(--border-normal); border-radius: 2px; }
+
+  /* ─── Кнопка сворачивания боковых панелей ─── */
+  .collapse-btn {
+    position: absolute; top: 8px; z-index: 810;
+    background: var(--bg-elevated); border: 1px solid var(--border-normal);
+    border-radius: 4px; color: var(--text-secondary); cursor: pointer;
+    width: 22px; height: 22px; display: none; align-items: center; justify-content: center;
+    font-size: 12px; transition: all 0.2s;
+  }
+  .collapse-btn:hover { background: var(--bg-surface); color: var(--text-primary); }
+  .collapse-btn.left { left: 4px; }
+  .collapse-btn.right { right: 4px; }
+
+  /* Сворачивание панелей */
+  #live-sidebar.collapsed { width: 36px !important; min-width: 36px; }
+  #live-sidebar.collapsed .live-devices-scroll { display: none; }
+  #live-sidebar.collapsed .live-header span:not(.live-dot) { display: none; }
+  #live-sidebar.collapsed .live-header { padding: 8px 4px; justify-content: center; }
+  #live-sidebar.collapsed .live-header > div { display: none; }
+  #live-sidebar.collapsed .live-expand-btn { display: flex !important; }
+  .live-expand-btn {
+    display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: none; border: none; color: var(--text-secondary); cursor: pointer;
+    font-size: 16px; z-index: 811; width: 36px; height: 36px;
+    align-items: center; justify-content: center;
+  }
+  .live-expand-btn:hover { color: var(--text-primary); }
+
+  /* ─── АДАПТИВ: 1280x720 ─── */
+  @media (max-width: 1280px) {
+    #toolbar { height: 48px; padding: 4px 8px; gap: 2px; }
+    .tb-btn { padding: 4px 8px; font-size: 12px; height: 32px; }
+    .tb-tag { width: 28px; height: 28px; font-size: 14px; }
+    .tb-sep { height: 30px; margin: 0 4px; }
+    .tb-group { gap: 4px; padding: 0 2px; }
+    .tb-group-label { font-size: 15px; padding: 3px 4px; }
+    #btn-map-layer { min-width: 140px; font-size: 11px; }
+    #btn-map-layer .layer-name { max-width: 110px; }
+    #search-input { width: 160px; }
+    #statusbar { height: 22px; font-size: 10px; padding: 2px 10px; gap: 14px; }
+    .tb-btn.sync-btn { padding: 4px 6px; font-size: 11px; }
+    #live-sidebar { width: 220px; top: 52px; }
+    .collapse-btn { display: flex; }
+    .modal { max-height: 75vh; }
+  }
+
+  /* ─── АДАПТИВ: 1024x768 ─── */
+  @media (max-width: 1024px) {
+    #toolbar { height: 42px; padding: 3px 6px; gap: 2px; }
+    .tb-btn { padding: 3px 6px; font-size: 11px; height: 28px; }
+    .tb-tag { width: 26px; height: 26px; font-size: 13px; }
+    .tb-sep { height: 26px; margin: 0 3px; }
+    .tb-group { gap: 3px; padding: 0 1px; }
+    .tb-group-label { font-size: 13px; padding: 2px 3px; }
+    #btn-map-layer { min-width: 120px; font-size: 10px; }
+    #btn-map-layer .layer-name { max-width: 90px; }
+    #search-input { width: 130px; font-size: 11px; }
+    .tb-btn.sync-btn { display: none; }
+    /* Скрываем текст у некоторых кнопок, оставляем иконки */
+    .tb-btn.settings-btn span,
+    #statusbar { height: 20px; font-size: 9px; padding: 2px 8px; gap: 10px; }
+    #live-sidebar { width: 200px; top: 46px; right: 8px; }
+    .modal { max-height: 70vh; min-width: 280px; }
+    .modal-body { padding: 8px; }
+    .modal-header { padding: 6px 10px; font-size: 12px; }
+    .modal-footer { padding: 6px 10px; }
+    #toast { top: 50px; font-size: 11px; }
+  }
+
+  /* ─── Совсем маленькие экраны (<950px) ─── */
+  @media (max-width: 950px) {
+    #btn-ruler { display: none; }
+    #btn-routing { display: none; }
+    .tb-group-label { font-size: 12px !important; }
+    .tb-btn { padding: 2px 5px; font-size: 10px; height: 26px; }
+    .tb-tag { width: 24px; height: 24px; font-size: 12px; }
+    #search-input { width: 100px; }
+    #btn-map-layer { min-width: 100px; }
+  }
+
+  /* ─── Запрет горизонтального скролла страницы ─── */
+  html, body { overflow-x: hidden; max-width: 100vw; }
 
   /* ─── МОДАЛКИ MAX-WIDTH ─── */
   .modal { max-width: calc(100vw - 20px); }
@@ -904,7 +989,7 @@
       <span style="color:var(--text-muted);font-size:12px">🔍</span>
       <input type="text" id="search-input" placeholder="Поиск места..."
         autocomplete="off" spellcheck="false"
-        style="background:transparent;border:none;color:var(--text-primary);font-size:12px;outline:none;width:200px;padding:4px 0">
+        style="background:transparent;border:none;color:var(--text-primary);font-size:12px;outline:none;padding:4px 0">
       <span id="search-clear" onclick="clearSearch()" style="color:var(--text-muted);cursor:pointer;font-size:14px;display:none">✕</span>
     </div>
     <div class="search-results" id="search-results" style="position:absolute;top:100%;right:0;width:340px;margin-top:2px"></div>
@@ -8721,6 +8806,13 @@ const liveState = {
 
 function liveEsc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
+function toggleSidebarCollapse(id) {
+  const el = document.getElementById(id);
+  el.classList.toggle('collapsed');
+  const expandBtn = el.querySelector('.live-expand-btn');
+  if (expandBtn) expandBtn.textContent = el.classList.contains('collapsed') ? '▶' : '◀';
+}
+
 function toggleLive() {
   const sidebar = document.getElementById('live-sidebar');
   const btn = document.getElementById('btn-live');
@@ -8728,8 +8820,9 @@ function toggleLive() {
   sidebar.classList.toggle('open', liveState.isOpen);
   btn.classList.toggle('live-active', liveState.isOpen);
   if (liveState.isOpen) {
-    // Reset position to default top-right
+    // Reset position and collapsed state
     sidebar.style.left = ''; sidebar.style.top = ''; sidebar.style.right = '';
+    sidebar.classList.remove('collapsed');
     liveStartPolling();
   } else {
     liveStopPolling();
@@ -8973,11 +9066,13 @@ function liveShowAll() {
 
 <!-- Live monitoring sidebar -->
 <div id="live-sidebar">
+  <button class="live-expand-btn" onclick="toggleSidebarCollapse('live-sidebar')" title="Развернуть">▶</button>
   <div class="live-header">
     <div class="live-dot off" id="live-status-dot"></div>
     <span id="live-header-text">Участники</span>
     <div style="margin-left:auto;display:flex;gap:6px">
       <button onclick="liveShowAll()" title="Показать всех" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">🎯</button>
+      <button onclick="toggleSidebarCollapse('live-sidebar')" title="Свернуть" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">◀</button>
       <button onclick="toggleLive()" title="Закрыть" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">✕</button>
     </div>
   </div>
