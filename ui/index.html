@@ -7737,6 +7737,12 @@ function setTheme(theme) {
   // Auto-check for updates on startup (with popup if available)
   setTimeout(async () => {
     if (!isTauriRuntime()) return;
+    // Don't ask again if user dismissed today
+    const dismissed = localStorage.getItem('tnd-update-dismissed');
+    if (dismissed) {
+      const dismissedDate = new Date(dismissed).toDateString();
+      if (dismissedDate === new Date().toDateString()) return;
+    }
     try {
       const update = await tauriInvoke('check_app_update');
       if (update && update.version) {
@@ -7748,8 +7754,10 @@ function setTheme(theme) {
         if (doUpdate) {
           pendingUpdateRid = update.rid;
           pendingUpdateVersion = ver;
-          openModal('modal-about');
-          setTimeout(() => installPendingUpdate(), 500);
+          // Install directly without reopening modal (fixes race condition)
+          installPendingUpdate();
+        } else {
+          localStorage.setItem('tnd-update-dismissed', new Date().toISOString());
         }
       }
     } catch(e) { console.log('Auto-update check:', e); }
