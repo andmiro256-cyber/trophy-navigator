@@ -77,6 +77,8 @@ jobs:
       UPDATES_DEPLOY_USER: ${{ secrets.UPDATES_DEPLOY_USER }}
       UPDATES_DEPLOY_SSH_KEY: ${{ secrets.UPDATES_DEPLOY_SSH_KEY }}
       UPDATES_DEPLOY_KNOWN_HOSTS: ${{ secrets.UPDATES_DEPLOY_KNOWN_HOSTS }}
+      LEGACY_DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      LEGACY_DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
       UPDATES_DEPLOY_PORT: ${{ vars.UPDATES_DEPLOY_PORT }}
       UPDATES_DEPLOY_PATH: ${{ vars.UPDATES_DEPLOY_PATH }}
       UPDATES_BETA_DEPLOY_PATH: ${{ vars.UPDATES_BETA_DEPLOY_PATH }}
@@ -168,10 +170,13 @@ jobs:
           set -euo pipefail
 
           DEPLOY_PORT="${UPDATES_DEPLOY_PORT:-22}"
+          DEPLOY_HOST="${UPDATES_DEPLOY_HOST:-${LEGACY_DEPLOY_HOST:-}}"
+          DEPLOY_USER="${UPDATES_DEPLOY_USER:-root}"
+          DEPLOY_SSH_KEY="${UPDATES_DEPLOY_SSH_KEY:-${LEGACY_DEPLOY_SSH_KEY:-}}"
           DEPLOY_PATH="${RELEASE_DEPLOY_PATH}"
 
-          if [ -z "${UPDATES_DEPLOY_HOST:-}" ] || [ -z "${UPDATES_DEPLOY_USER:-}" ] || [ -z "${UPDATES_DEPLOY_SSH_KEY:-}" ] || [ -z "${UPDATES_DEPLOY_KNOWN_HOSTS:-}" ]; then
-            echo "::error::Missing release deploy settings. Set UPDATES_DEPLOY_HOST, UPDATES_DEPLOY_USER, UPDATES_DEPLOY_SSH_KEY and UPDATES_DEPLOY_KNOWN_HOSTS."
+          if [ -z "${DEPLOY_HOST}" ] || [ -z "${DEPLOY_SSH_KEY}" ]; then
+            echo "::error::Missing release deploy settings. Set UPDATES_DEPLOY_HOST/UPDATES_DEPLOY_SSH_KEY or reuse DEPLOY_HOST/DEPLOY_SSH_KEY from racenav."
             exit 1
           fi
 
@@ -181,14 +186,18 @@ jobs:
           fi
 
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$UPDATES_DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "$UPDATES_DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          if [ -n "${UPDATES_DEPLOY_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "$UPDATES_DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -p "$DEPLOY_PORT" "$DEPLOY_HOST" > ~/.ssh/known_hosts
+          fi
           chmod 600 ~/.ssh/known_hosts
 
           DEPLOY_DIR="$(dirname "$DEPLOY_PATH")"
           TMP_PATH="${DEPLOY_PATH}.tmp-${GITHUB_RUN_ID}"
 
-          scp -P "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$MANIFEST_FILE" "${UPDATES_DEPLOY_USER}@${UPDATES_DEPLOY_HOST}:${TMP_PATH}"
-          ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "${UPDATES_DEPLOY_USER}@${UPDATES_DEPLOY_HOST}" \
+          scp -P "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$MANIFEST_FILE" "${DEPLOY_USER}@${DEPLOY_HOST}:${TMP_PATH}"
+          ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
             "install -d -m 755 '${DEPLOY_DIR}' && install -m 644 '${TMP_PATH}' '${DEPLOY_PATH}' && rm -f '${TMP_PATH}'"
