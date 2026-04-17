@@ -102,12 +102,12 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           if [[ "$VERSION" == *-* ]]; then
-            echo "manifest_file=latest-beta.json" >> "$GITHUB_OUTPUT"
-            echo "deploy_path=${UPDATES_BETA_DEPLOY_PATH:-/var/www/updates/latest-beta.json}" >> "$GITHUB_OUTPUT"
+            echo "manifest_file=latest-desktop-beta.json" >> "$GITHUB_OUTPUT"
+            echo "deploy_path=${UPDATES_BETA_DEPLOY_PATH:-/var/www/updates/latest-desktop-beta.json}" >> "$GITHUB_OUTPUT"
             echo "prerelease=true" >> "$GITHUB_OUTPUT"
           else
-            echo "manifest_file=latest.json" >> "$GITHUB_OUTPUT"
-            echo "deploy_path=${UPDATES_DEPLOY_PATH:-/var/www/updates/latest.json}" >> "$GITHUB_OUTPUT"
+            echo "manifest_file=latest-desktop.json" >> "$GITHUB_OUTPUT"
+            echo "deploy_path=${UPDATES_DEPLOY_PATH:-/var/www/updates/latest-desktop.json}" >> "$GITHUB_OUTPUT"
             echo "prerelease=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Create latest.json for updater
