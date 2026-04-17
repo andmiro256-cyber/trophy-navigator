@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🧭 Trophy Navigator Desktop v0.9.0</title>
+<title>🧭 Trophy Navigator Desktop v0.9.3</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -915,6 +915,17 @@
   .routing-info-value { color:var(--text-primary);font-size:14px;font-weight:600; }
   .routing-swap { background:none;border:1px solid var(--border-normal);color:var(--text-secondary);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:16px; }
   .routing-swap:hover { background:#1a3a6a;color:var(--text-primary); }
+  .routing-list { display:flex; flex-direction:column; gap:6px; margin-top:8px; max-height:220px; overflow-y:auto; }
+  .routing-route-item { background:#1a2a4a; border:1px solid #2a4a7a; border-radius:6px; padding:8px; }
+  .routing-route-item.active { background:#163458; border-color:#4a8adf; box-shadow: inset 0 0 0 1px rgba(74,138,223,0.55); }
+  .routing-route-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; cursor:pointer; }
+  .routing-route-name { color:var(--text-primary); font-size:12px; font-weight:600; }
+  .routing-route-meta { color:var(--text-muted); font-size:10px; margin-top:2px; }
+  .routing-route-actions { display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin-top:8px; }
+  .routing-route-btn { background:#152640; border:1px solid var(--border-normal); color:var(--text-secondary); border-radius:4px; padding:3px 7px; cursor:pointer; font-size:11px; }
+  .routing-route-btn:hover { background:#1f3e68; color:var(--text-primary); }
+  .routing-route-btn.danger { color:#e07070; border-color:#6a2a2a; }
+  .routing-route-empty { color:var(--text-muted); font-size:11px; text-align:center; padding:14px 10px; border:1px dashed var(--border-normal); border-radius:6px; }
 </style>
 </head>
 <body>
@@ -1100,7 +1111,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.0</span>
+  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.3</span>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -1315,13 +1326,14 @@
     <div class="modal-body">
       <!-- Панель рисования трека -->
       <div id="track-build-panel" style="display:none;background:#1a3a1a;border:1px solid #2a6a2a;border-radius:6px;padding:8px;margin-bottom:8px">
-        <div style="font-size:12px;color:#a0d8a0;margin-bottom:4px">✏ Рисование трека</div>
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Кликайте на карту · двойной клик — завершить</div>
+        <div id="track-build-title" style="font-size:12px;color:#a0d8a0;margin-bottom:4px">✏ Рисование трека</div>
+        <div id="track-build-hint" style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Кликайте на карту · двойной клик — завершить</div>
         <div style="font-size:12px;color:var(--text-primary);margin-bottom:4px">Точек: <span id="track-build-count">0</span> &nbsp;·&nbsp; <span id="track-build-len">0.0 км</span></div>
         <div id="track-build-extra" style="font-size:11px;color:#90c890;margin-bottom:4px;display:none"></div>
         <div class="btn-row">
-          <button class="btn-secondary" onclick="cancelTrackDraw()" style="font-size:11px;color:#e07070;border-color:#6a2a2a">✕ Отмена</button>
-          <button class="btn-primary" onclick="finishTrackDraw()" style="font-size:11px">✓ Готово</button>
+          <button id="track-build-cancel-btn" class="btn-secondary" onclick="cancelTrackDraw()" style="font-size:11px;color:#e07070;border-color:#6a2a2a">✕ Отмена</button>
+          <button id="track-build-undo-btn" class="btn-secondary" onclick="undoLastAction()" style="font-size:11px">↩ Отменить</button>
+          <button id="track-build-finish-btn" class="btn-primary" onclick="finishTrackDraw()" style="font-size:11px">✓ Готово</button>
         </div>
       </div>
       <!-- Список треков -->
@@ -1352,6 +1364,7 @@
         </div>
         <div class="btn-row" style="margin-top:4px">
           <button class="btn-secondary" onclick="centerSelectedTrack()" style="font-size:11px">🎯 Центрировать</button>
+          <button class="btn-secondary" onclick="startTrackEdit()" style="font-size:11px">✏ Редактировать</button>
           <button class="btn-secondary" onclick="reverseSelectedTrack()" style="font-size:11px">⇄ Развернуть</button>
           <button class="btn-secondary" onclick="continueSelectedTrack()" style="font-size:11px">➕ Продолжить</button>
         </div>
@@ -2129,6 +2142,34 @@ function undoLastAction() {
     if (set) set.waypoints.push(m);
     updateWptTable();
     showToast('↩ Восстановлена точка: ' + m.wpData.name);
+  } else if (action.type === 'trackGeometry') {
+    if (!action.track || !action.snapshot) return;
+    restoreTrackGeometry(action.track, action.snapshot);
+    updateTrackList();
+    showToast('↩ Отменено: геометрия трека');
+  } else if (action.type === 'splitTrack') {
+    const originalTrack = action.originalTrack;
+    if (!originalTrack || !action.snapshot) return;
+    (action.createdTracks || []).forEach(track => removeTrackObject(track));
+    restoreTrackGeometry(originalTrack, action.snapshot);
+    if (!tracks.includes(originalTrack)) {
+      const insertIndex = Number.isInteger(action.originalIndex) ? Math.min(Math.max(action.originalIndex, 0), tracks.length) : tracks.length;
+      tracks.splice(insertIndex, 0, originalTrack);
+    }
+    if (!originalTrack.polyline) {
+      originalTrack.polyline = L.polyline(originalTrack.points, {
+        color: originalTrack.color,
+        weight: originalTrack.width,
+        opacity: 0.85
+      }).addTo(map);
+      bindTrackPolyline(originalTrack);
+    } else if (originalTrack.visible !== false && !map.hasLayer(originalTrack.polyline)) {
+      originalTrack.polyline.addTo(map);
+    }
+    syncTrackMarkers(originalTrack);
+    selectedTrackId = originalTrack.id;
+    updateTrackList();
+    showToast('↩ Отменено: разбиение трека');
   }
 }
 
@@ -2294,6 +2335,91 @@ function fitToLatLngs(points) {
   map.fitBounds(L.latLngBounds(points), { padding: [30, 30] });
 }
 
+const APP_STATE_VERSION = 1;
+
+function getIsoNow() {
+  return new Date().toISOString();
+}
+
+function makeEntityId(prefix) {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function normalizeIso(value, fallback = null) {
+  if (!value) return fallback;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? fallback : parsed.toISOString();
+}
+
+function ensureWaypointMeta(marker, options = {}) {
+  if (!marker?.wpData) marker.wpData = {};
+  const now = getIsoNow();
+  if (!marker.wpData.id) marker.wpData.id = makeEntityId('wp');
+  marker.wpData.createdAt = normalizeIso(marker.wpData.createdAt, normalizeIso(marker.wpData.updatedAt, now));
+  marker.wpData.updatedAt = normalizeIso(options.touch ? now : marker.wpData.updatedAt, marker.wpData.createdAt);
+  if (!marker.wpData.source) marker.wpData.source = 'desktop';
+  if (!Object.prototype.hasOwnProperty.call(marker.wpData, 'syncedAt')) marker.wpData.syncedAt = null;
+  if (options.touch) {
+    marker.wpData.source = 'desktop';
+    marker.wpData.syncedAt = null;
+  }
+  return marker;
+}
+
+function ensureTrackMeta(track, options = {}) {
+  if (!track) return track;
+  const now = getIsoNow();
+  if (!Number.isInteger(track.id)) track.id = trackIdCounter++;
+  track.createdAt = normalizeIso(track.createdAt, normalizeIso(track.updatedAt, now));
+  track.updatedAt = normalizeIso(options.touch ? now : track.updatedAt, track.createdAt);
+  if (!track.source) track.source = 'desktop';
+  if (!Object.prototype.hasOwnProperty.call(track, 'syncedAt')) track.syncedAt = null;
+  if (options.touch) {
+    track.source = 'desktop';
+    track.syncedAt = null;
+  }
+  return track;
+}
+
+function touchTrack(track) {
+  return ensureTrackMeta(track, { touch: true });
+}
+
+function ensureRouteMeta(route, options = {}) {
+  if (!route) return route;
+  const now = getIsoNow();
+  if (!Number.isInteger(route.id)) route.id = routeIdCounter++;
+  route.createdAt = normalizeIso(route.createdAt, normalizeIso(route.updatedAt, now));
+  route.updatedAt = normalizeIso(options.touch ? now : route.updatedAt, route.createdAt);
+  if (!route.source) route.source = 'desktop';
+  if (!Object.prototype.hasOwnProperty.call(route, 'syncedAt')) route.syncedAt = null;
+  if (options.touch) {
+    route.source = 'desktop';
+    route.syncedAt = null;
+  }
+  return route;
+}
+
+function touchRoute(route) {
+  return ensureRouteMeta(route, { touch: true });
+}
+
+function ensureImportedGpxMeta(file, options = {}) {
+  if (!file) return file;
+  const now = getIsoNow();
+  if (!file.id) file.id = makeEntityId('gpx');
+  file.createdAt = normalizeIso(file.createdAt || file.importedAt, normalizeIso(file.updatedAt, now));
+  file.updatedAt = normalizeIso(options.touch ? now : file.updatedAt, file.createdAt);
+  if (!file.source) file.source = 'desktop';
+  if (!Object.prototype.hasOwnProperty.call(file, 'syncedAt')) file.syncedAt = null;
+  if (!file.importedAt) file.importedAt = file.createdAt;
+  if (options.touch) {
+    file.source = 'desktop';
+    file.syncedAt = null;
+  }
+  return file;
+}
+
 function hexToOziColor(color) {
   const hex = String(color || '').replace('#', '');
   if (!/^[0-9a-fA-F]{6}$/.test(hex)) return 255;
@@ -2358,7 +2484,8 @@ function updateWaypointCircle(marker) {
   }
 }
 
-function refreshWaypoint(marker) {
+function refreshWaypoint(marker, options = {}) {
+  ensureWaypointMeta(marker, { touch: options.touch !== false });
   marker.setIcon(makeDivIcon(marker.wpData));
   marker.wpData.lat = marker.getLatLng().lat;
   marker.wpData.lng = marker.getLatLng().lng;
@@ -2399,7 +2526,9 @@ function getDefaultRadius() {
 function addWaypoint(latlng, nameHint, extra = {}) {
   const name = nameHint || ('wp'+wpCounter);
   const color = document.getElementById('setting-color-wpt')?.value || '#df7a4a';
+  const createdAt = normalizeIso(extra.createdAt || extra.importedAt, getIsoNow());
   const wpData = {
+    id: extra.id || makeEntityId('wp'),
     name,
     desc: extra.desc || '',
     icon: extra.icon || '⬤',
@@ -2407,12 +2536,16 @@ function addWaypoint(latlng, nameHint, extra = {}) {
     radius: Number.isFinite(extra.radius) ? extra.radius : getDefaultRadius(),
     lat: latlng.lat,
     lng: latlng.lng,
-    num: wpCounter
+    num: wpCounter,
+    createdAt,
+    updatedAt: normalizeIso(extra.updatedAt, createdAt),
+    source: extra.source || 'desktop',
+    syncedAt: extra.syncedAt || null
   };
   const marker = L.marker(latlng, { draggable: !objectsLocked, icon: makeDivIcon(wpData) });
   marker.wpData = wpData;
   marker.addTo(map);
-  refreshWaypoint(marker);
+  refreshWaypoint(marker, { touch: false });
   marker.on('contextmenu', e => {
     L.DomEvent.stop(e);
     if (e.originalEvent) { e.originalEvent.preventDefault(); e.originalEvent.stopPropagation(); }
@@ -2533,8 +2666,15 @@ function applyWaypointProps() {
 // РЕЖИМЫ
 // ─────────────────────────────────────────────
 let currentMode = 'hand';
-const modeNames = { hand:'Навигация', waypoint:'Добавить точку (клик)', track:'Рисовать трек (ESC — стоп)', route:'Создать маршрут (клик по КП)', ruler:'Линейка' };
-const btnMap = { hand:'btn-hand', waypoint:'btn-wpt', track:'btn-trk', route:'btn-rte', ruler:'btn-ruler' };
+const modeNames = {
+  hand:'Навигация',
+  waypoint:'Добавить точку (клик)',
+  track:'Рисовать трек (ESC — отмена)',
+  trackedit:'Редактирование трека',
+  route:'Создать маршрут (клик по КП)',
+  ruler:'Линейка'
+};
+const btnMap = { hand:'btn-hand', waypoint:'btn-wpt', track:'btn-trk', trackedit:'btn-trk', route:'btn-rte', ruler:'btn-ruler' };
 
 function setMode(mode) {
   if (currentMode === 'ruler' && mode !== 'ruler') clearRuler();
@@ -2588,7 +2728,16 @@ document.addEventListener('keydown', e => {
     return;
   }
   switch(e.key) {
-    case 'Escape': dialogCancel(); closeAllModals(); setMode('hand'); break;
+    case 'Escape':
+      if (currentTrackEdit) cancelTrackEdit();
+      else if (currentTrackDraw) cancelTrackDraw();
+      else if (currentRouteDraw) cancelRouteDraw();
+      else {
+        dialogCancel();
+        closeAllModals();
+        setMode('hand');
+      }
+      break;
     case ' ':
     case 'h': case 'H':
       e.preventDefault();
@@ -2644,12 +2793,14 @@ map.on('click', e => {
   if (typeof routePickMode !== 'undefined' && routePickMode) return; // route pick обрабатывается отдельно
   if (currentMode === 'waypoint') addWaypoint(e.latlng);
   else if (currentMode === 'track') addTrackPoint(e.latlng);
+  else if (currentMode === 'trackedit') showToast('Кликните по линии трека, чтобы вставить точку');
   else if (currentMode === 'route') showToast('⚠ Кликайте по существующим точкам (КП)');
   else if (currentMode === 'ruler') addRulerPoint(e.latlng);
 });
 map.on('dblclick', e => {
   L.DomEvent.stop(e);
   if (currentMode === 'track') finishTrackDraw();
+  else if (currentMode === 'trackedit') finishTrackEdit();
   else if (currentMode === 'route') finishRouteDraw();
 });
 
@@ -3716,9 +3867,12 @@ function loadGPXFile(text, fname) {
   if (rCount > 0) openModal('modal-routes');
   // Сохраняем импортированный GPX для синхронизации
   importedGpxFiles.push({
+    id: makeEntityId('gpx'),
     name: fname,
     content: text,
-    importedAt: new Date().toISOString(),
+    importedAt: getIsoNow(),
+    createdAt: getIsoNow(),
+    updatedAt: getIsoNow(),
     source: 'desktop',
     syncedAt: null
   });
@@ -3880,11 +4034,16 @@ function ctxTrackAction(action) {
   const { track, idx, marker } = t;
 
   if (action === 'delete') {
+    if (!canEditTrackGeometry(track)) {
+      showToast('Включите режим редактирования трека');
+      return;
+    }
     // Удаляем точку из трека
     if (track.points.length <= 2) {
       showToast('В треке должно быть минимум 2 точки');
       return;
     }
+    pushUndo({ type: 'trackGeometry', track, snapshot: snapshotTrackGeometry(track) });
     if (marker) map.removeLayer(marker);
     if (track.markers?.length > idx) track.markers.splice(idx, 1);
     track.points.splice(idx, 1);
@@ -3892,9 +4051,16 @@ function ctxTrackAction(action) {
     // Обновляем _trackIdx для оставшихся маркеров
     track.markers?.forEach((m, i) => { m._trackIdx = i; });
     if (track.polyline) track.polyline.setLatLngs(track.points);
+    syncTrackMarkers(track);
+    touchTrack(track);
+    updateTrackBuildPanel(track);
     showToast('Точка трека удалена');
 
   } else if (action === 'split') {
+    if (!canEditTrackGeometry(track)) {
+      showToast('Включите режим редактирования трека');
+      return;
+    }
     // Разбиваем трек на два в этой точке
     if (idx === 0 || idx >= track.points.length - 1) {
       showToast('Выберите среднюю точку — не первую и не последнюю');
@@ -3907,18 +4073,36 @@ function ctxTrackAction(action) {
     const name1 = track.name + ' (1)';
     const name2 = track.name + ' (2)';
     const color = track.color, width = track.width, pointSize = track.pointSize;
+    const splitUndo = {
+      type: 'splitTrack',
+      originalTrack: track,
+      snapshot: snapshotTrackGeometry(track),
+      originalIndex: tracks.indexOf(track)
+    };
 
     // Удаляем старый трек
-    if (track.polyline) map.removeLayer(track.polyline);
-    removeTrackMarkers(track);
-    const tIdx = tracks.indexOf(track);
-    if (tIdx !== -1) tracks.splice(tIdx, 1);
+    removeTrackObject(track);
 
     // Создаём два новых
     const t1 = createTrackFromPoints(pts1, name1, { color, width, pointSize });
     t1.pointsData = pd1;
+    touchTrack(t1);
     const t2 = createTrackFromPoints(pts2, name2, { color, width, pointSize });
     t2.pointsData = pd2;
+    touchTrack(t2);
+    splitUndo.createdTracks = [t1, t2];
+    pushUndo(splitUndo);
+    if (currentTrackEdit?.track?.id === track.id) {
+      currentTrackEdit = null;
+      document.getElementById('track-build-panel').style.display = 'none';
+      setMode('hand');
+    } else if (currentTrackDraw?.id === track.id) {
+      currentTrackDraw = null;
+      currentTrackSnapshot = null;
+      document.getElementById('track-build-panel').style.display = 'none';
+      setMode('hand');
+    }
+    selectedTrackId = t1.id;
 
     updateTrackList();
     showToast(`Трек разбит на "${name1}" и "${name2}"`);
@@ -4055,8 +4239,118 @@ function switchTab(btn, tabId) {
 let tracks = [], trackIdCounter = 1;
 let currentTrackDraw = null;
 let currentTrackSnapshot = null;
+let currentTrackEdit = null;
 let selectedTrackId = null;
 const trackPalette = ['#df4a4a','#4adf7a','#4a8adf','#dfdf4a','#df7a4a','#df4adf','#4adfe0','#7a4adf'];
+
+function cloneTrackPointsData(pointsData = []) {
+  return pointsData.map(point => point ? { ...point } : {});
+}
+
+function snapshotTrackGeometry(track) {
+  return {
+    points: track.points.map(point => ({ lat: point.lat, lng: point.lng })),
+    pointsData: cloneTrackPointsData(track.pointsData || []),
+    updatedAt: track.updatedAt || null,
+    source: track.source || 'desktop',
+    syncedAt: track.syncedAt || null
+  };
+}
+
+function isTrackDrawActive(track) {
+  return !!(track && currentTrackDraw?.id === track.id);
+}
+
+function isTrackEditActive(track) {
+  return !!(track && currentTrackEdit?.track?.id === track.id);
+}
+
+function canEditTrackGeometry(track) {
+  if (!track || objectsLocked) return false;
+  return isTrackDrawActive(track) || isTrackEditActive(track);
+}
+
+function shouldShowTrackMarkers(track) {
+  if (!track || track.visible === false) return false;
+  if (isTrackDrawActive(track) || isTrackEditActive(track)) return true;
+  return (track.pointSize ?? 3) > 0;
+}
+
+function setTrackPanelState(mode, track) {
+  const panel = document.getElementById('track-build-panel');
+  const title = document.getElementById('track-build-title');
+  const hint = document.getElementById('track-build-hint');
+  const cancelBtn = document.getElementById('track-build-cancel-btn');
+  const finishBtn = document.getElementById('track-build-finish-btn');
+  if (!panel || !title || !hint || !cancelBtn || !finishBtn) return;
+  if (mode === 'edit') {
+    panel.style.background = '#3a2c18';
+    panel.style.borderColor = '#7a5a2a';
+    title.style.color = '#f0c878';
+    title.textContent = '✏ Редактирование трека';
+    hint.textContent = 'Тяните точки мышью · клик по линии — вставить · ПКМ по точке — удалить или разбить';
+    cancelBtn.setAttribute('onclick', 'cancelTrackEdit()');
+    finishBtn.setAttribute('onclick', 'finishTrackEdit()');
+    finishBtn.textContent = '✓ Сохранить';
+  } else {
+    panel.style.background = '#1a3a1a';
+    panel.style.borderColor = '#2a6a2a';
+    title.style.color = '#a0d8a0';
+    title.textContent = track?.isNew ? '✏ Рисование трека' : '➕ Продолжение трека';
+    hint.textContent = track?.isNew
+      ? 'Кликайте на карту · двойной клик — завершить'
+      : 'Кликайте по карте для добавления новых точек в конец трека';
+    cancelBtn.setAttribute('onclick', 'cancelTrackDraw()');
+    finishBtn.setAttribute('onclick', 'finishTrackDraw()');
+    finishBtn.textContent = '✓ Готово';
+  }
+}
+
+function setTrackEditingVisualState(track, editing) {
+  if (!track?.polyline) return;
+  track.polyline.setStyle({
+    color: track.color,
+    weight: editing ? Math.max(track.width + 1, 4) : track.width,
+    opacity: editing ? 1 : 0.85,
+    dashArray: editing ? '10 6' : null
+  });
+  if (editing) track.polyline.bringToFront();
+}
+
+function restoreTrackGeometry(track, snapshot) {
+  if (!track || !snapshot) return;
+  track.points = (snapshot.points || []).map(point => L.latLng(point.lat, point.lng));
+  track.pointsData = cloneTrackPointsData(snapshot.pointsData || []);
+  track.updatedAt = snapshot.updatedAt || track.updatedAt || getIsoNow();
+  track.source = snapshot.source || track.source || 'desktop';
+  track.syncedAt = Object.prototype.hasOwnProperty.call(snapshot, 'syncedAt') ? snapshot.syncedAt : (track.syncedAt || null);
+  if (track.polyline) {
+    track.polyline.setLatLngs(track.points);
+  } else if (track.points.length > 0) {
+    track.polyline = L.polyline(track.points, {
+      color: track.color,
+      weight: track.width,
+      opacity: 0.85
+    });
+    if (track.visible !== false) track.polyline.addTo(map);
+    bindTrackPolyline(track);
+  }
+  setTrackEditingVisualState(track, isTrackEditActive(track));
+  syncTrackMarkers(track);
+  if (isTrackDrawActive(track) || isTrackEditActive(track)) updateTrackBuildPanel(track);
+}
+
+function syncTrackMarkers(track) {
+  if (shouldShowTrackMarkers(track)) addTrackMarkers(track);
+  else removeTrackMarkers(track);
+}
+
+function removeTrackObject(track) {
+  if (!track) return;
+  if (track.polyline && map.hasLayer(track.polyline)) map.removeLayer(track.polyline);
+  removeTrackMarkers(track);
+  tracks = tracks.filter(item => item !== track);
+}
 
 function formatTrackPointTooltip(track, idx) {
   const pt = track.points[idx];
@@ -4095,7 +4389,7 @@ function formatTrackPointTooltip(track, idx) {
 }
 
 function createTrackMarker(track, idx) {
-  const r = track.pointSize || 3;
+  const r = canEditTrackGeometry(track) ? Math.max(track.pointSize ?? 3, 5) : (track.pointSize ?? 3);
   const m = L.circleMarker(track.points[idx], {
     radius: r, color: track.color, fillColor: track.color, fillOpacity: 0.7, weight: 1
   }).addTo(map);
@@ -4106,20 +4400,28 @@ function createTrackMarker(track, idx) {
   });
   // Перетаскивание левой кнопкой
   m.on('mousedown', function(e) {
-    if (objectsLocked) return;
+    if (!canEditTrackGeometry(track)) return;
     if (e.originalEvent?.button !== 0) return; // только ЛКМ
     L.DomEvent.stop(e);
     m.closeTooltip();
+    const undoSnapshot = snapshotTrackGeometry(track);
+    let moved = false;
     const onMove = ev => {
       const latlng = map.mouseEventToLatLng(ev.originalEvent || ev);
       m.setLatLng(latlng);
       track.points[m._trackIdx] = latlng;
       if (track.polyline) track.polyline.setLatLngs(track.points);
+      moved = true;
     };
     const onUp = () => {
       map.off('mousemove', onMove);
       map.off('mouseup', onUp);
       map.dragging.enable();
+      if (moved) {
+        pushUndo({ type: 'trackGeometry', track, snapshot: undoSnapshot });
+        touchTrack(track);
+        updateTrackBuildPanel(track);
+      }
     };
     map.dragging.disable();
     map.on('mousemove', onMove);
@@ -4134,6 +4436,10 @@ function createTrackMarker(track, idx) {
 }
 
 function addTrackMarkers(track) {
+  if (!track || !shouldShowTrackMarkers(track)) {
+    removeTrackMarkers(track);
+    return;
+  }
   if (!track.markers) track.markers = [];
   track.markers.forEach(m => map.removeLayer(m));
   track.markers = track.points.map((_, i) => createTrackMarker(track, i));
@@ -4150,6 +4456,10 @@ function bindTrackPolyline(track) {
   track.polyline._trackBound = true;
   track.polyline.on('click', e => {
     L.DomEvent.stop(e);
+    if (isTrackEditActive(track)) {
+      insertTrackPointAtSegment(track, e.latlng);
+      return;
+    }
     selectTrackById(track.id);
     openModal('modal-tracks');
   });
@@ -4168,22 +4478,40 @@ function bindTrackPolyline(track) {
 }
 
 function createTrackFromPoints(points, name, options = {}) {
-  const id = trackIdCounter++;
+  const id = Number.isInteger(options.id) ? options.id : trackIdCounter++;
+  if (Number.isInteger(options.id)) trackIdCounter = Math.max(trackIdCounter, options.id + 1);
   const color = options.color || trackPalette[(id - 1) % trackPalette.length];
   const width = options.width || 3;
-  const polyline = L.polyline(points, { color, weight: width, opacity: 0.85 }).addTo(map);
-  const pointSize = options.pointSize || 3;
-  const track = { id, name: name || `Трек ${id}`, color, width, pointSize, points: [...points], pointsData: [], polyline, visible: true, markers: [] };
+  const polyline = L.polyline(points, { color, weight: width, opacity: 0.85 });
+  if (options.visible !== false) polyline.addTo(map);
+  const pointSize = options.pointSize ?? 3;
+  const track = {
+    id,
+    name: name || `Трек ${id}`,
+    color,
+    width,
+    pointSize,
+    points: [...points],
+    pointsData: [],
+    polyline,
+    visible: options.visible !== false,
+    markers: [],
+    createdAt: options.createdAt || null,
+    updatedAt: options.updatedAt || null,
+    source: options.source || 'desktop',
+    syncedAt: options.syncedAt || null
+  };
+  ensureTrackMeta(track, { touch: false });
   bindTrackPolyline(track);
-  addTrackMarkers(track);
+  syncTrackMarkers(track);
   tracks.push(track);
   return track;
 }
 
 function startNewTrack() {
-  if (currentTrackDraw) {
+  if (currentTrackDraw || currentTrackEdit) {
     openModal('modal-tracks');
-    showToast('Сначала завершите текущее рисование трека');
+    showToast('Сначала завершите текущее редактирование трека');
     return;
   }
   currentTrackSnapshot = null;
@@ -4191,12 +4519,23 @@ function startNewTrack() {
     id: trackIdCounter,
     name: 'Трек ' + trackIdCounter,
     color: trackPalette[(trackIdCounter - 1) % trackPalette.length],
-    width: 3, pointSize: 3, points: [], pointsData: [], polyline: null, visible: true, isNew: true
+    width: 3,
+    pointSize: 3,
+    points: [],
+    pointsData: [],
+    polyline: null,
+    visible: true,
+    isNew: true,
+    createdAt: getIsoNow(),
+    updatedAt: getIsoNow(),
+    source: 'desktop',
+    syncedAt: null
   };
   trackIdCounter++;
   tracks.push(currentTrackDraw);
   selectedTrackId = currentTrackDraw.id;
   setMode('track');
+  setTrackPanelState('draw', currentTrackDraw);
   document.getElementById('track-build-panel').style.display = 'block';
   updateTrackBuildPanel(currentTrackDraw);
   document.getElementById('track-controls').style.display = 'none';
@@ -4208,6 +4547,7 @@ function addTrackPoint(latlng) {
   currentTrackDraw.points.push(latlng);
   if (!currentTrackDraw.pointsData) currentTrackDraw.pointsData = [];
   currentTrackDraw.pointsData.push({});
+  touchTrack(currentTrackDraw);
   if (currentTrackDraw.polyline) {
     currentTrackDraw.polyline.setLatLngs(currentTrackDraw.points);
   } else {
@@ -4216,8 +4556,7 @@ function addTrackPoint(latlng) {
     }).addTo(map);
     bindTrackPolyline(currentTrackDraw);
   }
-  if (!currentTrackDraw.markers) currentTrackDraw.markers = [];
-  currentTrackDraw.markers.push(createTrackMarker(currentTrackDraw, currentTrackDraw.points.length - 1));
+  syncTrackMarkers(currentTrackDraw);
   updateTrackBuildPanel(currentTrackDraw);
   pushUndo({ type: 'addTrackPoint', track: currentTrackDraw });
 }
@@ -4225,10 +4564,13 @@ function finishTrackDraw() {
   if (!currentTrackDraw) return;
   if (currentTrackDraw.points.length < 2) { showToast('⚠ Нужно минимум 2 точки'); return; }
   const t = currentTrackDraw;
-  setMode('hand');
-  document.getElementById('track-build-panel').style.display = 'none';
+  touchTrack(t);
   currentTrackDraw = null;
   currentTrackSnapshot = null;
+  setTrackEditingVisualState(t, false);
+  syncTrackMarkers(t);
+  setMode('hand');
+  document.getElementById('track-build-panel').style.display = 'none';
   selectedTrackId = t.id;
   updateTrackList();
   openModal('modal-tracks');
@@ -4237,18 +4579,19 @@ function finishTrackDraw() {
 function cancelTrackDraw() {
   if (!currentTrackDraw) return;
   if (currentTrackDraw.isNew) {
-    if (currentTrackDraw.polyline) map.removeLayer(currentTrackDraw.polyline);
-    removeTrackMarkers(currentTrackDraw);
-    tracks = tracks.filter(t => t !== currentTrackDraw);
+    removeTrackObject(currentTrackDraw);
     selectedTrackId = null;
   } else if (currentTrackSnapshot) {
-    currentTrackDraw.points = currentTrackSnapshot.points.map(p => L.latLng(p.lat, p.lng));
-    if (currentTrackDraw.polyline) currentTrackDraw.polyline.setLatLngs(currentTrackDraw.points);
-    addTrackMarkers(currentTrackDraw);
+    restoreTrackGeometry(currentTrackDraw, currentTrackSnapshot);
     selectedTrackId = currentTrackDraw.id;
   }
+  const restoredTrack = currentTrackDraw;
   currentTrackDraw = null;
   currentTrackSnapshot = null;
+  if (restoredTrack) {
+    setTrackEditingVisualState(restoredTrack, false);
+    syncTrackMarkers(restoredTrack);
+  }
   setMode('hand');
   document.getElementById('track-build-panel').style.display = 'none';
   updateTrackList();
@@ -4256,7 +4599,11 @@ function cancelTrackDraw() {
 }
 function renameTrack(id, newName) {
   const t = tracks.find(t => t.id === id);
-  if (t) { t.name = newName.trim() || t.name; showToast('Трек переименован: ' + t.name); }
+  if (t) {
+    t.name = newName.trim() || t.name;
+    touchTrack(t);
+    showToast('Трек переименован: ' + t.name);
+  }
 }
 
 function trackLen(t) {
@@ -4288,6 +4635,110 @@ function updateTrackBuildPanel(t) {
     } else { elExtra.style.display = 'none'; }
   } else { elExtra.style.display = 'none'; }
 }
+
+function getTrackSegmentInsertIndex(track, latlng) {
+  if (!track || track.points.length < 2) return track?.points?.length || 0;
+  const clickPoint = map.latLngToLayerPoint(latlng);
+  let bestIndex = track.points.length;
+  let bestDistance = Infinity;
+  for (let i = 0; i < track.points.length - 1; i++) {
+    const a = map.latLngToLayerPoint(track.points[i]);
+    const b = map.latLngToLayerPoint(track.points[i + 1]);
+    const abx = b.x - a.x;
+    const aby = b.y - a.y;
+    const apx = clickPoint.x - a.x;
+    const apy = clickPoint.y - a.y;
+    const abLenSq = abx * abx + aby * aby || 1;
+    const t = Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLenSq));
+    const projX = a.x + abx * t;
+    const projY = a.y + aby * t;
+    const dx = clickPoint.x - projX;
+    const dy = clickPoint.y - projY;
+    const distSq = dx * dx + dy * dy;
+    if (distSq < bestDistance) {
+      bestDistance = distSq;
+      bestIndex = i + 1;
+    }
+  }
+  return bestIndex;
+}
+
+function insertTrackPointAtSegment(track, latlng) {
+  if (!isTrackEditActive(track)) {
+    showToast('Включите режим редактирования трека');
+    return;
+  }
+  const insertIndex = getTrackSegmentInsertIndex(track, latlng);
+  pushUndo({ type: 'trackGeometry', track, snapshot: snapshotTrackGeometry(track) });
+  track.points.splice(insertIndex, 0, latlng);
+  if (!track.pointsData) track.pointsData = [];
+  track.pointsData.splice(insertIndex, 0, {});
+  if (track.polyline) track.polyline.setLatLngs(track.points);
+  syncTrackMarkers(track);
+  touchTrack(track);
+  updateTrackBuildPanel(track);
+  showToast('Точка вставлена в трек');
+}
+
+function startTrackEdit() {
+  const track = tracks.find(item => item.id === selectedTrackId);
+  if (!track) return;
+  if (currentTrackDraw || currentTrackEdit) {
+    showToast('Сначала завершите текущее редактирование трека');
+    return;
+  }
+  if (track.visible === false) {
+    track.visible = true;
+    if (track.polyline && !map.hasLayer(track.polyline)) track.polyline.addTo(map);
+  }
+  currentTrackEdit = {
+    track,
+    snapshot: snapshotTrackGeometry(track)
+  };
+  selectedTrackId = track.id;
+  setMode('trackedit');
+  setTrackPanelState('edit', track);
+  document.getElementById('track-build-panel').style.display = 'block';
+  document.getElementById('track-controls').style.display = 'none';
+  closeModal('modal-tracks');
+  setTrackEditingVisualState(track, true);
+  syncTrackMarkers(track);
+  updateTrackBuildPanel(track);
+  showToast('Режим редактирования трека включён');
+}
+
+function finishTrackEdit() {
+  if (!currentTrackEdit) return;
+  const track = currentTrackEdit.track;
+  if (!track || track.points.length < 2) {
+    showToast('⚠ В треке должно быть минимум 2 точки');
+    return;
+  }
+  touchTrack(track);
+  setTrackEditingVisualState(track, false);
+  currentTrackEdit = null;
+  setMode('hand');
+  document.getElementById('track-build-panel').style.display = 'none';
+  syncTrackMarkers(track);
+  updateTrackList();
+  openModal('modal-tracks');
+  showToast('✓ Изменения трека сохранены');
+}
+
+function cancelTrackEdit() {
+  if (!currentTrackEdit) return;
+  const track = currentTrackEdit.track;
+  const snapshot = currentTrackEdit.snapshot;
+  currentTrackEdit = null;
+  restoreTrackGeometry(track, snapshot);
+  setTrackEditingVisualState(track, false);
+  setMode('hand');
+  document.getElementById('track-build-panel').style.display = 'none';
+  updateTrackList();
+  openModal('modal-tracks');
+  showToast('Редактирование трека отменено');
+}
+
 function selectTrackById(id) {
   selectedTrackId = id;
   const t = tracks.find(t => t.id === id);
@@ -4296,7 +4747,7 @@ function selectTrackById(id) {
   document.getElementById('track-color-input').value = t.color;
   document.getElementById('track-width-input').value = t.width;
   document.getElementById('track-width-val').textContent = t.width + 'px';
-  const ps = t.pointSize || 3;
+  const ps = t.pointSize ?? 3;
   document.getElementById('track-point-size-input').value = ps;
   document.getElementById('track-point-size-val').textContent = ps == 0 ? 'скрыты' : ps + 'px';
   document.getElementById('track-controls').style.display = 'block';
@@ -4311,15 +4762,13 @@ function applyTrackProps() {
   const newPointSize = parseInt(document.getElementById('track-point-size-input').value);
   t.pointSize = newPointSize;
   if (t.polyline) t.polyline.setStyle({ color: t.color, weight: t.width });
-  if (newPointSize === 0) {
-    removeTrackMarkers(t);
-  } else {
-    if (t.markers && t.markers.length > 0) {
-      t.markers.forEach(m => m.setStyle({ color: t.color, fillColor: t.color, radius: newPointSize }));
-    } else {
-      addTrackMarkers(t);
-    }
+  syncTrackMarkers(t);
+  if (t.markers?.length > 0) {
+    const radius = canEditTrackGeometry(t) ? Math.max(newPointSize, 5) : newPointSize;
+    t.markers.forEach(m => m.setStyle({ color: t.color, fillColor: t.color, radius }));
   }
+  setTrackEditingVisualState(t, isTrackEditActive(t));
+  touchTrack(t);
   updateTrackList();
   showToast('✓ Свойства обновлены');
 }
@@ -4332,11 +4781,16 @@ function centerSelectedTrack() {
 function reverseSelectedTrack() {
   const t = tracks.find(track => track.id === selectedTrackId);
   if (!t || t.points.length < 2) return;
+  pushUndo({ type: 'trackGeometry', track: t, snapshot: snapshotTrackGeometry(t) });
   t.points = [...t.points].reverse();
   if (t.pointsData) t.pointsData = [...t.pointsData].reverse();
   if (t.polyline) t.polyline.setLatLngs(t.points);
-  addTrackMarkers(t);
+  syncTrackMarkers(t);
+  touchTrack(t);
   if (currentTrackDraw?.id === t.id) {
+    updateTrackBuildPanel(t);
+  }
+  if (currentTrackEdit?.track?.id === t.id) {
     updateTrackBuildPanel(t);
   }
   updateTrackList();
@@ -4345,20 +4799,20 @@ function reverseSelectedTrack() {
 function continueSelectedTrack() {
   const t = tracks.find(track => track.id === selectedTrackId);
   if (!t) return;
-  if (currentTrackDraw && currentTrackDraw.id !== t.id) {
-    showToast('Сначала завершите текущее рисование трека');
+  if (currentTrackDraw || currentTrackEdit) {
+    showToast('Сначала завершите текущее редактирование трека');
     return;
   }
-  currentTrackSnapshot = {
-    points: t.points.map(point => L.latLng(point.lat, point.lng))
-  };
+  currentTrackSnapshot = snapshotTrackGeometry(t);
   currentTrackDraw = t;
   currentTrackDraw.isNew = false;
   setMode('track');
+  setTrackPanelState('draw', currentTrackDraw);
   document.getElementById('track-build-panel').style.display = 'block';
   updateTrackBuildPanel(t);
   document.getElementById('track-controls').style.display = 'none';
   closeModal('modal-tracks');
+  syncTrackMarkers(t);
   showToast('Продолжение трека: кликайте по карте для добавления новых точек');
 }
 function deleteSelectedTrack() {
@@ -4370,9 +4824,12 @@ function deleteSelectedTrack() {
     document.getElementById('track-build-panel').style.display = 'none';
     setMode('hand');
   }
-  if (t.polyline) map.removeLayer(t.polyline);
-  removeTrackMarkers(t);
-  tracks = tracks.filter(tr => tr.id !== selectedTrackId);
+  if (currentTrackEdit?.track?.id === t.id) {
+    currentTrackEdit = null;
+    document.getElementById('track-build-panel').style.display = 'none';
+    setMode('hand');
+  }
+  removeTrackObject(t);
   selectedTrackId = null;
   document.getElementById('track-controls').style.display = 'none';
   updateTrackList();
@@ -4381,14 +4838,14 @@ function deleteSelectedTrack() {
 function toggleTrackVisible(id) {
   const t = tracks.find(t => t.id === id);
   if (!t || !t.polyline) return;
-  if (currentTrackDraw?.id === id) {
+  if (currentTrackDraw?.id === id || currentTrackEdit?.track?.id === id) {
     showToast('Сначала завершите редактирование трека');
     return;
   }
   t.visible = !t.visible;
   if (t.visible) {
     t.polyline.addTo(map);
-    if (t.pointSize !== 0) addTrackMarkers(t);
+    syncTrackMarkers(t);
   } else {
     map.removeLayer(t.polyline);
     removeTrackMarkers(t);
@@ -4406,6 +4863,9 @@ function updateTrackList() {
     const km = trackLen(t).toFixed(1), sel = t.id === selectedTrackId;
     const syncInfo = t.syncedAt ? `<span title="Синхр. с ${t.source === 'android' ? 'Android' : 'desktop'} · ${new Date(t.syncedAt).toLocaleString('ru-RU')}" style="font-size:10px;opacity:0.7;margin-left:4px">☁</span>` : '';
     const srcTag = t.source && t.source !== 'desktop' ? ` · <span style="font-size:10px;color:var(--text-secondary)">${t.source}</span>` : '';
+    const modeTag = isTrackEditActive(t)
+      ? ' · <span style="font-size:10px;color:#f0c878">редактируется</span>'
+      : (isTrackDrawActive(t) ? ' · <span style="font-size:10px;color:#90c890">строится</span>' : '');
     return `<div class="track-item${sel ? ' selected' : ''}" style="${sel ? 'background:#1a3a6a;border-left:3px solid #4a8adf;' : ''}" onclick="selectTrackById(${t.id})">
       <input type="checkbox" class="track-play-cb" data-track-id="${t.id}" onclick="event.stopPropagation()" style="accent-color:${t.color};margin-right:4px" title="Выбрать для плеера">
       <div class="track-color" style="background:${t.color};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px" title="Скрыть/показать" onclick="event.stopPropagation();toggleTrackVisible(${t.id})">${t.visible !== false ? '👁' : '○'}</div>
@@ -4413,7 +4873,7 @@ function updateTrackList() {
         <input class="track-name" value="${escapeHtml(t.name)}" onclick="event.stopPropagation()" onchange="renameTrack(${t.id},this.value)"
           style="background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text-primary);font-size:13px;font-weight:500;outline:none;width:100%;padding:0"
           onfocus="this.style.borderBottomColor='#4a8adf'" onblur="this.style.borderBottomColor='transparent'">${syncInfo}
-        <div class="track-meta">${t.points.length} точек · ${km} км${srcTag}</div>
+        <div class="track-meta">${t.points.length} точек · ${km} км${srcTag}${modeTag}</div>
       </div>
     </div>`;
   }).join('');
@@ -4632,10 +5092,23 @@ let currentRouteDraw = null;
 const routePalette = ['#df4a4a','#4a8adf','#dfdf4a','#4adf7a','#df7a4a','#df4adf'];
 
 function createRouteFromPoints(points, name, labels = [], options = {}) {
-  const id = routeIdCounter++;
+  const id = Number.isInteger(options.id) ? options.id : routeIdCounter++;
+  if (Number.isInteger(options.id)) routeIdCounter = Math.max(routeIdCounter, options.id + 1);
   const color = options.color || routePalette[(id - 1) % routePalette.length];
   const polyline = L.polyline(points, { color, weight: 3, opacity: 0.9, dashArray: '8 4' }).addTo(map);
-  const route = { id, name: name || `Маршрут ${id}`, color, points: [...points], labels: labels.length ? [...labels] : points.map((_, i) => `КП${i+1}`), polyline };
+  const route = {
+    id,
+    name: name || `Маршрут ${id}`,
+    color,
+    points: [...points],
+    labels: labels.length ? [...labels] : points.map((_, i) => `КП${i+1}`),
+    polyline,
+    createdAt: options.createdAt || null,
+    updatedAt: options.updatedAt || null,
+    source: options.source || 'desktop',
+    syncedAt: options.syncedAt || null
+  };
+  ensureRouteMeta(route, { touch: false });
   routes.push(route);
   return route;
 }
@@ -4645,7 +5118,13 @@ function startNewRoute() {
     id: routeIdCounter,
     name: 'Маршрут ' + routeIdCounter,
     color: routePalette[(routeIdCounter - 1) % routePalette.length],
-    points: [], labels: [], polyline: null
+    points: [],
+    labels: [],
+    polyline: null,
+    createdAt: getIsoNow(),
+    updatedAt: getIsoNow(),
+    source: 'desktop',
+    syncedAt: null
   };
   routeIdCounter++;
   routes.push(currentRouteDraw);
@@ -4664,6 +5143,7 @@ function addRoutePoint(latlng, label) {
   const num = currentRouteDraw.points.length + 1;
   currentRouteDraw.points.push(latlng);
   currentRouteDraw.labels.push(label || `КП${num}`);
+  touchRoute(currentRouteDraw);
   if (currentRouteDraw.polyline) {
     currentRouteDraw.polyline.setLatLngs(currentRouteDraw.points);
   } else {
@@ -4694,6 +5174,7 @@ function removeRouteBuildPoint(index) {
   if (!currentRouteDraw || index < 0 || index >= currentRouteDraw.points.length) return;
   currentRouteDraw.points.splice(index, 1);
   currentRouteDraw.labels.splice(index, 1);
+  touchRoute(currentRouteDraw);
   if (currentRouteDraw.polyline) {
     if (currentRouteDraw.points.length === 0) {
       map.removeLayer(currentRouteDraw.polyline);
@@ -4714,6 +5195,7 @@ function finishRouteDraw() {
   if (currentRouteDraw.points.length < 2) { showToast('⚠ Нужно минимум 2 КП'); return; }
   const nameInput = document.getElementById('route-build-name');
   if (nameInput?.value?.trim()) currentRouteDraw.name = nameInput.value.trim();
+  touchRoute(currentRouteDraw);
   setMode('hand');
   document.getElementById('route-build-panel').style.display = 'none';
   const r = currentRouteDraw;
@@ -4802,6 +5284,7 @@ function onRouteKpDrop(e) {
     r.labels.splice(toIdx, 0, lb);
   }
   if (r.polyline) r.polyline.setLatLngs(r.points);
+  touchRoute(r);
   updateRouteList();
   _dragRouteId = null; _dragKpIdx = null;
 }
@@ -4815,6 +5298,7 @@ function moveRoutePoint(routeId, idx, dir) {
   [r.points[idx], r.points[newIdx]] = [r.points[newIdx], r.points[idx]];
   if (r.labels?.length) [r.labels[idx], r.labels[newIdx]] = [r.labels[newIdx], r.labels[idx]];
   if (r.polyline) r.polyline.setLatLngs(r.points);
+  touchRoute(r);
   updateRouteList();
 }
 function deleteRoutePoint(routeId, idx) {
@@ -4824,6 +5308,7 @@ function deleteRoutePoint(routeId, idx) {
   r.points.splice(idx, 1);
   if (r.labels?.length) r.labels.splice(idx, 1);
   if (r.polyline) r.polyline.setLatLngs(r.points);
+  touchRoute(r);
   updateRouteList();
   showToast('Точка маршрута удалена');
 }
@@ -4833,6 +5318,7 @@ function renameRoute(routeId) {
   const el = document.getElementById('route-name-' + routeId);
   if (!el) return;
   r.name = el.value.trim() || r.name;
+  touchRoute(r);
   updateRouteList();
   showToast('Маршрут переименован: ' + r.name);
 }
@@ -6179,7 +6665,7 @@ function tauriInvoke(command, args = {}) {
 // ─────────────────────────────────────────────
 function collectState() {
   const state = {
-    version: 1,
+    version: APP_STATE_VERSION,
     map: {
       center: { lat: map.getCenter().lat, lng: map.getCenter().lng },
       zoom: map.getZoom(),
@@ -6188,40 +6674,56 @@ function collectState() {
     counters: { wpCounter, trackIdCounter, routeIdCounter, waypointSetIdCounter },
     waypointSets: waypointSets.map(s => ({ id: s.id, name: s.name, visible: s.visible })),
     activeSetId,
-    waypoints: waypoints.map(m => ({
-      lat: m.wpData.lat,
-      lng: m.wpData.lng,
-      name: m.wpData.name,
-      desc: m.wpData.desc,
-      icon: m.wpData.icon?.length > 2 ? garminToEmoji(m.wpData.icon) : m.wpData.icon,
-      color: m.wpData.color,
-      radius: m.wpData.radius,
-      num: m.wpData.num,
-      setId: m._setId,
-      source: m.wpData.source || 'desktop',
-      syncedAt: m.wpData.syncedAt || null
-    })),
-    tracks: tracks.filter(t => !t.isNew).map(t => ({
-      id: t.id,
-      name: t.name,
-      color: t.color,
-      width: t.width,
-      pointSize: t.pointSize,
-      points: t.points.map(p => ({ lat: p.lat, lng: p.lng })),
-      pointsData: t.pointsData || [],
-      visible: t.visible,
-      source: t.source || 'desktop',
-      syncedAt: t.syncedAt || null
-    })),
-    routes: routes.map(r => ({
-      id: r.id,
-      name: r.name,
-      color: r.color,
-      points: r.points.map(p => ({ lat: p.lat, lng: p.lng })),
-      labels: r.labels || [],
-      source: r.source || 'desktop',
-      syncedAt: r.syncedAt || null
-    })),
+    waypoints: waypoints.map(m => {
+      ensureWaypointMeta(m, { touch: false });
+      return {
+        id: m.wpData.id,
+        lat: m.wpData.lat,
+        lng: m.wpData.lng,
+        name: m.wpData.name,
+        desc: m.wpData.desc,
+        icon: m.wpData.icon?.length > 2 ? garminToEmoji(m.wpData.icon) : m.wpData.icon,
+        color: m.wpData.color,
+        radius: m.wpData.radius,
+        num: m.wpData.num,
+        setId: m._setId,
+        createdAt: m.wpData.createdAt || null,
+        updatedAt: m.wpData.updatedAt || null,
+        source: m.wpData.source || 'desktop',
+        syncedAt: m.wpData.syncedAt || null
+      };
+    }),
+    tracks: tracks.filter(t => !t.isNew).map(t => {
+      ensureTrackMeta(t, { touch: false });
+      return {
+        id: t.id,
+        name: t.name,
+        color: t.color,
+        width: t.width,
+        pointSize: t.pointSize,
+        points: t.points.map(p => ({ lat: p.lat, lng: p.lng })),
+        pointsData: t.pointsData || [],
+        visible: t.visible,
+        createdAt: t.createdAt || null,
+        updatedAt: t.updatedAt || null,
+        source: t.source || 'desktop',
+        syncedAt: t.syncedAt || null
+      };
+    }),
+    routes: routes.map(r => {
+      ensureRouteMeta(r, { touch: false });
+      return {
+        id: r.id,
+        name: r.name,
+        color: r.color,
+        points: r.points.map(p => ({ lat: p.lat, lng: p.lng })),
+        labels: r.labels || [],
+        createdAt: r.createdAt || null,
+        updatedAt: r.updatedAt || null,
+        source: r.source || 'desktop',
+        syncedAt: r.syncedAt || null
+      };
+    }),
     settings: {
       defaultRadius: getDefaultRadius(),
       colorWpt: document.getElementById('setting-color-wpt')?.value || '#df7a4a',
@@ -6238,13 +6740,19 @@ function collectState() {
       liveLabelSize: parseInt(document.getElementById('setting-live-label-size')?.value) || 3,
       theme: getTheme()
     },
-    gpxFiles: importedGpxFiles.map(g => ({
-      name: g.name,
-      content: g.content,
-      importedAt: g.importedAt,
-      source: g.source || 'desktop',
-      syncedAt: g.syncedAt || null
-    }))
+    gpxFiles: importedGpxFiles.map(g => {
+      ensureImportedGpxMeta(g, { touch: false });
+      return {
+        id: g.id,
+        name: g.name,
+        content: g.content,
+        importedAt: g.importedAt,
+        createdAt: g.createdAt || null,
+        updatedAt: g.updatedAt || null,
+        source: g.source || 'desktop',
+        syncedAt: g.syncedAt || null
+      };
+    })
   };
   return state;
 }
@@ -6318,17 +6826,20 @@ function applyState(state) {
   if (state.waypoints && state.waypoints.length > 0) {
     state.waypoints.forEach(wp => {
       const latlng = L.latLng(wp.lat, wp.lng);
-      wpCounter = wp.num;
+      wpCounter = Math.max(wpCounter, (wp.num || 0) + 1);
       const marker = L.marker(latlng, { draggable: !objectsLocked, icon: makeDivIcon(wp) });
       marker.wpData = {
+        id: wp.id || null,
         name: wp.name, desc: wp.desc || '', icon: wp.icon || '⬤',
         color: wp.color, radius: wp.radius || 0,
         lat: wp.lat, lng: wp.lng, num: wp.num,
+        createdAt: wp.createdAt || null,
+        updatedAt: wp.updatedAt || null,
         source: wp.source || 'desktop',
         syncedAt: wp.syncedAt || null
       };
       marker.addTo(map);
-      refreshWaypoint(marker);
+      refreshWaypoint(marker, { touch: false });
       marker.on('contextmenu', e => { L.DomEvent.stop(e); if (e.originalEvent) { e.originalEvent.preventDefault(); e.originalEvent.stopPropagation(); } showCtxMenu(e.originalEvent, marker); });
       marker.on('click', e => { L.DomEvent.stop(e); if (e.originalEvent) e.originalEvent.stopPropagation(); if (currentMode === 'route' && currentRouteDraw) { addRoutePoint(marker.getLatLng(), marker.wpData.name); return; } openQuickRename(marker); });
       marker.on('dragstart', () => { marker.closePopup(); });
@@ -6340,7 +6851,7 @@ function applyState(state) {
       const set = waypointSets.find(s => s.id === targetSetId);
       if (set) set.waypoints.push(marker);
     });
-    wpCounter = state.counters?.wpCounter || (wpCounter + 1);
+    wpCounter = state.counters?.wpCounter || Math.max(wpCounter, 1);
     waypointSets.forEach(s => {
       if (!s.visible) s.waypoints.forEach(m => { m.remove(); if (m.wpCircle) map.removeLayer(m.wpCircle); });
     });
@@ -6352,13 +6863,17 @@ function applyState(state) {
     state.tracks.forEach(t => {
       const points = t.points.map(p => L.latLng(p.lat, p.lng));
       const track = createTrackFromPoints(points, t.name, {
-        color: t.color, width: t.width, pointSize: t.pointSize
+        id: t.id,
+        color: t.color,
+        width: t.width,
+        pointSize: t.pointSize,
+        visible: t.visible !== false,
+        createdAt: t.createdAt || null,
+        updatedAt: t.updatedAt || null,
+        source: t.source || 'desktop',
+        syncedAt: t.syncedAt || null
       });
-      track.id = t.id;
       track.pointsData = t.pointsData || [];
-      track.visible = t.visible !== false;
-      track.source = t.source || 'desktop';
-      track.syncedAt = t.syncedAt || null;
       if (!track.visible) {
         if (track.polyline) map.removeLayer(track.polyline);
         if (track.markers) track.markers.forEach(m => map.removeLayer(m));
@@ -6371,10 +6886,14 @@ function applyState(state) {
   if (state.routes && state.routes.length > 0) {
     state.routes.forEach(r => {
       const points = r.points.map(p => L.latLng(p.lat, p.lng));
-      const route = createRouteFromPoints(points, r.name, r.labels, { color: r.color });
-      route.id = r.id;
-      route.source = r.source || 'desktop';
-      route.syncedAt = r.syncedAt || null;
+      createRouteFromPoints(points, r.name, r.labels, {
+        id: r.id,
+        color: r.color,
+        createdAt: r.createdAt || null,
+        updatedAt: r.updatedAt || null,
+        source: r.source || 'desktop',
+        syncedAt: r.syncedAt || null
+      });
     });
     routeIdCounter = state.counters?.routeIdCounter || routeIdCounter;
   }
@@ -6407,9 +6926,12 @@ function applyState(state) {
   // 4.7. Restore imported GPX files
   if (state.gpxFiles && state.gpxFiles.length > 0) {
     importedGpxFiles = state.gpxFiles.map(g => ({
+      id: g.id || makeEntityId('gpx'),
       name: g.name,
       content: g.content,
       importedAt: g.importedAt,
+      createdAt: g.createdAt || g.importedAt || null,
+      updatedAt: g.updatedAt || g.importedAt || null,
       source: g.source || 'desktop',
       syncedAt: g.syncedAt || null
     }));
@@ -6534,6 +7056,132 @@ function syncHeaders() {
 
 function syncApiUrl(path) {
   return `${SYNC_SERVER}${path}`;
+}
+
+function isPlainObject(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function getSyncItems(value, fallback = []) {
+  if (Array.isArray(value)) return value;
+  if (isPlainObject(value) && Array.isArray(value.items)) return value.items;
+  return fallback;
+}
+
+function buildSyncPayload(fullState, checks) {
+  const updatedAt = getIsoNow();
+  const payload = {
+    version: APP_STATE_VERSION,
+    settings: {
+      settings: fullState.settings,
+      map: fullState.map,
+      counters: fullState.counters,
+      updatedAt
+    }
+  };
+
+  if (checks.waypoints) {
+    payload.waypoints = {
+      items: fullState.waypoints,
+      waypointSets: fullState.waypointSets,
+      activeSetId: fullState.activeSetId,
+      counters: {
+        wpCounter: fullState.counters.wpCounter,
+        waypointSetIdCounter: fullState.counters.waypointSetIdCounter
+      },
+      updatedAt
+    };
+  }
+  if (checks.tracks) {
+    payload.tracks = {
+      items: fullState.tracks,
+      counters: { trackIdCounter: fullState.counters.trackIdCounter },
+      updatedAt
+    };
+  }
+  if (checks.routes) {
+    payload.routes = {
+      items: fullState.routes,
+      counters: { routeIdCounter: fullState.counters.routeIdCounter },
+      updatedAt
+    };
+  }
+  if (checks.gpx) {
+    payload.gpx = { items: fullState.gpxFiles, updatedAt };
+    payload.gpxFiles = fullState.gpxFiles;
+  }
+
+  return payload;
+}
+
+function normalizeSyncPullState(payload, fallbackState = null) {
+  const fallback = fallbackState || {
+    version: APP_STATE_VERSION,
+    map: {},
+    counters: {},
+    waypointSets: [],
+    activeSetId: null,
+    waypoints: [],
+    tracks: [],
+    routes: [],
+    gpxFiles: [],
+    settings: {}
+  };
+  const response = isPlainObject(payload) ? payload : {};
+  const nested = isPlainObject(response.data) ? response.data : response;
+  const waypointsDoc = isPlainObject(nested.waypoints) ? nested.waypoints : null;
+  const tracksDoc = isPlainObject(nested.tracks) ? nested.tracks : null;
+  const routesDoc = isPlainObject(nested.routes) ? nested.routes : null;
+  const gpxDoc = isPlainObject(nested.gpx) ? nested.gpx : (isPlainObject(nested.gpxFiles) ? nested.gpxFiles : null);
+  const settingsDoc = isPlainObject(nested.settings) && ('settings' in nested.settings || 'map' in nested.settings || 'counters' in nested.settings || 'updatedAt' in nested.settings)
+    ? nested.settings
+    : null;
+
+  const counters = {
+    ...(fallback.counters || {}),
+    ...(isPlainObject(settingsDoc?.counters) ? settingsDoc.counters : {}),
+    ...(isPlainObject(response.counters) ? response.counters : {}),
+    ...(isPlainObject(nested.counters) ? nested.counters : {})
+  };
+  const waypointSets = Array.isArray(response.waypointSets)
+    ? response.waypointSets
+    : Array.isArray(waypointsDoc?.waypointSets)
+      ? waypointsDoc.waypointSets
+      : Array.isArray(nested.waypointSets)
+        ? nested.waypointSets
+        : (fallback.waypointSets || []);
+  const settingsValue = isPlainObject(response.settings)
+    ? response.settings
+    : isPlainObject(settingsDoc?.settings)
+      ? settingsDoc.settings
+      : (isPlainObject(nested.settings) && !settingsDoc ? nested.settings : (fallback.settings || {}));
+  const mapValue = isPlainObject(response.map)
+    ? response.map
+    : isPlainObject(settingsDoc?.map)
+      ? settingsDoc.map
+      : (isPlainObject(nested.map) ? nested.map : (fallback.map || {}));
+
+  return {
+    version: APP_STATE_VERSION,
+    _source: response._source || nested._source || 'sync',
+    map: mapValue,
+    counters,
+    waypointSets,
+    activeSetId: response.activeSetId ?? waypointsDoc?.activeSetId ?? nested.activeSetId ?? fallback.activeSetId ?? null,
+    waypoints: Array.isArray(response.waypoints)
+      ? response.waypoints
+      : getSyncItems(waypointsDoc, Array.isArray(nested.waypoints) ? nested.waypoints : (fallback.waypoints || [])),
+    tracks: Array.isArray(response.tracks)
+      ? response.tracks
+      : getSyncItems(tracksDoc, Array.isArray(nested.tracks) ? nested.tracks : (fallback.tracks || [])),
+    routes: Array.isArray(response.routes)
+      ? response.routes
+      : getSyncItems(routesDoc, Array.isArray(nested.routes) ? nested.routes : (fallback.routes || [])),
+    gpxFiles: Array.isArray(response.gpxFiles)
+      ? response.gpxFiles
+      : getSyncItems(gpxDoc, Array.isArray(nested.gpxFiles) ? nested.gpxFiles : (fallback.gpxFiles || [])),
+    settings: settingsValue
+  };
 }
 
 function updateSyncStatus(text, online) {
@@ -6710,10 +7358,11 @@ async function checkSyncServerInfo() {
       document.getElementById('sync-server-info').innerHTML = '<span style="color:#e07070">Ключ не найден</span>';
       return;
     }
-    const state = await resp.json();
-    if (state.error) {
-      document.getElementById('sync-server-info').innerHTML = `<span style="color:#e07070">${escapeHtml(state.error)}</span>`;
+    const payload = await resp.json();
+    if (payload.error) {
+      document.getElementById('sync-server-info').innerHTML = `<span style="color:#e07070">${escapeHtml(payload.error)}</span>`;
     } else {
+      const state = normalizeSyncPullState(payload);
       const wpts = (state.waypoints || []).length;
       const trks = (state.tracks || []).length;
       const rtes = (state.routes || []).length;
@@ -6733,18 +7382,7 @@ async function syncPush() {
   if (!cfg.email || !cfg.syncKey) { showToast('Привяжите email для синхронизации'); return; }
   const checks = getSyncChecks();
   const fullState = collectState();
-
-  const state = { version: 1, counters: fullState.counters };
-  if (checks.waypoints) {
-    state.waypoints = fullState.waypoints;
-    state.waypointSets = fullState.waypointSets;
-    state.activeSetId = fullState.activeSetId;
-  }
-  if (checks.tracks) state.tracks = fullState.tracks;
-  if (checks.routes) state.routes = fullState.routes;
-  if (checks.gpx) state.gpxFiles = fullState.gpxFiles;
-  state.map = fullState.map;
-  state.settings = fullState.settings;
+  const state = buildSyncPayload(fullState, checks);
 
   updateSyncStatus('Отправка...', false);
   try {
@@ -6882,16 +7520,17 @@ async function syncPull(silent) {
       updateSyncStatus('Ошибка: ' + resp.status, false);
       return;
     }
-    const state = await resp.json();
-    if (state.error) {
-      updateSyncStatus('Ошибка: ' + state.error, false);
+    const payload = await resp.json();
+    if (payload.error) {
+      updateSyncStatus('Ошибка: ' + payload.error, false);
       return;
     }
 
     // Filter by checkboxes — сохраняем локальные данные для незатронутых типов
     const localState = collectState();
+    const state = normalizeSyncPullState(payload, localState);
     const syncTime = new Date().toISOString();
-    const serverSource = state._source || 'android';
+    const serverSource = state._source || 'sync';
 
     // Помечаем синхронизированные элементы
     if (checks.waypoints && state.waypoints) {
@@ -7213,9 +7852,24 @@ setInterval(saveStateToFile, 60000);
 //  MACHINE ID + TRIAL / ЛИЦЕНЗИРОВАНИЕ
 // ═══════════════════════════════════════════
 
-const LICENSE_SERVER = 'http://87.120.84.254:9222';
 const SYNC_SERVER = 'https://trophynav.ru';
+const LICENSE_SERVER = 'http://87.120.84.254:9222';
+const LICENSE_API_BASES = Array.from(new Set([SYNC_SERVER, LICENSE_SERVER]));
 const TRIAL_DAYS = 20;
+
+async function fetchLicenseApi(path, options = {}) {
+  let lastError = null;
+  for (const base of LICENSE_API_BASES) {
+    try {
+      const resp = await fetch(`${base}${path}`, options);
+      if (resp.ok) return resp;
+      lastError = new Error(`HTTP ${resp.status} for ${base}${path}`);
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError || new Error('License API unavailable');
+}
 
 let _cachedMachineId = null;
 
@@ -7314,7 +7968,7 @@ async function checkLicenseOnServer() {
   const email = localStorage.getItem('tnd-sync-email') || document.getElementById('sync-email')?.value?.trim();
   if (email) {
     try {
-      const resp = await fetch(`${LICENSE_SERVER}/api/desktop/check-email`, {
+      const resp = await fetchLicenseApi('/api/desktop/check-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -7347,10 +8001,9 @@ async function checkLicenseOnServer() {
   }
   // Fallback: старый machineId-based API
   try {
-    const resp = await fetch(`${LICENSE_SERVER}/api/desktop/license/${encodeURIComponent(machineId)}`, {
+    const resp = await fetchLicenseApi(`/api/desktop/license/${encodeURIComponent(machineId)}`, {
       headers: { 'X-Client-Id': 'desktop', 'X-Machine-Id': machineId }
     });
-    if (!resp.ok) return null;
     const data = await resp.json();
     if (data.licensed) {
       const expiry = data.expiry || data.licenseExpiry || new Date(Date.now() + (data.daysLeft || 365) * 86400000).toISOString();
@@ -7372,14 +8025,12 @@ async function checkLicenseOnServer() {
 async function registerTrialOnServer() {
   const machineId = await getMachineIdAsync();
   try {
-    const resp = await fetch(`${LICENSE_SERVER}/api/desktop/trial/${encodeURIComponent(machineId)}?hostname=${encodeURIComponent(navigator.userAgent?.slice(0, 80) || '')}&os=${encodeURIComponent(navigator.platform || '')}`, {
+    const resp = await fetchLicenseApi(`/api/desktop/trial/${encodeURIComponent(machineId)}?hostname=${encodeURIComponent(navigator.userAgent?.slice(0, 80) || '')}&os=${encodeURIComponent(navigator.platform || '')}`, {
       method: 'GET'
     });
-    if (resp.ok) {
-      const data = await resp.json();
-      // Сохраняем серверный ответ — он приоритетнее localStorage
-      localStorage.setItem('tnd-trial-server', JSON.stringify({ daysLeft: data.daysLeft, checkedAt: new Date().toISOString() }));
-    }
+    const data = await resp.json();
+    // Сохраняем серверный ответ — он приоритетнее localStorage
+    localStorage.setItem('tnd-trial-server', JSON.stringify({ daysLeft: data.daysLeft, checkedAt: new Date().toISOString() }));
   } catch (e) { /* offline — используем локальный fallback */ }
 }
 
@@ -8435,7 +9086,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.2</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.3</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:var(--text-muted)">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
@@ -8554,7 +9205,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
   <div class="modal" id="modal-routing-win" style="top:80px;right:20px;left:auto;width:380px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-routing-win')">
       🛣 Маршрут по дорогам
-      <span class="modal-close" onclick="closeModal('modal-routing');clearOsrmRoute()">✕</span>
+      <span class="modal-close" onclick="closeModal('modal-routing')">✕</span>
     </div>
     <div class="modal-body">
       <div class="route-endpoint">
@@ -8587,6 +9238,10 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
           <span class="routing-info-label">Средняя скорость</span>
           <span class="routing-info-value" id="routing-speed">—</span>
         </div>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:10px">Построенные маршруты</div>
+      <div id="routing-list" class="routing-list">
+        <div class="routing-route-empty">Маршрутов пока нет. Постройте первый A→B маршрут.</div>
       </div>
     </div>
   </div>
@@ -8681,8 +9336,12 @@ function goToSearchResult(lat, lon, name) {
 // ═══════════════════════════════════════════
 // РОУТИНГ ПО ДОРОГАМ (OSRM)
 // ═══════════════════════════════════════════
-let osrmRouteLayer = null;
-let osrmMarkersLayer = null;
+const OSRM_ROUTE_COLORS = ['#4adf7a', '#df7a4a', '#df4adf', '#df4a4a', '#4adfe0'];
+const osrmState = {
+  items: [],
+  activeId: null,
+  nextId: 1
+};
 let routeFromLatLng = null;
 let routeToLatLng = null;
 let routePickMode = null;
@@ -8712,7 +9371,7 @@ function swapRouteEndpoints() {
   const tmp = routeFromLatLng; routeFromLatLng = routeToLatLng; routeToLatLng = tmp;
   const a = document.getElementById('route-from-input'), b = document.getElementById('route-to-input');
   const tv = a.value; a.value = b.value; b.value = tv;
-  if (osrmRouteLayer) calculateOsrmRoute();
+  if (routeFromLatLng && routeToLatLng) showToast('Точки маршрута обменены');
 }
 
 async function resolveEndpoint(inputId, currentLatLng) {
@@ -8748,39 +9407,41 @@ async function calculateOsrmRoute() {
 
   showToast('Строим маршрут...');
   try {
-    const resp = await fetch(`https://router.project-osrm.org/route/v1/driving/${routeFromLatLng.lng},${routeFromLatLng.lat};${routeToLatLng.lng},${routeToLatLng.lat}?overview=full&geometries=geojson`);
+    const resp = await fetch(`https://router.project-osrm.org/route/v1/driving/${routeFromLatLng.lng},${routeFromLatLng.lat};${routeToLatLng.lng},${routeToLatLng.lat}?overview=full&geometries=geojson&alternatives=true`);
     const data = await resp.json();
     if (data.code !== 'Ok' || !data.routes?.length) { showToast('Маршрут не найден'); return; }
+    const fromLabel = document.getElementById('route-from-input').value.trim() || `${routeFromLatLng.lat.toFixed(5)}, ${routeFromLatLng.lng.toFixed(5)}`;
+    const toLabel = document.getElementById('route-to-input').value.trim() || `${routeToLatLng.lat.toFixed(5)}, ${routeToLatLng.lng.toFixed(5)}`;
+    const createdRoutes = data.routes.map((route, index) => ({
+      id: osrmState.nextId++,
+      name: buildOsrmRouteName(fromLabel, toLabel, index + 1, data.routes.length),
+      fromLabel,
+      toLabel,
+      fromLatLng: L.latLng(routeFromLatLng.lat, routeFromLatLng.lng),
+      toLatLng: L.latLng(routeToLatLng.lat, routeToLatLng.lng),
+      coords: route.geometry.coordinates.map(coord => [coord[1], coord[0]]),
+      distance: route.distance,
+      duration: route.duration,
+      color: index === 0 ? (document.getElementById('setting-color-osrm')?.value || '#4a8adf') : OSRM_ROUTE_COLORS[(index - 1) % OSRM_ROUTE_COLORS.length],
+      visible: true,
+      routeLayer: null,
+      markersLayer: null,
+      outlineLayer: null,
+      lineLayer: null
+    })).filter(route => route.coords.length >= 2);
 
-    const route = data.routes[0];
-    const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+    if (createdRoutes.length === 0) {
+      showToast('Маршрут не найден');
+      return;
+    }
 
-    if (osrmRouteLayer) map.removeLayer(osrmRouteLayer);
-    if (osrmMarkersLayer) map.removeLayer(osrmMarkersLayer);
-
-    osrmRouteLayer = L.layerGroup([
-      L.polyline(coords, { color: '#1a3a6a', weight: 8, opacity: 0.6, interactive: false }),
-      L.polyline(coords, { color: '#4a8adf', weight: 4, opacity: 0.9, dashArray: '12, 8', interactive: false })
-    ]).addTo(map);
-
-    osrmMarkersLayer = L.layerGroup([
-      L.marker(routeFromLatLng, { icon: L.divIcon({ className: '', html: '<div style="background:#4adf7a;width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(74,223,122,0.8);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff">A</div>', iconSize:[18,18], iconAnchor:[9,9] }) }),
-      L.marker(routeToLatLng, { icon: L.divIcon({ className: '', html: '<div style="background:#e07070;width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(224,112,112,0.8);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff">B</div>', iconSize:[18,18], iconAnchor:[9,9] }) })
-    ]).addTo(map);
-
-    map.fitBounds(L.polyline(coords).getBounds().pad(0.1));
-
-    const distKm = (route.distance / 1000).toFixed(1);
-    const durMin = Math.round(route.duration / 60);
-    const hours = Math.floor(durMin / 60), mins = durMin % 60;
-    const durStr = hours > 0 ? `${hours} ч ${mins} мин` : `${mins} мин`;
-    const speedKmh = route.duration > 0 ? ((route.distance / 1000) / (route.duration / 3600)).toFixed(0) : '—';
-
-    document.getElementById('routing-distance').textContent = distKm + ' км';
-    document.getElementById('routing-duration').textContent = durStr;
-    document.getElementById('routing-speed').textContent = speedKmh + ' км/ч';
-    document.getElementById('routing-info').classList.add('has-route');
-    showToast(`✓ Маршрут: ${distKm} км, ${durStr}`);
+    osrmState.items = [...createdRoutes, ...osrmState.items];
+    createdRoutes.forEach(route => ensureOsrmRouteLayers(route));
+    selectOsrmRoute(createdRoutes[0].id, { fit: true });
+    renderOsrmRouteList();
+    showToast(createdRoutes.length > 1
+      ? `✓ Построено ${createdRoutes.length} вариантов маршрута`
+      : `✓ Маршрут построен`);
   } catch (err) {
     showToast('Ошибка запроса маршрута');
     console.error('OSRM error:', err);
@@ -8809,14 +9470,198 @@ function addWaypointFromSearch(lat, lon, name) {
 }
 
 function clearOsrmRoute() {
-  if (osrmRouteLayer) { map.removeLayer(osrmRouteLayer); osrmRouteLayer = null; }
-  if (osrmMarkersLayer) { map.removeLayer(osrmMarkersLayer); osrmMarkersLayer = null; }
+  osrmState.items.forEach(route => {
+    if (route.routeLayer && map.hasLayer(route.routeLayer)) map.removeLayer(route.routeLayer);
+    if (route.markersLayer && map.hasLayer(route.markersLayer)) map.removeLayer(route.markersLayer);
+  });
+  osrmState.items = [];
+  osrmState.activeId = null;
   routeFromLatLng = null; routeToLatLng = null; routePickMode = null;
   document.getElementById('route-from-input').value = '';
   document.getElementById('route-to-input').value = '';
-  document.getElementById('routing-info').classList.remove('has-route');
   document.getElementById('route-pick-a').classList.remove('picking');
   document.getElementById('route-pick-b').classList.remove('picking');
+  updateRoutingInfo();
+  renderOsrmRouteList();
+}
+
+function shortRouteLabel(text, fallback) {
+  const normalized = String(text || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+  if (!normalized) return fallback;
+  return normalized.split(',')[0].trim() || fallback;
+}
+
+function buildOsrmRouteName(fromText, toText, routeIndex, totalRoutes) {
+  const from = shortRouteLabel(fromText, 'A');
+  const to = shortRouteLabel(toText, 'B');
+  return totalRoutes > 1 ? `${from} → ${to} · вариант ${routeIndex}` : `${from} → ${to}`;
+}
+
+function formatOsrmDuration(seconds) {
+  const durMin = Math.round(seconds / 60);
+  const hours = Math.floor(durMin / 60);
+  const mins = durMin % 60;
+  return hours > 0 ? `${hours} ч ${mins} мин` : `${mins} мин`;
+}
+
+function makeOsrmMarkerIcon(label, color) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="background:${color};width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px ${color}99;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff">${label}</div>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9]
+  });
+}
+
+function ensureOsrmRouteLayers(route) {
+  if (route.routeLayer) return;
+  route.outlineLayer = L.polyline(route.coords, { color: '#102844', weight: 8, opacity: 0.6, interactive: false });
+  route.lineLayer = L.polyline(route.coords, { color: route.color, weight: 4, opacity: 0.9, dashArray: null, interactive: false });
+  route.routeLayer = L.layerGroup([route.outlineLayer, route.lineLayer]);
+  route.markersLayer = L.layerGroup([
+    L.marker(route.fromLatLng, { icon: makeOsrmMarkerIcon('A', '#4adf7a') }),
+    L.marker(route.toLatLng, { icon: makeOsrmMarkerIcon('B', '#e07070') })
+  ]);
+  syncOsrmRouteLayer(route);
+}
+
+function syncOsrmRouteLayer(route) {
+  if (!route?.routeLayer || !route.outlineLayer || !route.lineLayer) return;
+  const isActive = osrmState.activeId === route.id;
+  route.outlineLayer.setStyle({
+    color: '#102844',
+    weight: isActive ? 8 : 6,
+    opacity: route.visible ? (isActive ? 0.58 : 0.2) : 0
+  });
+  route.lineLayer.setStyle({
+    color: route.color,
+    weight: isActive ? 4 : 3,
+    opacity: route.visible ? (isActive ? 0.95 : 0.55) : 0,
+    dashArray: isActive ? null : '12 8'
+  });
+  if (route.visible) {
+    if (!map.hasLayer(route.routeLayer)) route.routeLayer.addTo(map);
+    if (isActive) {
+      if (!map.hasLayer(route.markersLayer)) route.markersLayer.addTo(map);
+      route.outlineLayer.bringToFront();
+      route.lineLayer.bringToFront();
+    } else if (map.hasLayer(route.markersLayer)) {
+      map.removeLayer(route.markersLayer);
+    }
+  } else {
+    if (map.hasLayer(route.routeLayer)) map.removeLayer(route.routeLayer);
+    if (map.hasLayer(route.markersLayer)) map.removeLayer(route.markersLayer);
+  }
+}
+
+function updateRoutingInfo() {
+  const activeRoute = osrmState.items.find(route => route.id === osrmState.activeId && route.visible !== false) || null;
+  const infoEl = document.getElementById('routing-info');
+  if (!infoEl) return;
+  if (!activeRoute) {
+    document.getElementById('routing-distance').textContent = '—';
+    document.getElementById('routing-duration').textContent = '—';
+    document.getElementById('routing-speed').textContent = '—';
+    infoEl.classList.remove('has-route');
+    return;
+  }
+  const distKm = (activeRoute.distance / 1000).toFixed(1);
+  const speedKmh = activeRoute.duration > 0 ? ((activeRoute.distance / 1000) / (activeRoute.duration / 3600)).toFixed(0) : '—';
+  document.getElementById('routing-distance').textContent = distKm + ' км';
+  document.getElementById('routing-duration').textContent = formatOsrmDuration(activeRoute.duration);
+  document.getElementById('routing-speed').textContent = speedKmh + ' км/ч';
+  infoEl.classList.add('has-route');
+}
+
+function renderOsrmRouteList() {
+  const listEl = document.getElementById('routing-list');
+  if (!listEl) return;
+  if (osrmState.items.length === 0) {
+    listEl.innerHTML = '<div class="routing-route-empty">Маршрутов пока нет. Постройте первый A→B маршрут.</div>';
+    return;
+  }
+  listEl.innerHTML = osrmState.items.map(route => {
+    const isActive = osrmState.activeId === route.id;
+    const distKm = (route.distance / 1000).toFixed(1);
+    const speedKmh = route.duration > 0 ? ((route.distance / 1000) / (route.duration / 3600)).toFixed(0) : '—';
+    return `<div class="routing-route-item${isActive ? ' active' : ''}">
+      <div class="routing-route-head" onclick="selectOsrmRoute(${route.id}, { fit: true })">
+        <div>
+          <div class="routing-route-name"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${route.color};margin-right:6px"></span>${escapeHtml(route.name)}</div>
+          <div class="routing-route-meta">${distKm} км · ${formatOsrmDuration(route.duration)} · ${speedKmh} км/ч</div>
+        </div>
+        <div style="font-size:11px;color:${route.visible ? 'var(--text-secondary)' : '#e07070'}">${route.visible ? 'видим' : 'скрыт'}</div>
+      </div>
+      <div class="routing-route-actions">
+        <button class="routing-route-btn" onclick="toggleOsrmRouteVisible(${route.id})">${route.visible ? '👁 Скрыть' : '◌ Показать'}</button>
+        <button class="routing-route-btn" onclick="centerOsrmRoute(${route.id})">🎯 Центр</button>
+        <button class="routing-route-btn" onclick="saveOsrmRouteAsTrack(${route.id})">💾 В треки</button>
+        <button class="routing-route-btn danger" onclick="deleteOsrmRoute(${route.id})">✕ Удалить</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectOsrmRoute(id, options = {}) {
+  const route = osrmState.items.find(item => item.id === id);
+  if (!route) return;
+  osrmState.activeId = id;
+  osrmState.items.forEach(item => syncOsrmRouteLayer(item));
+  updateRoutingInfo();
+  renderOsrmRouteList();
+  if (options.fit !== false) {
+    map.fitBounds(L.latLngBounds(route.coords).pad(0.1));
+  }
+}
+
+function centerOsrmRoute(id) {
+  const route = osrmState.items.find(item => item.id === id);
+  if (!route) return;
+  selectOsrmRoute(id, { fit: true });
+}
+
+function toggleOsrmRouteVisible(id) {
+  const route = osrmState.items.find(item => item.id === id);
+  if (!route) return;
+  route.visible = !route.visible;
+  if (!route.visible && osrmState.activeId === id) {
+    const fallback = osrmState.items.find(item => item.id !== id && item.visible);
+    osrmState.activeId = fallback ? fallback.id : null;
+  } else if (route.visible && !osrmState.activeId) {
+    osrmState.activeId = id;
+  }
+  osrmState.items.forEach(item => syncOsrmRouteLayer(item));
+  updateRoutingInfo();
+  renderOsrmRouteList();
+}
+
+function deleteOsrmRoute(id) {
+  const route = osrmState.items.find(item => item.id === id);
+  if (!route) return;
+  if (route.routeLayer && map.hasLayer(route.routeLayer)) map.removeLayer(route.routeLayer);
+  if (route.markersLayer && map.hasLayer(route.markersLayer)) map.removeLayer(route.markersLayer);
+  osrmState.items = osrmState.items.filter(item => item.id !== id);
+  if (osrmState.activeId === id) {
+    osrmState.activeId = osrmState.items.find(item => item.visible)?.id || null;
+  }
+  osrmState.items.forEach(item => syncOsrmRouteLayer(item));
+  updateRoutingInfo();
+  renderOsrmRouteList();
+}
+
+function saveOsrmRouteAsTrack(id) {
+  const route = osrmState.items.find(item => item.id === id);
+  if (!route) return;
+  const points = route.coords.map(coord => L.latLng(coord[0], coord[1]));
+  const track = createTrackFromPoints(points, route.name, {
+    color: route.color,
+    width: 4,
+    pointSize: 0
+  });
+  touchTrack(track);
+  selectedTrackId = track.id;
+  updateTrackList();
+  showToast('Маршрут сохранён как трек');
 }
 
 

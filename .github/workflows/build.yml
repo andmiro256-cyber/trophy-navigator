@@ -72,6 +72,14 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
+    env:
+      UPDATES_DEPLOY_HOST: ${{ secrets.UPDATES_DEPLOY_HOST }}
+      UPDATES_DEPLOY_USER: ${{ secrets.UPDATES_DEPLOY_USER }}
+      UPDATES_DEPLOY_SSH_KEY: ${{ secrets.UPDATES_DEPLOY_SSH_KEY }}
+      UPDATES_DEPLOY_KNOWN_HOSTS: ${{ secrets.UPDATES_DEPLOY_KNOWN_HOSTS }}
+      UPDATES_DEPLOY_PORT: ${{ vars.UPDATES_DEPLOY_PORT }}
+      UPDATES_DEPLOY_PATH: ${{ vars.UPDATES_DEPLOY_PATH }}
+      UPDATES_BETA_DEPLOY_PATH: ${{ vars.UPDATES_BETA_DEPLOY_PATH }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -80,20 +88,34 @@ jobs:
       - name: Get version
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      - name: Select release channel
+        id: channel
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "manifest_file=latest-beta.json" >> "$GITHUB_OUTPUT"
+            echo "deploy_path=${UPDATES_BETA_DEPLOY_PATH:-/var/www/updates/latest-beta.json}" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "manifest_file=latest.json" >> "$GITHUB_OUTPUT"
+            echo "deploy_path=${UPDATES_DEPLOY_PATH:-/var/www/updates/latest.json}" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Create latest.json for updater
         run: |
           VERSION=${{ steps.version.outputs.version }}
+          MANIFEST_FILE=${{ steps.channel.outputs.manifest_file }}
           APPIMAGE_SIG=$(cat artifacts/TrophyNavigator-Linux/*.AppImage.sig 2>/dev/null || echo "")
           NSIS_SIG=$(cat artifacts/TrophyNavigator-Windows/*.exe.sig 2>/dev/null || echo "")
           APPIMAGE_FILE=$(find artifacts/TrophyNavigator-Linux -maxdepth 1 -type f -name '*.AppImage' -printf '%f\n' | head -n 1)
           NSIS_FILE=$(find artifacts/TrophyNavigator-Windows -maxdepth 1 -type f -name '*.exe' -printf '%f\n' | head -n 1)
-          APPIMAGE_URL_FILE=${APPIMAGE_FILE// /.}
-          NSIS_URL_FILE=${NSIS_FILE// /.}
+          APPIMAGE_URL_FILE=${APPIMAGE_FILE// /%20}
+          NSIS_URL_FILE=${NSIS_FILE// /%20}
           if [ -z "$APPIMAGE_FILE" ] || [ -z "$NSIS_FILE" ]; then
             echo "Release artifacts not found" >&2
             exit 1
           fi
-          cat > latest.json << EOF
+          cat > "$MANIFEST_FILE" << EOF
           {
             "version": "$VERSION",
             "notes": "Trophy Navigator Desktop v$VERSION",
@@ -115,16 +137,50 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: Trophy Navigator Desktop v${{ steps.version.outputs.version }}
+          prerelease: ${{ steps.channel.outputs.prerelease }}
           body: |
             ## Trophy Navigator Desktop v${{ steps.version.outputs.version }}
 
             ### Скачать
-            - **Windows**: `TrophyNavigator_*_x64-setup.exe`
+            - **Windows**: `TrophyNavigator_*_x64-setup.exe` или `TrophyNavigator_*_x64_en-US.msi`
             - **Linux**: `TrophyNavigator_*_amd64.AppImage`
 
             ### Обновление
             В приложении: **ℹ О программе → Проверить обновление**
           files: |
             artifacts/TrophyNavigator-Windows/*.exe
+            artifacts/TrophyNavigator-Windows-msi/*.msi
             artifacts/TrophyNavigator-Linux/*.AppImage
-            latest.json
+            ${{ steps.channel.outputs.manifest_file }}
+      - name: Publish updater manifest to server
+        env:
+          MANIFEST_FILE: ${{ steps.channel.outputs.manifest_file }}
+          RELEASE_DEPLOY_PATH: ${{ steps.channel.outputs.deploy_path }}
+        run: |
+          set -euo pipefail
+
+          DEPLOY_PORT="${UPDATES_DEPLOY_PORT:-22}"
+          DEPLOY_PATH="${RELEASE_DEPLOY_PATH}"
+
+          if [ -z "${UPDATES_DEPLOY_HOST:-}" ] || [ -z "${UPDATES_DEPLOY_USER:-}" ] || [ -z "${UPDATES_DEPLOY_SSH_KEY:-}" ] || [ -z "${UPDATES_DEPLOY_KNOWN_HOSTS:-}" ]; then
+            echo "::error::Missing release deploy settings. Set UPDATES_DEPLOY_HOST, UPDATES_DEPLOY_USER, UPDATES_DEPLOY_SSH_KEY and UPDATES_DEPLOY_KNOWN_HOSTS."
+            exit 1
+          fi
+
+          if [ ! -s "$MANIFEST_FILE" ]; then
+            echo "::error::$MANIFEST_FILE was not generated."
+            exit 1
+          fi
+
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$UPDATES_DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$UPDATES_DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+          DEPLOY_DIR="$(dirname "$DEPLOY_PATH")"
+          TMP_PATH="${DEPLOY_PATH}.tmp-${GITHUB_RUN_ID}"
+
+          scp -P "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$MANIFEST_FILE" "${UPDATES_DEPLOY_USER}@${UPDATES_DEPLOY_HOST}:${TMP_PATH}"
+          ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "${UPDATES_DEPLOY_USER}@${UPDATES_DEPLOY_HOST}" \
+            "install -d -m 755 '${DEPLOY_DIR}' && install -m 644 '${TMP_PATH}' '${DEPLOY_PATH}' && rm -f '${TMP_PATH}'"

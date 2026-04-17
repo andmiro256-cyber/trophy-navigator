@@ -2,7 +2,7 @@
   "productName": "Trophy Navigator Desktop",
 
 
-  "version": "0.9.2",
+  "version": "0.9.3",
   "identifier": "ru.trophy-nav.desktop",
   "build": {
     "frontendDist": "../ui"
@@ -11,7 +11,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "🧭 Trophy Navigator Desktop v0.9.0",
+        "title": "🧭 Trophy Navigator Desktop v0.9.3",
         "width": 1280,
         "height": 800,
         "minWidth": 900,
@@ -28,7 +28,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDk1NjExQzVFNzJBODA5QzAKUldUQUNhaHlYaHhobFJHZjlxUS9XNDRCUlQ0Sys4SE83K2huWUpTUkkvRTAxVzhQK25FOExRMW4K",
       "endpoints": [
-        "https://trophynav.ru/releases/latest.json"
+        "https://trophynav.ru/api/updates/latest.json"
       ]
     }
   },
