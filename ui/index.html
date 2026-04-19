@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🧭 Trophy Navigator Desktop v0.9.3</title>
+<title>🧭 Trophy Navigator Desktop v0.9.4</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -1111,7 +1111,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.3</span>
+  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.4</span>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -1430,7 +1430,7 @@
       <div class="save-btn" onclick="saveRoutesRTE()">💾 .rte</div>
       <div class="save-btn" onclick="saveRoutesGPX()">💾 .gpx</div>
       <span style="font-size:11px;color:var(--text-muted);align-self:center;margin-left:8px;margin-right:4px">Загрузить:</span>
-      <div class="open-btn" onclick="openFile('.rte', loadRTE)">📥 .rte</div>
+      <div class="open-btn" onclick="openFile('.rte,.RTE', loadRTE)">📥 .rte</div>
       <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXRoutes)">📥 .gpx</div>
     </div>
   </div>
@@ -1463,7 +1463,7 @@
         <div class="save-btns">
           <div class="save-btn-grid" onclick="openFile('.wpt', loadWPT)">📥 Точки (.wpt)</div>
           <div class="save-btn-grid" onclick="openFile('.plt', loadPLT)">📥 Треки (.plt)</div>
-          <div class="save-btn-grid" onclick="openFile('.rte', loadRTE)">📥 Маршруты (.rte)</div>
+          <div class="save-btn-grid" onclick="openFile('.rte,.RTE', loadRTE)">📥 Маршруты (.rte)</div>
           <div class="save-btn-grid" onclick="openFile('.gpx,.GPX', loadGPXFile)">📥 GPX файл</div>
         </div>
       </div>
@@ -2436,6 +2436,31 @@ function oziColorToHex(value, fallback = null) {
   const g = (color >> 8) & 255;
   const b = (color >> 16) & 255;
   return `#${[r, g, b].map(part => part.toString(16).padStart(2, '0')).join('')}`;
+}
+
+function parseOziLatLon(value, maxAbs) {
+  const text = String(value ?? '').trim().replace(',', '.');
+  if (!text) return NaN;
+  const number = Number(text);
+  return Number.isFinite(number) && Math.abs(number) <= maxAbs ? number : NaN;
+}
+
+function parseOziRouteWaypoint(parts, pointIndex) {
+  if (!parts || parts[0] !== 'W') return null;
+  const variants = [
+    { labelIndex: 4, latIndex: 5, lonIndex: 6 },
+    { labelIndex: 3, latIndex: 4, lonIndex: 5 } // legacy TND .rte export before v0.9.4
+  ];
+  for (const variant of variants) {
+    const lat = parseOziLatLon(parts[variant.latIndex], 90);
+    const lon = parseOziLatLon(parts[variant.lonIndex], 180);
+    if (Number.isNaN(lat) || Number.isNaN(lon)) continue;
+    return {
+      point: L.latLng(lat, lon),
+      label: parts[variant.labelIndex]?.trim() || `КП${pointIndex + 1}`
+    };
+  }
+  return null;
 }
 
 function isTrackPointRow(parts) {
@@ -3749,7 +3774,7 @@ function saveAllGPX() {
   saveGPXWithData(waypoints, tracks, routes);
 }
 
-function saveGPXWithData(selWaypoints, selTracks, selRoutes) {
+function buildGPXWithData(selWaypoints, selTracks, selRoutes) {
   let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">\n';
   selWaypoints.forEach(m => {
     const d = m.wpData;
@@ -3779,6 +3804,11 @@ function saveGPXWithData(selWaypoints, selTracks, selRoutes) {
     gpx += '</rte>';
   });
   gpx += '</gpx>';
+  return gpx;
+}
+
+function saveGPXWithData(selWaypoints, selTracks, selRoutes) {
+  const gpx = buildGPXWithData(selWaypoints, selTracks, selRoutes);
   downloadText('tnd-export.gpx', 'application/gpx+xml', gpx);
 }
 
@@ -3949,28 +3979,32 @@ function loadRTE(text, fname) {
   let current = null;
   let count = 0;
   const importedRoutes = [];
+  const finalizeRoute = () => {
+    if (!current?.points.length || current.points.length < 2) return;
+    importedRoutes.push(createRouteFromPoints(current.points, current.name, current.labels, {
+      color: current.color || undefined
+    }));
+    count++;
+  };
   normalizeText(text).split(/\r?\n/).forEach(line => {
     const p = splitCsvLine(line);
     if (p[0] === 'R') {
-      if (current?.points.length >= 2) {
-        importedRoutes.push(createRouteFromPoints(current.points, current.name, current.labels));
-        count++;
-      }
-      current = { name: p[2]?.trim() || `Маршрут ${routeIdCounter}`, points: [], labels: [] };
+      finalizeRoute();
+      current = {
+        name: p[2]?.trim() || `Маршрут ${routeIdCounter}`,
+        color: oziColorToHex(p[4], null),
+        points: [],
+        labels: []
+      };
       return;
     }
-    if (p[0] === 'W' && current) {
-      const lat = parseFloat(p[4]);
-      const lon = parseFloat(p[5]);
-      if (isNaN(lat) || isNaN(lon)) return;
-      current.points.push(L.latLng(lat, lon));
-      current.labels.push(p[3]?.trim() || `КП${current.points.length}`);
-    }
+    if (!current) return;
+    const waypoint = parseOziRouteWaypoint(p, current.points.length);
+    if (!waypoint) return;
+    current.points.push(waypoint.point);
+    current.labels.push(waypoint.label);
   });
-  if (current?.points.length >= 2) {
-    importedRoutes.push(createRouteFromPoints(current.points, current.name, current.labels));
-    count++;
-  }
+  finalizeRoute();
   updateRouteList();
   showToast('✓ Загружено ' + count + ' маршрутов из ' + fname);
   if (count > 0) {
@@ -5389,8 +5423,8 @@ function saveRoutesRTE() {
     'Reserved 2'
   ];
   routes.forEach((r, idx) => {
-    rows.push(`R,${idx},${csvField(r.name)},,0,0`);
-    r.points.forEach((p, i) => rows.push(`W,${idx},${i + 1},${csvField(r.labels?.[i] || `КП${i+1}`)},${p.lat.toFixed(6)},${p.lng.toFixed(6)}`));
+    rows.push(`R,${idx},${csvField(r.name)},,${hexToOziColor(r.color)}`);
+    r.points.forEach((p, i) => rows.push(`W,${idx},${i + 1},${i + 1},${csvField(r.labels?.[i] || `КП${i+1}`)},${p.lat.toFixed(6)},${p.lng.toFixed(6)}`));
   });
   downloadText('routes.rte', 'text/plain', rows.join('\r\n'));
 }
@@ -7114,6 +7148,112 @@ function buildSyncPayload(fullState, checks) {
   return payload;
 }
 
+function toSyncTimestamp(value) {
+  const ts = Date.parse(value || '');
+  return Number.isFinite(ts) ? ts : 0;
+}
+
+function mergeSyncCounters(localCounters = {}, remoteCounters = {}) {
+  const result = { ...(localCounters || {}) };
+  Object.entries(remoteCounters || {}).forEach(([key, value]) => {
+    const localValue = result[key];
+    if (typeof localValue === 'number' && typeof value === 'number') {
+      result[key] = Math.max(localValue, value);
+    } else {
+      result[key] = value;
+    }
+  });
+  return result;
+}
+
+function getSyncEntityKey(item, type) {
+  if (!item || typeof item !== 'object') return null;
+  if (item.id != null && item.id !== '') return `${type}:id:${item.id}`;
+
+  if (type === 'waypoints' && Number.isFinite(item.lat) && Number.isFinite(item.lng)) {
+    return `${type}:geo:${String(item.name || '').trim()}:${item.lat.toFixed(6)}:${item.lng.toFixed(6)}`;
+  }
+
+  const createdAt = String(item.createdAt || item.importedAt || '').trim();
+  const name = String(item.name || '').trim();
+  if (createdAt || name) return `${type}:meta:${createdAt}:${name}`;
+  return null;
+}
+
+function mergeSyncItems(localItems = [], remoteItems = [], type) {
+  const merged = new Map();
+  const extras = [];
+
+  const put = (item, sourceTag) => {
+    if (!item || typeof item !== 'object') return;
+    const key = getSyncEntityKey(item, type);
+    if (!key) {
+      extras.push(item);
+      return;
+    }
+    const prev = merged.get(key);
+    if (!prev) {
+      merged.set(key, item);
+      return;
+    }
+
+    const prevTs = toSyncTimestamp(prev.updatedAt || prev.syncedAt || prev.createdAt || prev.importedAt);
+    const nextTs = toSyncTimestamp(item.updatedAt || item.syncedAt || item.createdAt || item.importedAt);
+    if (nextTs >= prevTs || sourceTag === 'remote') {
+      merged.set(key, { ...prev, ...item });
+    }
+  };
+
+  localItems.forEach(item => put(item, 'local'));
+  remoteItems.forEach(item => put(item, 'remote'));
+
+  return [...Array.from(merged.values()), ...extras];
+}
+
+function mergeWaypointSets(localSets = [], remoteSets = []) {
+  const merged = new Map();
+  localSets.forEach(set => {
+    if (set && set.id != null) merged.set(set.id, { ...set });
+  });
+  remoteSets.forEach(set => {
+    if (!set || set.id == null) return;
+    const prev = merged.get(set.id) || {};
+    merged.set(set.id, { ...prev, ...set });
+  });
+  return Array.from(merged.values());
+}
+
+function mergeSyncState(localState, remoteState, checks) {
+  const merged = {
+    ...localState,
+    version: APP_STATE_VERSION,
+    _source: remoteState?._source || localState?._source || 'desktop',
+    settings: { ...(localState.settings || {}), ...(remoteState.settings || {}) },
+    map: { ...(localState.map || {}), ...(remoteState.map || {}) },
+    counters: mergeSyncCounters(localState.counters || {}, remoteState.counters || {}),
+    waypointSets: checks.waypoints
+      ? mergeWaypointSets(localState.waypointSets || [], remoteState.waypointSets || [])
+      : (localState.waypointSets || []),
+    activeSetId: checks.waypoints
+      ? (remoteState.activeSetId ?? localState.activeSetId ?? null)
+      : (localState.activeSetId ?? null),
+    waypoints: checks.waypoints
+      ? mergeSyncItems(localState.waypoints || [], remoteState.waypoints || [], 'waypoints')
+      : (localState.waypoints || []),
+    tracks: checks.tracks
+      ? mergeSyncItems(localState.tracks || [], remoteState.tracks || [], 'tracks')
+      : (localState.tracks || []),
+    routes: checks.routes
+      ? mergeSyncItems(localState.routes || [], remoteState.routes || [], 'routes')
+      : (localState.routes || []),
+    gpxFiles: checks.gpx
+      ? mergeSyncItems(localState.gpxFiles || [], remoteState.gpxFiles || [], 'gpx')
+      : (localState.gpxFiles || [])
+  };
+
+  return merged;
+}
+
 function normalizeSyncPullState(payload, fallbackState = null) {
   const fallback = fallbackState || {
     version: APP_STATE_VERSION,
@@ -7509,7 +7649,7 @@ async function syncPull(silent) {
   if (!cfg.email || !cfg.syncKey) { if (!silent) showToast('Привяжите email для синхронизации'); return; }
   const checks = getSyncChecks();
 
-  if (!silent && !await tndConfirm('Загрузить данные с сервера? Текущие данные выбранных типов будут заменены.')) return;
+  if (!silent && !await tndConfirm('Загрузить данные с сервера? Выбранные типы будут объединены с локальными данными, при конфликте победит более новая версия.')) return;
 
   updateSyncStatus('Загрузка...', false);
   try {
@@ -7526,9 +7666,8 @@ async function syncPull(silent) {
       return;
     }
 
-    // Filter by checkboxes — сохраняем локальные данные для незатронутых типов
     const localState = collectState();
-    const state = normalizeSyncPullState(payload, localState);
+    let state = normalizeSyncPullState(payload, localState);
     const syncTime = new Date().toISOString();
     const serverSource = state._source || 'sync';
 
@@ -7564,10 +7703,7 @@ async function syncPull(silent) {
       }));
     }
 
-    if (!checks.waypoints) { state.waypoints = localState.waypoints; state.waypointSets = localState.waypointSets; state.activeSetId = localState.activeSetId; }
-    if (!checks.tracks) state.tracks = localState.tracks;
-    if (!checks.routes) state.routes = localState.routes;
-    if (!checks.gpx) state.gpxFiles = localState.gpxFiles;
+    state = mergeSyncState(localState, state, checks);
 
     applyState(state);
     saveState();
@@ -7855,7 +7991,7 @@ setInterval(saveStateToFile, 60000);
 const SYNC_SERVER = 'https://trophynav.ru';
 const LICENSE_SERVER = 'http://87.120.84.254:9222';
 const LICENSE_API_BASES = Array.from(new Set([SYNC_SERVER, LICENSE_SERVER]));
-const TRIAL_DAYS = 20;
+const TRIAL_DAYS = 14;
 
 async function fetchLicenseApi(path, options = {}) {
   let lastError = null;
@@ -9086,7 +9222,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.3</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.4</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:var(--text-muted)">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
@@ -9669,15 +9805,221 @@ function saveOsrmRouteAsTrack(id) {
 // ═══ LIVE MONITORING ══════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════
 
-const LIVE_API = 'http://87.120.84.254:9222/api/live2/devices';
+const LIVE_API_BASE = 'http://87.120.84.254:9222';
+const LIVE_API = `${LIVE_API_BASE}/api/live2/devices`;
+const LIVE_FAVORITES_API = `${LIVE_API_BASE}/api/live2/favorites`;
+const LIVE_MESSAGES_API = `${LIVE_API_BASE}/api/live2/messages`;
+const LIVE_GROUP_SHARE_API = `${LIVE_API_BASE}/api/live2/group-share`;
 const LIVE_POLL_MS = 4000;
+const LIVE_MESSAGES_POLL_MS = 5000;
 const LIVE_OFFLINE_TIMEOUT = 30000;
+const LIVE_GROUP_ALL_ID = 'all';
+const LIVE_STATUS_OPTIONS = [
+  { code: 'none', emoji: '🙂', label: 'Без статуса', glyph: '✴', color: '#888888' },
+  { code: 'looking_company', emoji: '🤝', label: 'Ищу компанию', glyph: '🤝', color: '#42A5F5' },
+  { code: 'take_with_me', emoji: '🚙', label: 'Возьму в компанию', glyph: '🚙', color: '#66BB6A' },
+  { code: 'tourism', emoji: '🏕️', label: 'Туризм', glyph: '🏕', color: '#FFB300' },
+  { code: 'race', emoji: '🏁', label: 'Гонка', glyph: '🏁', color: '#AB47BC' },
+  { code: 'sos', emoji: '🆘', label: 'SOS', glyph: 'SOS', color: '#E53935' }
+];
 
 const liveState = {
-  timer: null, markers: {}, isOpen: false, isPolling: false, consecutiveErrors: 0
+  timer: null,
+  messagesTimer: null,
+  markers: {},
+  devices: [],
+  isOpen: false,
+  isPolling: false,
+  consecutiveErrors: 0,
+  favoritesDoc: null,
+  favoritesLimits: { maxGroups: 10, maxMembersPerGroup: 25 },
+  activeGroupId: localStorage.getItem('tnd-live-active-group') || LIVE_GROUP_ALL_ID,
+  messages: [],
+  messageCursor: Number(localStorage.getItem('tnd-live-message-cursor') || '0') || 0,
+  selectedThreadKey: localStorage.getItem('tnd-live-thread') || `group:${LIVE_GROUP_ALL_ID}`,
+  selectedDirectTarget: null,
+  sharesTimer: null,
+  pendingShares: [],
+  activeShareId: null,
+  activeShareEntry: null,
+  shareInboxSeen: new Set(),
+  myStatusCode: localStorage.getItem('tnd-live-status-code') || 'none',
+  editingGroupId: null,
+  previewTimer: null,
+  lastPreviewMessageId: localStorage.getItem('tnd-live-last-preview') || null
 };
 
 function liveEsc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function createEmptyLiveFavoritesDocument() {
+  return {
+    schemaVersion: 1,
+    version: 0,
+    activeGroupId: LIVE_GROUP_ALL_ID,
+    updatedAt: null,
+    updatedByDeviceId: null,
+    groups: []
+  };
+}
+
+function liveLoadCache() {
+  try {
+    const rawFav = localStorage.getItem('tnd-live-favorites-cache');
+    if (rawFav) {
+      const parsed = JSON.parse(rawFav);
+      if (parsed && typeof parsed === 'object') liveState.favoritesDoc = parsed;
+    }
+  } catch (_) {}
+  if (!liveState.favoritesDoc) liveState.favoritesDoc = createEmptyLiveFavoritesDocument();
+  try {
+    const rawMessages = localStorage.getItem('tnd-live-messages-cache');
+    if (rawMessages) {
+      const parsed = JSON.parse(rawMessages);
+      if (Array.isArray(parsed)) liveState.messages = parsed;
+    }
+  } catch (_) {}
+  if (!liveState.activeGroupId) liveState.activeGroupId = liveState.favoritesDoc.activeGroupId || LIVE_GROUP_ALL_ID;
+}
+
+function livePersistFavorites() {
+  try { localStorage.setItem('tnd-live-favorites-cache', JSON.stringify(liveState.favoritesDoc || createEmptyLiveFavoritesDocument())); } catch (_) {}
+}
+
+function livePersistMessages() {
+  try {
+    localStorage.setItem('tnd-live-messages-cache', JSON.stringify(liveState.messages.slice(-250)));
+    localStorage.setItem('tnd-live-message-cursor', String(liveState.messageCursor || 0));
+    localStorage.setItem('tnd-live-thread', liveState.selectedThreadKey || `group:${LIVE_GROUP_ALL_ID}`);
+    localStorage.setItem('tnd-live-last-preview', liveState.lastPreviewMessageId || '');
+    localStorage.setItem('tnd-live-status-code', liveState.myStatusCode || 'none');
+  } catch (_) {}
+}
+
+function liveHasAccess() {
+  if (!isPremiumAvailable()) {
+    showToast('Мониторинг и сообщения доступны по лицензии или в триале');
+    return false;
+  }
+  const cfg = getSyncConfig();
+  if (!cfg.email || !cfg.syncKey) {
+    showToast('Сначала привяжите email и синхронизацию');
+    openSyncModal();
+    return false;
+  }
+  return true;
+}
+
+function liveAuthHeaders() {
+  return syncHeaders();
+}
+
+function liveDeviceUniqueId(dev) {
+  return String(dev?.uniqueId || dev?.deviceId || '').trim().toUpperCase();
+}
+
+function liveDeviceMarkerId(dev) {
+  return liveDeviceUniqueId(dev) || String(dev?.deviceId || dev?.name || `live_${Math.random().toString(36).slice(2, 8)}`);
+}
+
+function liveStatusInfo(code) {
+  const normalized = String(code || '').trim().toLowerCase();
+  return LIVE_STATUS_OPTIONS.find(item => item.code === normalized) || LIVE_STATUS_OPTIONS[0];
+}
+
+function liveGetActiveGroupId() {
+  return liveState.activeGroupId || liveState.favoritesDoc?.activeGroupId || LIVE_GROUP_ALL_ID;
+}
+
+function liveGetActiveGroup() {
+  const groupId = liveGetActiveGroupId();
+  if (!liveState.favoritesDoc || groupId === LIVE_GROUP_ALL_ID) return null;
+  return (liveState.favoritesDoc.groups || []).find(group => group.id === groupId) || null;
+}
+
+function liveGetFilteredDevices(devices) {
+  const activeGroup = liveGetActiveGroup();
+  if (!activeGroup) return devices;
+  const members = new Set((activeGroup.members || []).map(id => String(id).trim().toUpperCase()).filter(Boolean));
+  return devices.filter(dev => members.has(liveDeviceUniqueId(dev)));
+}
+
+function liveKnownDevices() {
+  const map = new Map();
+  (liveState.devices || []).forEach(dev => {
+    const id = liveDeviceUniqueId(dev);
+    if (!id) return;
+    map.set(id, { id, name: dev.name || id, online: true });
+  });
+  (liveState.favoritesDoc?.groups || []).forEach(group => {
+    (group.members || []).forEach(id => {
+      const key = String(id || '').trim().toUpperCase();
+      if (!key) return;
+      if (!map.has(key)) map.set(key, { id: key, name: key, online: false });
+    });
+  });
+  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+}
+
+function liveLookupDeviceName(deviceId) {
+  const key = String(deviceId || '').trim().toUpperCase();
+  if (!key) return '';
+  const current = (liveState.devices || []).find(dev => liveDeviceUniqueId(dev) === key);
+  if (current?.name) return current.name;
+  const known = liveKnownDevices().find(device => device.id === key);
+  return known?.name || key;
+}
+
+function liveUtf8Size(text) {
+  try {
+    return new TextEncoder().encode(String(text || '')).length;
+  } catch (_) {
+    return String(text || '').length;
+  }
+}
+
+function liveFormatBytes(value) {
+  const size = Number(value) || 0;
+  if (size <= 0) return '0 КБ';
+  if (size < 1024) return `${size} Б`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(size < 10 * 1024 ? 1 : 0)} КБ`;
+  return `${(size / (1024 * 1024)).toFixed(1)} МБ`;
+}
+
+function liveAttachmentTypeLabel(type) {
+  const normalized = String(type || '').trim().toLowerCase();
+  const labels = {
+    gpx: 'GPX',
+    route: 'Маршрут',
+    track: 'Трек',
+    waypoints: 'Точки'
+  };
+  return labels[normalized] || normalized.toUpperCase() || 'Вложение';
+}
+
+function liveShareSafeName(name, fallback = 'share') {
+  const cleaned = String(name || '').trim().replace(/[^\wа-яА-Я-]+/g, '_').replace(/^_+|_+$/g, '');
+  return cleaned || fallback;
+}
+
+function liveGetWaypointsForSet(set) {
+  if (!set) return [];
+  if (Array.isArray(set.waypoints) && set.waypoints.length > 0) return set.waypoints.filter(Boolean);
+  return waypoints.filter(marker => marker?._setId === set.id);
+}
+
+function liveBuildOsrmTrack(route) {
+  if (!route?.coords?.length) return null;
+  return {
+    id: `osrm_${route.id}`,
+    name: route.name || 'OSRM route',
+    color: route.color || '#4a8adf',
+    points: route.coords.map(([lat, lng]) => L.latLng(lat, lng))
+  };
+}
+
+function liveColorPalette() {
+  return ['#FF6B00', '#4CAF50', '#F44336', '#2196F3', '#9C27B0', '#FFEB3B', '#FFFFFF'];
+}
 
 function toggleSidebarCollapse(id) {
   const el = document.getElementById(id);
@@ -9686,7 +10028,1072 @@ function toggleSidebarCollapse(id) {
   if (expandBtn) expandBtn.textContent = el.classList.contains('collapsed') ? '▶' : '◀';
 }
 
+function renderLiveGroupSelect() {
+  const select = document.getElementById('live-group-select');
+  if (!select) return;
+  const groups = liveState.favoritesDoc?.groups || [];
+  const current = liveGetActiveGroupId();
+  select.innerHTML = [
+    `<option value="${LIVE_GROUP_ALL_ID}">Все участники</option>`,
+    ...groups.map(group => `<option value="${group.id}">${liveEsc(group.name)} (${(group.members || []).length})</option>`)
+  ].join('');
+  select.value = groups.some(group => group.id === current) ? current : LIVE_GROUP_ALL_ID;
+  liveState.activeGroupId = select.value;
+  localStorage.setItem('tnd-live-active-group', liveState.activeGroupId);
+}
+
+function liveHandleGroupChange(value) {
+  liveState.activeGroupId = value || LIVE_GROUP_ALL_ID;
+  localStorage.setItem('tnd-live-active-group', liveState.activeGroupId);
+  if (liveState.devices.length > 0) liveProcessDevices(liveState.devices);
+  renderLiveThreadSelect();
+  renderLiveMessages();
+}
+
+async function liveFetchFavorites(silent = true) {
+  if (!liveHasAccess()) return false;
+  try {
+    const resp = await fetch(LIVE_FAVORITES_API, { headers: liveAuthHeaders() });
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) {
+      if (!silent) showToast('Не удалось загрузить группы мониторинга');
+      return false;
+    }
+    liveState.favoritesDoc = data.favorites || createEmptyLiveFavoritesDocument();
+    liveState.favoritesLimits = data.limits || liveState.favoritesLimits;
+    if (!(liveState.favoritesDoc.groups || []).some(group => group.id === liveState.activeGroupId)) {
+      liveState.activeGroupId = liveState.favoritesDoc.activeGroupId || LIVE_GROUP_ALL_ID;
+    }
+    renderLiveGroupSelect();
+    renderLiveThreadSelect();
+    renderLiveGroupsManager();
+    livePersistFavorites();
+    return true;
+  } catch (error) {
+    if (!silent) showToast('Нет связи с группами мониторинга');
+    return false;
+  }
+}
+
+async function liveSaveFavoritesDocument(doc, options = {}) {
+  if (!liveHasAccess()) return false;
+  try {
+    const resp = await fetch(LIVE_FAVORITES_API, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...liveAuthHeaders() },
+      body: JSON.stringify(doc)
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || !data.ok) {
+      if (resp.status === 409) {
+        await liveFetchFavorites(true);
+        if (!options.silent) showToast('Группы изменились на сервере. Повторите действие.');
+      } else if (!options.silent) {
+        showToast('Не удалось сохранить группы');
+      }
+      return false;
+    }
+    liveState.favoritesDoc = {
+      ...doc,
+      version: Number.isFinite(data.version) ? data.version : (doc.version || 0) + 1,
+      updatedAt: data.updatedAt || new Date().toISOString()
+    };
+    livePersistFavorites();
+    renderLiveGroupSelect();
+    renderLiveThreadSelect();
+    renderLiveGroupsManager();
+    if (liveState.devices.length > 0) liveProcessDevices(liveState.devices);
+    return true;
+  } catch (_) {
+    if (!options.silent) showToast('Ошибка сохранения групп');
+    return false;
+  }
+}
+
+function liveSlugifyGroupId(name) {
+  const base = String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9а-яё_-]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/ё/g, 'e')
+    .slice(0, 24);
+  return (base || 'group') + '-' + Math.random().toString(36).slice(2, 6);
+}
+
+function openLiveGroupsManager() {
+  if (!liveHasAccess()) return;
+  liveFetchFavorites(true).finally(() => {
+    liveState.editingGroupId = null;
+    renderLiveGroupsManager();
+    openModal('modal-live-groups');
+  });
+}
+
+function liveStartGroupEdit(groupId = null) {
+  liveState.editingGroupId = groupId;
+  renderLiveGroupsManager();
+}
+
+function liveCancelGroupEdit() {
+  liveState.editingGroupId = null;
+  renderLiveGroupsManager();
+}
+
+async function liveDeleteGroup(groupId) {
+  const group = (liveState.favoritesDoc?.groups || []).find(item => item.id === groupId);
+  if (!group) return;
+  if (!await tndConfirm(`Удалить группу «${group.name}»?`)) return;
+  const groups = (liveState.favoritesDoc?.groups || []).filter(item => item.id !== groupId);
+  const activeGroupId = liveState.activeGroupId === groupId ? LIVE_GROUP_ALL_ID : liveState.activeGroupId;
+  const doc = {
+    ...(liveState.favoritesDoc || createEmptyLiveFavoritesDocument()),
+    activeGroupId,
+    groups
+  };
+  if (await liveSaveFavoritesDocument(doc)) {
+    liveState.activeGroupId = activeGroupId;
+    renderLiveGroupSelect();
+  }
+}
+
+async function liveSaveGroup() {
+  if (!liveHasAccess()) return;
+  const name = document.getElementById('live-group-name')?.value?.trim();
+  const color = document.getElementById('live-group-color')?.value?.trim().toUpperCase() || '#FF6B00';
+  if (!name) { showToast('Введите название группы'); return; }
+
+  const selectedMembers = Array.from(document.querySelectorAll('.live-group-member-cb:checked'))
+    .map(input => String(input.value || '').trim().toUpperCase())
+    .filter(Boolean);
+
+  const existing = (liveState.favoritesDoc?.groups || []).find(group => group.id === liveState.editingGroupId);
+  const groupId = existing?.id || liveSlugifyGroupId(name);
+  const updatedGroup = {
+    id: groupId,
+    name,
+    color,
+    members: Array.from(new Set(selectedMembers)),
+    updatedAt: new Date().toISOString()
+  };
+
+  const groups = [...(liveState.favoritesDoc?.groups || [])];
+  const existingIdx = groups.findIndex(group => group.id === groupId);
+  if (existingIdx >= 0) groups.splice(existingIdx, 1, updatedGroup);
+  else groups.push(updatedGroup);
+
+  const doc = {
+    ...(liveState.favoritesDoc || createEmptyLiveFavoritesDocument()),
+    activeGroupId: liveState.activeGroupId || LIVE_GROUP_ALL_ID,
+    groups
+  };
+  const ok = await liveSaveFavoritesDocument(doc);
+  if (ok) {
+    liveState.editingGroupId = null;
+    renderLiveGroupsManager();
+    showToast(existing ? 'Группа обновлена' : 'Группа создана');
+  }
+}
+
+function renderLiveGroupsManager() {
+  const listEl = document.getElementById('live-groups-list');
+  const membersEl = document.getElementById('live-group-members');
+  const titleEl = document.getElementById('live-group-editor-title');
+  const nameEl = document.getElementById('live-group-name');
+  const colorEl = document.getElementById('live-group-color');
+  if (!listEl || !membersEl || !titleEl || !nameEl || !colorEl) return;
+
+  const groups = liveState.favoritesDoc?.groups || [];
+  listEl.innerHTML = groups.length === 0
+    ? '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">Групп пока нет</div>'
+    : groups.map(group => `
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
+        <div style="width:10px;height:10px;border-radius:50%;background:${group.color};flex:0 0 auto"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;color:var(--text-primary)">${liveEsc(group.name)}</div>
+          <div style="font-size:10px;color:var(--text-muted)">${(group.members || []).length} участников</div>
+        </div>
+        <button class="btn-secondary" style="padding:4px 8px;font-size:11px" onclick="liveHandleGroupChange('${group.id}')">Показать</button>
+        <button class="btn-secondary" style="padding:4px 8px;font-size:11px" onclick="liveStartGroupEdit('${group.id}')">Изм.</button>
+        <button class="btn-secondary" style="padding:4px 8px;font-size:11px;color:#e07070" onclick="liveDeleteGroup('${group.id}')">✕</button>
+      </div>
+    `).join('');
+
+  const editing = groups.find(group => group.id === liveState.editingGroupId) || null;
+  const formKey = editing?.id || '__new__';
+  const preserveDraft = nameEl.dataset.formKey === formKey;
+  const draftName = preserveDraft ? nameEl.value : '';
+  const draftColor = preserveDraft ? colorEl.value : '';
+  titleEl.textContent = editing ? 'Редактирование группы' : 'Новая группа';
+  nameEl.value = preserveDraft ? draftName : (editing?.name || '');
+  colorEl.value = preserveDraft ? draftColor : (editing?.color || '#FF6B00');
+  nameEl.dataset.formKey = formKey;
+  colorEl.dataset.formKey = formKey;
+
+  const selectedMembers = new Set((editing?.members || []).map(id => String(id).toUpperCase()));
+  const knownDevices = liveKnownDevices();
+  membersEl.innerHTML = knownDevices.length === 0
+    ? '<div style="font-size:12px;color:var(--text-muted)">Участники появятся после загрузки live-устройств</div>'
+    : knownDevices.map(device => `
+      <label style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:12px;color:var(--text-primary);cursor:pointer">
+        <input class="live-group-member-cb" type="checkbox" value="${device.id}" ${selectedMembers.has(device.id) ? 'checked' : ''} style="accent-color:#4a8adf">
+        <span style="flex:1">${liveEsc(device.name)}</span>
+        <span style="font-size:10px;color:var(--text-muted)">${device.online ? 'online' : device.id}</span>
+      </label>
+    `).join('');
+
+  const paletteEl = document.getElementById('live-group-palette');
+  if (paletteEl) {
+    const selectedColor = colorEl.value || '#FF6B00';
+    paletteEl.innerHTML = liveColorPalette().map(color => `
+      <button onclick="document.getElementById('live-group-color').value='${color}';renderLiveGroupsManager()" title="${color}"
+        style="width:20px;height:20px;border-radius:50%;border:${selectedColor === color ? '2px solid #fff' : '1px solid rgba(255,255,255,0.2)'};background:${color};cursor:pointer"></button>
+    `).join('');
+  }
+}
+
+function liveNormalizeMessage(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const direction = String(raw.direction || '').trim().toLowerCase();
+  const senderUniqueId = String(raw.senderUniqueId || raw.fromUniqueId || '').trim().toUpperCase() || null;
+  const senderName = String(raw.senderName || raw.fromName || 'Участник').trim() || 'Участник';
+  const scope = String(raw.scope || raw.type || 'direct').trim().toLowerCase() === 'group' ? 'group' : 'direct';
+  const incoming = typeof raw.incoming === 'boolean'
+    ? raw.incoming
+    : direction === 'outgoing'
+      ? false
+      : direction === 'incoming'
+        ? true
+        : true;
+  const targetId = scope === 'group'
+    ? String(raw.groupId || raw.targetId || 'group').trim().toLowerCase()
+    : String(incoming ? (senderUniqueId || raw.targetUniqueId || raw.peerUniqueId || raw.targetId || 'direct') : (raw.targetUniqueId || raw.peerUniqueId || raw.targetId || senderUniqueId || 'direct')).trim().toUpperCase();
+  const targetName = scope === 'group'
+    ? String(raw.groupName || raw.targetName || 'Группа').trim() || 'Группа'
+    : String(incoming ? senderName : (raw.targetName || raw.peerName || senderName || 'Участник')).trim() || 'Участник';
+  const attachment = raw.attachment && typeof raw.attachment === 'object' ? raw.attachment : null;
+  const text = String(raw.text || '').trim() || attachment?.previewText || attachment?.name || '';
+  if (!text && !attachment) return null;
+  const sentAt = Number(raw.sentAt) > 0 ? Number(raw.sentAt) : (Date.parse(raw.timestamp || raw.createdAt || '') || Date.now());
+  return {
+    messageId: String(raw.messageId || raw.id || raw.clientMessageId || `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`),
+    clientMessageId: raw.clientMessageId || null,
+    scope,
+    targetId,
+    targetName,
+    senderUniqueId,
+    senderName,
+    senderStatusCode: raw.senderStatusCode || raw.statusCode || null,
+    text,
+    kind: raw.kind || (attachment ? 'attachment' : 'text'),
+    attachment,
+    sentAt,
+    incoming,
+    read: !!raw.read,
+    delivery: raw.delivery || 'sent'
+  };
+}
+
+function liveThreadKeyForMessage(message) {
+  return message.scope === 'group' ? `group:${message.targetId}` : `direct:${message.targetId}`;
+}
+
+function liveMergeMessages(items) {
+  const byId = new Map(liveState.messages.map(message => [message.messageId || message.clientMessageId, message]));
+  const newIncoming = [];
+  items.forEach(item => {
+    const message = liveNormalizeMessage(item);
+    if (!message) return;
+    const key = message.messageId || message.clientMessageId;
+    if (!key) return;
+    if (!byId.has(key) && message.incoming) newIncoming.push(message);
+    byId.set(key, { ...(byId.get(key) || {}), ...message });
+  });
+  liveState.messages = Array.from(byId.values()).sort((a, b) => a.sentAt - b.sentAt).slice(-250);
+  livePersistMessages();
+  renderLiveMessagesButton();
+  renderLiveThreadSelect();
+  renderLiveMessages();
+  newIncoming.forEach(message => liveShowIncomingMessagePreview(message));
+}
+
+async function liveFetchMessages(silent = true) {
+  if (!liveHasAccess()) return false;
+  try {
+    const suffix = liveState.messageCursor > 0 ? `?after=${encodeURIComponent(liveState.messageCursor)}` : '';
+    const resp = await fetch(`${LIVE_MESSAGES_API}/inbox${suffix}`, { headers: liveAuthHeaders() });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+    const messages = Array.isArray(data.messages) ? data.messages : (Array.isArray(data.items) ? data.items : []);
+    if (messages.length > 0) {
+      liveMergeMessages(messages);
+      const maxCursor = messages.reduce((maxValue, item) => {
+        const sentAt = Number(item?.sentAt) || Date.parse(item?.timestamp || item?.createdAt || '') || 0;
+        return Math.max(maxValue, sentAt);
+      }, liveState.messageCursor || 0);
+      liveState.messageCursor = Number(data.cursor) > 0 ? Number(data.cursor) : maxCursor;
+      livePersistMessages();
+    }
+    return true;
+  } catch (error) {
+    if (!silent) showToast('Не удалось загрузить сообщения');
+    return false;
+  }
+}
+
+function liveGetUnreadCount() {
+  return liveState.messages.filter(message => message.incoming && !message.read).length;
+}
+
+function liveGetThreadMessages(threadKey = liveState.selectedThreadKey) {
+  return liveState.messages.filter(message => liveThreadMatches(threadKey, message));
+}
+
+function liveGetThreadUnreadCount(threadKey = liveState.selectedThreadKey) {
+  return liveGetThreadMessages(threadKey).filter(message => message.incoming && !message.read).length;
+}
+
+function liveGetThreadAttachmentMessages(threadKey = liveState.selectedThreadKey) {
+  return liveGetThreadMessages(threadKey).filter(message => message.attachment || message.kind === 'attachment');
+}
+
+function liveDecorateThreadLabel(baseLabel, threadKey) {
+  const parts = [baseLabel];
+  const unread = liveGetThreadUnreadCount(threadKey);
+  const attachments = liveGetThreadAttachmentMessages(threadKey).length;
+  if (unread > 0) parts.push(`• ${unread} new`);
+  if (attachments > 0) parts.push(`• 📦 ${attachments}`);
+  return parts.join(' ');
+}
+
+function renderLiveMessagesButton() {
+  const badge = document.getElementById('live-messages-badge');
+  if (!badge) return;
+  const unread = liveGetUnreadCount();
+  badge.textContent = unread > 0 ? String(unread) : '';
+  badge.style.display = unread > 0 ? 'inline-flex' : 'none';
+}
+
+function liveGetThreadOptions() {
+  const options = [];
+  options.push({
+    key: `group:${LIVE_GROUP_ALL_ID}`,
+    label: liveDecorateThreadLabel('📣 Все групповые', `group:${LIVE_GROUP_ALL_ID}`),
+    scope: 'group',
+    targetId: LIVE_GROUP_ALL_ID,
+    targetName: 'Все групповые'
+  });
+  (liveState.favoritesDoc?.groups || []).forEach(group => {
+    const key = `group:${group.id}`;
+    options.push({
+      key,
+      label: liveDecorateThreadLabel(`👥 ${group.name}`, key),
+      scope: 'group',
+      targetId: group.id,
+      targetName: group.name
+    });
+  });
+  const deviceNames = new Map((liveState.devices || []).map(dev => [liveDeviceUniqueId(dev), dev.name || liveDeviceUniqueId(dev)]));
+  const directKeys = new Set();
+  liveState.messages.forEach(message => {
+    if (message.scope !== 'direct' || !message.targetId) return;
+    if (directKeys.has(message.targetId)) return;
+    directKeys.add(message.targetId);
+    const key = `direct:${message.targetId}`;
+    options.push({
+      key,
+      label: liveDecorateThreadLabel(`💬 ${deviceNames.get(message.targetId) || message.targetName || message.senderName || message.targetId}`, key),
+      scope: 'direct',
+      targetId: message.targetId,
+      targetName: deviceNames.get(message.targetId) || message.targetName || message.senderName || message.targetId
+    });
+  });
+  if (liveState.selectedDirectTarget?.id && !directKeys.has(liveState.selectedDirectTarget.id)) {
+    const key = `direct:${liveState.selectedDirectTarget.id}`;
+    options.push({
+      key,
+      label: liveDecorateThreadLabel(`💬 ${liveState.selectedDirectTarget.name || liveState.selectedDirectTarget.id}`, key),
+      scope: 'direct',
+      targetId: liveState.selectedDirectTarget.id,
+      targetName: liveState.selectedDirectTarget.name || liveState.selectedDirectTarget.id
+    });
+  }
+  return options;
+}
+
+function renderLiveThreadSelect() {
+  const select = document.getElementById('live-thread-select');
+  if (!select) return;
+  const options = liveGetThreadOptions();
+  const current = options.some(option => option.key === liveState.selectedThreadKey)
+    ? liveState.selectedThreadKey
+    : (liveGetActiveGroup() ? `group:${liveGetActiveGroup().id}` : options[0]?.key || `group:${LIVE_GROUP_ALL_ID}`);
+  liveState.selectedThreadKey = current;
+  select.innerHTML = options.map(option => `<option value="${option.key}">${liveEsc(option.label)}</option>`).join('');
+  select.value = current;
+  localStorage.setItem('tnd-live-thread', current);
+}
+
+function liveSelectThread(threadKey) {
+  liveState.selectedThreadKey = threadKey;
+  localStorage.setItem('tnd-live-thread', threadKey);
+  renderLiveMessages();
+}
+
+function liveThreadMatches(threadKey, message) {
+  if (!message) return false;
+  const [scope, targetId] = String(threadKey || '').split(':');
+  if (scope === 'group') {
+    if (targetId === LIVE_GROUP_ALL_ID) return message.scope === 'group';
+    return message.scope === 'group' && message.targetId === targetId;
+  }
+  return message.scope === 'direct' && message.targetId === targetId;
+}
+
+function liveFindMessage(messageId) {
+  const needle = String(messageId || '');
+  if (!needle) return null;
+  return liveState.messages.find(message =>
+    String(message?.messageId || '') === needle || String(message?.clientMessageId || '') === needle
+  ) || null;
+}
+
+function liveImportAttachmentFromButton(button) {
+  const messageId = decodeURIComponent(button?.dataset?.messageId || '');
+  if (!messageId) return;
+  liveImportMessageAttachment(messageId);
+}
+
+async function liveImportMessageAttachment(messageId) {
+  const message = liveFindMessage(messageId);
+  const attachment = message?.attachment;
+  const remoteId = attachment?.remoteId || attachment?.attachmentId;
+  if (!attachment || !remoteId) {
+    showToast('Для этого сообщения нет доступного вложения');
+    return;
+  }
+  const rawName = String(attachment.name || message.text || remoteId).trim() || remoteId;
+  const fileName = /\.[^.]+$/i.test(rawName) ? rawName : `${rawName}.gpx`;
+  try {
+    const resp = await fetch(`${LIVE_GROUP_SHARE_API}/${encodeURIComponent(remoteId)}/data`, { headers: liveAuthHeaders() });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const gpx = await resp.text();
+    loadGPXFile(gpx, fileName);
+    if (message.incoming && !message.read) {
+      message.read = true;
+      livePersistMessages();
+      renderLiveMessagesButton();
+    }
+    showToast(`✓ Импортировано: ${rawName}`);
+  } catch (_) {
+    showToast('Не удалось загрузить вложение с сервера');
+  }
+}
+
+function liveRenderMessageHtml(message) {
+  const status = liveStatusInfo(message.senderStatusCode);
+  const attachment = message.attachment;
+  const header = message.scope === 'group' && message.incoming
+    ? `<div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">${status.emoji} ${liveEsc(message.senderName)}</div>`
+    : '';
+  let body = `<div style="font-size:12px;color:var(--text-primary);white-space:pre-wrap">${liveEsc(message.text)}</div>`;
+  if (attachment) {
+    const preview = attachment.previewText || message.text || attachment.name || 'Вложение';
+    const details = [
+      liveAttachmentTypeLabel(attachment.type),
+      attachment.sizeBytes ? liveFormatBytes(attachment.sizeBytes) : '',
+      attachment.remoteId || attachment.attachmentId ? 'доступно' : ''
+    ].filter(Boolean).join(' · ');
+    const extraText = message.text && message.text !== preview
+      ? `<div style="font-size:12px;color:var(--text-primary);white-space:pre-wrap;margin-top:6px">${liveEsc(message.text)}</div>`
+      : '';
+    const actionAttrs = `data-message-id="${encodeURIComponent(String(message.messageId || message.clientMessageId || ''))}"`;
+    const canImport = !!(attachment.remoteId || attachment.attachmentId);
+    body = `
+      <div style="font-size:12px;color:var(--text-primary);font-weight:600">${liveEsc(preview)}</div>
+      ${details ? `<div style="font-size:10px;color:var(--text-muted);margin-top:4px">${liveEsc(details)}</div>` : ''}
+      ${extraText}
+      <div style="display:flex;justify-content:${message.incoming ? 'flex-start' : 'flex-end'};margin-top:8px">
+        <button ${actionAttrs} onclick="liveImportAttachmentFromButton(this)" ${canImport ? '' : 'disabled'}
+          style="background:${canImport ? '#1f3f66' : 'rgba(255,255,255,0.08)'};border:1px solid ${canImport ? '#386ea8' : 'rgba(255,255,255,0.08)'};color:${canImport ? '#dce9ff' : 'rgba(255,255,255,0.45)'};border-radius:6px;padding:4px 8px;cursor:${canImport ? 'pointer' : 'default'};font-size:11px">
+          Импортировать
+        </button>
+      </div>`;
+  }
+  const footer = `${new Date(message.sentAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}${!message.incoming && message.delivery === 'failed' ? ' · ошибка' : ''}`;
+  return `
+    <div style="display:flex;justify-content:${message.incoming ? 'flex-start' : 'flex-end'};margin-bottom:8px">
+      <div style="max-width:82%;background:${message.incoming ? 'rgba(255,255,255,0.08)' : 'rgba(74,138,223,0.22)'};border:1px solid ${message.incoming ? 'rgba(255,255,255,0.08)' : 'rgba(74,138,223,0.5)'};border-radius:10px;padding:8px 10px">
+        ${header}
+        ${body}
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px;text-align:right">${footer}</div>
+      </div>
+    </div>`;
+}
+
+function liveRenderAttachmentItemHtml(message) {
+  const attachment = message.attachment;
+  if (!attachment) return '';
+  const label = attachment.previewText || attachment.name || 'Вложение';
+  const sender = message.incoming ? (message.senderName || 'Участник') : 'Вы';
+  const details = [
+    liveAttachmentTypeLabel(attachment.type),
+    attachment.sizeBytes ? liveFormatBytes(attachment.sizeBytes) : '',
+    new Date(message.sentAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+  ].filter(Boolean).join(' · ');
+  const actionAttrs = `data-message-id="${encodeURIComponent(String(message.messageId || message.clientMessageId || ''))}"`;
+  const canImport = !!(attachment.remoteId || attachment.attachmentId);
+  return `
+    <div style="display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.06)">
+      <div style="min-width:0">
+        <div style="font-size:12px;color:var(--text-primary);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${liveEsc(label)}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:3px">${liveEsc(sender)} · ${liveEsc(details)}</div>
+      </div>
+      <button ${actionAttrs} onclick="liveImportAttachmentFromButton(this)" ${canImport ? '' : 'disabled'}
+        style="background:${canImport ? '#1f3f66' : 'rgba(255,255,255,0.08)'};border:1px solid ${canImport ? '#386ea8' : 'rgba(255,255,255,0.08)'};color:${canImport ? '#dce9ff' : 'rgba(255,255,255,0.45)'};border-radius:6px;padding:4px 8px;cursor:${canImport ? 'pointer' : 'default'};font-size:11px;white-space:nowrap">
+        Импорт
+      </button>
+    </div>`;
+}
+
+function renderLiveAttachmentList(threadKey = liveState.selectedThreadKey) {
+  const statusEl = document.getElementById('live-attachments-status');
+  const listEl = document.getElementById('live-attachments-list');
+  if (!statusEl || !listEl) return;
+  const items = [...liveGetThreadAttachmentMessages(threadKey)].sort((a, b) => b.sentAt - a.sentAt);
+  statusEl.textContent = items.length > 0 ? `Вложения треда: ${items.length}` : 'Вложения треда: 0';
+  listEl.innerHTML = items.length === 0
+    ? '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:14px 10px">Во вложениях пока пусто</div>'
+    : items.map(liveRenderAttachmentItemHtml).join('');
+}
+
+function renderLiveMessages() {
+  const listEl = document.getElementById('live-messages-list');
+  const statusEl = document.getElementById('live-messages-status');
+  if (!listEl || !statusEl) return;
+  const threadKey = liveState.selectedThreadKey;
+  renderLiveThreadSelect();
+  const threadMessages = liveGetThreadMessages(threadKey);
+  threadMessages.forEach(message => { if (message.incoming) message.read = true; });
+  livePersistMessages();
+  renderLiveThreadSelect();
+  renderLiveMessagesButton();
+  const attachmentCount = threadMessages.filter(message => message.attachment || message.kind === 'attachment').length;
+  statusEl.textContent = threadMessages.length > 0
+    ? `Сообщений: ${threadMessages.length} · вложений: ${attachmentCount}`
+    : 'История пока пуста';
+  listEl.innerHTML = threadMessages.length === 0
+    ? '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px 12px">Сообщений пока нет</div>'
+    : threadMessages.map(liveRenderMessageHtml).join('');
+  renderLiveAttachmentList(threadKey);
+  listEl.scrollTop = listEl.scrollHeight;
+}
+
+function openLiveMessagesModal(threadKey = null) {
+  if (!liveHasAccess()) return;
+  if (threadKey) liveState.selectedThreadKey = threadKey;
+  liveFetchFavorites(true);
+  liveFetchMessages(true).finally(() => {
+    renderLiveThreadSelect();
+    renderLiveMessages();
+    openModal('modal-live-messages');
+  });
+}
+
+function liveOpenDeviceThread(deviceId, deviceName = null) {
+  if (!deviceId) {
+    showToast('У участника нет uniqueId для сообщений');
+    return;
+  }
+  const directId = String(deviceId).trim().toUpperCase();
+  liveState.selectedDirectTarget = { id: directId, name: deviceName || liveLookupDeviceName(directId) || directId };
+  const directKey = `direct:${directId}`;
+  openLiveMessagesModal(directKey);
+}
+
+async function liveSendMessage() {
+  if (!liveHasAccess()) return;
+  const input = document.getElementById('live-message-input');
+  const text = input?.value?.trim();
+  if (!text) { showToast('Введите текст сообщения'); return; }
+  const senderDeviceId = await getMachineIdAsync().catch(() => getMachineId());
+
+  const [scope, rawTargetId] = String(liveState.selectedThreadKey || '').split(':');
+  const targetId = rawTargetId || LIVE_GROUP_ALL_ID;
+  const payload = scope === 'group'
+    ? {
+        clientMessageId: `web_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+        groupId: targetId,
+        groupName: targetId === LIVE_GROUP_ALL_ID ? 'Все групповые' : (liveState.favoritesDoc?.groups || []).find(group => group.id === targetId)?.name || 'Группа',
+        text,
+        senderStatusCode: liveState.myStatusCode,
+        senderDeviceId
+      }
+    : {
+        clientMessageId: `web_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+        targetUniqueId: targetId,
+        targetName: liveGetThreadOptions().find(option => option.key === liveState.selectedThreadKey)?.targetName || targetId,
+        text,
+        senderStatusCode: liveState.myStatusCode,
+        senderDeviceId
+      };
+
+  if (scope === 'group' && targetId === LIVE_GROUP_ALL_ID) {
+    showToast('Выберите конкретную группу для отправки');
+    return;
+  }
+
+  try {
+    const resp = await fetch(`${LIVE_MESSAGES_API}/${scope === 'group' ? 'group' : 'direct'}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...liveAuthHeaders() },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+    liveMergeMessages([{
+      messageId: data.messageId || payload.clientMessageId,
+      clientMessageId: payload.clientMessageId,
+      scope,
+      targetId: scope === 'group' ? payload.groupId : payload.targetUniqueId,
+      targetName: scope === 'group' ? payload.groupName : payload.targetName,
+      senderName: 'Вы',
+      senderStatusCode: liveState.myStatusCode,
+      text,
+      sentAt: Date.now(),
+      incoming: false,
+      read: true,
+      delivery: 'sent'
+    }]);
+    if (input) input.value = '';
+    renderLiveMessages();
+  } catch (error) {
+    showToast('Не удалось отправить сообщение');
+  }
+}
+
+function liveShowIncomingMessagePreview(message) {
+  if (!message.incoming || message.messageId === liveState.lastPreviewMessageId) return;
+  const card = document.getElementById('live-message-preview');
+  const senderEl = document.getElementById('live-message-preview-sender');
+  const textEl = document.getElementById('live-message-preview-text');
+  if (!card || !senderEl || !textEl) return;
+  const status = liveStatusInfo(message.senderStatusCode);
+  liveState.lastPreviewMessageId = message.messageId;
+  livePersistMessages();
+  senderEl.textContent = message.scope === 'group'
+    ? `${status.emoji} ${message.senderName} → ${message.targetName}`
+    : `${status.emoji} ${message.senderName}`;
+  textEl.textContent = message.text;
+  card.style.display = 'block';
+  card.style.opacity = '1';
+  card.onclick = () => openLiveMessagesModal(liveThreadKeyForMessage(message));
+  if (liveState.previewTimer) clearTimeout(liveState.previewTimer);
+  liveState.previewTimer = setTimeout(() => {
+    card.style.opacity = '0';
+    setTimeout(() => { card.style.display = 'none'; }, 180);
+  }, 2600);
+}
+
+function renderLiveStatusSelect() {
+  const select = document.getElementById('live-status-select');
+  if (!select) return;
+  select.innerHTML = LIVE_STATUS_OPTIONS.map(option =>
+    `<option value="${option.code}">${option.emoji} ${liveEsc(option.label)}</option>`
+  ).join('');
+  select.value = liveState.myStatusCode || 'none';
+}
+
+async function livePushStatus(silent = true) {
+  if (!liveHasAccess()) return false;
+  const status = liveStatusInfo(liveState.myStatusCode);
+  const senderDeviceId = await getMachineIdAsync().catch(() => getMachineId());
+  try {
+    const resp = await fetch(`${LIVE_API_BASE}/api/live2/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...liveAuthHeaders() },
+      body: JSON.stringify({
+        senderDeviceId,
+        statusCode: status.code,
+        emoji: status.emoji,
+        label: status.label,
+        timestamp: new Date().toISOString()
+      })
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.ok === false) throw new Error(data.error || `HTTP ${resp.status}`);
+    return true;
+  } catch (error) {
+    if (!silent) showToast('Не удалось обновить monitoring-статус');
+    return false;
+  }
+}
+
+function liveChangeStatus(code) {
+  liveState.myStatusCode = liveStatusInfo(code).code;
+  livePersistMessages();
+  renderLiveStatusSelect();
+  livePushStatus(false);
+}
+
+function liveBuildSharePresets() {
+  const presets = [];
+  const activeSet = getActiveSet();
+  const activeSetWaypoints = liveGetWaypointsForSet(activeSet);
+  const activeOsrmRoute = osrmState.items.find(route => route.id === osrmState.activeId && route.visible !== false) || null;
+  const addPreset = (preset) => {
+    if (preset?.id) presets.push(preset);
+  };
+
+  const totalCounts = [
+    waypoints.length ? `${waypoints.length} точек` : '',
+    tracks.length ? `${tracks.length} треков` : '',
+    routes.length ? `${routes.length} маршрутов` : ''
+  ].filter(Boolean).join(' · ');
+
+  if (waypoints.length || tracks.length || routes.length) {
+    addPreset({
+      id: 'all',
+      type: 'gpx',
+      name: 'Карта целиком',
+      build: () => ({
+        name: `desktop-map-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}`,
+        type: 'gpx',
+        gpx: buildGPXWithData(waypoints, tracks, routes),
+        meta: totalCounts || 'Все объекты на карте'
+      })
+    });
+  }
+
+  if (waypoints.length) {
+    addPreset({
+      id: 'waypoints',
+      type: 'waypoints',
+      name: `Точки (${waypoints.length})`,
+      build: () => ({
+        name: liveShareSafeName(getActiveSet()?.name || 'waypoints', 'waypoints'),
+        type: 'waypoints',
+        gpx: buildGPXWithData(waypoints, [], []),
+        meta: `${waypoints.length} точек`
+      })
+    });
+  }
+
+  if (activeSet && activeSetWaypoints.length > 0 && activeSetWaypoints.length !== waypoints.length) {
+    addPreset({
+      id: 'active-set',
+      type: 'waypoints',
+      name: `Активный набор: ${activeSet.name} (${activeSetWaypoints.length})`,
+      build: () => ({
+        name: liveShareSafeName(activeSet.name, 'active_set'),
+        type: 'waypoints',
+        gpx: buildGPXWithData(activeSetWaypoints, [], []),
+        meta: `${activeSetWaypoints.length} точек`
+      })
+    });
+  }
+
+  waypointSets.forEach(set => {
+    const setWaypoints = liveGetWaypointsForSet(set);
+    if (setWaypoints.length === 0) return;
+    if (activeSet && set.id === activeSet.id) return;
+    addPreset({
+      id: `set:${set.id}`,
+      type: 'waypoints',
+      name: `Набор: ${set.name} (${setWaypoints.length})`,
+      build: () => ({
+        name: liveShareSafeName(set.name, `set_${set.id}`),
+        type: 'waypoints',
+        gpx: buildGPXWithData(setWaypoints, [], []),
+        meta: `${setWaypoints.length} точек`
+      })
+    });
+  });
+
+  if (selectedTrackId && tracks.some(track => track.id === selectedTrackId)) {
+    const track = tracks.find(item => item.id === selectedTrackId);
+    addPreset({
+      id: 'selected-track',
+      type: 'track',
+      name: `Выбранный трек: ${track.name}`,
+      build: () => ({
+        name: liveShareSafeName(track.name, `track_${track.id}`),
+        type: 'track',
+        gpx: buildGPXWithData([], [track], []),
+        meta: `${track.points.length} точек`
+      })
+    });
+  }
+
+  if (tracks.length) {
+    addPreset({
+      id: 'tracks',
+      type: 'track',
+      name: `Все треки (${tracks.length})`,
+      build: () => ({
+        name: `tracks-${new Date().toISOString().slice(0, 10)}`,
+        type: 'track',
+        gpx: buildGPXWithData([], tracks, []),
+        meta: `${tracks.length} треков`
+      })
+    });
+  }
+
+  tracks.forEach(track => {
+    if (track.id === selectedTrackId) return;
+    addPreset({
+      id: `track:${track.id}`,
+      type: 'track',
+      name: `Трек: ${track.name} (${track.points.length})`,
+      build: () => ({
+        name: liveShareSafeName(track.name, `track_${track.id}`),
+        type: 'track',
+        gpx: buildGPXWithData([], [track], []),
+        meta: `${track.points.length} точек`
+      })
+    });
+  });
+
+  if (activeOsrmRoute) {
+    addPreset({
+      id: 'osrm-active',
+      type: 'track',
+      name: `Дорожный маршрут: ${activeOsrmRoute.name}`,
+      build: () => {
+        const track = liveBuildOsrmTrack(activeOsrmRoute);
+        return {
+          name: liveShareSafeName(activeOsrmRoute.name, `osrm_${activeOsrmRoute.id}`),
+          type: 'track',
+          gpx: buildGPXWithData([], track ? [track] : [], []),
+          meta: `${(activeOsrmRoute.distance / 1000).toFixed(1)} км · ${formatOsrmDuration(activeOsrmRoute.duration)}`
+        };
+      }
+    });
+  }
+
+  if (routes.length) {
+    addPreset({
+      id: 'routes',
+      type: 'route',
+      name: `Все маршруты (${routes.length})`,
+      build: () => ({
+        name: `routes-${new Date().toISOString().slice(0, 10)}`,
+        type: 'route',
+        gpx: buildGPXWithData([], [], routes),
+        meta: `${routes.length} маршрутов`
+      })
+    });
+  }
+
+  routes.forEach(route => {
+    addPreset({
+      id: `route:${route.id}`,
+      type: 'route',
+      name: `Маршрут: ${route.name} (${route.points.length})`,
+      build: () => ({
+        name: liveShareSafeName(route.name, `route_${route.id}`),
+        type: 'route',
+        gpx: buildGPXWithData([], [], [route]),
+        meta: `${route.points.length} КП`
+      })
+    });
+  });
+
+  return presets;
+}
+
+function liveOpenShareModal() {
+  if (!liveHasAccess()) return;
+  const presets = liveBuildSharePresets();
+  const presetSelect = document.getElementById('live-share-preset');
+  const groupSelect = document.getElementById('live-share-group');
+  const nameInput = document.getElementById('live-share-name');
+  const summary = document.getElementById('live-share-summary');
+  const groups = liveState.favoritesDoc?.groups || [];
+  if (presets.length === 0) { showToast('На карте нет данных для отправки'); return; }
+  if (groups.length === 0) { showToast('Сначала создайте группу мониторинга'); openLiveGroupsManager(); return; }
+  presetSelect.innerHTML = presets.map(preset => `<option value="${preset.id}">${liveEsc(preset.name)}</option>`).join('');
+  groupSelect.innerHTML = groups.map(group => `<option value="${group.id}">${liveEsc(group.name)} (${(group.members || []).length})</option>`).join('');
+  const [threadScope, threadGroupId] = String(liveState.selectedThreadKey || '').split(':');
+  const preferredGroupId = threadScope === 'group' && threadGroupId && threadGroupId !== LIVE_GROUP_ALL_ID
+    ? threadGroupId
+    : (liveGetActiveGroup()?.id || groups[0].id);
+  groupSelect.value = groups.some(group => group.id === preferredGroupId) ? preferredGroupId : groups[0].id;
+  const first = presets[0].build();
+  nameInput.value = first.name;
+  const firstSize = liveFormatBytes(liveUtf8Size(first.gpx));
+  summary.textContent = `Тип: ${liveAttachmentTypeLabel(first.type)} · ${first.meta || 'Подготовлено к отправке'} · ${firstSize}`;
+  openModal('modal-live-share');
+}
+
+function liveHandleSharePresetChange() {
+  const presetId = document.getElementById('live-share-preset')?.value;
+  const preset = liveBuildSharePresets().find(item => item.id === presetId);
+  const nameInput = document.getElementById('live-share-name');
+  const summary = document.getElementById('live-share-summary');
+  if (!preset || !nameInput || !summary) return;
+  const payload = preset.build();
+  nameInput.value = payload.name;
+  summary.textContent = `Тип: ${liveAttachmentTypeLabel(payload.type)} · ${payload.meta || 'Подготовлено к отправке'} · ${liveFormatBytes(liveUtf8Size(payload.gpx))}`;
+}
+
+async function liveSendShareToGroup() {
+  if (!liveHasAccess()) return;
+  const presetId = document.getElementById('live-share-preset')?.value;
+  const groupId = document.getElementById('live-share-group')?.value;
+  const customName = document.getElementById('live-share-name')?.value?.trim();
+  const group = (liveState.favoritesDoc?.groups || []).find(item => item.id === groupId);
+  const preset = liveBuildSharePresets().find(item => item.id === presetId);
+  if (!group) { showToast('Выберите группу'); return; }
+  if (!preset) { showToast('Выберите данные для отправки'); return; }
+  const payload = preset.build();
+  const name = customName || payload.name;
+  const senderDeviceId = await getMachineIdAsync().catch(() => getMachineId());
+  const payloadSize = liveUtf8Size(payload.gpx);
+  try {
+    const resp = await fetch(LIVE_GROUP_SHARE_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...liveAuthHeaders() },
+      body: JSON.stringify({
+        groupId: group.id,
+        type: payload.type,
+        name,
+        data: payload.gpx,
+        clientShareId: `share_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+        senderDeviceId
+      })
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.ok === false) throw new Error(data.error || `HTTP ${resp.status}`);
+    liveMergeMessages([{
+      messageId: data.shareId || `share_${Date.now()}`,
+      scope: 'group',
+      targetId: group.id,
+      targetName: group.name,
+      senderName: 'Вы',
+      senderUniqueId: senderDeviceId,
+      senderStatusCode: liveState.myStatusCode,
+      text: `📦 ${name}`,
+      kind: 'attachment',
+      attachment: {
+        attachmentId: data.shareId || '',
+        type: payload.type,
+        name,
+        remoteId: data.shareId || null,
+        sizeBytes: payloadSize,
+        previewText: `📦 ${name}`
+      },
+      sentAt: Date.now(),
+      incoming: false,
+      read: true,
+      delivery: 'sent'
+    }]);
+    closeModal('modal-live-share');
+    showToast(`Отправлено в «${group.name}» (${data.deliveredCount || 0})`);
+  } catch (error) {
+    showToast('Не удалось отправить вложение в группу');
+  }
+}
+
+async function liveFetchShareInbox(silent = true) {
+  if (!liveHasAccess()) return false;
+  try {
+    const resp = await fetch(`${LIVE_GROUP_SHARE_API}/inbox`, { headers: liveAuthHeaders() });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || data.ok === false) throw new Error(data.error || `HTTP ${resp.status}`);
+    const shares = Array.isArray(data.shares) ? data.shares : [];
+    const fresh = shares.filter(entry => entry?.shareId && !liveState.shareInboxSeen.has(entry.shareId));
+    fresh.forEach(entry => {
+      liveState.shareInboxSeen.add(entry.shareId);
+      liveState.pendingShares.push(entry);
+    });
+    if (fresh.length > 0) {
+      livePersistMessages();
+      liveShowNextShareInboxModal();
+    }
+    return true;
+  } catch (error) {
+    if (!silent) showToast('Не удалось проверить входящие вложения');
+    return false;
+  }
+}
+
+function liveShowNextShareInboxModal() {
+  if (liveState.activeShareId || liveState.pendingShares.length === 0) return;
+  const entry = liveState.pendingShares.shift();
+  if (!entry?.shareId) return;
+  liveState.activeShareId = entry.shareId;
+  liveState.activeShareEntry = entry;
+  document.getElementById('live-share-inbox-title').textContent = `📥 ${entry.senderName || 'Участник'}`;
+  document.getElementById('live-share-inbox-body').textContent = `Поделился: «${entry.name || 'Вложение'}»\nТип: ${(entry.type || 'gpx').toUpperCase()} · ${Math.round((entry.size || 0) / 1024)} КБ`;
+  document.getElementById('live-share-inbox-meta').textContent = entry.groupName ? `Группа: ${entry.groupName}` : '';
+  openModal('modal-live-share-inbox');
+}
+
+async function liveAckShare(shareId) {
+  if (!shareId) return;
+  try {
+    await fetch(`${LIVE_GROUP_SHARE_API}/${encodeURIComponent(shareId)}/ack`, {
+      method: 'DELETE',
+      headers: liveAuthHeaders()
+    });
+  } catch (_) {}
+}
+
+async function liveAcceptIncomingShare() {
+  const shareId = liveState.activeShareId;
+  const entry = liveState.activeShareEntry;
+  if (!shareId || !entry) return;
+  try {
+    const dataResp = await fetch(`${LIVE_GROUP_SHARE_API}/${encodeURIComponent(shareId)}/data`, { headers: liveAuthHeaders() });
+    if (!dataResp.ok) throw new Error(`HTTP ${dataResp.status}`);
+    const gpx = await dataResp.text();
+    loadGPXFile(gpx, `${entry.name || shareId}.gpx`);
+    liveMergeMessages([{
+      messageId: shareId,
+      scope: 'group',
+      targetId: entry.groupId || LIVE_GROUP_ALL_ID,
+      targetName: entry.groupName || 'Группа',
+      senderName: entry.senderName || 'Участник',
+      senderUniqueId: entry.senderUniqueId || null,
+      text: `📦 ${entry.name || 'Вложение'}`,
+      kind: 'attachment',
+      attachment: {
+        attachmentId: shareId,
+        type: entry.type || 'gpx',
+        name: entry.name || 'Вложение',
+        remoteId: shareId,
+        sizeBytes: Number(entry.size) || 0,
+        previewText: `📦 ${entry.name || 'Вложение'}`
+      },
+      sentAt: Date.parse(entry.timestamp || '') || Date.now(),
+      incoming: true,
+      read: false,
+      delivery: 'sent'
+    }]);
+    await liveAckShare(shareId);
+    closeModal('modal-live-share-inbox');
+    liveState.activeShareId = null;
+    liveState.activeShareEntry = null;
+    showToast(`✓ Загружено: ${entry.name || 'Вложение'}`);
+    liveShowNextShareInboxModal();
+  } catch (error) {
+    showToast('Ошибка загрузки вложения');
+  }
+}
+
+async function liveDeclineIncomingShare() {
+  const shareId = liveState.activeShareId;
+  if (!shareId) return;
+  await liveAckShare(shareId);
+  closeModal('modal-live-share-inbox');
+  liveState.activeShareId = null;
+  liveState.activeShareEntry = null;
+  liveShowNextShareInboxModal();
+}
+
 function toggleLive() {
+  if (!liveState.isOpen && !liveHasAccess()) return;
   const sidebar = document.getElementById('live-sidebar');
   const btn = document.getElementById('btn-live');
   liveState.isOpen = !liveState.isOpen;
@@ -9706,17 +11113,26 @@ function liveStartPolling() {
   if (liveState.isPolling) return;
   liveState.isPolling = true;
   liveState.consecutiveErrors = 0;
+  liveFetchFavorites(true);
+  liveFetchMessages(true);
+  liveFetchShareInbox(true);
+  livePushStatus(true);
   liveFetch();
   liveState.timer = setInterval(liveFetch, LIVE_POLL_MS);
+  liveState.messagesTimer = setInterval(liveFetchMessages, LIVE_MESSAGES_POLL_MS);
+  liveState.sharesTimer = setInterval(liveFetchShareInbox, 60000);
 }
 
 function liveStopPolling() {
   liveState.isPolling = false;
   if (liveState.timer) { clearInterval(liveState.timer); liveState.timer = null; }
+  if (liveState.messagesTimer) { clearInterval(liveState.messagesTimer); liveState.messagesTimer = null; }
+  if (liveState.sharesTimer) { clearInterval(liveState.sharesTimer); liveState.sharesTimer = null; }
   // Remove all markers from map
   Object.values(liveState.markers).forEach(m => map.removeLayer(m));
   liveState.markers = {};
   liveState._firstFitDone = false;
+  liveUpdateDot('off');
 }
 
 async function liveFetch() {
@@ -9742,19 +11158,19 @@ async function liveFetch() {
 }
 
 function liveProcessDevices(devices) {
+  liveState.devices = Array.isArray(devices) ? devices : [];
+  const filteredDevices = liveGetFilteredDevices(liveState.devices);
   const now = Date.now();
   const activeIds = new Set();
-  let created = 0, skipped = 0;
 
-  devices.forEach(dev => {
-    if (!dev.lat || !dev.lon) { skipped++; return; }
-    const id = String(dev.deviceId || dev.name);
+  filteredDevices.forEach(dev => {
+    if (!dev.lat || !dev.lon) return;
+    const id = liveDeviceMarkerId(dev);
     activeIds.add(id);
     const lastUpdate = dev.lastUpdate ? new Date(dev.lastUpdate).getTime() : 0;
     const isOffline = lastUpdate > 0 && (now - lastUpdate) > LIVE_OFFLINE_TIMEOUT;
 
     liveUpdateMarker(dev, isOffline);
-    created++;
   });
   // Автоматически показать всех при первом fetch
   if (!liveState._firstFitDone && Object.keys(liveState.markers).length > 0) {
@@ -9770,7 +11186,8 @@ function liveProcessDevices(devices) {
     }
   });
 
-  liveRenderSidebar(devices, now);
+  liveRenderSidebar(filteredDevices, now);
+  renderLiveGroupsManager();
 }
 
 function liveGetMarkerSize() {
@@ -9799,7 +11216,7 @@ function liveMarkerColor(dev) {
 }
 
 function liveUpdateMarker(dev, isOffline) {
-  const id = String(dev.deviceId || dev.name);
+  const id = liveDeviceMarkerId(dev);
   const latlng = [dev.lat, dev.lon];
   const isPro = dev.plan === 'full' || dev.plan === 'license';
   const speed = dev.speed ? Math.round(dev.speed) : 0;
@@ -9815,11 +11232,15 @@ function liveUpdateMarker(dev, isOffline) {
   const labelSize = Math.round(labelScale * 1.2 + 7); // scale 1→8, 3→11, 5→13, 10→19
   const iconW = Math.max(diamondSize + 8, 100);
   const iconH = diamondSize + labelSize + 20;
+  const status = liveStatusInfo(dev.monitorStatusCode);
+  const glyph = status.glyph.length > 3 ? status.emoji : status.glyph;
+  const markerBg = status.code !== 'none' && status.code !== 'sos' ? status.color : color;
+  const glyphSize = glyph === 'SOS' ? Math.max(8, Math.round(starSize * 0.68)) : starSize;
 
   const html = `
     <div style="text-align:center">
-      <div class="live-diamond ${isPro ? 'pro' : ''}" style="background:${color};width:${diamondSize}px;height:${diamondSize}px">
-        <span class="live-diamond-star" style="font-size:${starSize}px">✴</span>
+      <div class="live-diamond ${isPro ? 'pro' : ''}" style="background:${markerBg};width:${diamondSize}px;height:${diamondSize}px">
+        <span class="live-diamond-star" style="font-size:${glyphSize}px">${liveEsc(glyph)}</span>
       </div>
       <div class="live-marker-label ${isPro ? 'pro' : ''}" style="font-size:${labelSize}px">${name}</div>
       ${speed > 1 ? `<div class="live-marker-speed" style="font-size:${Math.max(labelSize - 2, 8)}px">${speed} км/ч</div>` : ''}
@@ -9845,14 +11266,18 @@ function liveShowPopup(dev) {
   const time = dev.lastUpdate ? new Date(dev.lastUpdate).toLocaleTimeString('ru-RU') : '—';
   const isPro = dev.plan === 'full';
   const name = liveEsc(isPro ? `⭐ ${dev.name}` : dev.name);
+  const deviceId = liveDeviceUniqueId(dev);
+  const status = liveStatusInfo(dev.monitorStatusCode);
 
   L.popup({ offset: [0, -15] })
     .setLatLng([dev.lat, dev.lon])
     .setContent(`
       <div style="min-width:160px">
         <b style="color:${isPro ? '#FFD700' : '#fff'}">${name}</b><br>
+        ${status.emoji} ${liveEsc(status.label)}<br>
         🏎 ${speed} · 📡 ${alt}<br>
         🔋 ${battery} · 🕐 ${time}<br>
+        ${deviceId ? `<div style="margin-top:6px"><button onclick="liveOpenDeviceThread('${deviceId}')" style="background:#1f3f66;border:1px solid #386ea8;color:#dce9ff;border-radius:4px;padding:4px 8px;cursor:pointer">💬 Написать</button></div>` : ''}
         <small style="color:#888">${dev.lat.toFixed(5)}, ${dev.lon.toFixed(5)}</small>
       </div>`)
     .openOn(map);
@@ -9876,14 +11301,16 @@ function liveRenderSidebar(devices, now) {
     const battery = dev.battery != null ? '🔋' + dev.battery + '%' : '';
     const time = dev.lastUpdate ? new Date(dev.lastUpdate).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'}) : '';
     const isPro = dev.plan === 'full';
-    const id = dev.deviceId || dev.name;
+    const uniqueId = liveDeviceUniqueId(dev);
+    const status = liveStatusInfo(dev.monitorStatusCode);
 
     return `<div class="live-device ${isOffline ? 'offline' : ''}" onclick="liveZoomTo(${dev.lat},${dev.lon})">
       <div class="live-dev-dot ${isOffline ? 'offline' : 'online'}"></div>
       <div class="live-dev-info">
         <div class="live-dev-name ${isPro ? 'pro' : ''}">${isPro ? '⭐ ' : ''}${liveEsc(dev.name || 'Unknown')}</div>
-        <div class="live-dev-meta">${[time, battery].filter(Boolean).join(' · ')}</div>
+        <div class="live-dev-meta">${[`${status.emoji} ${liveEsc(status.label)}`, time, battery].filter(Boolean).join(' · ')}</div>
       </div>
+      ${uniqueId ? `<button onclick="event.stopPropagation();liveOpenDeviceThread('${uniqueId}')" title="Сообщение" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:14px">💬</button>` : ''}
       ${speed ? `<div class="live-dev-speed">${speed}</div>` : ''}
     </div>`;
   }).join('');
@@ -9910,6 +11337,8 @@ function liveShowAll() {
   const group = L.featureGroup(markers);
   map.fitBounds(group.getBounds().pad(0.1));
 }
+
+liveLoadCache();
 
 // Drag the live panel
 (function() {
@@ -9944,15 +11373,149 @@ function liveShowAll() {
     <div class="live-dot off" id="live-status-dot"></div>
     <span id="live-header-text">Участники</span>
     <div style="margin-left:auto;display:flex;gap:6px">
+      <button onclick="openLiveMessagesModal()" title="Сообщения" style="position:relative;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">💬<span id="live-messages-badge" style="display:none;position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:#e07070;color:#fff;font-size:10px;align-items:center;justify-content:center"></span></button>
+      <button onclick="openLiveGroupsManager()" title="Группы" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">👥</button>
       <button onclick="liveShowAll()" title="Показать всех" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">🎯</button>
       <button onclick="toggleSidebarCollapse('live-sidebar')" title="Свернуть" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">◀</button>
       <button onclick="toggleLive()" title="Закрыть" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">✕</button>
     </div>
   </div>
+  <div style="padding:8px 10px 0">
+    <select id="live-status-select" onchange="liveChangeStatus(this.value)" style="width:100%;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:6px;padding:6px 8px;font-size:12px;margin-bottom:8px"></select>
+    <select id="live-group-select" onchange="liveHandleGroupChange(this.value)" style="width:100%;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:6px;padding:6px 8px;font-size:12px"></select>
+  </div>
   <div class="live-devices-scroll">
     <div id="live-devices-list"></div>
   </div>
 </div>
+
+<div id="live-message-preview" style="display:none;position:fixed;right:22px;bottom:72px;z-index:5200;min-width:240px;max-width:340px;background:rgba(14,22,34,0.96);border:1px solid rgba(74,138,223,0.45);border-radius:10px;padding:10px 12px;box-shadow:0 12px 32px rgba(0,0,0,0.35);cursor:pointer;transition:opacity 0.18s">
+  <div id="live-message-preview-sender" style="font-size:11px;color:#9fc3ff;margin-bottom:4px"></div>
+  <div id="live-message-preview-text" style="font-size:13px;color:var(--text-primary);white-space:pre-wrap"></div>
+</div>
+
+<div class="modal-overlay" id="modal-live-messages">
+  <div class="modal" id="modal-live-messages-win" style="top:80px;left:50%;transform:translateX(-50%);width:540px">
+    <div class="modal-header" onmousedown="startDrag(event,'modal-live-messages-win')">
+      💬 Сообщения мониторинга
+      <span class="modal-close" onclick="closeModal('modal-live-messages')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="prop-field">
+        <label>Диалог</label>
+        <select id="live-thread-select" onchange="liveSelectThread(this.value)"></select>
+      </div>
+      <div id="live-messages-status" style="font-size:11px;color:var(--text-muted);margin-bottom:8px"></div>
+      <div id="live-messages-list" style="height:300px;overflow:auto;background:var(--bg-sunken);border:1px solid var(--border-subtle);border-radius:8px;padding:10px;margin-bottom:10px"></div>
+      <div id="live-attachments-status" style="font-size:11px;color:var(--text-muted);margin-bottom:6px"></div>
+      <div id="live-attachments-list" style="max-height:140px;overflow:auto;background:var(--bg-sunken);border:1px solid var(--border-subtle);border-radius:8px;margin-bottom:10px"></div>
+      <div class="prop-field">
+        <label>Новое сообщение</label>
+        <textarea id="live-message-input" rows="3" placeholder="Текст сообщения" style="width:100%;resize:vertical;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:6px;padding:8px 10px;font-size:13px"></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn-secondary" onclick="liveFetchMessages(false)">Обновить</button>
+        <button class="btn-secondary" onclick="liveOpenShareModal()">📦 В группу</button>
+        <div style="flex:1"></div>
+        <button class="btn-primary" onclick="liveSendMessage()">Отправить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-live-groups">
+  <div class="modal" id="modal-live-groups-win" style="top:70px;left:50%;transform:translateX(-50%);width:620px">
+    <div class="modal-header" onmousedown="startDrag(event,'modal-live-groups-win')">
+      👥 Группы мониторинга
+      <span class="modal-close" onclick="closeModal('modal-live-groups')">✕</span>
+    </div>
+    <div class="modal-body" style="display:flex;gap:14px">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:12px;color:var(--text-muted)">Сохранённые группы</div>
+          <button class="btn-secondary" style="padding:4px 10px;font-size:11px" onclick="liveStartGroupEdit()">+ Новая</button>
+        </div>
+        <div id="live-groups-list" style="max-height:360px;overflow:auto"></div>
+      </div>
+      <div style="flex:1;min-width:0;background:var(--bg-sunken);border:1px solid var(--border-subtle);border-radius:8px;padding:10px">
+        <div id="live-group-editor-title" style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Новая группа</div>
+        <div class="prop-field">
+          <label>Название</label>
+          <input id="live-group-name" placeholder="Например: Экипажи">
+        </div>
+        <div class="prop-field">
+          <label>Цвет</label>
+          <input id="live-group-color" value="#FF6B00" style="font-family:monospace">
+          <div id="live-group-palette" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"></div>
+        </div>
+        <div class="prop-field">
+          <label>Участники</label>
+          <div id="live-group-members" style="max-height:220px;overflow:auto;border:1px solid var(--border-subtle);border-radius:6px;padding:8px;background:rgba(0,0,0,0.12)"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-secondary" onclick="liveCancelGroupEdit()">Сброс</button>
+          <div style="flex:1"></div>
+          <button class="btn-primary" onclick="liveSaveGroup()">Сохранить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-live-share">
+  <div class="modal" id="modal-live-share-win" style="top:90px;left:50%;transform:translateX(-50%);width:460px">
+    <div class="modal-header" onmousedown="startDrag(event,'modal-live-share-win')">
+      📦 Отправка в группу
+      <span class="modal-close" onclick="closeModal('modal-live-share')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="prop-field">
+        <label>Что отправить</label>
+        <select id="live-share-preset" onchange="liveHandleSharePresetChange()"></select>
+      </div>
+      <div class="prop-field">
+        <label>Группа</label>
+        <select id="live-share-group"></select>
+      </div>
+      <div class="prop-field">
+        <label>Название</label>
+        <input id="live-share-name" placeholder="Имя вложения">
+      </div>
+      <div id="live-share-summary" style="font-size:11px;color:var(--text-muted);margin-bottom:10px"></div>
+      <div class="btn-row">
+        <button class="btn-secondary" onclick="closeModal('modal-live-share')">Отмена</button>
+        <div style="flex:1"></div>
+        <button class="btn-primary" onclick="liveSendShareToGroup()">Отправить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-live-share-inbox">
+  <div class="modal" id="modal-live-share-inbox-win" style="top:30%;left:50%;transform:translateX(-50%);width:380px">
+    <div class="modal-header" onmousedown="startDrag(event,'modal-live-share-inbox-win')">
+      <span id="live-share-inbox-title">📥 Вложение</span>
+      <span class="modal-close" onclick="liveDeclineIncomingShare()">✕</span>
+    </div>
+    <div class="modal-body">
+      <div id="live-share-inbox-body" style="font-size:13px;color:var(--text-primary);white-space:pre-wrap;margin-bottom:8px"></div>
+      <div id="live-share-inbox-meta" style="font-size:11px;color:var(--text-muted);margin-bottom:12px"></div>
+      <div class="btn-row">
+        <button class="btn-secondary" onclick="liveDeclineIncomingShare()">Отклонить</button>
+        <div style="flex:1"></div>
+        <button class="btn-primary" onclick="liveAcceptIncomingShare()">Принять</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+renderLiveGroupSelect();
+renderLiveStatusSelect();
+renderLiveMessagesButton();
+renderLiveThreadSelect();
+renderLiveGroupsManager();
+</script>
 
 <!-- ═══════════════════════════════════════════
      ПОЛИГОН-ТУЛБАР (выделение области скачивания)
