@@ -110,20 +110,42 @@ jobs:
             echo "deploy_path=${UPDATES_DEPLOY_PATH:-/var/www/updates/latest-desktop.json}" >> "$GITHUB_OUTPUT"
             echo "prerelease=false" >> "$GITHUB_OUTPUT"
           fi
+      - name: Prepare release assets
+        id: assets
+        run: |
+          install -d release-assets
+          APPIMAGE_SRC=$(find artifacts/TrophyNavigator-Linux -maxdepth 1 -type f -name '*.AppImage' | head -n 1)
+          NSIS_SRC=$(find artifacts/TrophyNavigator-Windows -maxdepth 1 -type f -name '*.exe' | head -n 1)
+          MSI_SRC=$(find artifacts/TrophyNavigator-Windows-msi -maxdepth 1 -type f -name '*.msi' | head -n 1)
+          if [ -z "$APPIMAGE_SRC" ] || [ -z "$NSIS_SRC" ]; then
+            echo "Release artifacts not found" >&2
+            exit 1
+          fi
+
+          APPIMAGE_FILE=$(basename "$APPIMAGE_SRC")
+          NSIS_FILE=$(basename "$NSIS_SRC")
+          APPIMAGE_ASSET_NAME="${APPIMAGE_FILE// /.}"
+          NSIS_ASSET_NAME="${NSIS_FILE// /.}"
+
+          cp "$APPIMAGE_SRC" "release-assets/$APPIMAGE_ASSET_NAME"
+          cp "$NSIS_SRC" "release-assets/$NSIS_ASSET_NAME"
+
+          if [ -n "$MSI_SRC" ]; then
+            MSI_FILE=$(basename "$MSI_SRC")
+            MSI_ASSET_NAME="${MSI_FILE// /.}"
+            cp "$MSI_SRC" "release-assets/$MSI_ASSET_NAME"
+          fi
+
+          echo "appimage_asset_name=$APPIMAGE_ASSET_NAME" >> "$GITHUB_OUTPUT"
+          echo "nsis_asset_name=$NSIS_ASSET_NAME" >> "$GITHUB_OUTPUT"
       - name: Create latest.json for updater
         run: |
           VERSION=${{ steps.version.outputs.version }}
           MANIFEST_FILE=${{ steps.channel.outputs.manifest_file }}
           APPIMAGE_SIG=$(cat artifacts/TrophyNavigator-Linux/*.AppImage.sig 2>/dev/null || echo "")
           NSIS_SIG=$(cat artifacts/TrophyNavigator-Windows/*.exe.sig 2>/dev/null || echo "")
-          APPIMAGE_FILE=$(find artifacts/TrophyNavigator-Linux -maxdepth 1 -type f -name '*.AppImage' -printf '%f\n' | head -n 1)
-          NSIS_FILE=$(find artifacts/TrophyNavigator-Windows -maxdepth 1 -type f -name '*.exe' -printf '%f\n' | head -n 1)
-          APPIMAGE_URL_FILE=${APPIMAGE_FILE// /%20}
-          NSIS_URL_FILE=${NSIS_FILE// /%20}
-          if [ -z "$APPIMAGE_FILE" ] || [ -z "$NSIS_FILE" ]; then
-            echo "Release artifacts not found" >&2
-            exit 1
-          fi
+          APPIMAGE_URL_FILE=${{ steps.assets.outputs.appimage_asset_name }}
+          NSIS_URL_FILE=${{ steps.assets.outputs.nsis_asset_name }}
           cat > "$MANIFEST_FILE" << EOF
           {
             "version": "$VERSION",
@@ -158,9 +180,9 @@ jobs:
             ### Обновление
             В приложении: **ℹ О программе → Проверить обновление**
           files: |
-            artifacts/TrophyNavigator-Windows/*.exe
-            artifacts/TrophyNavigator-Windows-msi/*.msi
-            artifacts/TrophyNavigator-Linux/*.AppImage
+            release-assets/*.exe
+            release-assets/*.msi
+            release-assets/*.AppImage
             ${{ steps.channel.outputs.manifest_file }}
       - name: Publish updater manifest to server
         env:

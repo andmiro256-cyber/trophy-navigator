@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🧭 Trophy Navigator Desktop v0.9.4</title>
+<title>🧭 Trophy Navigator Desktop v0.9.5</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -130,6 +130,7 @@
     display: flex; align-items: center; gap: 5px;
     transition: all 0.15s;
     height: 38px;
+    flex-shrink: 0;
   }
   .tb-btn:hover { background: #2a4a7a; border-color: #4a8adf; color: #fff; }
   .tb-btn.active { background: var(--bg-sunken); border-color: #4a8adf; color: #7ec8ff; box-shadow: 0 0 8px rgba(74,138,223,0.4); }
@@ -146,9 +147,12 @@
     min-width: 180px;
     justify-content: space-between;
     font-size: 12px;
+    flex-shrink: 0;
   }
   #btn-map-layer:hover { background: #2a5a8a; border-color: #4a8adf; }
   #btn-map-layer .layer-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; max-width: 160px; display: inline-block; }
+  .tb-icon { flex-shrink: 0; line-height: 1; }
+  .tb-text { min-width: 0; }
   .tb-label { font-size: 10px; color: #5a7aaa; text-transform: uppercase; letter-spacing: 0.5px; padding: 0 4px; }
 
   /* ─── Группы инструментов — один ряд ─── */
@@ -158,6 +162,7 @@
     align-items: center;
     gap: 6px;
     padding: 0 4px;
+    flex-shrink: 0;
   }
   .tb-group-label {
     font-size: 18px;
@@ -171,6 +176,7 @@
     border-radius: 6px;
     transition: color 0.15s, background 0.15s;
     white-space: nowrap;
+    flex-shrink: 0;
   }
   .tb-group-label:hover { color: #fff; background: rgba(74,138,223,0.2); }
   .tb-group-label.mode-active { color: #4adf7a; text-shadow: 0 0 8px rgba(74,223,122,0.5); }
@@ -194,6 +200,19 @@
   .tb-tag:hover { background: #2a4a7a; border-color: #4a8adf; color: #fff; }
   .tb-tag.active { background: var(--bg-sunken); border-color: #4a8adf; color: #7ec8ff; box-shadow: 0 0 8px rgba(74,138,223,0.4); animation: tag-pulse 1.5s ease-in-out infinite; }
   @keyframes tag-pulse { 0%,100% { box-shadow: 0 0 6px rgba(74,138,223,0.4); } 50% { box-shadow: 0 0 14px rgba(74,138,223,0.8); } }
+  .toolbar-spacer { margin-left: auto; flex: 1 0 12px; min-width: 12px; }
+  .toolbar-search { position: relative; display: flex; align-items: center; flex: 0 1 230px; min-width: 140px; flex-shrink: 1; }
+  .toolbar-search-box {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    background: var(--bg-sunken);
+    border: 1px solid var(--border-normal);
+    border-radius: 6px;
+    padding: 2px 6px;
+    gap: 4px;
+  }
 
   /* ─── КАРТА ─── */
   #map { flex: 1; }
@@ -618,7 +637,19 @@
   .offline-map-card .omc-btn.delete:hover { background: #4a1a1a; }
 
   /* ─── Search input default width ─── */
-  #search-input { width: 200px; }
+  #search-input { width: 100%; min-width: 0; }
+
+  @media (max-width: 1400px) {
+    #toolbar { height: 52px; padding: 4px 8px; gap: 2px; }
+    .tb-btn { padding: 4px 8px; font-size: 12px; height: 34px; }
+    .tb-tag { width: 30px; height: 30px; font-size: 14px; }
+    .tb-sep { height: 32px; margin: 0 4px; }
+    .tb-group { gap: 4px; padding: 0 2px; }
+    .tb-group-label { font-size: 16px; padding: 3px 4px; }
+    .toolbar-search { flex-basis: 180px; min-width: 130px; }
+    #btn-map-layer { min-width: 150px; }
+    #btn-map-layer .layer-name { max-width: 118px; }
+  }
 
   /* ─── TOOLBAR OVERFLOW PROTECTION ─── */
   #toolbar { overflow-x: auto; overflow-y: hidden; flex-wrap: nowrap; }
@@ -662,9 +693,12 @@
     .tb-group-label { font-size: 15px; padding: 3px 4px; }
     #btn-map-layer { min-width: 140px; font-size: 11px; }
     #btn-map-layer .layer-name { max-width: 110px; }
-    #search-input { width: 160px; }
+    .toolbar-search { flex-basis: 150px; min-width: 120px; }
     #statusbar { height: 22px; font-size: 10px; padding: 2px 10px; gap: 14px; }
     .tb-btn.sync-btn { padding: 4px 6px; font-size: 11px; }
+    .offline-btn .tb-text,
+    .server-btn .tb-text,
+    .settings-main-btn .tb-text { display: none; }
     #live-sidebar { width: 220px; top: 52px; }
     .collapse-btn { display: flex; }
     .modal { max-height: 75vh; }
@@ -680,10 +714,15 @@
     .tb-group-label { font-size: 13px; padding: 2px 3px; }
     #btn-map-layer { min-width: 120px; font-size: 10px; }
     #btn-map-layer .layer-name { max-width: 90px; }
-    #search-input { width: 130px; font-size: 11px; }
+    .toolbar-search { flex-basis: 120px; min-width: 100px; }
+    #search-input { font-size: 11px; }
     .tb-btn.sync-btn { display: none; }
-    /* Скрываем текст у некоторых кнопок, оставляем иконки */
-    .tb-btn.settings-btn span,
+    .offline-btn .tb-text,
+    .server-btn .tb-text,
+    .settings-main-btn .tb-text,
+    #btn-live .tb-text {
+      display: none;
+    }
     #statusbar { height: 20px; font-size: 9px; padding: 2px 8px; gap: 10px; }
     #live-sidebar { width: 200px; top: 46px; right: 8px; }
     .modal { max-height: 70vh; min-width: 280px; }
@@ -700,7 +739,7 @@
     .tb-group-label { font-size: 12px !important; }
     .tb-btn { padding: 2px 5px; font-size: 10px; height: 26px; }
     .tb-tag { width: 24px; height: 24px; font-size: 12px; }
-    #search-input { width: 100px; }
+    .toolbar-search { flex-basis: 100px; min-width: 84px; }
     #btn-map-layer { min-width: 100px; }
   }
 
@@ -979,7 +1018,7 @@
   <div class="tb-sep"></div>
 
   <!-- Инструменты -->
-  <button class="tb-btn" onclick="openModal('modal-offline');scanOfflineMaps()" title="Офлайн карты — скачать и загрузить (D)">⬇ Офлайн карты</button>
+  <button class="tb-btn offline-btn" onclick="openModal('modal-offline');scanOfflineMaps()" title="Офлайн карты — скачать и загрузить (D)"><span class="tb-icon">⬇</span><span class="tb-text">Офлайн карты</span></button>
 
   <div class="tb-sep"></div>
 
@@ -989,16 +1028,16 @@
   <div class="tb-sep"></div>
 
   <!-- Live мониторинг -->
-  <button class="tb-btn" id="btn-live" onclick="toggleLive()" title="Мониторинг участников">📡 Live</button>
+  <button class="tb-btn" id="btn-live" onclick="toggleLive()" title="Мониторинг участников"><span class="tb-icon">📡</span><span class="tb-text">Live</span></button>
 
   <!-- Правая часть тулбара -->
-  <div style="margin-left:auto"></div>
+  <div class="toolbar-spacer"></div>
 
   <!-- Поиск встроенный -->
-  <div style="position:relative;display:flex;align-items:center">
-    <div style="display:flex;align-items:center;background:var(--bg-sunken);border:1px solid var(--border-normal);border-radius:6px;padding:2px 6px;gap:4px">
+  <div class="toolbar-search">
+    <div class="toolbar-search-box">
       <span style="color:var(--text-muted);font-size:12px">🔍</span>
-      <input type="text" id="search-input" placeholder="Поиск места..."
+      <input type="text" id="search-input" placeholder="Поиск..."
         autocomplete="off" spellcheck="false"
         style="background:transparent;border:none;color:var(--text-primary);font-size:12px;outline:none;padding:4px 0">
       <span id="search-clear" onclick="clearSearch()" style="color:var(--text-muted);cursor:pointer;font-size:14px;display:none">✕</span>
@@ -1006,13 +1045,13 @@
     <div class="search-results" id="search-results" style="position:absolute;top:100%;right:0;width:340px;margin-top:2px"></div>
   </div>
 
-  <button class="tb-btn settings-btn" onclick="showToast('Сервер — в разработке')" title="Подключение к серверу">☁ Сервер</button>
+  <button class="tb-btn settings-btn server-btn" onclick="showToast('Сервер — в разработке')" title="Подключение к серверу"><span class="tb-icon">☁</span><span class="tb-text">Сервер</span></button>
   <button class="tb-btn" onclick="showClearConfirm()" title="Удалить все данные с карты" style="color:#e07070">🗑</button>
-  <button class="tb-btn settings-btn" onclick="openModal('modal-settings')" title="Настройки программы">⚙ Настройки</button>
+  <button class="tb-btn settings-btn settings-main-btn" onclick="openModal('modal-settings')" title="Настройки программы"><span class="tb-icon">⚙</span><span class="tb-text">Настройки</span></button>
   <button class="tb-btn" onclick="openModal('modal-about')" title="О программе" style="font-size:16px">💡</button>
   <div class="tb-sep"></div>
   <button class="tb-btn" id="btn-map-layer" onclick="openModal('modal-layers')" title="Выбор карты и слоёв">
-    🗺 <span class="layer-name" id="current-layer-name">OpenStreetMap</span> ▾
+    <span class="tb-icon">🗺</span> <span class="layer-name" id="current-layer-name">OpenStreetMap</span> ▾
   </button>
 </div>
 
@@ -1111,7 +1150,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.4</span>
+  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.5</span>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -4226,12 +4265,29 @@ map.getContainer().addEventListener('contextmenu', e => {
 // ─────────────────────────────────────────────
 // МОДАЛЬНЫЕ ОКНА + DRAG
 // ─────────────────────────────────────────────
+function getReadablePlatform() {
+  const ua = navigator.userAgent || '';
+  const platform = navigator.platform || '';
+  if (/^Win/i.test(platform) || /Windows/i.test(ua)) {
+    return /WOW64|Win64|x64|amd64|x86_64/i.test(ua) ? 'Windows x64' : 'Windows';
+  }
+  if (/Linux/i.test(platform) || /Linux/i.test(ua)) {
+    if (/aarch64|arm64/i.test(ua)) return 'Linux ARM64';
+    return /x64|amd64|x86_64/i.test(ua) ? 'Linux x64' : 'Linux';
+  }
+  if (/Mac/i.test(platform) || /Macintosh|Mac OS X/i.test(ua)) {
+    if (/arm64|aarch64/i.test(ua)) return 'macOS ARM64';
+    return /x64|x86_64/i.test(ua) ? 'macOS x64' : 'macOS';
+  }
+  return platform || 'Unknown';
+}
+
 function openModal(id) {
   document.getElementById(id).classList.add('open');
   if (id === 'modal-wpts') updateWptTable();
   if (id === 'modal-about') {
     checkForUpdates(true);
-    document.getElementById('about-platform').textContent = navigator.platform || 'Unknown';
+    document.getElementById('about-platform').textContent = getReadablePlatform();
     const licEl = document.getElementById('about-license');
     if (isLicensed()) { licEl.textContent = '✓ Активна'; licEl.style.color = '#4adf7a'; }
     else if (getTrialDaysLeft() > 0) { licEl.textContent = `Триал: ${getTrialDaysLeft()} дн.`; licEl.style.color = '#e0a050'; }
@@ -8415,12 +8471,38 @@ document.addEventListener('keydown', e => {
 });
 
 // ─── Onboarding при первом запуске ───
+function shouldShowOnboarding() {
+  if (localStorage.getItem('tnd-onboarding-done')) return false;
+  if (waypoints.length || tracks.length || routes.length || gpxFiles.length) return false;
+  const existingKeys = [
+    'tnd-state',
+    'tnd-map-view',
+    'tnd-sync-email',
+    'tnd-license',
+    'tnd-last-open-dir',
+    'tnd-last-save-dir',
+    'tnd-custom-layers'
+  ];
+  return !existingKeys.some(key => {
+    const value = localStorage.getItem(key);
+    return value && value !== '{}' && value !== '[]';
+  });
+}
+
+function dismissOnboarding() {
+  document.getElementById('onboarding-overlay')?.remove();
+  localStorage.setItem('tnd-onboarding-done', '1');
+}
+
 function showOnboarding() {
-  if (localStorage.getItem('tnd-onboarding-done')) return;
+  if (!shouldShowOnboarding()) return;
   const overlay = document.createElement('div');
   overlay.id = 'onboarding-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:7000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6)';
   overlay.innerHTML = `<div style="background:var(--bg-elevated);border:1px solid var(--border-bright);border-radius:16px;padding:28px;width:420px;text-align:center">
+    <div style="display:flex;justify-content:flex-end;margin:-12px -12px 4px 0">
+      <button onclick="dismissOnboarding()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;line-height:1">✕</button>
+    </div>
     <div style="font-size:36px;margin-bottom:8px">🏆</div>
     <div style="font-size:20px;font-weight:700;color:#7ec8ff;margin-bottom:4px">Trophy Navigator Desktop</div>
     <div style="font-size:13px;color:var(--text-secondary);margin-bottom:20px">Навигация для трофи-рейдов и экспедиций</div>
@@ -8432,8 +8514,9 @@ function showOnboarding() {
       <div>🗺 Переключайте карты кнопкой в тулбаре</div>
       <div>❓ Нажмите <kbd style="background:var(--bg-sunken);border:1px solid var(--border-normal);border-radius:3px;padding:0 4px;font-family:monospace">?</kbd> для списка горячих клавиш</div>
     </div>
-    <button class="btn-primary" onclick="document.getElementById('onboarding-overlay').remove();localStorage.setItem('tnd-onboarding-done','1')" style="width:100%;margin-top:16px;font-size:14px;padding:10px">Начать работу</button>
+    <button class="btn-primary" onclick="dismissOnboarding()" style="width:100%;margin-top:16px;font-size:14px;padding:10px">Начать работу</button>
   </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) dismissOnboarding(); });
   document.body.appendChild(overlay);
 }
 
@@ -9222,7 +9305,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.4</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.5</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:var(--text-muted)">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
