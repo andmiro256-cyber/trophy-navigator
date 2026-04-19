@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🧭 Trophy Navigator Desktop v0.9.6</title>
+<title>🧭 Trophy Navigator Desktop v0.9.7</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -1154,7 +1154,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.6</span>
+  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.7</span>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -4360,6 +4360,78 @@ function getReadablePlatform() {
     return /x64|x86_64/i.test(ua) ? 'macOS x64' : 'macOS';
   }
   return platform || 'Unknown';
+}
+
+function isLinuxPlatform() {
+  const ua = navigator.userAgent || '';
+  const platform = navigator.platform || '';
+  return /Linux/i.test(platform) || /Linux/i.test(ua);
+}
+
+let linuxClickFallbackBound = false;
+const linuxClickFallbackSelector = [
+  'button[onclick]',
+  '.tb-group-label[onclick]',
+  '.tb-tag[onclick]',
+  '.modal-close[onclick]',
+  '.ctx-item[onclick]',
+  '.save-btn[onclick]',
+  '.open-btn[onclick]',
+  '.save-btn-grid[onclick]',
+  '.btn-primary[onclick]',
+  '.btn-secondary[onclick]',
+  '.rr-tab[onclick]',
+  '.rr-close[onclick]',
+  '.base-layer[onclick]',
+  '.routing-route-btn[onclick]',
+  '.omc-btn[onclick]',
+  '.live-expand-btn[onclick]'
+].join(', ');
+
+function runInlineClickFallback(el) {
+  const handler = el?.getAttribute?.('onclick');
+  if (!handler) return false;
+  const fakeEvent = {
+    type: 'click',
+    target: el,
+    currentTarget: el,
+    defaultPrevented: false,
+    preventDefault() { this.defaultPrevented = true; },
+    stopPropagation() {},
+    stopImmediatePropagation() {}
+  };
+  try {
+    new Function('event', handler).call(el, fakeEvent);
+    return true;
+  } catch (err) {
+    console.warn('Linux click fallback failed:', err);
+    return false;
+  }
+}
+
+function initLinuxClickFallback() {
+  if (linuxClickFallbackBound || !isLinuxPlatform()) return;
+  linuxClickFallbackBound = true;
+
+  document.addEventListener('pointerdown', e => {
+    if (e.button != null && e.button !== 0) return;
+    const trigger = e.target.closest(linuxClickFallbackSelector);
+    if (!trigger) return;
+    trigger.dataset.linuxClickFallbackTs = String(Date.now());
+    e.preventDefault();
+    e.stopPropagation();
+    runInlineClickFallback(trigger);
+  }, true);
+
+  document.addEventListener('click', e => {
+    const trigger = e.target.closest(linuxClickFallbackSelector);
+    if (!trigger) return;
+    const ts = Number(trigger.dataset.linuxClickFallbackTs || 0);
+    if (!ts || (Date.now() - ts) > 500) return;
+    trigger.dataset.linuxClickFallbackTs = '';
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, true);
 }
 
 function openModal(id) {
@@ -8716,6 +8788,7 @@ function setTheme(theme) {
 
 // Инициализация при загрузке
 (async function initApp() {
+  initLinuxClickFallback();
   await initWorkingDirectory();
   // Пробуем восстановить: сначала из файла, если нет — из localStorage
   const restoredFromFile = await loadStateFromFile();
@@ -9452,7 +9525,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.6</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.7</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:var(--text-muted)">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
