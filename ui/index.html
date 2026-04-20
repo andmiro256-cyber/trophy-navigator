@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🧭 Trophy Navigator Desktop v0.9.8</title>
+<title>🧭 Trophy Navigator Desktop v0.9.9</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -1154,7 +1154,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.8</span>
+  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.9</span>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -1454,10 +1454,10 @@
     <div class="modal-body">
       <!-- Панель создания маршрута -->
       <div id="route-build-panel" style="display:none;background:#1a2a4a;border:1px solid #2a5a8a;border-radius:6px;padding:8px;margin-bottom:8px">
-        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px">⚑ Создание маршрута</div>
+        <div id="route-build-title" style="font-size:12px;color:var(--text-secondary);margin-bottom:4px">⚑ Создание маршрута</div>
         <input id="route-build-name" type="text" placeholder="Название маршрута..."
           style="width:100%;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:4px 8px;font-size:12px;margin-bottom:6px">
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Кликайте по точкам (КП) для добавления · двойной клик — завершить</div>
+        <div id="route-build-hint" style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Кликайте по существующим точкам (КП) для добавления · двойной клик — завершить</div>
         <div style="font-size:12px;color:var(--text-primary);margin-bottom:6px">КП: <span id="route-build-count">0</span> · Длина: <span id="route-build-dist">0 км</span></div>
         <div id="route-build-kp-list" style="max-height:150px;overflow-y:auto;margin-bottom:6px"></div>
         <div class="btn-row">
@@ -1491,10 +1491,14 @@
           </select>
         </div>
         <div class="btn-row">
+          <button class="btn-secondary" onclick="startRouteEdit()" style="font-size:11px">✎ КП</button>
           <button class="btn-secondary" onclick="centerSelectedRoute()" style="font-size:11px">🎯 Центрировать</button>
           <button class="btn-secondary" onclick="toggleSelectedRouteVisible()" style="font-size:11px">👁 Показать/скрыть</button>
           <button class="btn-secondary" onclick="deleteSelectedRoute()" style="font-size:11px;color:#e07070;border-color:#6a2a2a">🗑 Удалить</button>
           <button class="btn-primary" onclick="applyRouteProps()" style="font-size:11px">✓ Применить</button>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
+          В раскрытом списке маршрута можно менять имя/радиус КП и удалять их. Кнопка «✎ КП» включает добавление новых точек на карте.
         </div>
       </div>
       <button class="btn-primary" style="width:100%;margin-top:8px" onclick="startNewRoute()">+ Новый маршрут</button>
@@ -2620,10 +2624,17 @@ function parsePositiveNumber(value, fallback = 0) {
 
 function parseOziWaypointRadius(parts) {
   if (!Array.isArray(parts)) return getDefaultRadius();
-  const candidates = [16, 15, 17, 14, 18]
-    .map(idx => Number(String(parts[idx] ?? '').trim().replace(',', '.')))
-    .filter(value => Number.isFinite(value) && value >= 0 && value !== -777);
-  return candidates.length > 0 ? candidates[0] : getDefaultRadius();
+  const parseField = idx => {
+    const value = Number(String(parts[idx] ?? '').trim().replace(',', '.'));
+    return Number.isFinite(value) && value >= 0 && value !== -777 ? value : null;
+  };
+  // Ozi WPT proximity distance sits in field 14 (1-based), so zero-based index 13.
+  const standardRadius = parseField(13);
+  if (standardRadius != null) return standardRadius;
+  // Legacy desktop export before v0.9.9 wrote radius into field 17 (zero-based 16).
+  const looksLikeLegacyDesktop = [12, 13, 14, 15].every(idx => String(parts[idx] ?? '').trim() === '');
+  const legacyRadius = looksLikeLegacyDesktop ? parseField(16) : null;
+  return legacyRadius != null ? legacyRadius : getDefaultRadius();
 }
 
 function normalizeWaypointLabel(value) {
@@ -2647,6 +2658,10 @@ function findWaypointMatch(latlng, label = '') {
     }
   }
   return best;
+}
+
+function isRouteCaptureMode() {
+  return !!currentRouteDraw && (currentMode === 'route' || currentMode === 'routeedit');
 }
 
 function hexToOziColor(color) {
@@ -2808,7 +2823,7 @@ function addWaypoint(latlng, nameHint, extra = {}) {
   marker.on('click', e => {
     L.DomEvent.stop(e);
     if (e.originalEvent) e.originalEvent.stopPropagation();
-    if (currentMode === 'route' && currentRouteDraw) {
+    if (isRouteCaptureMode()) {
       addRoutePoint(marker.getLatLng(), marker.wpData.name, {
         radius: marker.wpData.radius,
         waypointId: marker.wpData.id
@@ -2992,9 +3007,10 @@ const modeNames = {
   track:'Рисовать трек (ESC — отмена)',
   trackedit:'Редактирование трека',
   route:'Создать маршрут (клик по КП)',
+  routeedit:'Редактирование маршрута',
   ruler:'Линейка'
 };
-const btnMap = { hand:'btn-hand', waypoint:'btn-wpt', track:'btn-trk', trackedit:'btn-trk', route:'btn-rte', ruler:'btn-ruler' };
+const btnMap = { hand:'btn-hand', waypoint:'btn-wpt', track:'btn-trk', trackedit:'btn-trk', route:'btn-rte', routeedit:'btn-rte', ruler:'btn-ruler' };
 
 function setMode(mode) {
   if (currentMode === 'ruler' && mode !== 'ruler') clearRuler();
@@ -3115,13 +3131,14 @@ map.on('click', e => {
   else if (currentMode === 'track') addTrackPoint(e.latlng);
   else if (currentMode === 'trackedit') showToast('Кликните по линии трека, чтобы вставить точку');
   else if (currentMode === 'route') showToast('⚠ Кликайте по существующим точкам (КП)');
+  else if (currentMode === 'routeedit' && currentRouteDraw) addRoutePoint(e.latlng, `КП${currentRouteDraw.points.length + 1}`);
   else if (currentMode === 'ruler') addRulerPoint(e.latlng);
 });
 map.on('dblclick', e => {
   L.DomEvent.stop(e);
   if (currentMode === 'track') finishTrackDraw();
   else if (currentMode === 'trackedit') finishTrackEdit();
-  else if (currentMode === 'route') finishRouteDraw();
+  else if (currentMode === 'route' || currentMode === 'routeedit') finishRouteDraw();
 });
 
 // ─────────────────────────────────────────────
@@ -3973,11 +3990,12 @@ function saveWaypointsWPT() {
       0,
       0,
       '',
-      '',
-      '',
-      '',
       Math.max(0, d.radius || 0),
       -777,
+      '',
+      '',
+      '',
+      '',
       '',
       ''
     ].join(','));
@@ -4562,7 +4580,7 @@ map.getContainer().addEventListener('contextmenu', e => {
   closeCtxMenu();
   const m = document.getElementById('ctx-menu-map');
   const undoEl = document.getElementById('ctx-undo-route');
-  if (undoEl) undoEl.style.display = (currentMode === 'route' && currentRouteDraw?.points.length > 0) ? 'block' : 'none';
+  if (undoEl) undoEl.style.display = (isRouteCaptureMode() && currentRouteDraw?.points.length > 0) ? 'block' : 'none';
   const x = Math.min(e.clientX, window.innerWidth - 180);
   const y = Math.min(e.clientY, window.innerHeight - 200);
   m.style.left = x+'px'; m.style.top = y+'px';
@@ -5619,6 +5637,7 @@ let selectedRouteId = null;
 // Импортированные GPX файлы (хранятся для синхронизации)
 let importedGpxFiles = [];
 let currentRouteDraw = null;
+let currentRouteSession = null;
 const routePalette = ['#df4a4a','#4a8adf','#dfdf4a','#4adf7a','#df7a4a','#df4adf'];
 
 function applyRouteStyle(route) {
@@ -5665,6 +5684,89 @@ function createRouteFromPoints(points, name, labels = [], options = {}) {
   return route;
 }
 
+function cloneRouteState(route) {
+  return {
+    name: route.name,
+    color: route.color,
+    width: route.width,
+    dashArray: route.dashArray,
+    visible: route.visible !== false,
+    points: route.points.map(point => L.latLng(point.lat, point.lng)),
+    labels: Array.isArray(route.labels) ? [...route.labels] : [],
+    pointRadii: Array.isArray(route.pointRadii) ? [...route.pointRadii] : [],
+    pointWaypointIds: Array.isArray(route.pointWaypointIds) ? [...route.pointWaypointIds] : [],
+    createdAt: route.createdAt || null,
+    updatedAt: route.updatedAt || null,
+    source: route.source || 'desktop',
+    syncedAt: route.syncedAt || null
+  };
+}
+
+function restoreRouteState(route, snapshot) {
+  if (!route || !snapshot) return;
+  route.name = snapshot.name;
+  route.color = snapshot.color;
+  route.width = snapshot.width;
+  route.dashArray = snapshot.dashArray;
+  route.visible = snapshot.visible !== false;
+  route.points = snapshot.points.map(point => L.latLng(point.lat, point.lng));
+  route.labels = [...snapshot.labels];
+  route.pointRadii = [...snapshot.pointRadii];
+  route.pointWaypointIds = [...snapshot.pointWaypointIds];
+  route.createdAt = snapshot.createdAt || route.createdAt || null;
+  route.updatedAt = snapshot.updatedAt || route.updatedAt || null;
+  route.source = snapshot.source || route.source || 'desktop';
+  route.syncedAt = Object.prototype.hasOwnProperty.call(snapshot, 'syncedAt') ? snapshot.syncedAt : route.syncedAt;
+  normalizeRoutePointRadii(route, route.points.length);
+  normalizeRoutePointWaypointIds(route, route.points.length);
+  if (!route.points.length) {
+    if (route.polyline && map.hasLayer(route.polyline)) map.removeLayer(route.polyline);
+    route.polyline = null;
+    return;
+  }
+  if (!route.polyline) {
+    route.polyline = L.polyline(route.points, {
+      color: route.color,
+      weight: Number(route.width) || 3,
+      opacity: 0.9,
+      dashArray: route.dashArray || '8 4'
+    });
+  } else {
+    route.polyline.setLatLngs(route.points);
+  }
+  applyRouteStyle(route);
+  if (route.visible === false) {
+    if (map.hasLayer(route.polyline)) map.removeLayer(route.polyline);
+  } else if (!map.hasLayer(route.polyline)) {
+    route.polyline.addTo(map);
+  }
+}
+
+function updateRouteBuildPanelState() {
+  const panel = document.getElementById('route-build-panel');
+  if (!panel) return;
+  if (!currentRouteDraw) {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = 'block';
+  const isEdit = currentRouteSession?.mode === 'edit';
+  const titleEl = document.getElementById('route-build-title');
+  const hintEl = document.getElementById('route-build-hint');
+  const nameEl = document.getElementById('route-build-name');
+  const countEl = document.getElementById('route-build-count');
+  const distEl = document.getElementById('route-build-dist');
+  if (titleEl) titleEl.textContent = isEdit ? '✎ Редактирование маршрута' : '⚑ Создание маршрута';
+  if (hintEl) {
+    hintEl.textContent = isEdit
+      ? 'Клик по карте — добавить произвольную КП · клик по существующей точке — добавить её в маршрут · двойной клик — завершить'
+      : 'Кликайте по существующим точкам (КП) для добавления · двойной клик — завершить';
+  }
+  if (nameEl && document.activeElement !== nameEl) nameEl.value = currentRouteDraw.name || '';
+  if (countEl) countEl.textContent = String(currentRouteDraw.points.length);
+  if (distEl) distEl.textContent = routeLen(currentRouteDraw).toFixed(1) + ' км';
+}
+
 function startNewRoute() {
   currentRouteDraw = {
     id: routeIdCounter,
@@ -5683,18 +5785,38 @@ function startNewRoute() {
     source: 'desktop',
     syncedAt: null
   };
+  currentRouteSession = { mode: 'create' };
   routeIdCounter++;
   routes.push(currentRouteDraw);
   setMode('route');
-  document.getElementById('route-build-panel').style.display = 'block';
-  document.getElementById('route-build-count').textContent = '0';
-  document.getElementById('route-build-dist').textContent = '0 км';
-  document.getElementById('route-build-name').value = currentRouteDraw.name;
+  updateRouteBuildPanelState();
   const kpList = document.getElementById('route-build-kp-list');
   if (kpList) kpList.innerHTML = '';
   closeModal('modal-routes');
   showToast('⚑ Кликайте по точкам (КП) для добавления в маршрут. Двойной клик — завершить');
 }
+
+function startRouteEdit(routeId = selectedRouteId) {
+  const route = routes.find(item => item.id === routeId);
+  if (!route) {
+    showToast('Сначала выберите маршрут');
+    return;
+  }
+  if (currentRouteDraw && currentRouteDraw !== route) {
+    showToast('Сначала завершите текущее редактирование маршрута');
+    return;
+  }
+  currentRouteDraw = route;
+  currentRouteSession = { mode: 'edit', snapshot: cloneRouteState(route) };
+  if (route.polyline && !map.hasLayer(route.polyline)) route.polyline.addTo(map);
+  applyRouteStyle(route);
+  setMode('routeedit');
+  updateRouteBuildPanelState();
+  updateRouteBuildList();
+  closeModal('modal-routes');
+  showToast('Режим редактирования маршрута: клик по карте или точке добавляет КП, двойной клик — сохранить');
+}
+
 function addRoutePoint(latlng, label, options = {}) {
   if (!currentRouteDraw) return;
   const num = currentRouteDraw.points.length + 1;
@@ -5711,10 +5833,7 @@ function addRoutePoint(latlng, label, options = {}) {
     }).addTo(map);
   }
   applyRouteStyle(currentRouteDraw);
-  const dist = routeLen(currentRouteDraw);
-  const cEl = document.getElementById('route-build-count'), dEl = document.getElementById('route-build-dist');
-  if (cEl) cEl.textContent = num;
-  if (dEl) dEl.textContent = dist.toFixed(1) + ' км';
+  updateRouteBuildPanelState();
   updateRouteBuildList();
 }
 function updateRouteBuildList() {
@@ -5747,37 +5866,52 @@ function removeRouteBuildPoint(index) {
       currentRouteDraw.polyline.setLatLngs(currentRouteDraw.points);
     }
   }
-  const num = currentRouteDraw.points.length;
-  const dist = routeLen(currentRouteDraw);
-  const cEl = document.getElementById('route-build-count'), dEl = document.getElementById('route-build-dist');
-  if (cEl) cEl.textContent = num;
-  if (dEl) dEl.textContent = dist.toFixed(1) + ' км';
+  updateRouteBuildPanelState();
   updateRouteBuildList();
 }
 function finishRouteDraw() {
   if (!currentRouteDraw) return;
   if (currentRouteDraw.points.length < 2) { showToast('⚠ Нужно минимум 2 КП'); return; }
+  const isEdit = currentRouteSession?.mode === 'edit';
   const nameInput = document.getElementById('route-build-name');
   if (nameInput?.value?.trim()) currentRouteDraw.name = nameInput.value.trim();
   touchRoute(currentRouteDraw);
+  if (currentRouteDraw.polyline) {
+    currentRouteDraw.polyline.setLatLngs(currentRouteDraw.points);
+    applyRouteStyle(currentRouteDraw);
+    if (currentRouteDraw.visible === false && map.hasLayer(currentRouteDraw.polyline)) {
+      map.removeLayer(currentRouteDraw.polyline);
+    } else if (currentRouteDraw.visible !== false && !map.hasLayer(currentRouteDraw.polyline)) {
+      currentRouteDraw.polyline.addTo(map);
+    }
+  }
   setMode('hand');
-  document.getElementById('route-build-panel').style.display = 'none';
   const r = currentRouteDraw;
   currentRouteDraw = null;
+  currentRouteSession = null;
+  updateRouteBuildPanelState();
   selectedRouteId = r.id;
   updateRouteList();
   selectRouteById(r.id);
   openModal('modal-routes');
-  showToast('✓ Маршрут: ' + r.name + ' · ' + routeLen(r).toFixed(1) + ' км · ' + r.points.length + ' КП');
+  showToast((isEdit ? '✓ Маршрут обновлён: ' : '✓ Маршрут: ') + r.name + ' · ' + routeLen(r).toFixed(1) + ' км · ' + r.points.length + ' КП');
 }
 function cancelRouteDraw() {
   if (!currentRouteDraw) return;
-  if (currentRouteDraw.polyline) map.removeLayer(currentRouteDraw.polyline);
-  routes = routes.filter(r => r !== currentRouteDraw);
+  const isEdit = currentRouteSession?.mode === 'edit';
+  if (isEdit) {
+    restoreRouteState(currentRouteDraw, currentRouteSession?.snapshot);
+  } else {
+    if (currentRouteDraw.polyline) map.removeLayer(currentRouteDraw.polyline);
+    routes = routes.filter(r => r !== currentRouteDraw);
+  }
   currentRouteDraw = null;
+  currentRouteSession = null;
   setMode('hand');
-  document.getElementById('route-build-panel').style.display = 'none';
-  showToast('Создание маршрута отменено');
+  updateRouteBuildPanelState();
+  updateRouteList();
+  openModal('modal-routes');
+  showToast(isEdit ? 'Редактирование маршрута отменено' : 'Создание маршрута отменено');
 }
 function routeLen(r) {
   let d = 0;
@@ -5787,6 +5921,12 @@ function routeLen(r) {
 function deleteRoute(id) {
   const r = routes.find(r => r.id === id);
   if (!r) return;
+  if (currentRouteDraw?.id === id) {
+    currentRouteDraw = null;
+    currentRouteSession = null;
+    updateRouteBuildPanelState();
+    if (currentMode === 'route' || currentMode === 'routeedit') setMode('hand');
+  }
   if (r.polyline) map.removeLayer(r.polyline);
   routes = routes.filter(r => r.id !== id);
   if (selectedRouteId === id) {
@@ -6008,6 +6148,7 @@ function updateRouteList() {
       </div>`;
     }).join('');
     const sel = r.id === selectedRouteId;
+    const expanded = sel;
     return `<div class="route-item">
       <div class="route-header" onclick="selectRouteById(${r.id});toggleRouteEl(this)" style="cursor:pointer;${sel ? 'background:#1a3a6a;border-left:3px solid #4a8adf;padding-left:5px;border-radius:4px' : ''}">
         <div style="display:flex;align-items:center;gap:8px">
@@ -6017,13 +6158,13 @@ function updateRouteList() {
             onfocus="this.style.borderBottomColor='#4a8adf'" onblur="this.style.borderBottomColor='transparent'">${syncInfo}
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:11px;color:var(--text-muted)">${r.points.length} КП · ${km} км · ${(r.width || 3)}px${srcTag} <span class="route-arrow">▸</span></span>
+          <span style="font-size:11px;color:var(--text-muted)">${r.points.length} КП · ${km} км · ${(r.width || 3)}px${srcTag} <span class="route-arrow">${expanded ? '▾' : '▸'}</span></span>
           <span style="font-size:12px;color:var(--text-secondary);cursor:pointer;padding:0 4px" onclick="event.stopPropagation();toggleRouteVisible(${r.id})" title="Скрыть/показать">${r.visible === false ? '○' : '👁'}</span>
           <span style="font-size:12px;color:var(--text-secondary);cursor:pointer;padding:0 4px" onclick="event.stopPropagation();centerRoute(${r.id})" title="Центрировать">🎯</span>
           <span style="font-size:12px;color:#e07070;cursor:pointer;padding:0 4px" onclick="event.stopPropagation();deleteRoute(${r.id})" title="Удалить">✕</span>
         </div>
       </div>
-      <div class="route-kp-list" style="display:none">${kpRows}</div>
+      <div class="route-kp-list" style="display:${expanded ? 'block' : 'none'}">${kpRows}</div>
     </div>`;
   }).join('');
 }
@@ -7564,7 +7705,7 @@ function applyState(state) {
       marker.addTo(map);
       refreshWaypoint(marker, { touch: false });
       marker.on('contextmenu', e => { L.DomEvent.stop(e); if (e.originalEvent) { e.originalEvent.preventDefault(); e.originalEvent.stopPropagation(); } showCtxMenu(e.originalEvent, marker); });
-      marker.on('click', e => { L.DomEvent.stop(e); if (e.originalEvent) e.originalEvent.stopPropagation(); if (currentMode === 'route' && currentRouteDraw) { addRoutePoint(marker.getLatLng(), marker.wpData.name, { radius: marker.wpData.radius, waypointId: marker.wpData.id }); return; } openQuickRename(marker); });
+      marker.on('click', e => { L.DomEvent.stop(e); if (e.originalEvent) e.originalEvent.stopPropagation(); if (isRouteCaptureMode()) { addRoutePoint(marker.getLatLng(), marker.wpData.name, { radius: marker.wpData.radius, waypointId: marker.wpData.id }); return; } openQuickRename(marker); });
       marker.on('dragstart', () => { marker.closePopup(); });
       marker.on('drag', () => { marker.wpData.lat = marker.getLatLng().lat; marker.wpData.lng = marker.getLatLng().lng; if (marker.wpCircle) marker.wpCircle.setLatLng(marker.getLatLng()); });
       marker.on('dragend', () => { refreshWaypoint(marker); updateWptTable(); });
@@ -9975,7 +10116,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.8</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.9</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:var(--text-muted)">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
