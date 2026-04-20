@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🧭 Trophy Navigator Desktop v0.9.7</title>
+<title>🧭 Trophy Navigator Desktop v0.9.8</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -1154,7 +1154,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.7</span>
+  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.8</span>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -1376,6 +1376,7 @@
         <div class="btn-row">
           <button id="track-build-cancel-btn" class="btn-secondary" onclick="cancelTrackDraw()" style="font-size:11px;color:#e07070;border-color:#6a2a2a">✕ Отмена</button>
           <button id="track-build-undo-btn" class="btn-secondary" onclick="undoLastAction()" style="font-size:11px">↩ Отменить</button>
+          <button id="track-build-delete-point-btn" class="btn-secondary" onclick="deleteSelectedTrackPoint()" style="display:none;font-size:11px;color:#e07070;border-color:#6a2a2a">🗑 Удалить точку</button>
           <button id="track-build-finish-btn" class="btn-primary" onclick="finishTrackDraw()" style="font-size:11px">✓ Готово</button>
         </div>
       </div>
@@ -1466,6 +1467,36 @@
       </div>
       <!-- Список маршрутов -->
       <div id="route-list"></div>
+      <div id="route-controls" style="display:none;margin-top:8px;border-top:1px solid #1a3a5a;padding-top:8px">
+        <div class="ctrl-row">
+          <span style="min-width:72px;font-size:12px">Название</span>
+          <input id="route-name-input" type="text" style="flex:1;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:3px 6px;font-size:12px">
+        </div>
+        <div class="ctrl-row">
+          <span style="min-width:72px;font-size:12px">Цвет</span>
+          <input type="color" id="route-color-input" value="#4a8adf" style="width:36px;height:24px;border:none;background:none;cursor:pointer">
+        </div>
+        <div class="ctrl-row">
+          <span style="min-width:72px;font-size:12px">Толщина</span>
+          <input type="range" id="route-width-input" min="1" max="8" value="3" oninput="document.getElementById('route-width-val').textContent=this.value+'px'">
+          <span id="route-width-val" style="min-width:32px;text-align:right;font-size:12px">3px</span>
+        </div>
+        <div class="ctrl-row">
+          <span style="min-width:72px;font-size:12px">Линия</span>
+          <select id="route-dash-input" style="flex:1;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:3px 6px;font-size:12px">
+            <option value="8 4">Пунктир</option>
+            <option value="">Сплошная</option>
+            <option value="3 6">Редкий пунктир</option>
+            <option value="2 8">Точки</option>
+          </select>
+        </div>
+        <div class="btn-row">
+          <button class="btn-secondary" onclick="centerSelectedRoute()" style="font-size:11px">🎯 Центрировать</button>
+          <button class="btn-secondary" onclick="toggleSelectedRouteVisible()" style="font-size:11px">👁 Показать/скрыть</button>
+          <button class="btn-secondary" onclick="deleteSelectedRoute()" style="font-size:11px;color:#e07070;border-color:#6a2a2a">🗑 Удалить</button>
+          <button class="btn-primary" onclick="applyRouteProps()" style="font-size:11px">✓ Применить</button>
+        </div>
+      </div>
       <button class="btn-primary" style="width:100%;margin-top:8px" onclick="startNewRoute()">+ Новый маршрут</button>
     </div>
     <div class="modal-footer">
@@ -1509,6 +1540,13 @@
           <div class="save-btn-grid" onclick="openFile('.rte,.RTE', loadRTE)">📥 Маршруты (.rte)</div>
           <div class="save-btn-grid" onclick="openFile('.gpx,.GPX', loadGPXFile)">📥 GPX файл</div>
         </div>
+      </div>
+      <div class="save-section" style="margin-top:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <h4 style="margin:0">Загружено</h4>
+          <button class="btn-secondary" onclick="renderLoadedSourceFiles()" style="padding:4px 10px;font-size:11px">Обновить</button>
+        </div>
+        <div id="loaded-files-list" style="margin-top:8px;max-height:170px;overflow:auto;background:var(--bg-sunken);border:1px solid var(--border-subtle);border-radius:8px;padding:8px"></div>
       </div>
       <div class="btn-row">
         <button class="btn-secondary" onclick="closeModal('modal-files')">Закрыть</button>
@@ -2463,6 +2501,154 @@ function ensureImportedGpxMeta(file, options = {}) {
   return file;
 }
 
+let loadedSourceFiles = [];
+
+function normalizeFileFormat(name, explicitFormat = null) {
+  const raw = String(explicitFormat || '').trim().toLowerCase();
+  if (raw) return raw;
+  const match = String(name || '').trim().toLowerCase().match(/\.([a-z0-9]+)$/);
+  return match?.[1] || 'file';
+}
+
+function sourceFormatLabel(format) {
+  const normalized = normalizeFileFormat('', format);
+  const map = {
+    wpt: 'WPT',
+    rte: 'RTE',
+    plt: 'PLT',
+    gpx: 'GPX'
+  };
+  return map[normalized] || normalized.toUpperCase();
+}
+
+function upsertLoadedSourceFile(entry = {}) {
+  const name = String(entry.name || '').trim();
+  if (!name) return null;
+  const format = normalizeFileFormat(name, entry.format);
+  const path = String(entry.path || '').trim();
+  const key = `${format}::${path || name}`;
+  const existing = loadedSourceFiles.find(item => item.key === key);
+  const next = {
+    id: existing?.id || entry.id || makeEntityId('src'),
+    key,
+    name,
+    path: path || null,
+    format,
+    importedAt: existing?.importedAt || entry.importedAt || getIsoNow(),
+    updatedAt: entry.updatedAt || getIsoNow(),
+    source: entry.source || existing?.source || 'desktop',
+    entityCounts: {
+      waypoints: Number(entry.entityCounts?.waypoints) || 0,
+      tracks: Number(entry.entityCounts?.tracks) || 0,
+      routes: Number(entry.entityCounts?.routes) || 0
+    }
+  };
+  if (existing) {
+    Object.assign(existing, next);
+    return existing;
+  }
+  loadedSourceFiles.push(next);
+  return next;
+}
+
+function renderLoadedSourceFiles() {
+  const el = document.getElementById('loaded-files-list');
+  if (!el) return;
+  if (loadedSourceFiles.length === 0) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px 8px">Импортированных файлов пока нет</div>';
+    return;
+  }
+  const rows = [...loadedSourceFiles].sort((a, b) => {
+    const at = Date.parse(a.updatedAt || a.importedAt || '') || 0;
+    const bt = Date.parse(b.updatedAt || b.importedAt || '') || 0;
+    return bt - at;
+  });
+  el.innerHTML = rows.map(file => {
+    const counts = [
+      file.entityCounts.waypoints ? `${file.entityCounts.waypoints} тчк` : '',
+      file.entityCounts.tracks ? `${file.entityCounts.tracks} трек` : '',
+      file.entityCounts.routes ? `${file.entityCounts.routes} марш` : ''
+    ].filter(Boolean).join(' · ') || 'без объектов';
+    const meta = file.path ? `${counts} · ${escapeHtml(file.path)}` : counts;
+    return `<div title="${escapeHtml(file.path || file.name)}" style="padding:6px 4px;border-bottom:1px solid rgba(255,255,255,0.06)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div style="font-size:12px;color:var(--text-primary);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(file.name)}</div>
+        <div style="font-size:10px;color:#9fc3ff;flex:0 0 auto">${sourceFormatLabel(file.format)}</div>
+      </div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${meta}</div>
+    </div>`;
+  }).join('');
+}
+
+function xmlLocalName(node) {
+  return String(node?.localName || node?.nodeName || '').split(':').pop().toLowerCase();
+}
+
+function xmlDirectChildByLocalName(root, localName) {
+  if (!root) return null;
+  const needle = String(localName || '').trim().toLowerCase();
+  return Array.from(root.children || []).find(child => xmlLocalName(child) === needle) || null;
+}
+
+function xmlDescendantsByLocalName(root, localName) {
+  if (!root) return [];
+  const needle = String(localName || '').trim().toLowerCase();
+  return Array.from(root.getElementsByTagName('*')).filter(node => xmlLocalName(node) === needle);
+}
+
+function xmlTextByLocalNames(root, localNames = [], options = {}) {
+  const names = Array.isArray(localNames) ? localNames : [localNames];
+  for (const name of names) {
+    const node = options.direct
+      ? xmlDirectChildByLocalName(root, name)
+      : xmlDescendantsByLocalName(root, name)[0];
+    const text = node?.textContent?.trim();
+    if (text) return text;
+  }
+  return '';
+}
+
+function xmlExtensionText(root, localNames = []) {
+  const ext = xmlDirectChildByLocalName(root, 'extensions') || xmlDescendantsByLocalName(root, 'extensions')[0];
+  return xmlTextByLocalNames(ext, localNames);
+}
+
+function parsePositiveNumber(value, fallback = 0) {
+  const number = Number(String(value ?? '').trim().replace(',', '.'));
+  return Number.isFinite(number) && number > 0 ? number : fallback;
+}
+
+function parseOziWaypointRadius(parts) {
+  if (!Array.isArray(parts)) return getDefaultRadius();
+  const candidates = [16, 15, 17, 14, 18]
+    .map(idx => Number(String(parts[idx] ?? '').trim().replace(',', '.')))
+    .filter(value => Number.isFinite(value) && value >= 0 && value !== -777);
+  return candidates.length > 0 ? candidates[0] : getDefaultRadius();
+}
+
+function normalizeWaypointLabel(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function findWaypointMatch(latlng, label = '') {
+  if (!latlng) return null;
+  const normalizedLabel = normalizeWaypointLabel(label);
+  let best = null;
+  let bestDistance = Infinity;
+  for (const marker of waypoints) {
+    if (!marker?.wpData) continue;
+    const distance = latlng.distanceTo(marker.getLatLng());
+    if (distance > 60) continue;
+    const markerLabel = normalizeWaypointLabel(marker.wpData.name);
+    if (normalizedLabel && markerLabel === normalizedLabel && distance <= 25) return marker;
+    if (distance < bestDistance) {
+      best = marker;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
 function hexToOziColor(color) {
   const hex = String(color || '').replace('#', '');
   if (!/^[0-9a-fA-F]{6}$/.test(hex)) return 255;
@@ -2785,14 +2971,15 @@ function findWaypointForRoutePoint(route, idx) {
 
 function getRoutePointRadius(route, idx, fallbackRadius) {
   const fallback = Number.isFinite(fallbackRadius) && fallbackRadius > 0 ? fallbackRadius : 30;
+  normalizeRoutePointRadii(route, route?.points?.length || 0);
+  const storedRadius = Number(route?.pointRadii?.[idx]);
+  if (Number.isFinite(storedRadius) && storedRadius > 0) return storedRadius;
   const liveWaypoint = findWaypointForRoutePoint(route, idx);
   if (liveWaypoint?.wpData) {
     const radius = Number(liveWaypoint.wpData.radius);
     if (Number.isFinite(radius) && radius > 0) return radius;
   }
-  normalizeRoutePointRadii(route, route?.points?.length || 0);
-  const storedRadius = Number(route?.pointRadii?.[idx]);
-  return Number.isFinite(storedRadius) && storedRadius > 0 ? storedRadius : fallback;
+  return fallback;
 }
 
 // ─────────────────────────────────────────────
@@ -3676,17 +3863,22 @@ function openFile(accept, callback) {
       const subDir = typeDir[extensions[0]] || '';
       const defPath = lastOpenDir || (appDataPath && subDir ? appDataPath + '/' + subDir : undefined);
       open({
-        multiple: false,
+        multiple: true,
         directory: false,
         defaultPath: defPath,
         filters: [{ name: 'Files', extensions }]
-      }).then(path => {
-        if (!path) return;
-        const p = typeof path === 'object' && path.path ? path.path : String(path);
-        const dir = p.replace(/[\\/][^\\/]+$/, '');
-        if (dir) { lastOpenDir = dir; localStorage.setItem('tnd-last-open-dir', dir); }
-        const fname = p.split(/[\\/]/).pop();
-        return readTextFile(p).then(text => callback(text, fname));
+      }).then(async selection => {
+        if (!selection) return;
+        const paths = Array.isArray(selection) ? selection : [selection];
+        for (const item of paths) {
+          const p = typeof item === 'object' && item.path ? item.path : String(item);
+          if (!p) continue;
+          const dir = p.replace(/[\\/][^\\/]+$/, '');
+          if (dir) { lastOpenDir = dir; localStorage.setItem('tnd-last-open-dir', dir); }
+          const fname = p.split(/[\\/]/).pop();
+          const text = await readTextFile(p);
+          callback(text, fname, { path: p, format: normalizeFileFormat(fname) });
+        }
       }).catch(err => {
         console.warn('Tauri dialog/fs error:', err);
         openFileHtmlFallback(accept, callback);
@@ -3703,12 +3895,14 @@ function openFileHtmlFallback(accept, callback) {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = accept;
+  input.multiple = true;
   input.onchange = e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => callback(ev.target.result, file.name);
-    reader.readAsText(file, 'UTF-8');
+    const files = Array.from(e.target.files || []);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = ev => callback(ev.target.result, file.name, { path: file.name, format: normalizeFileFormat(file.name) });
+      reader.readAsText(file, 'UTF-8');
+    });
   };
   input.click();
 }
@@ -3894,7 +4088,7 @@ function buildGPXWithData(selWaypoints, selTracks, selRoutes) {
     gpx += '</wpt>\n';
   });
   selTracks.forEach(t => {
-    gpx += `<trk><name>${escapeXml(t.name)}</name><trkseg>`;
+    gpx += `<trk><name>${escapeXml(t.name)}</name><extensions><tnd:color>${escapeXml(t.color || '#4a8adf')}</tnd:color><tnd:width>${Number(t.width) || 3}</tnd:width><tnd:pointSize>${Number(t.pointSize ?? 3)}</tnd:pointSize></extensions><trkseg>`;
     t.points.forEach((p, i) => {
       gpx += `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
       const d = t.pointsData?.[i];
@@ -3907,7 +4101,7 @@ function buildGPXWithData(selWaypoints, selTracks, selRoutes) {
     gpx += '</trkseg></trk>';
   });
   selRoutes.forEach(r => {
-    gpx += `<rte><name>${escapeXml(r.name)}</name>`;
+    gpx += `<rte><name>${escapeXml(r.name)}</name><extensions><tnd:color>${escapeXml(r.color || '#4a8adf')}</tnd:color><tnd:width>${Number(r.width) || 3}</tnd:width><tnd:dashArray>${escapeXml(r.dashArray || '')}</tnd:dashArray></extensions>`;
     r.points.forEach((p, i) => {
       const radius = Number(r.pointRadii?.[i]) || 0;
       const waypointId = r.pointWaypointIds?.[i] ? escapeXml(r.pointWaypointIds[i]) : '';
@@ -3967,7 +4161,7 @@ function garminToEmoji(sym) {
 
 function loadGPXWaypoints(text, fname, options = {}) {
   const doc = new DOMParser().parseFromString(normalizeText(text), 'application/xml');
-  const wpts = doc.querySelectorAll('wpt');
+  const wpts = xmlDescendantsByLocalName(doc, 'wpt');
   if (wpts.length > 0) {
     const setName = fname.replace(/\.[^.]+$/, '') || 'GPX';
     createWaypointSet(setName);
@@ -3978,23 +4172,19 @@ function loadGPXWaypoints(text, fname, options = {}) {
     const lat = parseFloat(wpt.getAttribute('lat'));
     const lon = parseFloat(wpt.getAttribute('lon'));
     if (isNaN(lat) || isNaN(lon)) return;
-    // Читаем sym, extensions (tnd:color, tnd:radius, Garmin Proximity)
-    const sym = wpt.querySelector('sym')?.textContent?.trim() || '';
-    const ext = wpt.querySelector('extensions');
-    const tndColor = ext?.querySelector('color')?.textContent?.trim() || '';
-    const tndRadius = ext?.querySelector('radius')?.textContent?.trim() || '';
-    // Garmin Proximity (радиус сближения)
-    const proximity = ext?.querySelector('Proximity')?.textContent?.trim() || '';
+    const sym = xmlTextByLocalNames(wpt, 'sym');
+    const tndColor = xmlExtensionText(wpt, ['color', 'displaycolor']);
+    const tndRadius = xmlExtensionText(wpt, ['radius', 'proximity']);
+    const proximity = xmlExtensionText(wpt, ['Proximity', 'proximity']);
     const extra = {
-      desc: wpt.querySelector('desc')?.textContent?.trim() || '',
+      desc: xmlTextByLocalNames(wpt, 'desc'),
       silent: true
     };
     if (sym) extra.icon = garminToEmoji(sym);
     if (tndColor && /^#[0-9a-fA-F]{6}$/.test(tndColor)) extra.color = tndColor;
-    // Радиус: сначала tnd:radius, потом Garmin Proximity
-    if (tndRadius && Number.isFinite(parseFloat(tndRadius))) extra.radius = parseFloat(tndRadius);
-    else if (proximity && Number.isFinite(parseFloat(proximity)) && parseFloat(proximity) > 0) extra.radius = parseFloat(proximity);
-    const marker = addWaypoint(L.latLng(lat, lon), wpt.querySelector('name')?.textContent?.trim() || '', extra);
+    if (parsePositiveNumber(tndRadius) > 0) extra.radius = parsePositiveNumber(tndRadius);
+    else if (parsePositiveNumber(proximity) > 0) extra.radius = parsePositiveNumber(proximity);
+    const marker = addWaypoint(L.latLng(lat, lon), xmlTextByLocalNames(wpt, 'name'), extra);
     if (marker) imported.push(marker.getLatLng());
     count++;
   });
@@ -4007,27 +4197,35 @@ function loadGPXWaypoints(text, fname, options = {}) {
   }
   return count;
 }
-function loadGPXFile(text, fname) {
-  const wCount = loadGPXWaypoints(text, fname, { silent: true });
-  const tCount = loadGPXTracks(text, fname, { silent: true });
-  const rCount = loadGPXRoutes(text, fname, { silent: true });
+function loadGPXFile(text, fname, meta = {}) {
+  const wCount = loadGPXWaypoints(text, fname, { silent: true, meta });
+  const tCount = loadGPXTracks(text, fname, { silent: true, meta });
+  const rCount = loadGPXRoutes(text, fname, { silent: true, meta });
   if (wCount > 0) openModal('modal-wpts');
   if (tCount > 0) openModal('modal-tracks');
   if (rCount > 0) openModal('modal-routes');
-  // Сохраняем импортированный GPX для синхронизации
-  importedGpxFiles.push({
-    id: makeEntityId('gpx'),
-    name: fname,
-    content: text,
-    importedAt: getIsoNow(),
-    createdAt: getIsoNow(),
-    updatedAt: getIsoNow(),
-    source: 'desktop',
-    syncedAt: null
-  });
+  if (wCount + tCount + rCount > 0) {
+    importedGpxFiles.push({
+      id: makeEntityId('gpx'),
+      name: fname,
+      content: text,
+      importedAt: getIsoNow(),
+      createdAt: getIsoNow(),
+      updatedAt: getIsoNow(),
+      source: 'desktop',
+      syncedAt: null
+    });
+    upsertLoadedSourceFile({
+      name: fname,
+      path: meta.path || '',
+      format: 'gpx',
+      entityCounts: { waypoints: wCount, tracks: tCount, routes: rCount }
+    });
+    renderLoadedSourceFiles();
+  }
   showToast(`✓ GPX: ${wCount} точек, ${tCount} треков, ${rCount} маршрутов — ${fname}`);
 }
-function loadWPT(text, fname) {
+function loadWPT(text, fname, meta = {}) {
   const setName = fname.replace(/\.[^.]+$/, '') || 'Импорт';
   createWaypointSet(setName);
   const lines = normalizeText(text).split(/\r?\n/).slice(4);
@@ -4038,24 +4236,31 @@ function loadWPT(text, fname) {
     if (p.length < 4) return;
     const lat = parseFloat(p[2]), lon = parseFloat(p[3]);
     if (isNaN(lat) || isNaN(lon)) return;
-    const radius = parseFloat(p[16]);
+    const radius = parseOziWaypointRadius(p);
     const wptColor = oziColorToHex(p[8]);
     const marker = addWaypoint(L.latLng(lat, lon), p[1]?.trim() || '', {
       desc: p[9]?.trim() || '',
-      radius: Number.isFinite(radius) ? radius : getDefaultRadius(),
+      radius,
       color: wptColor || undefined,
       silent: true
     });
     if (marker) imported.push(marker.getLatLng());
     count++;
   });
+  upsertLoadedSourceFile({
+    name: fname,
+    path: meta.path || '',
+    format: 'wpt',
+    entityCounts: { waypoints: count, tracks: 0, routes: 0 }
+  });
+  renderLoadedSourceFiles();
   showToast('✓ Загружено ' + count + ' точек из ' + fname);
   if (count > 0) {
     openModal('modal-wpts');
     fitToLatLngs(imported);
   }
 }
-function loadPLT(text, fname) {
+function loadPLT(text, fname, meta = {}) {
   const lines = normalizeText(text).split(/\r?\n/);
   const baseName = fname.replace(/\.[^.]+$/, '') || 'Трек';
   let count = 0;
@@ -4088,20 +4293,29 @@ function loadPLT(text, fname) {
   });
   finalizeTrack();
   updateTrackList();
+  upsertLoadedSourceFile({
+    name: fname,
+    path: meta.path || '',
+    format: 'plt',
+    entityCounts: { waypoints: 0, tracks: count, routes: 0 }
+  });
+  renderLoadedSourceFiles();
   showToast('✓ Загружено ' + count + ' треков из ' + fname);
   if (count > 0) {
     openModal('modal-tracks');
     fitToLatLngs(importedTracks.flatMap(track => track.points));
   }
 }
-function loadRTE(text, fname) {
+function loadRTE(text, fname, meta = {}) {
   let current = null;
   let count = 0;
   const importedRoutes = [];
   const finalizeRoute = () => {
     if (!current?.points.length || current.points.length < 2) return;
     importedRoutes.push(createRouteFromPoints(current.points, current.name, current.labels, {
-      color: current.color || undefined
+      color: current.color || undefined,
+      pointRadii: current.pointRadii,
+      pointWaypointIds: current.pointWaypointIds
     }));
     count++;
   };
@@ -4113,7 +4327,9 @@ function loadRTE(text, fname) {
         name: p[2]?.trim() || `Маршрут ${routeIdCounter}`,
         color: oziColorToHex(p[4], null),
         points: [],
-        labels: []
+        labels: [],
+        pointRadii: [],
+        pointWaypointIds: []
       };
       return;
     }
@@ -4122,9 +4338,19 @@ function loadRTE(text, fname) {
     if (!waypoint) return;
     current.points.push(waypoint.point);
     current.labels.push(waypoint.label);
+    const linked = findWaypointMatch(waypoint.point, waypoint.label);
+    current.pointWaypointIds.push(linked?.wpData?.id || null);
+    current.pointRadii.push(Number(linked?.wpData?.radius) || 0);
   });
   finalizeRoute();
   updateRouteList();
+  upsertLoadedSourceFile({
+    name: fname,
+    path: meta.path || '',
+    format: 'rte',
+    entityCounts: { waypoints: 0, tracks: 0, routes: count }
+  });
+  renderLoadedSourceFiles();
   showToast('✓ Загружено ' + count + ' маршрутов из ' + fname);
   if (count > 0) {
     openModal('modal-routes');
@@ -4205,6 +4431,7 @@ function ctxTrackAction(action) {
     track.markers?.forEach((m, i) => { m._trackIdx = i; });
     if (track.polyline) track.polyline.setLatLngs(track.points);
     syncTrackMarkers(track);
+    if (currentTrackEdit?.track?.id === track.id) currentTrackEdit.selectedPointIdx = null;
     touchTrack(track);
     updateTrackBuildPanel(track);
     showToast('Точка трека удалена');
@@ -4437,6 +4664,7 @@ function initLinuxClickFallback() {
 function openModal(id) {
   document.getElementById(id).classList.add('open');
   if (id === 'modal-wpts') updateWptTable();
+  if (id === 'modal-files') renderLoadedSourceFiles();
   if (id === 'modal-about') {
     checkForUpdates(true);
     document.getElementById('about-platform').textContent = getReadablePlatform();
@@ -4637,9 +4865,14 @@ function formatTrackPointTooltip(track, idx) {
 }
 
 function createTrackMarker(track, idx) {
+  const isSelected = currentTrackEdit?.track?.id === track.id && currentTrackEdit?.selectedPointIdx === idx;
   const r = canEditTrackGeometry(track) ? Math.max(track.pointSize ?? 3, 5) : (track.pointSize ?? 3);
   const m = L.circleMarker(track.points[idx], {
-    radius: r, color: track.color, fillColor: track.color, fillOpacity: 0.7, weight: 1
+    radius: isSelected ? r + 2 : r,
+    color: isSelected ? '#ffffff' : track.color,
+    fillColor: track.color,
+    fillOpacity: isSelected ? 1 : 0.7,
+    weight: isSelected ? 2 : 1
   }).addTo(map);
   m._trackIdx = idx;
   m.bindTooltip(() => formatTrackPointTooltip(track, m._trackIdx), {
@@ -4679,6 +4912,16 @@ function createTrackMarker(track, idx) {
   m.on('contextmenu', function(e) {
     L.DomEvent.stop(e);
     showTrackPointCtxMenu(e.originalEvent, track, m._trackIdx, m);
+  });
+  m.on('click', function(e) {
+    if (!isTrackEditActive(track)) return;
+    L.DomEvent.stop(e);
+    if (currentTrackEdit?.track?.id === track.id) {
+      currentTrackEdit.selectedPointIdx = m._trackIdx;
+      syncTrackMarkers(track);
+      updateTrackBuildPanel(track);
+      showToast(`Выбрана точка трека #${m._trackIdx + 1}`);
+    }
   });
   return m;
 }
@@ -4863,10 +5106,16 @@ function updateTrackBuildPanel(t) {
   const elCount = document.getElementById('track-build-count');
   const elLen = document.getElementById('track-build-len');
   const elExtra = document.getElementById('track-build-extra');
+  const deleteBtn = document.getElementById('track-build-delete-point-btn');
   if (!elCount) return;
   elCount.textContent = t.points.length;
   const km = trackLen(t);
   elLen.textContent = km.toFixed(2) + ' км';
+  if (deleteBtn) {
+    const selectedIdx = currentTrackEdit?.track?.id === t.id ? currentTrackEdit?.selectedPointIdx : null;
+    deleteBtn.style.display = isTrackEditActive(t) ? '' : 'none';
+    deleteBtn.textContent = selectedIdx != null ? `🗑 Удалить точку #${selectedIdx + 1}` : '🗑 Удалить точку';
+  }
   // Скорость и длительность — только если есть временны́е метки в pointsData
   const pd = t.pointsData;
   if (pd && pd.length >= 2 && pd[0]?.time && pd[pd.length-1]?.time) {
@@ -4923,6 +5172,7 @@ function insertTrackPointAtSegment(track, latlng) {
   track.pointsData.splice(insertIndex, 0, {});
   if (track.polyline) track.polyline.setLatLngs(track.points);
   syncTrackMarkers(track);
+  if (currentTrackEdit?.track?.id === track.id) currentTrackEdit.selectedPointIdx = insertIndex;
   touchTrack(track);
   updateTrackBuildPanel(track);
   showToast('Точка вставлена в трек');
@@ -4941,7 +5191,8 @@ function startTrackEdit() {
   }
   currentTrackEdit = {
     track,
-    snapshot: snapshotTrackGeometry(track)
+    snapshot: snapshotTrackGeometry(track),
+    selectedPointIdx: null
   };
   selectedTrackId = track.id;
   setMode('trackedit');
@@ -4985,6 +5236,21 @@ function cancelTrackEdit() {
   updateTrackList();
   openModal('modal-tracks');
   showToast('Редактирование трека отменено');
+}
+
+function deleteSelectedTrackPoint() {
+  const track = currentTrackEdit?.track;
+  const idx = currentTrackEdit?.selectedPointIdx;
+  if (!track || idx == null) {
+    showToast('Сначала выберите точку трека');
+    return;
+  }
+  ctxTrackTarget = { track, idx, marker: track.markers?.[idx] || null };
+  ctxTrackAction('delete');
+  if (currentTrackEdit?.track?.id === track.id) {
+    currentTrackEdit.selectedPointIdx = null;
+    updateTrackBuildPanel(track);
+  }
 }
 
 function selectTrackById(id) {
@@ -5128,9 +5394,9 @@ function updateTrackList() {
 }
 function saveTracksGPX() {
   if (tracks.length === 0) { showToast('Нет треков для сохранения'); return; }
-  let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND" xmlns:tnd="http://trophy-nav.ru/gpx/ext">';
+  let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">';
   tracks.forEach(t => {
-    gpx += `<trk><name>${escapeXml(t.name)}</name><extensions><tnd:color>${escapeXml(t.color || '#4a8adf')}</tnd:color></extensions><trkseg>`;
+    gpx += `<trk><name>${escapeXml(t.name)}</name><extensions><tnd:color>${escapeXml(t.color || '#4a8adf')}</tnd:color><tnd:width>${Number(t.width) || 3}</tnd:width><tnd:pointSize>${Number(t.pointSize ?? 3)}</tnd:pointSize></extensions><trkseg>`;
     t.points.forEach((p, i) => {
       gpx += `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
       const d = t.pointsData?.[i];
@@ -5162,57 +5428,58 @@ function saveTracksPLT() {
 }
 function loadGPXTracks(text, fname, options = {}) {
   const doc = new DOMParser().parseFromString(normalizeText(text), 'application/xml');
+  const meta = options.meta || {};
   let count = 0;
   const importedTracks = [];
-  doc.querySelectorAll('trk').forEach(trk => {
-    const name = trk.querySelector('name')?.textContent?.trim() || ('Трек ' + (trackIdCounter));
+  xmlDescendantsByLocalName(doc, 'trk').forEach(trk => {
+    const name = xmlTextByLocalNames(trk, 'name', { direct: true }) || ('Трек ' + (trackIdCounter));
     const points = [];
     const pointsData = [];
-    trk.querySelectorAll('trkpt').forEach(pt => {
+    xmlDescendantsByLocalName(trk, 'trkpt').forEach(pt => {
       const lat = parseFloat(pt.getAttribute('lat')), lon = parseFloat(pt.getAttribute('lon'));
       if (!isNaN(lat) && !isNaN(lon)) {
         points.push(L.latLng(lat, lon));
         const data = {};
-        const ele = pt.querySelector('ele');
+        const ele = xmlDirectChildByLocalName(pt, 'ele');
         if (ele) data.ele = parseFloat(ele.textContent);
-        const time = pt.querySelector('time');
+        const time = xmlDirectChildByLocalName(pt, 'time');
         if (time) data.time = time.textContent.trim();
-        const name = pt.querySelector('name');
-        if (name) data.name = name.textContent.trim();
-        const desc = pt.querySelector('desc');
+        const pointName = xmlDirectChildByLocalName(pt, 'name');
+        if (pointName) data.name = pointName.textContent.trim();
+        const desc = xmlDirectChildByLocalName(pt, 'desc');
         if (desc) data.desc = desc.textContent.trim();
-        const hdop = pt.querySelector('hdop');
+        const hdop = xmlDirectChildByLocalName(pt, 'hdop');
         if (hdop) data.hdop = parseFloat(hdop.textContent);
-        const vdop = pt.querySelector('vdop');
+        const vdop = xmlDirectChildByLocalName(pt, 'vdop');
         if (vdop) data.vdop = parseFloat(vdop.textContent);
-        const pdop = pt.querySelector('pdop');
+        const pdop = xmlDirectChildByLocalName(pt, 'pdop');
         if (pdop) data.pdop = parseFloat(pdop.textContent);
-        const sat = pt.querySelector('sat');
+        const sat = xmlDirectChildByLocalName(pt, 'sat');
         if (sat) data.sat = parseInt(sat.textContent);
-        const speed = pt.querySelector('speed');
+        const speed = xmlDirectChildByLocalName(pt, 'speed');
         if (speed) data.speed = parseFloat(speed.textContent);
-        const course = pt.querySelector('course');
+        const course = xmlDirectChildByLocalName(pt, 'course');
         if (course) data.course = parseFloat(course.textContent);
-        // extensions
-        const ext = pt.querySelector('extensions');
-        if (ext) {
-          const hr = ext.querySelector('hr') || ext.querySelector('*|hr');
-          if (hr) data.hr = parseInt(hr.textContent);
-          const cad = ext.querySelector('cad') || ext.querySelector('*|cad');
-          if (cad) data.cad = parseInt(cad.textContent);
-          const temp = ext.querySelector('atemp') || ext.querySelector('*|atemp');
-          if (temp) data.temp = parseFloat(temp.textContent);
-          const power = ext.querySelector('power') || ext.querySelector('*|power');
-          if (power) data.power = parseInt(power.textContent);
-        }
+        const hr = xmlExtensionText(pt, 'hr');
+        if (hr) data.hr = parseInt(hr, 10);
+        const cad = xmlExtensionText(pt, 'cad');
+        if (cad) data.cad = parseInt(cad, 10);
+        const temp = xmlExtensionText(pt, 'atemp');
+        if (temp) data.temp = parseFloat(temp);
+        const power = xmlExtensionText(pt, 'power');
+        if (power) data.power = parseInt(power, 10);
         pointsData.push(data);
       }
     });
     if (points.length < 2) return;
-    // Читаем цвет из <trk><extensions><tnd:color>
-    const trkExt = trk.querySelector(':scope > extensions');
-    const trkColor = trkExt?.querySelector('color')?.textContent?.trim() || null;
-    const t = createTrackFromPoints(points, name, { color: trkColor || undefined });
+    const trkColor = xmlExtensionText(trk, ['color', 'displaycolor']) || null;
+    const trkWidth = parseInt(xmlExtensionText(trk, 'width'), 10) || 3;
+    const trkPointSize = parseInt(xmlExtensionText(trk, 'pointSize'), 10);
+    const t = createTrackFromPoints(points, name, {
+      color: trkColor || undefined,
+      width: trkWidth,
+      pointSize: Number.isFinite(trkPointSize) ? trkPointSize : 3
+    });
     // Вычислить скорость из расстояния/времени если нет в данных
     for (let i = 1; i < pointsData.length; i++) {
       if (pointsData[i].speed == null && pointsData[i].time && pointsData[i-1].time) {
@@ -5234,6 +5501,15 @@ function loadGPXTracks(text, fname, options = {}) {
     count++;
   });
   updateTrackList();
+  if (count > 0) {
+    upsertLoadedSourceFile({
+      name: fname,
+      path: meta.path || '',
+      format: 'gpx',
+      entityCounts: { waypoints: 0, tracks: count, routes: 0 }
+    });
+    renderLoadedSourceFiles();
+  }
   if (!options.silent) {
     showToast('✓ Загружено ' + count + ' треков из ' + fname);
     if (count > 0) {
@@ -5339,25 +5615,43 @@ function onTrackSpeedChange(val) {
 // МАРШРУТЫ
 // ─────────────────────────────────────────────
 let routes = [], routeIdCounter = 1;
+let selectedRouteId = null;
 // Импортированные GPX файлы (хранятся для синхронизации)
 let importedGpxFiles = [];
 let currentRouteDraw = null;
 const routePalette = ['#df4a4a','#4a8adf','#dfdf4a','#4adf7a','#df7a4a','#df4adf'];
 
+function applyRouteStyle(route) {
+  if (!route?.polyline) return;
+  route.polyline.setStyle({
+    color: route.color,
+    weight: Number(route.width) || 3,
+    opacity: 0.9,
+    dashArray: route.dashArray || '8 4'
+  });
+}
+
 function createRouteFromPoints(points, name, labels = [], options = {}) {
   const id = Number.isInteger(options.id) ? options.id : routeIdCounter++;
   if (Number.isInteger(options.id)) routeIdCounter = Math.max(routeIdCounter, options.id + 1);
   const color = options.color || routePalette[(id - 1) % routePalette.length];
-  const polyline = L.polyline(points, { color, weight: 3, opacity: 0.9, dashArray: '8 4' }).addTo(map);
+  const width = Number(options.width) || 3;
+  const dashArray = Object.prototype.hasOwnProperty.call(options, 'dashArray') ? (options.dashArray || '') : '8 4';
+  const polyline = L.polyline(points, { color, weight: width, opacity: 0.9, dashArray });
+  const visible = options.visible !== false;
+  if (visible) polyline.addTo(map);
   const route = {
     id,
     name: name || `Маршрут ${id}`,
     color,
+    width,
+    dashArray,
     points: [...points],
     labels: labels.length ? [...labels] : points.map((_, i) => `КП${i+1}`),
     pointRadii: Array.isArray(options.pointRadii) ? [...options.pointRadii] : [],
     pointWaypointIds: Array.isArray(options.pointWaypointIds) ? [...options.pointWaypointIds] : [],
     polyline,
+    visible,
     createdAt: options.createdAt || null,
     updatedAt: options.updatedAt || null,
     source: options.source || 'desktop',
@@ -5366,6 +5660,7 @@ function createRouteFromPoints(points, name, labels = [], options = {}) {
   ensureRouteMeta(route, { touch: false });
   normalizeRoutePointRadii(route, route.points.length);
   normalizeRoutePointWaypointIds(route, route.points.length);
+  applyRouteStyle(route);
   routes.push(route);
   return route;
 }
@@ -5375,11 +5670,14 @@ function startNewRoute() {
     id: routeIdCounter,
     name: 'Маршрут ' + routeIdCounter,
     color: routePalette[(routeIdCounter - 1) % routePalette.length],
+    width: 3,
+    dashArray: '8 4',
     points: [],
     labels: [],
     pointRadii: [],
     pointWaypointIds: [],
     polyline: null,
+    visible: true,
     createdAt: getIsoNow(),
     updatedAt: getIsoNow(),
     source: 'desktop',
@@ -5409,9 +5707,10 @@ function addRoutePoint(latlng, label, options = {}) {
     currentRouteDraw.polyline.setLatLngs(currentRouteDraw.points);
   } else {
     currentRouteDraw.polyline = L.polyline(currentRouteDraw.points, {
-      color: currentRouteDraw.color, weight: 3, opacity: 0.9, dashArray: '8 4'
+      color: currentRouteDraw.color, weight: currentRouteDraw.width || 3, opacity: 0.9, dashArray: currentRouteDraw.dashArray || '8 4'
     }).addTo(map);
   }
+  applyRouteStyle(currentRouteDraw);
   const dist = routeLen(currentRouteDraw);
   const cEl = document.getElementById('route-build-count'), dEl = document.getElementById('route-build-dist');
   if (cEl) cEl.textContent = num;
@@ -5465,7 +5764,9 @@ function finishRouteDraw() {
   document.getElementById('route-build-panel').style.display = 'none';
   const r = currentRouteDraw;
   currentRouteDraw = null;
+  selectedRouteId = r.id;
   updateRouteList();
+  selectRouteById(r.id);
   openModal('modal-routes');
   showToast('✓ Маршрут: ' + r.name + ' · ' + routeLen(r).toFixed(1) + ' км · ' + r.points.length + ' КП');
 }
@@ -5488,6 +5789,10 @@ function deleteRoute(id) {
   if (!r) return;
   if (r.polyline) map.removeLayer(r.polyline);
   routes = routes.filter(r => r.id !== id);
+  if (selectedRouteId === id) {
+    selectedRouteId = null;
+    document.getElementById('route-controls').style.display = 'none';
+  }
   updateRouteList();
   showToast('Маршрут удалён');
 }
@@ -5500,15 +5805,17 @@ function centerRoute(id) {
 function toggleRouteVisible(id) {
   const r = routes.find(r => r.id === id);
   if (!r) return;
-  if (!r._hidden) {
-    if (r.polyline) map.removeLayer(r.polyline);
-    r._hidden = true;
+  r.visible = r.visible === false;
+  if (r.visible === false) {
+    if (r.polyline && map.hasLayer(r.polyline)) map.removeLayer(r.polyline);
     showToast('Маршрут скрыт: ' + r.name);
   } else {
-    if (r.polyline) r.polyline.addTo(map);
-    r._hidden = false;
+    if (r.polyline && !map.hasLayer(r.polyline)) r.polyline.addTo(map);
+    applyRouteStyle(r);
     showToast('Маршрут показан: ' + r.name);
   }
+  touchRoute(r);
+  updateRouteList();
 }
 function toggleRouteEl(headerEl) {
   const kpList = headerEl.nextElementSibling;
@@ -5595,16 +5902,87 @@ function renameRoute(routeId) {
   const el = document.getElementById('route-name-' + routeId);
   if (!el) return;
   r.name = el.value.trim() || r.name;
+  if (selectedRouteId === routeId) {
+    const input = document.getElementById('route-name-input');
+    if (input) input.value = r.name;
+  }
   touchRoute(r);
   updateRouteList();
   showToast('Маршрут переименован: ' + r.name);
 }
+
+function selectRouteById(routeId) {
+  selectedRouteId = routeId;
+  const route = routes.find(item => item.id === routeId);
+  const controls = document.getElementById('route-controls');
+  if (!route || !controls) return;
+  document.getElementById('route-name-input').value = route.name;
+  document.getElementById('route-color-input').value = route.color;
+  document.getElementById('route-width-input').value = route.width || 3;
+  document.getElementById('route-width-val').textContent = `${route.width || 3}px`;
+  document.getElementById('route-dash-input').value = route.dashArray || '';
+  controls.style.display = 'block';
+  updateRouteList();
+}
+
+function applyRouteProps() {
+  const route = routes.find(item => item.id === selectedRouteId);
+  if (!route) return;
+  route.name = document.getElementById('route-name-input').value.trim() || route.name;
+  route.color = document.getElementById('route-color-input').value;
+  route.width = parseInt(document.getElementById('route-width-input').value, 10) || 3;
+  route.dashArray = document.getElementById('route-dash-input').value || '';
+  applyRouteStyle(route);
+  touchRoute(route);
+  updateRouteList();
+  showToast('Свойства маршрута обновлены');
+}
+
+function centerSelectedRoute() {
+  if (selectedRouteId == null) return;
+  centerRoute(selectedRouteId);
+}
+
+function toggleSelectedRouteVisible() {
+  if (selectedRouteId == null) return;
+  toggleRouteVisible(selectedRouteId);
+}
+
+function deleteSelectedRoute() {
+  if (selectedRouteId == null) return;
+  deleteRoute(selectedRouteId);
+}
+
+function updateRoutePointLabel(routeId, idx, value) {
+  const route = routes.find(item => item.id === routeId);
+  if (!route || idx < 0 || idx >= route.points.length) return;
+  route.labels[idx] = String(value || '').trim() || `КП${idx + 1}`;
+  touchRoute(route);
+  updateRouteList();
+}
+
+function updateRoutePointRadius(routeId, idx, value) {
+  const route = routes.find(item => item.id === routeId);
+  if (!route || idx < 0 || idx >= route.points.length) return;
+  normalizeRoutePointRadii(route, route.points.length);
+  route.pointRadii[idx] = Math.max(0, parseInt(value || '0', 10) || 0);
+  touchRoute(route);
+  updateRouteList();
+}
+
 function updateRouteList() {
   const el = document.getElementById('route-list');
+  const controls = document.getElementById('route-controls');
   if (!el) return;
   if (routes.length === 0) {
+    selectedRouteId = null;
+    if (controls) controls.style.display = 'none';
     el.innerHTML = '<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:12px">Маршрутов нет. Нажмите «+ Новый маршрут»</div>';
     return;
+  }
+  if (selectedRouteId != null && !routes.some(route => route.id === selectedRouteId)) {
+    selectedRouteId = null;
+    if (controls) controls.style.display = 'none';
   }
   el.innerHTML = routes.map(r => {
     const km = routeLen(r).toFixed(1);
@@ -5614,21 +5992,24 @@ function updateRouteList() {
       const prev = i > 0 ? r.points[i-1] : null;
       const dist = prev ? (prev.distanceTo(p)/1000).toFixed(1) + ' км' : '—';
       const bear = prev ? calcBearing(prev.lat, prev.lng, p.lat, p.lng).toFixed(0) + '°' : '';
-      const upBtn = i > 0 ? `<span style="cursor:pointer;color:var(--text-secondary);font-size:11px;padding:0 2px" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},-1)" title="Вверх">▲</span>` : '<span style="width:16px;display:inline-block"></span>';
-      const dnBtn = i < r.points.length - 1 ? `<span style="cursor:pointer;color:var(--text-secondary);font-size:11px;padding:0 2px" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},1)" title="Вниз">▼</span>` : '<span style="width:16px;display:inline-block"></span>';
       const delBtn = `<span style="cursor:pointer;color:#e07070;font-size:11px;padding:0 2px" onclick="event.stopPropagation();deleteRoutePoint(${r.id},${i})" title="Удалить">✕</span>`;
+      const radius = Number(r.pointRadii?.[i]) || 0;
       return `<div class="route-kp" draggable="true" data-route-id="${r.id}" data-kp-idx="${i}"
         ondragstart="onRouteKpDragStart(event)" ondragover="onRouteKpDragOver(event)" ondrop="onRouteKpDrop(event)"
         style="cursor:grab">
         <span style="color:var(--text-muted);font-size:10px;cursor:grab;margin-right:2px">☰</span>
-        <span class="route-kp-num" style="background:${r.color}22;color:${r.color}">${escapeHtml(r.labels?.[i] || `КП${i+1}`)}</span>
+        <input value="${escapeHtml(r.labels?.[i] || `КП${i+1}`)}" onchange="updateRoutePointLabel(${r.id},${i},this.value)" onclick="event.stopPropagation()"
+          style="width:78px;background:${r.color}22;border:1px solid ${r.color}44;border-radius:4px;color:var(--text-primary);padding:2px 4px;font-size:11px">
         <span style="font-size:11px;color:var(--text-primary);flex:1">${p.lat.toFixed(4)}°N ${p.lng.toFixed(4)}°E</span>
         <span class="route-dist">${dist}${bear ? ' · ' + bear : ''}</span>
+        <input type="number" min="0" step="1" value="${radius}" onchange="updateRoutePointRadius(${r.id},${i},this.value)" onclick="event.stopPropagation()"
+          style="width:58px;background:var(--bg-sunken);border:1px solid var(--border-normal);border-radius:4px;color:var(--text-primary);padding:2px 4px;font-size:11px" title="Радиус КП, м">
         <span style="display:flex;gap:2px;margin-left:4px">${delBtn}</span>
       </div>`;
     }).join('');
+    const sel = r.id === selectedRouteId;
     return `<div class="route-item">
-      <div class="route-header" onclick="toggleRouteEl(this)" style="cursor:pointer">
+      <div class="route-header" onclick="selectRouteById(${r.id});toggleRouteEl(this)" style="cursor:pointer;${sel ? 'background:#1a3a6a;border-left:3px solid #4a8adf;padding-left:5px;border-radius:4px' : ''}">
         <div style="display:flex;align-items:center;gap:8px">
           <span class="route-color-dot" style="background:${r.color}"></span>
           <input id="route-name-${r.id}" value="${escapeHtml(r.name)}" onclick="event.stopPropagation()" onchange="renameRoute(${r.id})"
@@ -5636,8 +6017,8 @@ function updateRouteList() {
             onfocus="this.style.borderBottomColor='#4a8adf'" onblur="this.style.borderBottomColor='transparent'">${syncInfo}
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:11px;color:var(--text-muted)">${r.points.length} КП · ${km} км${srcTag} <span class="route-arrow">▸</span></span>
-          <span style="font-size:12px;color:var(--text-secondary);cursor:pointer;padding:0 4px" onclick="event.stopPropagation();toggleRouteVisible(${r.id})" title="Скрыть/показать">👁</span>
+          <span style="font-size:11px;color:var(--text-muted)">${r.points.length} КП · ${km} км · ${(r.width || 3)}px${srcTag} <span class="route-arrow">▸</span></span>
+          <span style="font-size:12px;color:var(--text-secondary);cursor:pointer;padding:0 4px" onclick="event.stopPropagation();toggleRouteVisible(${r.id})" title="Скрыть/показать">${r.visible === false ? '○' : '👁'}</span>
           <span style="font-size:12px;color:var(--text-secondary);cursor:pointer;padding:0 4px" onclick="event.stopPropagation();centerRoute(${r.id})" title="Центрировать">🎯</span>
           <span style="font-size:12px;color:#e07070;cursor:pointer;padding:0 4px" onclick="event.stopPropagation();deleteRoute(${r.id})" title="Удалить">✕</span>
         </div>
@@ -5648,9 +6029,9 @@ function updateRouteList() {
 }
 function saveRoutesGPX() {
   if (routes.length === 0) { showToast('Нет маршрутов для сохранения'); return; }
-  let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND">';
+  let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">';
   routes.forEach(r => {
-    gpx += `<rte><name>${escapeXml(r.name)}</name>`;
+    gpx += `<rte><name>${escapeXml(r.name)}</name><extensions><tnd:color>${escapeXml(r.color || '#4a8adf')}</tnd:color><tnd:width>${Number(r.width) || 3}</tnd:width><tnd:dashArray>${escapeXml(r.dashArray || '')}</tnd:dashArray></extensions>`;
     r.points.forEach((p, i) => {
       const radius = Number(r.pointRadii?.[i]) || 0;
       const waypointId = r.pointWaypointIds?.[i] ? escapeXml(r.pointWaypointIds[i]) : '';
@@ -5684,30 +6065,50 @@ function saveRoutesRTE() {
 }
 function loadGPXRoutes(text, fname, options = {}) {
   const doc = new DOMParser().parseFromString(normalizeText(text), 'application/xml');
+  const meta = options.meta || {};
   let count = 0;
   const importedRoutes = [];
-  doc.querySelectorAll('rte').forEach(rte => {
-    const name = rte.querySelector('name')?.textContent?.trim() || ('Маршрут ' + routeIdCounter);
+  xmlDescendantsByLocalName(doc, 'rte').forEach(rte => {
+    const name = xmlTextByLocalNames(rte, 'name', { direct: true }) || ('Маршрут ' + routeIdCounter);
     const points = [];
     const labels = [];
     const pointRadii = [];
     const pointWaypointIds = [];
-    rte.querySelectorAll('rtept').forEach((pt, i) => {
+    const routeColor = xmlExtensionText(rte, ['color', 'displaycolor']) || null;
+    const routeWidth = parseInt(xmlExtensionText(rte, 'width'), 10) || 3;
+    const routeDashArray = xmlExtensionText(rte, 'dashArray');
+    xmlDescendantsByLocalName(rte, 'rtept').forEach((pt, i) => {
       const lat = parseFloat(pt.getAttribute('lat')), lon = parseFloat(pt.getAttribute('lon'));
       if (isNaN(lat) || isNaN(lon)) return;
       points.push(L.latLng(lat, lon));
-      labels.push(pt.querySelector('name')?.textContent?.trim() || `КП${i+1}`);
-      const ext = pt.querySelector('extensions');
-      const radius = Number(ext?.querySelector('radius')?.textContent?.trim() || ext?.querySelector('*|radius')?.textContent?.trim() || 0);
-      pointRadii.push(Number.isFinite(radius) && radius > 0 ? radius : 0);
-      const waypointId = ext?.querySelector('waypointId')?.textContent?.trim() || ext?.querySelector('*|waypointId')?.textContent?.trim() || '';
-      pointWaypointIds.push(waypointId || null);
+      const label = xmlTextByLocalNames(pt, 'name', { direct: true }) || `КП${i+1}`;
+      labels.push(label);
+      const waypointId = xmlExtensionText(pt, 'waypointId');
+      const linked = findWaypointMatch(points[points.length - 1], label);
+      const radius = parsePositiveNumber(xmlExtensionText(pt, ['radius', 'proximity']), 0);
+      pointRadii.push(radius > 0 ? radius : (Number(linked?.wpData?.radius) || 0));
+      pointWaypointIds.push(waypointId || linked?.wpData?.id || null);
     });
     if (points.length < 2) return;
-    importedRoutes.push(createRouteFromPoints(points, name, labels, { pointRadii, pointWaypointIds }));
+    importedRoutes.push(createRouteFromPoints(points, name, labels, {
+      color: routeColor || undefined,
+      width: routeWidth,
+      dashArray: routeDashArray || '8 4',
+      pointRadii,
+      pointWaypointIds
+    }));
     count++;
   });
   updateRouteList();
+  if (count > 0) {
+    upsertLoadedSourceFile({
+      name: fname,
+      path: meta.path || '',
+      format: 'gpx',
+      entityCounts: { waypoints: 0, tracks: 0, routes: count }
+    });
+    renderLoadedSourceFiles();
+  }
   if (!options.silent) {
     showToast('✓ Загружено ' + count + ' маршрутов из ' + fname);
     if (count > 0) {
@@ -7011,10 +7412,13 @@ function collectState() {
         id: r.id,
         name: r.name,
         color: r.color,
+        width: r.width,
+        dashArray: r.dashArray || '',
         points: r.points.map(p => ({ lat: p.lat, lng: p.lng })),
         labels: r.labels || [],
         pointRadii: Array.isArray(r.pointRadii) ? r.pointRadii.map(value => Number(value) || 0) : [],
         pointWaypointIds: Array.isArray(r.pointWaypointIds) ? r.pointWaypointIds.map(value => value || null) : [],
+        visible: r.visible !== false,
         createdAt: r.createdAt || null,
         updatedAt: r.updatedAt || null,
         source: r.source || 'desktop',
@@ -7049,7 +7453,22 @@ function collectState() {
         source: g.source || 'desktop',
         syncedAt: g.syncedAt || null
       };
-    })
+    }),
+    loadedSourceFiles: loadedSourceFiles.map(file => ({
+      id: file.id,
+      key: file.key,
+      name: file.name,
+      path: file.path || null,
+      format: file.format,
+      importedAt: file.importedAt || null,
+      updatedAt: file.updatedAt || null,
+      source: file.source || 'desktop',
+      entityCounts: {
+        waypoints: Number(file.entityCounts?.waypoints) || 0,
+        tracks: Number(file.entityCounts?.tracks) || 0,
+        routes: Number(file.entityCounts?.routes) || 0
+      }
+    }))
   };
   return state;
 }
@@ -7081,6 +7500,13 @@ function clearCurrentData() {
   routes = [];
   routeIdCounter = 1;
   importedGpxFiles = [];
+  loadedSourceFiles = [];
+  selectedTrackId = null;
+  selectedRouteId = null;
+  const trackControls = document.getElementById('track-controls');
+  const routeControls = document.getElementById('route-controls');
+  if (trackControls) trackControls.style.display = 'none';
+  if (routeControls) routeControls.style.display = 'none';
 }
 
 function showClearConfirm() {
@@ -7186,8 +7612,11 @@ function applyState(state) {
       createRouteFromPoints(points, r.name, r.labels, {
         id: r.id,
         color: r.color,
+        width: r.width,
+        dashArray: r.dashArray || '',
         pointRadii: r.pointRadii || [],
         pointWaypointIds: r.pointWaypointIds || [],
+        visible: r.visible !== false,
         createdAt: r.createdAt || null,
         updatedAt: r.updatedAt || null,
         source: r.source || 'desktop',
@@ -7237,6 +7666,27 @@ function applyState(state) {
   } else {
     importedGpxFiles = [];
   }
+
+  if (state.loadedSourceFiles && state.loadedSourceFiles.length > 0) {
+    loadedSourceFiles = state.loadedSourceFiles.map(file => ({
+      id: file.id || makeEntityId('src'),
+      key: file.key || `${normalizeFileFormat(file.name, file.format)}::${file.path || file.name}`,
+      name: file.name,
+      path: file.path || null,
+      format: normalizeFileFormat(file.name, file.format),
+      importedAt: file.importedAt || file.updatedAt || getIsoNow(),
+      updatedAt: file.updatedAt || file.importedAt || getIsoNow(),
+      source: file.source || 'desktop',
+      entityCounts: {
+        waypoints: Number(file.entityCounts?.waypoints) || 0,
+        tracks: Number(file.entityCounts?.tracks) || 0,
+        routes: Number(file.entityCounts?.routes) || 0
+      }
+    }));
+  } else {
+    loadedSourceFiles = [];
+  }
+  renderLoadedSourceFiles();
 
   // 5. Restore map view and layer
   if (state.map) {
@@ -8690,7 +9140,7 @@ document.addEventListener('keydown', e => {
 // ─── Onboarding при первом запуске ───
 function shouldShowOnboarding() {
   if (localStorage.getItem('tnd-onboarding-done')) return false;
-  if (waypoints.length || tracks.length || routes.length || gpxFiles.length) return false;
+  if (waypoints.length || tracks.length || routes.length || importedGpxFiles.length || loadedSourceFiles.length) return false;
   const existingKeys = [
     'tnd-state',
     'tnd-map-view',
@@ -9525,7 +9975,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.7</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.8</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:var(--text-muted)">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
@@ -10113,10 +10563,13 @@ const LIVE_API = `${LIVE_API_BASE}/api/live2/devices`;
 const LIVE_FAVORITES_API = `${LIVE_API_BASE}/api/live2/favorites`;
 const LIVE_MESSAGES_API = `${LIVE_API_BASE}/api/live2/messages`;
 const LIVE_GROUP_SHARE_API = `${LIVE_API_BASE}/api/live2/group-share`;
+const LIVE_SELF_SHARE_API = `${LIVE_API_BASE}/api/live2/self-share`;
+const LIVE_MY_DEVICES_API = `${LIVE_API_BASE}/api/live2/my-devices`;
 const LIVE_POLL_MS = 4000;
 const LIVE_MESSAGES_POLL_MS = 5000;
 const LIVE_OFFLINE_TIMEOUT = 30000;
 const LIVE_GROUP_ALL_ID = 'all';
+const LIVE_GROUP_SELF_ID = 'self';
 const LIVE_STATUS_OPTIONS = [
   { code: 'none', emoji: '🙂', label: 'Без статуса', glyph: '✴', color: '#888888' },
   { code: 'looking_company', emoji: '🤝', label: 'Ищу компанию', glyph: '🤝', color: '#42A5F5' },
@@ -10131,6 +10584,8 @@ const liveState = {
   messagesTimer: null,
   markers: {},
   devices: [],
+  myDevices: [],
+  myDeviceIds: new Set(),
   isOpen: false,
   isPolling: false,
   consecutiveErrors: 0,
@@ -10146,6 +10601,8 @@ const liveState = {
   activeShareId: null,
   activeShareEntry: null,
   shareInboxSeen: new Set(),
+  trails: {},
+  myTrailsEnabled: localStorage.getItem('tnd-live-my-trails') === '1',
   myStatusCode: localStorage.getItem('tnd-live-status-code') || 'none',
   editingGroupId: null,
   previewTimer: null,
@@ -10235,11 +10692,19 @@ function liveGetActiveGroupId() {
 
 function liveGetActiveGroup() {
   const groupId = liveGetActiveGroupId();
-  if (!liveState.favoritesDoc || groupId === LIVE_GROUP_ALL_ID) return null;
+  if (!liveState.favoritesDoc || groupId === LIVE_GROUP_ALL_ID || groupId === LIVE_GROUP_SELF_ID) return null;
   return (liveState.favoritesDoc.groups || []).find(group => group.id === groupId) || null;
 }
 
+function liveIsMyDeviceId(deviceId) {
+  const key = String(deviceId || '').trim().toUpperCase();
+  return !!key && liveState.myDeviceIds.has(key);
+}
+
 function liveGetFilteredDevices(devices) {
+  if (liveGetActiveGroupId() === LIVE_GROUP_SELF_ID) {
+    return devices.filter(dev => liveIsMyDeviceId(liveDeviceUniqueId(dev)));
+  }
   const activeGroup = liveGetActiveGroup();
   if (!activeGroup) return devices;
   const members = new Set((activeGroup.members || []).map(id => String(id).trim().toUpperCase()).filter(Boolean));
@@ -10259,6 +10724,11 @@ function liveKnownDevices() {
       if (!key) return;
       if (!map.has(key)) map.set(key, { id: key, name: key, online: false });
     });
+  });
+  (liveState.myDevices || []).forEach(device => {
+    const key = String(device?.deviceId || device?.uniqueId || '').trim().toUpperCase();
+    if (!key) return;
+    map.set(key, { id: key, name: device.name || key, online: !!device.online });
   });
   return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 }
@@ -10338,9 +10808,10 @@ function renderLiveGroupSelect() {
   const current = liveGetActiveGroupId();
   select.innerHTML = [
     `<option value="${LIVE_GROUP_ALL_ID}">Все участники</option>`,
+    `<option value="${LIVE_GROUP_SELF_ID}">Мои устройства</option>`,
     ...groups.map(group => `<option value="${group.id}">${liveEsc(group.name)} (${(group.members || []).length})</option>`)
   ].join('');
-  select.value = groups.some(group => group.id === current) ? current : LIVE_GROUP_ALL_ID;
+  select.value = current === LIVE_GROUP_SELF_ID || groups.some(group => group.id === current) ? current : LIVE_GROUP_ALL_ID;
   liveState.activeGroupId = select.value;
   localStorage.setItem('tnd-live-active-group', liveState.activeGroupId);
 }
@@ -10376,6 +10847,66 @@ async function liveFetchFavorites(silent = true) {
     if (!silent) showToast('Нет связи с группами мониторинга');
     return false;
   }
+}
+
+async function liveFetchMyDevices(silent = true) {
+  if (!liveHasAccess()) return false;
+  try {
+    const resp = await fetch(LIVE_MY_DEVICES_API, { headers: liveAuthHeaders() });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || !data.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+    liveState.myDevices = Array.isArray(data.devices) ? data.devices : [];
+    liveState.myDeviceIds = new Set(liveState.myDevices.map(device => String(device?.deviceId || device?.uniqueId || '').trim().toUpperCase()).filter(Boolean));
+    if (liveState.devices.length > 0) liveProcessDevices(liveState.devices);
+    return true;
+  } catch (error) {
+    if (!silent) showToast('Не удалось получить список своих устройств');
+    return false;
+  }
+}
+
+function liveClearTrails() {
+  Object.values(liveState.trails || {}).forEach(entry => {
+    if (entry?.polyline && map.hasLayer(entry.polyline)) map.removeLayer(entry.polyline);
+  });
+  liveState.trails = {};
+}
+
+function liveAppendTrail(dev) {
+  const id = liveDeviceUniqueId(dev);
+  if (!id || !liveState.myTrailsEnabled || !liveIsMyDeviceId(id) || !dev.lat || !dev.lon) return;
+  const latlng = L.latLng(dev.lat, dev.lon);
+  let entry = liveState.trails[id];
+  if (!entry) {
+    entry = {
+      points: [latlng],
+      polyline: L.polyline([latlng], {
+        color: liveMarkerColor(dev),
+        weight: 3,
+        opacity: 0.55,
+        interactive: false
+      }).addTo(map)
+    };
+    liveState.trails[id] = entry;
+    return;
+  }
+  const last = entry.points[entry.points.length - 1];
+  if (last && last.distanceTo(latlng) < 8) {
+    entry.polyline.setStyle({ color: liveMarkerColor(dev) });
+    return;
+  }
+  entry.points.push(latlng);
+  if (entry.points.length > 600) entry.points.shift();
+  entry.polyline.setLatLngs(entry.points);
+  entry.polyline.setStyle({ color: liveMarkerColor(dev) });
+}
+
+function toggleLiveMyTrails() {
+  liveState.myTrailsEnabled = !liveState.myTrailsEnabled;
+  localStorage.setItem('tnd-live-my-trails', liveState.myTrailsEnabled ? '1' : '0');
+  if (!liveState.myTrailsEnabled) liveClearTrails();
+  else if (liveState.devices.length > 0) liveProcessDevices(liveState.devices);
+  showToast(liveState.myTrailsEnabled ? 'Хвост моих устройств включён' : 'Хвост моих устройств выключен');
 }
 
 async function liveSaveFavoritesDocument(doc, options = {}) {
@@ -10697,6 +11228,10 @@ function liveGetThreadOptions() {
     });
   });
   const deviceNames = new Map((liveState.devices || []).map(dev => [liveDeviceUniqueId(dev), dev.name || liveDeviceUniqueId(dev)]));
+  (liveState.myDevices || []).forEach(device => {
+    const id = String(device?.deviceId || device?.uniqueId || '').trim().toUpperCase();
+    if (id && !deviceNames.has(id)) deviceNames.set(id, device.name || id);
+  });
   const directKeys = new Set();
   liveState.messages.forEach(message => {
     if (message.scope !== 'direct' || !message.targetId) return;
@@ -10778,7 +11313,7 @@ async function liveImportMessageAttachment(messageId) {
   const rawName = String(attachment.name || message.text || remoteId).trim() || remoteId;
   const fileName = /\.[^.]+$/i.test(rawName) ? rawName : `${rawName}.gpx`;
   try {
-    const resp = await fetch(`${LIVE_GROUP_SHARE_API}/${encodeURIComponent(remoteId)}/data`, { headers: liveAuthHeaders() });
+    const resp = await fetch(`${liveShareApiBase(attachment.api)}/${encodeURIComponent(remoteId)}/data`, { headers: liveAuthHeaders() });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const gpx = await resp.text();
     loadGPXFile(gpx, fileName);
@@ -10896,6 +11431,7 @@ function openLiveMessagesModal(threadKey = null) {
   if (!liveHasAccess()) return;
   if (threadKey) liveState.selectedThreadKey = threadKey;
   liveFetchFavorites(true);
+  liveFetchMyDevices(true);
   liveFetchMessages(true).finally(() => {
     renderLiveThreadSelect();
     renderLiveMessages();
@@ -11205,27 +11741,66 @@ function liveBuildSharePresets() {
   return presets;
 }
 
-function liveOpenShareModal() {
+function liveShareApiBase(apiKind = 'group-share') {
+  return apiKind === 'self-share' ? LIVE_SELF_SHARE_API : LIVE_GROUP_SHARE_API;
+}
+
+function liveHandleShareTargetModeChange() {
+  const mode = document.getElementById('live-share-target-mode')?.value || 'self';
+  const groupField = document.getElementById('live-share-group-field');
+  const deviceField = document.getElementById('live-share-device-field');
+  if (groupField) groupField.style.display = mode === 'group' ? '' : 'none';
+  if (deviceField) deviceField.style.display = mode === 'self' ? '' : 'none';
+}
+
+async function liveOpenShareModal() {
   if (!liveHasAccess()) return;
+  await Promise.all([liveFetchFavorites(true), liveFetchMyDevices(true)]);
   const presets = liveBuildSharePresets();
   const presetSelect = document.getElementById('live-share-preset');
   const groupSelect = document.getElementById('live-share-group');
+  const deviceSelect = document.getElementById('live-share-device');
+  const modeSelect = document.getElementById('live-share-target-mode');
   const nameInput = document.getElementById('live-share-name');
   const summary = document.getElementById('live-share-summary');
   const groups = liveState.favoritesDoc?.groups || [];
+  const senderDeviceId = await getMachineIdAsync().catch(() => getMachineId());
+  const ownTargets = (liveState.myDevices || []).filter(device => {
+    const id = String(device?.deviceId || device?.uniqueId || '').trim().toUpperCase();
+    return id && id !== String(senderDeviceId || '').trim().toUpperCase();
+  });
   if (presets.length === 0) { showToast('На карте нет данных для отправки'); return; }
-  if (groups.length === 0) { showToast('Сначала создайте группу мониторинга'); openLiveGroupsManager(); return; }
+  if (groups.length === 0 && ownTargets.length === 0) {
+    showToast('Нет доступных получателей: создайте группу или подключите второе устройство');
+    return;
+  }
   presetSelect.innerHTML = presets.map(preset => `<option value="${preset.id}">${liveEsc(preset.name)}</option>`).join('');
   groupSelect.innerHTML = groups.map(group => `<option value="${group.id}">${liveEsc(group.name)} (${(group.members || []).length})</option>`).join('');
+  deviceSelect.innerHTML = ownTargets.map(device => {
+    const id = String(device?.deviceId || device?.uniqueId || '').trim().toUpperCase();
+    const label = device.name || id;
+    const meta = [device.deviceType || '', device.online ? 'online' : 'offline'].filter(Boolean).join(' · ');
+    return `<option value="${id}">${liveEsc(label)}${meta ? ` (${liveEsc(meta)})` : ''}</option>`;
+  }).join('');
+  if (modeSelect) {
+    const groupOption = modeSelect.querySelector('option[value="group"]');
+    const selfOption = modeSelect.querySelector('option[value="self"]');
+    if (groupOption) groupOption.disabled = groups.length === 0;
+    if (selfOption) selfOption.disabled = ownTargets.length === 0;
+    const [threadScope, threadGroupId] = String(liveState.selectedThreadKey || '').split(':');
+    const preferGroup = threadScope === 'group' && threadGroupId && threadGroupId !== LIVE_GROUP_ALL_ID && groups.length > 0;
+    modeSelect.value = preferGroup ? 'group' : (ownTargets.length > 0 ? 'self' : 'group');
+  }
   const [threadScope, threadGroupId] = String(liveState.selectedThreadKey || '').split(':');
   const preferredGroupId = threadScope === 'group' && threadGroupId && threadGroupId !== LIVE_GROUP_ALL_ID
     ? threadGroupId
-    : (liveGetActiveGroup()?.id || groups[0].id);
-  groupSelect.value = groups.some(group => group.id === preferredGroupId) ? preferredGroupId : groups[0].id;
+    : (liveGetActiveGroup()?.id || groups[0]?.id || '');
+  if (preferredGroupId) groupSelect.value = groups.some(group => group.id === preferredGroupId) ? preferredGroupId : groups[0]?.id || '';
+  if (ownTargets[0]) deviceSelect.value = String(ownTargets[0].deviceId || ownTargets[0].uniqueId || '').trim().toUpperCase();
+  liveHandleShareTargetModeChange();
   const first = presets[0].build();
   nameInput.value = first.name;
-  const firstSize = liveFormatBytes(liveUtf8Size(first.gpx));
-  summary.textContent = `Тип: ${liveAttachmentTypeLabel(first.type)} · ${first.meta || 'Подготовлено к отправке'} · ${firstSize}`;
+  summary.textContent = `Тип: ${liveAttachmentTypeLabel(first.type)} · ${first.meta || 'Подготовлено к отправке'} · ${liveFormatBytes(liveUtf8Size(first.gpx))}`;
   openModal('modal-live-share');
 }
 
@@ -11242,37 +11817,58 @@ function liveHandleSharePresetChange() {
 
 async function liveSendShareToGroup() {
   if (!liveHasAccess()) return;
+  return liveSendShare();
+}
+
+async function liveSendShare() {
+  if (!liveHasAccess()) return;
   const presetId = document.getElementById('live-share-preset')?.value;
+  const mode = document.getElementById('live-share-target-mode')?.value || 'self';
   const groupId = document.getElementById('live-share-group')?.value;
+  const targetDeviceId = String(document.getElementById('live-share-device')?.value || '').trim().toUpperCase();
   const customName = document.getElementById('live-share-name')?.value?.trim();
   const group = (liveState.favoritesDoc?.groups || []).find(item => item.id === groupId);
+  const targetDevice = (liveState.myDevices || []).find(device => String(device?.deviceId || device?.uniqueId || '').trim().toUpperCase() === targetDeviceId);
   const preset = liveBuildSharePresets().find(item => item.id === presetId);
-  if (!group) { showToast('Выберите группу'); return; }
   if (!preset) { showToast('Выберите данные для отправки'); return; }
   const payload = preset.build();
   const name = customName || payload.name;
   const senderDeviceId = await getMachineIdAsync().catch(() => getMachineId());
   const payloadSize = liveUtf8Size(payload.gpx);
   try {
-    const resp = await fetch(LIVE_GROUP_SHARE_API, {
+    if (mode === 'group' && !group) { showToast('Выберите группу'); return; }
+    if (mode === 'self' && !targetDevice) { showToast('Выберите устройство'); return; }
+    const apiBase = mode === 'self' ? LIVE_SELF_SHARE_API : LIVE_GROUP_SHARE_API;
+    const requestBody = mode === 'self'
+      ? {
+          targetDeviceId,
+          targetDeviceName: targetDevice.name || targetDeviceId,
+          type: payload.type,
+          name,
+          data: payload.gpx,
+          clientShareId: `share_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+          senderDeviceId
+        }
+      : {
+          groupId: group.id,
+          type: payload.type,
+          name,
+          data: payload.gpx,
+          clientShareId: `share_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+          senderDeviceId
+        };
+    const resp = await fetch(apiBase, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...liveAuthHeaders() },
-      body: JSON.stringify({
-        groupId: group.id,
-        type: payload.type,
-        name,
-        data: payload.gpx,
-        clientShareId: `share_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
-        senderDeviceId
-      })
+      body: JSON.stringify(requestBody)
     });
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok || data.ok === false) throw new Error(data.error || `HTTP ${resp.status}`);
     liveMergeMessages([{
       messageId: data.shareId || `share_${Date.now()}`,
-      scope: 'group',
-      targetId: group.id,
-      targetName: group.name,
+      scope: mode === 'self' ? 'direct' : 'group',
+      targetId: mode === 'self' ? targetDeviceId : group.id,
+      targetName: mode === 'self' ? (targetDevice.name || targetDeviceId) : group.name,
       senderName: 'Вы',
       senderUniqueId: senderDeviceId,
       senderStatusCode: liveState.myStatusCode,
@@ -11284,7 +11880,8 @@ async function liveSendShareToGroup() {
         name,
         remoteId: data.shareId || null,
         sizeBytes: payloadSize,
-        previewText: `📦 ${name}`
+        previewText: `📦 ${name}`,
+        api: mode === 'self' ? 'self-share' : 'group-share'
       },
       sentAt: Date.now(),
       incoming: false,
@@ -11292,22 +11889,46 @@ async function liveSendShareToGroup() {
       delivery: 'sent'
     }]);
     closeModal('modal-live-share');
-    showToast(`Отправлено в «${group.name}» (${data.deliveredCount || 0})`);
+    showToast(mode === 'self'
+      ? `Отправлено на устройство «${targetDevice.name || targetDeviceId}»`
+      : `Отправлено в «${group.name}» (${data.deliveredCount || 0})`);
   } catch (error) {
-    showToast('Не удалось отправить вложение в группу');
+    showToast(mode === 'self' ? 'Не удалось отправить вложение на устройство' : 'Не удалось отправить вложение в группу');
   }
 }
 
 async function liveFetchShareInbox(silent = true) {
   if (!liveHasAccess()) return false;
   try {
-    const resp = await fetch(`${LIVE_GROUP_SHARE_API}/inbox`, { headers: liveAuthHeaders() });
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok || data.ok === false) throw new Error(data.error || `HTTP ${resp.status}`);
-    const shares = Array.isArray(data.shares) ? data.shares : [];
-    const fresh = shares.filter(entry => entry?.shareId && !liveState.shareInboxSeen.has(entry.shareId));
+    const senderDeviceId = await getMachineIdAsync().catch(() => getMachineId());
+    const requests = [
+      fetch(`${LIVE_GROUP_SHARE_API}/inbox`, { headers: liveAuthHeaders() }).then(async resp => ({
+        api: 'group-share',
+        ok: resp.ok,
+        data: await resp.json().catch(() => ({}))
+      }))
+    ];
+    if (senderDeviceId) {
+      requests.push(
+        fetch(`${LIVE_SELF_SHARE_API}/inbox?deviceId=${encodeURIComponent(senderDeviceId)}`, { headers: liveAuthHeaders() }).then(async resp => ({
+          api: 'self-share',
+          ok: resp.ok,
+          data: await resp.json().catch(() => ({}))
+        }))
+      );
+    }
+    const results = await Promise.all(requests);
+    const shares = results.flatMap(result => {
+      if (!result.ok || result.data?.ok === false) return [];
+      const items = Array.isArray(result.data?.shares) ? result.data.shares : [];
+      return items.map(entry => ({ ...entry, api: result.api }));
+    });
+    const fresh = shares.filter(entry => {
+      const seenKey = `${entry.api || 'group-share'}:${entry.shareId}`;
+      return entry?.shareId && !liveState.shareInboxSeen.has(seenKey);
+    });
     fresh.forEach(entry => {
-      liveState.shareInboxSeen.add(entry.shareId);
+      liveState.shareInboxSeen.add(`${entry.api || 'group-share'}:${entry.shareId}`);
       liveState.pendingShares.push(entry);
     });
     if (fresh.length > 0) {
@@ -11329,14 +11950,21 @@ function liveShowNextShareInboxModal() {
   liveState.activeShareEntry = entry;
   document.getElementById('live-share-inbox-title').textContent = `📥 ${entry.senderName || 'Участник'}`;
   document.getElementById('live-share-inbox-body').textContent = `Поделился: «${entry.name || 'Вложение'}»\nТип: ${(entry.type || 'gpx').toUpperCase()} · ${Math.round((entry.size || 0) / 1024)} КБ`;
-  document.getElementById('live-share-inbox-meta').textContent = entry.groupName ? `Группа: ${entry.groupName}` : '';
+  const metaParts = [];
+  if (entry.groupName) metaParts.push(`Группа: ${entry.groupName}`);
+  if (entry.targetDeviceName) metaParts.push(`Устройство: ${entry.targetDeviceName}`);
+  document.getElementById('live-share-inbox-meta').textContent = metaParts.join(' · ');
   openModal('modal-live-share-inbox');
 }
 
-async function liveAckShare(shareId) {
+async function liveAckShare(shareId, apiKind = 'group-share') {
   if (!shareId) return;
   try {
-    await fetch(`${LIVE_GROUP_SHARE_API}/${encodeURIComponent(shareId)}/ack`, {
+    const senderDeviceId = apiKind === 'self-share'
+      ? await getMachineIdAsync().catch(() => getMachineId())
+      : null;
+    const suffix = apiKind === 'self-share' && senderDeviceId ? `?deviceId=${encodeURIComponent(senderDeviceId)}` : '';
+    await fetch(`${liveShareApiBase(apiKind)}/${encodeURIComponent(shareId)}/ack${suffix}`, {
       method: 'DELETE',
       headers: liveAuthHeaders()
     });
@@ -11348,15 +11976,16 @@ async function liveAcceptIncomingShare() {
   const entry = liveState.activeShareEntry;
   if (!shareId || !entry) return;
   try {
-    const dataResp = await fetch(`${LIVE_GROUP_SHARE_API}/${encodeURIComponent(shareId)}/data`, { headers: liveAuthHeaders() });
+    const dataResp = await fetch(`${liveShareApiBase(entry.api)}/${encodeURIComponent(shareId)}/data`, { headers: liveAuthHeaders() });
     if (!dataResp.ok) throw new Error(`HTTP ${dataResp.status}`);
     const gpx = await dataResp.text();
     loadGPXFile(gpx, `${entry.name || shareId}.gpx`);
+    const isSelfShare = entry.api === 'self-share';
     liveMergeMessages([{
       messageId: shareId,
-      scope: 'group',
-      targetId: entry.groupId || LIVE_GROUP_ALL_ID,
-      targetName: entry.groupName || 'Группа',
+      scope: isSelfShare ? 'direct' : 'group',
+      targetId: isSelfShare ? (entry.senderUniqueId || entry.senderDeviceId || 'self') : (entry.groupId || LIVE_GROUP_ALL_ID),
+      targetName: isSelfShare ? (entry.senderName || entry.senderDeviceName || 'Моё устройство') : (entry.groupName || 'Группа'),
       senderName: entry.senderName || 'Участник',
       senderUniqueId: entry.senderUniqueId || null,
       text: `📦 ${entry.name || 'Вложение'}`,
@@ -11367,14 +11996,15 @@ async function liveAcceptIncomingShare() {
         name: entry.name || 'Вложение',
         remoteId: shareId,
         sizeBytes: Number(entry.size) || 0,
-        previewText: `📦 ${entry.name || 'Вложение'}`
+        previewText: `📦 ${entry.name || 'Вложение'}`,
+        api: entry.api || 'group-share'
       },
       sentAt: Date.parse(entry.timestamp || '') || Date.now(),
       incoming: true,
       read: false,
       delivery: 'sent'
     }]);
-    await liveAckShare(shareId);
+    await liveAckShare(shareId, entry.api);
     closeModal('modal-live-share-inbox');
     liveState.activeShareId = null;
     liveState.activeShareEntry = null;
@@ -11388,7 +12018,7 @@ async function liveAcceptIncomingShare() {
 async function liveDeclineIncomingShare() {
   const shareId = liveState.activeShareId;
   if (!shareId) return;
-  await liveAckShare(shareId);
+  await liveAckShare(shareId, liveState.activeShareEntry?.api);
   closeModal('modal-live-share-inbox');
   liveState.activeShareId = null;
   liveState.activeShareEntry = null;
@@ -11417,6 +12047,7 @@ function liveStartPolling() {
   liveState.isPolling = true;
   liveState.consecutiveErrors = 0;
   liveFetchFavorites(true);
+  liveFetchMyDevices(true);
   liveFetchMessages(true);
   liveFetchShareInbox(true);
   livePushStatus(true);
@@ -11434,6 +12065,7 @@ function liveStopPolling() {
   // Remove all markers from map
   Object.values(liveState.markers).forEach(m => map.removeLayer(m));
   liveState.markers = {};
+  liveClearTrails();
   liveState._firstFitDone = false;
   liveUpdateDot('off');
 }
@@ -11560,6 +12192,7 @@ function liveUpdateMarker(dev, isOffline) {
     marker.on('click', () => liveShowPopup(marker._liveDev));
     liveState.markers[id] = marker;
   }
+  liveAppendTrail(dev);
 }
 
 function liveShowPopup(dev) {
@@ -11621,7 +12254,10 @@ function liveRenderSidebar(devices, now) {
   // Update header count
   const onlineCount = devices.filter(d => d.lastUpdate && (now - new Date(d.lastUpdate).getTime()) < LIVE_OFFLINE_TIMEOUT).length;
   const headerText = document.getElementById('live-header-text');
-  if (headerText) headerText.textContent = `Участники (${onlineCount}/${devices.length})`;
+  if (headerText) {
+    const prefix = liveGetActiveGroupId() === LIVE_GROUP_SELF_ID ? 'Мои устройства' : 'Участники';
+    headerText.textContent = `${prefix} (${onlineCount}/${devices.length})`;
+  }
 }
 
 function liveUpdateDot(status) {
@@ -11671,13 +12307,14 @@ liveLoadCache();
 
 <!-- Live monitoring sidebar -->
 <div id="live-sidebar">
-  <button class="live-expand-btn" onclick="toggleSidebarCollapse('live-sidebar')" title="Развернуть">▶</button>
+      <button class="live-expand-btn" onclick="toggleSidebarCollapse('live-sidebar')" title="Развернуть">▶</button>
   <div class="live-header">
     <div class="live-dot off" id="live-status-dot"></div>
     <span id="live-header-text">Участники</span>
     <div style="margin-left:auto;display:flex;gap:6px">
       <button onclick="openLiveMessagesModal()" title="Сообщения" style="position:relative;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">💬<span id="live-messages-badge" style="display:none;position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:#e07070;color:#fff;font-size:10px;align-items:center;justify-content:center"></span></button>
       <button onclick="openLiveGroupsManager()" title="Группы" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">👥</button>
+      <button onclick="toggleLiveMyTrails()" title="Хвост моих устройств" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">🧵</button>
       <button onclick="liveShowAll()" title="Показать всех" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">🎯</button>
       <button onclick="toggleSidebarCollapse('live-sidebar')" title="Свернуть" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">◀</button>
       <button onclick="toggleLive()" title="Закрыть" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">✕</button>
@@ -11718,7 +12355,7 @@ liveLoadCache();
       </div>
       <div class="btn-row">
         <button class="btn-secondary" onclick="liveFetchMessages(false)">Обновить</button>
-        <button class="btn-secondary" onclick="liveOpenShareModal()">📦 В группу</button>
+        <button class="btn-secondary" onclick="liveOpenShareModal()">📦 Данные</button>
         <div style="flex:1"></div>
         <button class="btn-primary" onclick="liveSendMessage()">Отправить</button>
       </div>
@@ -11768,17 +12405,28 @@ liveLoadCache();
 <div class="modal-overlay" id="modal-live-share">
   <div class="modal" id="modal-live-share-win" style="top:90px;left:50%;transform:translateX(-50%);width:460px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-live-share-win')">
-      📦 Отправка в группу
+      📦 Отправка данных
       <span class="modal-close" onclick="closeModal('modal-live-share')">✕</span>
     </div>
     <div class="modal-body">
       <div class="prop-field">
+        <label>Куда</label>
+        <select id="live-share-target-mode" onchange="liveHandleShareTargetModeChange()">
+          <option value="self">На моё устройство</option>
+          <option value="group">В группу</option>
+        </select>
+      </div>
+      <div class="prop-field">
         <label>Что отправить</label>
         <select id="live-share-preset" onchange="liveHandleSharePresetChange()"></select>
       </div>
-      <div class="prop-field">
+      <div class="prop-field" id="live-share-group-field">
         <label>Группа</label>
         <select id="live-share-group"></select>
+      </div>
+      <div class="prop-field" id="live-share-device-field" style="display:none">
+        <label>Устройство</label>
+        <select id="live-share-device"></select>
       </div>
       <div class="prop-field">
         <label>Название</label>
@@ -11788,7 +12436,7 @@ liveLoadCache();
       <div class="btn-row">
         <button class="btn-secondary" onclick="closeModal('modal-live-share')">Отмена</button>
         <div style="flex:1"></div>
-        <button class="btn-primary" onclick="liveSendShareToGroup()">Отправить</button>
+        <button class="btn-primary" onclick="liveSendShare()">Отправить</button>
       </div>
     </div>
   </div>
