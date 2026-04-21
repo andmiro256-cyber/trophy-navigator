@@ -18,16 +18,42 @@
     --bg-elevated: #16213e;
     --bg-surface: #1a2a4a;
     --bg-sunken: #0d1b32;
+    --bg-interactive: #1a2a4a;
+    --bg-hover: #1a3a6a;
+    --bg-selected: #1a3a6a;
+    --bg-selected-soft: rgba(74, 138, 223, 0.16);
+    --bg-danger: #3a1717;
+    --bg-success: #16391f;
+    --bg-warning: #3a2c18;
     --border-subtle: #1a3a5a;
     --border-normal: #2a4a7a;
     --border-bright: #4a8adf;
+    --border: var(--border-subtle);
+    --border-danger: #6a2a2a;
+    --border-success: #2a6a3a;
+    --border-warning: #7a5a2a;
     --text-primary: #c8dff5;
     --text-secondary: #9ab8d0;
     --text-muted: #5a7a9a;
+    --text: var(--text-primary);
+    --text-link: #7ec8ff;
+    --text-on-solid: #ffffff;
+    --text-warning: #f0c878;
     --accent-blue: #4a8adf;
     --accent-green: #4adf7a;
     --accent-amber: #e0a050;
     --accent-red: #e07070;
+    --input-bg: #0d1b32;
+    --input-border: #2a4a7a;
+    --row-border: #1a2a4a;
+    --row-hover: #1a3a6a;
+    --row-zebra: rgba(15, 52, 96, 0.30);
+    --modal-bg: #16213e;
+    --modal-header-bg: #0d1b32;
+    --modal-footer-bg: #0d1e38;
+    --modal-shadow: 0 14px 46px rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(74, 138, 223, 0.10);
+    --modal-active-shadow: 0 18px 54px rgba(0, 0, 0, 0.72), 0 0 0 1px rgba(74, 138, 223, 0.55);
+    --panel-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
   }
 
   /* ─── Светлая тема ─── */
@@ -36,16 +62,42 @@
     --bg-elevated: #ffffff;
     --bg-surface: #e8ecf0;
     --bg-sunken: #dde1e6;
+    --bg-interactive: #eef2f6;
+    --bg-hover: #dce6f2;
+    --bg-selected: #d8e8fb;
+    --bg-selected-soft: rgba(58, 120, 196, 0.16);
+    --bg-danger: #fff0f0;
+    --bg-success: #e8f7ed;
+    --bg-warning: #fff6df;
     --border-subtle: #d0d5dc;
     --border-normal: #b0b8c4;
     --border-bright: #3a78c4;
+    --border: var(--border-subtle);
+    --border-danger: #d6a0a0;
+    --border-success: #9ac89d;
+    --border-warning: #d6bd78;
     --text-primary: #1a2030;
     --text-secondary: #4a5568;
     --text-muted: #6a7585;
+    --text: var(--text-primary);
+    --text-link: #2b6fb8;
+    --text-on-solid: #ffffff;
+    --text-warning: #815400;
     --accent-blue: #3a78c4;
     --accent-green: #1e7a38;
     --accent-amber: #9a6010;
     --accent-red: #c04040;
+    --input-bg: #ffffff;
+    --input-border: #b8c2cf;
+    --row-border: #e2e7ef;
+    --row-hover: #edf4fb;
+    --row-zebra: rgba(58, 120, 196, 0.06);
+    --modal-bg: #ffffff;
+    --modal-header-bg: #f3f6fa;
+    --modal-footer-bg: #f7f9fc;
+    --modal-shadow: 0 16px 40px rgba(31, 48, 75, 0.18), 0 0 0 1px rgba(25, 45, 75, 0.06);
+    --modal-active-shadow: 0 18px 48px rgba(31, 48, 75, 0.24), 0 0 0 1px rgba(58, 120, 196, 0.42);
+    --panel-shadow: 0 10px 32px rgba(31, 48, 75, 0.16);
   }
   [data-theme="light"] * { scrollbar-color: #b0b8c4 transparent; }
   [data-theme="light"] #toolbar { background: #fff; border-bottom-color: #d0d5dc; }
@@ -57,8 +109,8 @@
   [data-theme="light"] .tb-btn.list-btn { background: #f0f0e0; border-color: #baba80; color: #5a5a2a; }
   [data-theme="light"] .tb-label { color: #6a7a8a; }
   [data-theme="light"] #statusbar { background: #fff; border-top-color: #d0d5dc; color: #5a6a7a; }
-  [data-theme="light"] .modal { background: #fff !important; border-color: #d0d5dc; box-shadow: 0 8px 32px rgba(0,0,0,0.15) !important; }
-  [data-theme="light"] .modal-header { background: #e8ecf0 !important; color: #1a2030; border-bottom-color: #d0d5dc; }
+  [data-theme="light"] .modal { background: var(--modal-bg) !important; border-color: var(--border-subtle); box-shadow: var(--modal-shadow) !important; }
+  [data-theme="light"] .modal-header { background: var(--modal-header-bg) !important; color: var(--text-primary); border-bottom-color: var(--border-subtle); }
   [data-theme="light"] .modal-close:hover { background: #e0e4ea; color: #1a2030; }
   [data-theme="light"] .wpt-table th { background: #e8ecf0; color: #2a4060; border-bottom-color: #d0d5dc; }
   [data-theme="light"] .wpt-table td { border-bottom-color: #e8ecf0; color: #1a2030; }
@@ -73,7 +125,9 @@
   [data-theme="light"] .prop-field textarea { background: #f0f2f5; border-color: #b0b8c4; color: #1a2030; }
   [data-theme="light"] .btn-primary { background: #3a78c4; border-color: #2a68b4; color: #fff; }
   [data-theme="light"] .btn-secondary { background: #e8ecf0; border-color: #b0b8c4; color: #3a5068; }
-  [data-theme="light"] .ctx-menu { background: #fff; border-color: #d0d5dc; }
+  [data-theme="light"] #ctx-menu,
+  [data-theme="light"] #ctx-menu-map,
+  [data-theme="light"] #ctx-menu-track { background: var(--modal-bg); border-color: var(--border-subtle); box-shadow: var(--panel-shadow); }
   [data-theme="light"] .ctx-item { color: #1a2030; }
   [data-theme="light"] .ctx-item:hover { background: #e4eaf2; }
   [data-theme="light"] .ctx-sep { background: #e0e4ea; }
@@ -97,6 +151,10 @@
   [data-theme="light"] .dl-prog-bar { background: linear-gradient(90deg, #3a78c4, #5a98e4); }
   [data-theme="light"] select { color-scheme: light !important; }
   [data-theme="light"] input[type=range] { color-scheme: light; }
+  [data-theme="light"] .modal [style*="#e0e0e0"],
+  [data-theme="light"] .modal [style*="#c0d8ff"] { color: var(--text-primary) !important; }
+  [data-theme="light"] .modal [style*="#7ec8ff"],
+  [data-theme="light"] .modal [style*="#9fc3ff"] { color: var(--text-link) !important; }
 
   * { margin: 0; padding: 0; box-sizing: border-box; scrollbar-width: thin; scrollbar-color: #2a4a7a transparent; }
   body { font-family: 'Segoe UI', sans-serif; background: var(--bg-base); color: var(--text-primary); height: 100vh; display: flex; flex-direction: column; overflow: hidden; transition: background 0.2s, color 0.2s; }
@@ -107,7 +165,7 @@
 
   /* ─── ТУЛБАР ─── */
   #toolbar {
-    background: #16213e;
+    background: var(--bg-elevated);
     border-bottom: 1px solid var(--border-subtle);
     padding: 6px 10px;
     display: flex;
@@ -122,10 +180,10 @@
   }
   .tb-sep { width: 1px; background: var(--bg-sunken); height: 38px; margin: 0 7px; flex-shrink: 0; }
   .tb-btn {
-    background: #1a2a4a;
-    border: 1px solid #2a4a7a;
+    background: var(--bg-interactive);
+    border: 1px solid var(--border-normal);
     border-radius: 6px;
-    color: #c0d8ff;
+    color: var(--text-primary);
     padding: 5px 11px;
     cursor: pointer;
     font-size: 13px;
@@ -135,8 +193,8 @@
     height: 38px;
     flex-shrink: 0;
   }
-  .tb-btn:hover { background: #2a4a7a; border-color: #4a8adf; color: #fff; }
-  .tb-btn.active { background: var(--bg-sunken); border-color: #4a8adf; color: #7ec8ff; box-shadow: 0 0 8px rgba(74,138,223,0.4); }
+  .tb-btn:hover { background: var(--bg-hover); border-color: var(--border-bright); color: var(--text-on-solid); }
+  .tb-btn.active { background: var(--bg-sunken); border-color: var(--border-bright); color: var(--text-link); box-shadow: 0 0 8px rgba(74,138,223,0.4); }
   .tb-btn.settings-btn { background: #1e3a1e; border-color: #2a6a2a; color: #a0d8a0; }
   .tb-btn.settings-btn:hover { background: #2a5a2a; border-color: #4aaa4a; }
   .tb-btn.list-btn { background: #2a2a1a; border-color: #5a5a2a; color: #d8d8a0; }
@@ -171,7 +229,7 @@
     font-size: 18px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #7ec8ff;
+    color: var(--text-link);
     font-weight: 700;
     line-height: 1;
     cursor: pointer;
@@ -266,22 +324,27 @@
   #statusbar .highlight { color: #a0c8e0; }
 
   /* ─── МОДАЛЬНЫЕ ОКНА ─── */
-  .modal-overlay { display: none; position: fixed; inset: 0; z-index: 1000; pointer-events: none; }
+  .modal-overlay { display: none; position: fixed; inset: 0; z-index: 4100; pointer-events: none; }
   .modal-overlay.open { display: block; }
   .modal {
     position: absolute;
-    background: #16213e;
+    background: var(--modal-bg);
     border: 1px solid var(--border-subtle);
     border-radius: 8px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    box-shadow: var(--modal-shadow);
     min-width: 320px;
     pointer-events: all;
     display: flex;
     flex-direction: column;
     max-height: 80vh;
   }
+  .modal-overlay.active .modal {
+    border-color: var(--border-bright);
+    box-shadow: var(--modal-active-shadow) !important;
+  }
+  .modal-overlay.active .modal-header { color: var(--text-link); }
   .modal-header {
-    background: var(--bg-sunken);
+    background: var(--modal-header-bg);
     padding: 8px 12px;
     border-radius: 7px 7px 0 0;
     display: flex;
@@ -290,16 +353,20 @@
     cursor: move;
     font-size: 13px;
     font-weight: 600;
-    color: #c0d8ff;
+    color: var(--text-primary);
     flex-shrink: 0;
   }
-  .modal-close { cursor: pointer; color: #7a9aba; font-size: 16px; line-height: 1; padding: 2px 6px; border-radius: 4px; }
-  .modal-close:hover { background: #1a3a6a; color: #fff; }
+  .modal-close {
+    cursor: pointer; color: var(--text-secondary); font-size: 16px; line-height: 1;
+    width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 4px; flex-shrink: 0;
+  }
+  .modal-close:hover { background: var(--bg-hover); color: var(--text-primary); }
   .modal-body { padding: 12px; overflow-y: auto; flex: 1; }
   .modal-footer {
     padding: 8px 12px;
     border-top: 1px solid var(--border-subtle);
-    background: #0d1e38;
+    background: var(--modal-footer-bg);
     border-radius: 0 0 7px 7px;
     display: flex;
     gap: 6px;
@@ -307,120 +374,132 @@
     flex-wrap: wrap;
   }
   .modal-footer .save-btn {
-    background: #1a3a1a; border: 1px solid #2a6a2a; color: #a0d8a0;
+    background: var(--bg-success); border: 1px solid var(--border-success); color: var(--accent-green);
     border-radius: 5px; padding: 5px 10px; cursor: pointer; font-size: 11px;
     white-space: nowrap;
   }
-  .modal-footer .save-btn:hover { background: #2a5a2a; }
+  .modal-footer .save-btn:hover { background: var(--row-hover); }
   .modal-footer .open-btn {
-    background: #1a2a4a; border: 1px solid #2a5a8a; color: #a0c8e0;
+    background: var(--bg-interactive); border: 1px solid var(--border-normal); color: var(--text-link);
     border-radius: 5px; padding: 5px 10px; cursor: pointer; font-size: 11px;
     white-space: nowrap;
   }
-  .modal-footer .open-btn:hover { background: #2a4a7a; }
+  .modal-footer .open-btn:hover { background: var(--row-hover); }
 
   /* ─── ТАБЛИЦА ТОЧЕК ─── */
   .wpt-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .wpt-table th { background: var(--bg-sunken); color: #7abadf; padding: 6px 8px; text-align: left; font-weight: 500; border-bottom: 1px solid #1a4a7a; }
-  .wpt-table td { padding: 5px 8px; border-bottom: 1px solid #1a2a4a; color: #c0d8ff; }
-  .wpt-table tr:hover td { background: #1a3a6a; cursor: pointer; }
+  .wpt-table th { background: var(--bg-sunken); color: var(--text-link); padding: 6px 8px; text-align: left; font-weight: 500; border-bottom: 1px solid var(--border-normal); }
+  .wpt-table td { padding: 5px 8px; border-bottom: 1px solid var(--row-border); color: var(--text-primary); }
+  .wpt-table tr:hover td { background: var(--row-hover); cursor: pointer; }
   .wpt-table tr.selected td { background: var(--bg-sunken); }
   .wpt-icon { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: middle; }
 
   /* ─── СПИСОК МАРШРУТОВ ─── */
-  .route-item { background: #1a2a4a; border: 1px solid #2a4a7a; border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
+  .route-item { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
   .route-header { padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-  .route-header:hover { background: #2a4a7a; }
-  .route-kp-list { padding: 4px 10px 8px; font-size: 11px; color: #7a9aba; }
-  .route-kp { padding: 3px 0; display: flex; gap: 8px; }
-  .route-kp-num { color: #4a8adf; font-weight: bold; min-width: 24px; }
-  .route-dist { color: #5a9a5a; margin-left: auto; }
+  .route-header:hover { background: var(--row-hover); }
+  .route-kp-list { padding: 4px 10px 8px; font-size: 11px; color: var(--text-secondary); }
+  .route-kp { padding: 4px 0; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--row-border); }
+  .route-kp:last-child { border-bottom: none; }
+  .route-kp-num { color: var(--accent-blue); font-weight: bold; min-width: 24px; }
+  .route-dist { color: var(--accent-green); margin-left: auto; white-space: nowrap; }
+  .route-kp-actions { display: flex; gap: 2px; margin-left: 4px; flex-shrink: 0; }
+  .route-kp-btn {
+    width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center;
+    background: var(--bg-interactive); border: 1px solid var(--border-normal); color: var(--text-secondary);
+    border-radius: 4px; cursor: pointer; font-size: 11px; line-height: 1; padding: 0;
+  }
+  .route-kp-btn:hover { background: var(--row-hover); border-color: var(--border-bright); color: var(--text-primary); }
+  .route-kp-btn.danger { color: var(--accent-red); border-color: var(--border-danger); }
+  .route-kp-btn.danger:hover { background: var(--bg-danger); }
+  .route-kp-btn:disabled { opacity: 0.35; cursor: default; background: var(--bg-sunken); border-color: var(--border-subtle); }
   .route-color-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
 
   /* ─── НАСТРОЙКИ ─── */
   .settings-tabs { display: flex; gap: 2px; margin-bottom: 12px; }
-  .tab-btn { background: #1a2a4a; border: 1px solid #2a4a7a; border-radius: 4px 4px 0 0; padding: 5px 12px; cursor: pointer; font-size: 12px; color: #7a9aba; }
-  .tab-btn.active { background: var(--bg-sunken); color: #c0d8ff; border-bottom-color: var(--border-subtle); }
+  .tab-btn { background: var(--bg-interactive); border: 1px solid var(--border-normal); border-radius: 4px 4px 0 0; padding: 5px 12px; cursor: pointer; font-size: 12px; color: var(--text-secondary); }
+  .tab-btn.active { background: var(--bg-sunken); color: var(--text-primary); border-bottom-color: var(--border-subtle); }
   .tab-content { display: none; }
   .tab-content.active { display: block; }
-  .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #1a2a4a; }
-  .setting-label { font-size: 12px; color: #a0c0e0; }
+  .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--row-border); }
+  .setting-label { font-size: 12px; color: var(--text-secondary); }
   .setting-control { display: flex; align-items: center; gap: 6px; }
   .setting-control input[type=number], .setting-control select {
-    background: var(--bg-sunken); border: 1px solid #2a4a7a; color: #c0d8ff;
+    background: var(--input-bg); border: 1px solid var(--input-border); color: var(--text-primary);
     border-radius: 4px; padding: 3px 6px; width: 80px; font-size: 12px;
   }
   .setting-control input[type=range] { width: 100px; accent-color: #4a8adf; }
   .color-swatch { width: 28px; height: 20px; border-radius: 3px; border: 1px solid #2a4a7a; cursor: pointer; }
   .save-section { margin-top: 14px; }
-  .save-section h4 { font-size: 11px; color: #5a7aaa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .save-section h4 { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
   .save-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .save-btn-grid {
-    background: #1a3a1a; border: 1px solid #2a6a2a; color: #a0d8a0;
+    background: var(--bg-success); border: 1px solid var(--border-success); color: var(--accent-green);
     border-radius: 5px; padding: 6px 8px; cursor: pointer; font-size: 11px; text-align: center;
   }
-  .save-btn-grid:hover { background: #2a5a2a; }
+  .save-btn-grid:hover { background: var(--row-hover); }
 
   /* ─── СЛОИ ─── */
   .layer-section-title { font-size: 10px; text-transform: uppercase; color: #5a7aaa; letter-spacing: 0.5px; padding: 6px 0 4px; }
   .base-layer { padding: 7px 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; border-radius: 4px; font-size: 13px; border-left: 3px solid transparent; transition: background 0.15s, border-color 0.15s; }
-  .base-layer:hover { background: #1a3a6a; }
-  .base-layer.active { background: #1a3a6a; border-left-color: #4a8adf; color: #7ec8ff; }
+  .base-layer:hover { background: var(--row-hover); }
+  .base-layer.active { background: var(--bg-selected); border-left-color: var(--border-bright); color: var(--text-link); }
   .overlay-layer { padding: 5px 4px; display: flex; align-items: center; gap: 8px; border-radius: 4px; font-size: 12px; }
-  .overlay-layer:hover { background: #1a3a6a; }
+  .overlay-layer:hover { background: var(--row-hover); }
   .overlay-layer input[type=checkbox] { accent-color: #4a8adf; }
-  .overlay-name { flex: 1; color: #c0d8ff; }
+  .overlay-name { flex: 1; color: var(--text-primary); }
   .opacity-slider { width: 75px; accent-color: #4a8adf; }
   .opacity-val { font-size: 11px; color: #5a7aaa; min-width: 32px; text-align: right; }
 
   /* ─── КОНТЕКСТНОЕ МЕНЮ ─── */
   #ctx-menu, #ctx-menu-map, #ctx-menu-track {
     display: none; position: fixed;
-    background: #16213e; border: 1px solid var(--border-subtle); border-radius: 6px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.5); z-index: 2000; min-width: 160px; overflow: hidden;
+    background: var(--modal-bg); border: 1px solid var(--border-subtle); border-radius: 6px;
+    box-shadow: var(--panel-shadow); z-index: 5200; min-width: 160px; overflow: hidden;
   }
   #ctx-menu.open, #ctx-menu-map.open, #ctx-menu-track.open { display: block; }
-  .ctx-item { padding: 7px 14px; font-size: 12px; cursor: pointer; color: #c0d8ff; }
-  .ctx-item:hover { background: #1a3a6a; }
-  .ctx-item.danger { color: #e07070; }
-  .ctx-item.danger:hover { background: #3a1a1a; }
-  .ctx-sep { height: 1px; background: var(--bg-sunken); margin: 2px 0; }
+  .ctx-item { padding: 7px 14px; font-size: 12px; cursor: pointer; color: var(--text-primary); }
+  .ctx-item:hover { background: var(--row-hover); }
+  .ctx-item.danger { color: var(--accent-red); }
+  .ctx-item.danger:hover { background: var(--bg-danger); }
+  .ctx-sep { height: 1px; background: var(--row-border); margin: 2px 0; }
 
   /* ─── СВОЙСТВА ТОЧКИ ─── */
   .prop-field { margin-bottom: 10px; }
-  .prop-field label { font-size: 11px; color: #7a9aba; display: block; margin-bottom: 3px; }
+  .prop-field label { font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 3px; }
   .prop-field input, .prop-field textarea, .prop-field select {
-    width: 100%; background: var(--bg-sunken); border: 1px solid #2a4a7a;
-    color: #c0d8ff; border-radius: 4px; padding: 5px 8px; font-size: 12px;
+    width: 100%; background: var(--input-bg); border: 1px solid var(--input-border);
+    color: var(--text-primary); border-radius: 4px; padding: 5px 8px; font-size: 12px;
   }
   .prop-field input:focus, .prop-field textarea:focus { outline: none; border-color: #4a8adf; }
   .icon-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-top: 4px; }
-  .icon-cell { width: 28px; height: 28px; border: 1px solid #2a4a7a; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; }
-  .icon-cell:hover { background: #2a4a7a; border-color: #4a8adf; }
+  .icon-cell { width: 28px; height: 28px; border: 1px solid var(--border-normal); border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+  .icon-cell:hover { background: var(--row-hover); border-color: var(--border-bright); }
   .icon-cell.selected { background: var(--bg-sunken); border-color: #4a8adf; box-shadow: 0 0 0 2px rgba(74,138,223,0.3); }
   .prop-coords { display: flex; gap: 6px; }
   .prop-coords input { flex: 1; }
   .btn-row { display: flex; gap: 6px; margin-top: 12px; justify-content: flex-end; }
-  .btn-primary { background: #0f4a8a; border: 1px solid #1a6adf; color: #c0d8ff; border-radius: 5px; padding: 6px 14px; cursor: pointer; font-size: 12px; }
-  .btn-primary:hover { background: #1a6adf; }
-  .btn-secondary { background: #1a2a4a; border: 1px solid #2a4a7a; color: #7a9aba; border-radius: 5px; padding: 6px 14px; cursor: pointer; font-size: 12px; }
-  .btn-secondary:hover { background: #2a4a7a; }
+  .btn-primary { background: var(--accent-blue); border: 1px solid var(--border-bright); color: var(--text-on-solid); border-radius: 5px; padding: 6px 14px; cursor: pointer; font-size: 12px; }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-secondary { background: var(--bg-interactive); border: 1px solid var(--border-normal); color: var(--text-secondary); border-radius: 5px; padding: 6px 14px; cursor: pointer; font-size: 12px; }
+  .btn-secondary:hover { background: var(--row-hover); color: var(--text-primary); }
+  .btn-primary:disabled, .btn-secondary:disabled { opacity: 0.45; cursor: default; filter: none; }
 
   /* ─── ТРЕК ОКНО ─── */
-  .track-item { background: #1a2a4a; border: 1px solid #2a4a7a; border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-  .track-item:hover { background: #2a4a7a; }
+  .track-item { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+  .track-item:hover { background: var(--row-hover); }
   .track-color { width: 4px; height: 36px; border-radius: 2px; flex-shrink: 0; }
-  .track-point-tooltip { background: #0a1e3a !important; border: 1px solid #2a5a8a !important; color: #c0d8ff !important; border-radius: 6px !important; padding: 6px 10px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important; }
-  .track-point-tooltip .leaflet-tooltip-tip { border-top-color: #2a5a8a !important; }
+  .track-point-tooltip { background: var(--modal-bg) !important; border: 1px solid var(--border-normal) !important; color: var(--text-primary) !important; border-radius: 6px !important; padding: 6px 10px !important; box-shadow: var(--panel-shadow) !important; }
+  .track-point-tooltip .leaflet-tooltip-tip { border-top-color: var(--border-normal) !important; }
   .track-info { flex: 1; }
-  .track-name { font-size: 13px; color: #c0d8ff; }
-  .track-meta { font-size: 11px; color: #5a7aaa; margin-top: 2px; }
-  .track-controls { margin-top: 10px; padding-top: 10px; border-top: 1px solid #1a2a4a; }
-  .ctrl-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; color: #7a9aba; }
+  .track-name { font-size: 13px; color: var(--text-primary); }
+  .track-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .track-controls { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--row-border); }
+  .ctrl-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; color: var(--text-secondary); }
   .ctrl-row input[type=range] { flex: 1; accent-color: #4a8adf; }
 
   /* ─── СИНХРОНИЗАЦИЯ ─── */
-  .sync-status { display: flex; align-items: center; gap: 8px; padding: 10px; background: #0d1e38; border-radius: 6px; margin-bottom: 12px; }
+  .sync-status { display: flex; align-items: center; gap: 8px; padding: 10px; background: var(--bg-sunken); border-radius: 6px; margin-bottom: 12px; }
   .sync-dot { width: 10px; height: 10px; border-radius: 50%; background: #4adf7a; box-shadow: 0 0 6px #4adf7a; }
   .sync-dot.offline { background: #df7a4a; box-shadow: 0 0 6px #df7a4a; }
   .sync-info { font-size: 12px; }
@@ -461,9 +540,9 @@
   .layer-section-title { color: #7a9aba !important; }
 
   /* ─── ZEBRA STRIPING ДЛЯ ТАБЛИЦ ─── */
-  .wpt-table tbody tr:nth-child(even) td { background: rgba(15,52,96,0.3); }
+  .wpt-table tbody tr:nth-child(even) td { background: var(--row-zebra); }
   .wpt-table th { position: sticky; top: 0; z-index: 1; cursor: pointer; user-select: none; }
-  .wpt-table th:hover { background: #1a4a7a; }
+  .wpt-table th:hover { background: var(--row-hover); }
 
   /* ─── PROGRESS BAR УЛУЧШЕНИЕ ─── */
   #dl-prog-bar {
@@ -481,8 +560,28 @@
   .tb-tag:hover { transform: scale(1.08); }
 
   /* ─── МОДАЛКИ — ТЕНИ И BACKDROP ─── */
-  .modal { box-shadow: 0 12px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(74,138,223,0.1) !important; }
+  .modal { box-shadow: var(--modal-shadow) !important; }
   .modal-header { border-bottom: 1px solid rgba(74,138,223,0.2); }
+
+  .modal input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not(.track-name):not([id^="route-name-"]),
+  .modal select,
+  .modal textarea {
+    background: var(--input-bg) !important;
+    border-color: var(--input-border) !important;
+    color: var(--text-primary) !important;
+  }
+  .modal input:focus,
+  .modal select:focus,
+  .modal textarea:focus {
+    outline: none;
+    border-color: var(--border-bright) !important;
+    box-shadow: 0 0 0 2px var(--bg-selected-soft);
+  }
+  [data-theme="light"] .modal input,
+  [data-theme="light"] .modal select,
+  [data-theme="light"] .modal textarea {
+    color-scheme: light;
+  }
 
   /* ─── LEAFLET POPUP — тёмная тема ─── */
   .leaflet-popup-content-wrapper {
@@ -916,26 +1015,26 @@
   }
   select option {
     background: var(--bg-sunken);
-    color: #c0d8ff;
+    color: var(--text-primary);
   }
   select optgroup {
-    background: #162844;
-    color: #7ec8ff;
+    background: var(--bg-interactive);
+    color: var(--text-link);
     font-weight: 600;
   }
 
   /* ─── ПОИСК ─── */
   .search-control { position:absolute;top:10px;right:60px;z-index:800;display:none; }
   .search-control.open { display:block; }
-  .search-box { display:flex;align-items:center;background:rgba(22,33,62,0.95);border:1px solid var(--border-normal);border-radius:8px;padding:4px 8px;gap:6px;backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,0.5);width:320px; }
+  .search-box { display:flex;align-items:center;background:var(--modal-bg);border:1px solid var(--border-normal);border-radius:8px;padding:4px 8px;gap:6px;backdrop-filter:blur(8px);box-shadow:var(--panel-shadow);width:320px; }
   .search-box input { flex:1;background:transparent;border:none;color:var(--text-primary);font-size:13px;outline:none;padding:6px 4px; }
   .search-box input::placeholder { color:var(--text-muted); }
   .search-box .search-clear { color:var(--text-muted);cursor:pointer;font-size:16px;padding:0 4px;display:none; }
   .search-box .search-clear:hover { color:var(--text-primary); }
-  .search-results { background:rgba(22,33,62,0.97);border:1px solid var(--border-normal);border-top:none;border-radius:0 0 8px 8px;max-height:240px;overflow-y:auto;display:none;box-shadow:0 4px 16px rgba(0,0,0,0.5); }
+  .search-results { background:var(--modal-bg);border:1px solid var(--border-normal);border-top:none;border-radius:0 0 8px 8px;max-height:240px;overflow-y:auto;display:none;box-shadow:var(--panel-shadow); }
   .search-results.has-results { display:block; }
-  .search-result-item { padding:8px 12px;cursor:pointer;font-size:12px;color:var(--text-primary);border-bottom:1px solid #1a2a4a;display:flex;gap:8px; }
-  .search-result-item:hover { background:#1a3a6a; }
+  .search-result-item { padding:8px 12px;cursor:pointer;font-size:12px;color:var(--text-primary);border-bottom:1px solid var(--row-border);display:flex;gap:8px; }
+  .search-result-item:hover { background:var(--row-hover); }
   .search-result-item:last-child { border-bottom:none; }
   .search-result-name { color:var(--text-primary);font-size:12px; }
   .search-result-type { color:var(--text-muted);font-size:10px;margin-top:2px; }
@@ -943,30 +1042,30 @@
   /* ─── РОУТИНГ ─── */
   .route-endpoint { display:flex;gap:8px;align-items:center;margin-bottom:8px; }
   .route-endpoint .ep-marker { width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0; }
-  .route-endpoint .ep-marker.ep-a { background:#1a5a1a;border:2px solid #4adf7a;color:#4adf7a; }
-  .route-endpoint .ep-marker.ep-b { background:#5a1a1a;border:2px solid #e07070;color:#e07070; }
+  .route-endpoint .ep-marker.ep-a { background:var(--bg-success);border:2px solid var(--accent-green);color:var(--accent-green); }
+  .route-endpoint .ep-marker.ep-b { background:var(--bg-danger);border:2px solid var(--accent-red);color:var(--accent-red); }
   .route-endpoint input { flex:1;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:6px 8px;font-size:12px; }
   .route-endpoint input:focus { outline:none;border-color:#4a8adf; }
-  .route-endpoint .ep-pick { background:#1a2a4a;border:1px solid var(--border-normal);color:var(--text-secondary);border-radius:4px;padding:4px 8px;cursor:pointer;font-size:14px;flex-shrink:0; }
-  .route-endpoint .ep-pick:hover { background:#2a4a7a;color:var(--text-primary); }
-  .route-endpoint .ep-pick.picking { background:#0f4a8a;border-color:#4a8adf;color:#7ec8ff; }
+  .route-endpoint .ep-pick { background:var(--bg-interactive);border:1px solid var(--border-normal);color:var(--text-secondary);border-radius:4px;padding:4px 8px;cursor:pointer;font-size:14px;flex-shrink:0; }
+  .route-endpoint .ep-pick:hover { background:var(--row-hover);color:var(--text-primary); }
+  .route-endpoint .ep-pick.picking { background:var(--bg-selected);border-color:var(--border-bright);color:var(--text-link); }
   .routing-info { background:var(--bg-sunken);border-radius:6px;padding:12px;display:none;margin-top:8px; }
   .routing-info.has-route { display:block; }
-  .routing-info-row { display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a2a4a; }
+  .routing-info-row { display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--row-border); }
   .routing-info-row:last-child { border-bottom:none; }
   .routing-info-label { color:var(--text-muted);font-size:12px; }
   .routing-info-value { color:var(--text-primary);font-size:14px;font-weight:600; }
   .routing-swap { background:none;border:1px solid var(--border-normal);color:var(--text-secondary);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:16px; }
-  .routing-swap:hover { background:#1a3a6a;color:var(--text-primary); }
+  .routing-swap:hover { background:var(--row-hover);color:var(--text-primary); }
   .routing-list { display:flex; flex-direction:column; gap:6px; margin-top:8px; max-height:220px; overflow-y:auto; }
-  .routing-route-item { background:#1a2a4a; border:1px solid #2a4a7a; border-radius:6px; padding:8px; }
-  .routing-route-item.active { background:#163458; border-color:#4a8adf; box-shadow: inset 0 0 0 1px rgba(74,138,223,0.55); }
+  .routing-route-item { background:var(--bg-interactive); border:1px solid var(--border-normal); border-radius:6px; padding:8px; }
+  .routing-route-item.active { background:var(--bg-selected); border-color:var(--border-bright); box-shadow: inset 0 0 0 1px var(--border-bright); }
   .routing-route-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; cursor:pointer; }
   .routing-route-name { color:var(--text-primary); font-size:12px; font-weight:600; }
   .routing-route-meta { color:var(--text-muted); font-size:10px; margin-top:2px; }
   .routing-route-actions { display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin-top:8px; }
-  .routing-route-btn { background:#152640; border:1px solid var(--border-normal); color:var(--text-secondary); border-radius:4px; padding:3px 7px; cursor:pointer; font-size:11px; }
-  .routing-route-btn:hover { background:#1f3e68; color:var(--text-primary); }
+  .routing-route-btn { background:var(--bg-interactive); border:1px solid var(--border-normal); color:var(--text-secondary); border-radius:4px; padding:3px 7px; cursor:pointer; font-size:11px; }
+  .routing-route-btn:hover { background:var(--row-hover); color:var(--text-primary); }
   .routing-route-btn.danger { color:#e07070; border-color:#6a2a2a; }
   .routing-route-empty { color:var(--text-muted); font-size:11px; text-align:center; padding:14px 10px; border:1px dashed var(--border-normal); border-radius:6px; }
 </style>
@@ -1214,7 +1313,7 @@
         <button class="btn-secondary" style="padding:3px 8px;font-size:11px;color:#e07070;border-color:#6a2a2a" onclick="clearAllWaypoints()">🗑 Очистить</button>
       </div>
       <!-- Панель массового редактирования -->
-      <div id="bulk-edit-panel" style="display:none;background:#1a2a4a;border:1px solid #2a5a8a;border-radius:6px;padding:8px;margin-bottom:8px">
+      <div id="bulk-edit-panel" style="display:none;background:var(--bg-interactive);border:1px solid var(--border-normal);border-radius:6px;padding:8px;margin-bottom:8px">
         <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">✏ Массовое редактирование</div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:4px">
@@ -1368,8 +1467,8 @@
     </div>
     <div class="modal-body">
       <!-- Панель рисования трека -->
-      <div id="track-build-panel" style="display:none;background:#1a3a1a;border:1px solid #2a6a2a;border-radius:6px;padding:8px;margin-bottom:8px">
-        <div id="track-build-title" style="font-size:12px;color:#a0d8a0;margin-bottom:4px">✏ Рисование трека</div>
+      <div id="track-build-panel" style="display:none;background:var(--bg-success);border:1px solid var(--border-success);border-radius:6px;padding:8px;margin-bottom:8px">
+        <div id="track-build-title" style="font-size:12px;color:var(--accent-green);margin-bottom:4px">✏ Рисование трека</div>
         <div id="track-build-hint" style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Кликайте на карту · двойной клик — завершить</div>
         <div style="font-size:12px;color:var(--text-primary);margin-bottom:4px">Точек: <span id="track-build-count">0</span> &nbsp;·&nbsp; <span id="track-build-len">0.0 км</span></div>
         <div id="track-build-extra" style="font-size:11px;color:#90c890;margin-bottom:4px;display:none"></div>
@@ -1377,13 +1476,14 @@
           <button id="track-build-cancel-btn" class="btn-secondary" onclick="cancelTrackDraw()" style="font-size:11px;color:#e07070;border-color:#6a2a2a">✕ Отмена</button>
           <button id="track-build-undo-btn" class="btn-secondary" onclick="undoLastAction()" style="font-size:11px">↩ Отменить</button>
           <button id="track-build-delete-point-btn" class="btn-secondary" onclick="deleteSelectedTrackPoint()" style="display:none;font-size:11px;color:#e07070;border-color:#6a2a2a">🗑 Удалить точку</button>
+          <button id="track-build-split-point-btn" class="btn-secondary" onclick="splitSelectedTrackPoint()" style="display:none;font-size:11px">✂ Разбить здесь</button>
           <button id="track-build-finish-btn" class="btn-primary" onclick="finishTrackDraw()" style="font-size:11px">✓ Готово</button>
         </div>
       </div>
       <!-- Список треков -->
       <div id="track-list"></div>
       <!-- Свойства выбранного трека -->
-      <div id="track-controls" class="track-controls" style="display:none;margin-top:8px;border-top:1px solid #1a3a5a;padding-top:8px">
+      <div id="track-controls" class="track-controls" style="display:none;margin-top:8px;border-top:1px solid var(--row-border);padding-top:8px">
         <div class="ctrl-row">
           <span style="min-width:60px;font-size:12px">Название</span>
           <input id="track-name-input" type="text" style="flex:1;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:3px 6px;font-size:12px">
@@ -1414,7 +1514,7 @@
         </div>
       </div>
       <!-- Плеер треков -->
-      <div id="track-player-panel" style="background:#1a2a3a;border:1px solid var(--border-normal);border-radius:6px;padding:8px;margin-top:8px">
+      <div id="track-player-panel" style="background:var(--bg-interactive);border:1px solid var(--border-normal);border-radius:6px;padding:8px;margin-top:8px">
         <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">▶ Плеер треков</div>
         <div class="btn-row" style="margin-bottom:6px">
           <button class="btn-primary" onclick="playSelectedTracks()" style="font-size:11px">▶ Старт</button>
@@ -1453,7 +1553,7 @@
     </div>
     <div class="modal-body">
       <!-- Панель создания маршрута -->
-      <div id="route-build-panel" style="display:none;background:#1a2a4a;border:1px solid #2a5a8a;border-radius:6px;padding:8px;margin-bottom:8px">
+      <div id="route-build-panel" style="display:none;background:var(--bg-interactive);border:1px solid var(--border-normal);border-radius:6px;padding:8px;margin-bottom:8px">
         <div id="route-build-title" style="font-size:12px;color:var(--text-secondary);margin-bottom:4px">⚑ Создание маршрута</div>
         <input id="route-build-name" type="text" placeholder="Название маршрута..."
           style="width:100%;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:4px 8px;font-size:12px;margin-bottom:6px">
@@ -1467,7 +1567,7 @@
       </div>
       <!-- Список маршрутов -->
       <div id="route-list"></div>
-      <div id="route-controls" style="display:none;margin-top:8px;border-top:1px solid #1a3a5a;padding-top:8px">
+      <div id="route-controls" style="display:none;margin-top:8px;border-top:1px solid var(--row-border);padding-top:8px">
         <div class="ctrl-row">
           <span style="min-width:72px;font-size:12px">Название</span>
           <input id="route-name-input" type="text" style="flex:1;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:3px 6px;font-size:12px">
@@ -1533,7 +1633,7 @@
           <div class="save-btn-grid" onclick="saveTracksGPX()">💾 Треки (.gpx)</div>
           <div class="save-btn-grid" onclick="saveRoutesRTE()">💾 Маршруты (.rte)</div>
           <div class="save-btn-grid" onclick="saveRoutesGPX()">💾 Маршруты (.gpx)</div>
-          <div class="save-btn-grid" style="grid-column:span 2;background:#1a3a5a;border-color:#2a6a9a;color:var(--text-secondary)" onclick="showSaveGPXDialog()">💾 Сохранить в .gpx</div>
+          <div class="save-btn-grid" style="grid-column:span 2;background:var(--bg-selected-soft);border-color:var(--border-bright);color:var(--text-link)" onclick="showSaveGPXDialog()">💾 Сохранить в .gpx</div>
         </div>
       </div>
       <div class="save-section" style="margin-top:12px">
@@ -1990,7 +2090,7 @@
       <div id="sync-email-status" style="font-size:11px;color:var(--text-muted);margin-bottom:8px"></div>
 
       <!-- Карточка лицензии -->
-      <div id="license-card" style="background:#1a1a2e;border-radius:8px;padding:10px 14px;margin-bottom:10px;display:none">
+      <div id="license-card" style="background:var(--bg-interactive);border:1px solid var(--border-subtle);border-radius:8px;padding:10px 14px;margin-bottom:10px;display:none">
         <div id="license-badge" style="font-size:14px;font-weight:bold;color:#FFD700;margin-bottom:6px"></div>
         <div id="license-line" style="font-size:12px;color:#888;margin-bottom:3px"></div>
         <div id="server-line" style="font-size:12px;color:#888"></div>
@@ -2014,12 +2114,12 @@
           <input type="checkbox" id="sync-cb-gpx" checked style="accent-color:#4a8adf"> 📄 GPX файлы (<span id="sync-gpx-count">0</span>)
         </label>
       </div>
-      <button class="btn-primary" style="width:100%;background:#1a3a4a;border-color:#2a7a8a" onclick="syncPush()">⬆ Отправить в облако</button>
+      <button class="btn-primary" style="width:100%;background:var(--accent-blue);border-color:var(--border-bright)" onclick="syncPush()">⬆ Отправить в облако</button>
 
       <!-- Загрузить из облака -->
       <div class="sync-section-title" style="margin-top:12px">⬇ Загрузить из облака</div>
       <div id="sync-server-info" style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Нажмите «Проверить» для просмотра данных</div>
-      <button class="btn-primary" style="width:100%;background:#1a4a1a;border-color:#2a8a2a" onclick="syncPull()">⬇ Загрузить из облака</button>
+      <button class="btn-primary" style="width:100%;background:var(--accent-green);border-color:var(--border-success)" onclick="syncPull()">⬇ Загрузить из облака</button>
 
       <div style="font-size:10px;color:var(--text-muted);margin-top:10px;text-align:center;line-height:1.6">
         Облачная синхронизация через trophynav.ru<br>
@@ -2689,6 +2789,18 @@ function parseOziLatLon(value, maxAbs) {
   return Number.isFinite(number) && Math.abs(number) <= maxAbs ? number : NaN;
 }
 
+function isNullIslandCoord(lat, lon) {
+  return Math.abs(lat) < 1e-12 && Math.abs(lon) < 1e-12;
+}
+
+function parseTrackLatLng(latValue, lonValue, options = {}) {
+  const lat = parseOziLatLon(latValue, 90);
+  const lon = parseOziLatLon(lonValue, 180);
+  if (Number.isNaN(lat) || Number.isNaN(lon)) return null;
+  if (options.rejectNullIsland !== false && isNullIslandCoord(lat, lon)) return null;
+  return L.latLng(lat, lon);
+}
+
 function parseOziRouteWaypoint(parts, pointIndex) {
   if (!parts || parts[0] !== 'W') return null;
   const variants = [
@@ -2709,13 +2821,19 @@ function parseOziRouteWaypoint(parts, pointIndex) {
 
 function isTrackPointRow(parts) {
   if (!parts || parts.length < 2) return false;
-  const lat = parseFloat(parts[0]);
-  const lon = parseFloat(parts[1]);
-  return Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+  return !!parseTrackLatLng(parts[0], parts[1]);
 }
 
 function isTrackHeaderRow(parts) {
-  return !!parts && parts.length >= 4 && /^-?\d+$/.test(parts[0]) && /^-?\d+$/.test(parts[1]) && !isTrackPointRow(parts);
+  if (!parts || parts.length < 4) return false;
+  const firstTwoAreCodes = /^-?\d+$/.test(String(parts[0] ?? '').trim()) && /^-?\d+$/.test(String(parts[1] ?? '').trim());
+  const colorCode = Number(String(parts[2] ?? '').trim());
+  if (!firstTwoAreCodes || !Number.isInteger(colorCode) || colorCode < 0) return false;
+  const nameField = String(parts[3] ?? '').trim();
+  const nameLooksTextual = !!nameField && !/^-?\d+(?:[.,]\d+)?$/.test(nameField);
+  const hasOziStyleTail = parts.length >= 7 && parts.slice(4, 7).every(value => /^-?\d*$/.test(String(value ?? '').trim()));
+  if (!nameLooksTextual && colorCode <= 1) return false;
+  return nameLooksTextual || hasOziStyleTail;
 }
 
 function makeDivIcon(data) {
@@ -2769,8 +2887,8 @@ function openQuickRename(marker) {
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Быстрое переименование</div>
       <input id="${popupId}" value="${value}" maxlength="16" style="width:100%;padding:5px 6px;border:1px solid var(--border-normal);border-radius:4px;background:var(--bg-sunken);color:var(--text-primary)">
       <div style="display:flex;gap:6px;margin-top:8px">
-        <button onclick="applyQuickRename(${marker.wpData.num})" style="flex:1;padding:5px 6px;border:1px solid #1a6adf;border-radius:4px;background:#0f4a8a;color:var(--text-primary);cursor:pointer">Сохранить</button>
-        <button onclick="openWaypointPropsByNum(${marker.wpData.num})" style="flex:1;padding:5px 6px;border:1px solid var(--border-normal);border-radius:4px;background:#1a2a4a;color:var(--text-secondary);cursor:pointer">Свойства</button>
+        <button onclick="applyQuickRename(${marker.wpData.num})" style="flex:1;padding:5px 6px;border:1px solid var(--border-bright);border-radius:4px;background:var(--accent-blue);color:var(--text-on-solid);cursor:pointer">Сохранить</button>
+        <button onclick="openWaypointPropsByNum(${marker.wpData.num})" style="flex:1;padding:5px 6px;border:1px solid var(--border-normal);border-radius:4px;background:var(--bg-interactive);color:var(--text-secondary);cursor:pointer">Свойства</button>
       </div>
     </div>
   `, { closeButton: false, offset: [0, -12] }).openPopup();
@@ -4282,6 +4400,7 @@ function loadPLT(text, fname, meta = {}) {
   const lines = normalizeText(text).split(/\r?\n/);
   const baseName = fname.replace(/\.[^.]+$/, '') || 'Трек';
   let count = 0;
+  let skippedPoints = 0;
   const importedTracks = [];
   let current = null;
   const finalizeTrack = () => {
@@ -4305,7 +4424,12 @@ function loadPLT(text, fname, meta = {}) {
     if (current && p.length === 1 && /^\d+$/.test(p[0])) return;
     if (isTrackPointRow(p)) {
       if (!current) current = { name: `${baseName} ${count + 1}`, points: [] };
-      current.points.push(L.latLng(parseFloat(p[0]), parseFloat(p[1])));
+      const latlng = parseTrackLatLng(p[0], p[1]);
+      if (!latlng) {
+        skippedPoints++;
+        return;
+      }
+      current.points.push(latlng);
       return;
     }
   });
@@ -4318,7 +4442,7 @@ function loadPLT(text, fname, meta = {}) {
     entityCounts: { waypoints: 0, tracks: count, routes: 0 }
   });
   renderLoadedSourceFiles();
-  showToast('✓ Загружено ' + count + ' треков из ' + fname);
+  showToast('✓ Загружено ' + count + ' треков из ' + fname + (skippedPoints ? ` · пропущено ${skippedPoints} некорр. точек` : ''));
   if (count > 0) {
     openModal('modal-tracks');
     fitToLatLngs(importedTracks.flatMap(track => track.points));
@@ -4415,6 +4539,11 @@ function showTrackPointCtxMenu(e, track, idx, marker) {
   closeCtxMenu();
   ctxHandledByMarker = true;
   ctxTrackTarget = { track, idx, marker };
+  selectedTrackId = track.id;
+  if (isTrackEditActive(track)) {
+    currentTrackEdit.selectedPointIdx = idx;
+    updateTrackBuildPanel(track);
+  }
   const m = document.getElementById('ctx-menu-track');
   const x = Math.min(e.clientX, window.innerWidth - 160);
   const y = Math.min(e.clientY, window.innerHeight - 80);
@@ -4429,6 +4558,11 @@ function ctxTrackAction(action) {
   closeCtxMenu();
   if (!t) return;
   const { track, idx, marker } = t;
+  if (!track || idx < 0 || idx >= track.points.length) {
+    showToast('Точка трека уже недоступна');
+    return;
+  }
+  selectedTrackId = track.id;
 
   if (action === 'delete') {
     if (!canEditTrackGeometry(track)) {
@@ -4452,6 +4586,7 @@ function ctxTrackAction(action) {
     if (currentTrackEdit?.track?.id === track.id) currentTrackEdit.selectedPointIdx = null;
     touchTrack(track);
     updateTrackBuildPanel(track);
+    updateTrackList();
     showToast('Точка трека удалена');
 
   } else if (action === 'split') {
@@ -4566,7 +4701,7 @@ function ctxMapAction(action) {
 }
 document.addEventListener('click', (e) => {
   // Don't close if clicking inside the context menu itself
-  if (e.target.closest('#ctx-menu') || e.target.closest('#ctx-menu-map')) return;
+  if (e.target.closest('#ctx-menu') || e.target.closest('#ctx-menu-map') || e.target.closest('#ctx-menu-track')) return;
   closeCtxMenu();
 });
 map.getContainer().addEventListener('contextmenu', e => {
@@ -4679,8 +4814,28 @@ function initLinuxClickFallback() {
   }, true);
 }
 
+let modalZCounter = 4100;
+function bringModalToFront(idOrOverlay) {
+  const overlay = typeof idOrOverlay === 'string'
+    ? document.getElementById(idOrOverlay)
+    : idOrOverlay?.closest?.('.modal-overlay') || idOrOverlay;
+  if (!overlay || !overlay.classList?.contains('modal-overlay')) return;
+  document.querySelectorAll('.modal-overlay.active').forEach(el => el.classList.remove('active'));
+  modalZCounter += 1;
+  overlay.style.zIndex = (overlay.id === 'modal-dialog' || overlay.id === 'modal-clear-confirm') ? '6500' : String(modalZCounter);
+  overlay.classList.add('active');
+}
+
+document.addEventListener('mousedown', e => {
+  const overlay = e.target.closest?.('.modal-overlay.open');
+  if (overlay) bringModalToFront(overlay);
+}, true);
+
 function openModal(id) {
-  document.getElementById(id).classList.add('open');
+  const overlay = document.getElementById(id);
+  if (!overlay) return;
+  overlay.classList.add('open');
+  bringModalToFront(overlay);
   if (id === 'modal-wpts') updateWptTable();
   if (id === 'modal-files') renderLoadedSourceFiles();
   if (id === 'modal-about') {
@@ -4692,21 +4847,42 @@ function openModal(id) {
     else { licEl.textContent = '🔒 Нет лицензии'; licEl.style.color = '#e07070'; }
   }
   if (id === 'modal-settings') {
+    const themeSel = document.getElementById('setting-theme');
+    if (themeSel) themeSel.value = getTheme();
     const pathEl = document.getElementById('setting-workdir-path');
     if (pathEl) pathEl.textContent = appDataPath || 'Не инициализирована';
   }
 }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeModal(id) {
+  const overlay = document.getElementById(id);
+  if (!overlay) return;
+  overlay.classList.remove('open', 'active');
+  const openOverlays = [...document.querySelectorAll('.modal-overlay.open')];
+  if (openOverlays.length) {
+    openOverlays.sort((a, b) => (Number(a.style.zIndex) || 0) - (Number(b.style.zIndex) || 0));
+    openOverlays[openOverlays.length - 1].classList.add('active');
+  }
+}
 function closeAllModals() {
-  document.querySelectorAll('.modal-overlay.open').forEach(el => el.classList.remove('open'));
+  document.querySelectorAll('.modal-overlay.open').forEach(el => el.classList.remove('open', 'active'));
 }
 
 function startDrag(e, winId) {
   const el = document.getElementById(winId);
+  if (!el) return;
+  bringModalToFront(el);
   const rect = el.getBoundingClientRect();
   let dx = e.clientX - rect.left, dy = e.clientY - rect.top;
-  const onMove = e => { el.style.left = (e.clientX-dx)+'px'; el.style.top = (e.clientY-dy)+'px'; el.style.right = 'auto'; };
+  el.style.transform = 'none';
+  el.style.right = 'auto';
+  const onMove = e => {
+    const maxLeft = Math.max(8, window.innerWidth - rect.width - 8);
+    const maxTop = Math.max(8, window.innerHeight - 42);
+    el.style.left = Math.max(8, Math.min(maxLeft, e.clientX - dx)) + 'px';
+    el.style.top = Math.max(8, Math.min(maxTop, e.clientY - dy)) + 'px';
+  };
   const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+  e.preventDefault();
   document.addEventListener('mousemove', onMove);
   document.addEventListener('mouseup', onUp);
 }
@@ -4772,18 +4948,18 @@ function setTrackPanelState(mode, track) {
   const finishBtn = document.getElementById('track-build-finish-btn');
   if (!panel || !title || !hint || !cancelBtn || !finishBtn) return;
   if (mode === 'edit') {
-    panel.style.background = '#3a2c18';
-    panel.style.borderColor = '#7a5a2a';
-    title.style.color = '#f0c878';
+    panel.style.background = 'var(--bg-warning)';
+    panel.style.borderColor = 'var(--border-warning)';
+    title.style.color = 'var(--text-warning)';
     title.textContent = '✏ Редактирование трека';
     hint.textContent = 'Тяните точки мышью · клик по линии — вставить · ПКМ по точке — удалить или разбить';
     cancelBtn.setAttribute('onclick', 'cancelTrackEdit()');
     finishBtn.setAttribute('onclick', 'finishTrackEdit()');
     finishBtn.textContent = '✓ Сохранить';
   } else {
-    panel.style.background = '#1a3a1a';
-    panel.style.borderColor = '#2a6a2a';
-    title.style.color = '#a0d8a0';
+    panel.style.background = 'var(--bg-success)';
+    panel.style.borderColor = 'var(--border-success)';
+    title.style.color = 'var(--accent-green)';
     title.textContent = track?.isNew ? '✏ Рисование трека' : '➕ Продолжение трека';
     hint.textContent = track?.isNew
       ? 'Кликайте на карту · двойной клик — завершить'
@@ -4902,6 +5078,10 @@ function createTrackMarker(track, idx) {
     if (!canEditTrackGeometry(track)) return;
     if (e.originalEvent?.button !== 0) return; // только ЛКМ
     L.DomEvent.stop(e);
+    if (isTrackEditActive(track)) {
+      currentTrackEdit.selectedPointIdx = m._trackIdx;
+      updateTrackBuildPanel(track);
+    }
     m.closeTooltip();
     const undoSnapshot = snapshotTrackGeometry(track);
     let moved = false;
@@ -4921,6 +5101,7 @@ function createTrackMarker(track, idx) {
         touchTrack(track);
         updateTrackBuildPanel(track);
       }
+      if (isTrackEditActive(track)) syncTrackMarkers(track);
     };
     map.dragging.disable();
     map.on('mousemove', onMove);
@@ -5125,6 +5306,7 @@ function updateTrackBuildPanel(t) {
   const elLen = document.getElementById('track-build-len');
   const elExtra = document.getElementById('track-build-extra');
   const deleteBtn = document.getElementById('track-build-delete-point-btn');
+  const splitBtn = document.getElementById('track-build-split-point-btn');
   if (!elCount) return;
   elCount.textContent = t.points.length;
   const km = trackLen(t);
@@ -5133,6 +5315,12 @@ function updateTrackBuildPanel(t) {
     const selectedIdx = currentTrackEdit?.track?.id === t.id ? currentTrackEdit?.selectedPointIdx : null;
     deleteBtn.style.display = isTrackEditActive(t) ? '' : 'none';
     deleteBtn.textContent = selectedIdx != null ? `🗑 Удалить точку #${selectedIdx + 1}` : '🗑 Удалить точку';
+    if (splitBtn) {
+      splitBtn.style.display = isTrackEditActive(t) ? '' : 'none';
+      const canSplitSelected = selectedIdx != null && selectedIdx > 0 && selectedIdx < t.points.length - 1;
+      splitBtn.disabled = !canSplitSelected;
+      splitBtn.textContent = selectedIdx != null ? `✂ Разбить по #${selectedIdx + 1}` : '✂ Разбить здесь';
+    }
   }
   // Скорость и длительность — только если есть временны́е метки в pointsData
   const pd = t.pointsData;
@@ -5217,7 +5405,7 @@ function startTrackEdit() {
   setTrackPanelState('edit', track);
   document.getElementById('track-build-panel').style.display = 'block';
   document.getElementById('track-controls').style.display = 'none';
-  closeModal('modal-tracks');
+  openModal('modal-tracks');
   setTrackEditingVisualState(track, true);
   syncTrackMarkers(track);
   updateTrackBuildPanel(track);
@@ -5269,6 +5457,17 @@ function deleteSelectedTrackPoint() {
     currentTrackEdit.selectedPointIdx = null;
     updateTrackBuildPanel(track);
   }
+}
+
+function splitSelectedTrackPoint() {
+  const track = currentTrackEdit?.track;
+  const idx = currentTrackEdit?.selectedPointIdx;
+  if (!track || idx == null) {
+    showToast('Сначала выберите среднюю точку трека');
+    return;
+  }
+  ctxTrackTarget = { track, idx, marker: track.markers?.[idx] || null };
+  ctxTrackAction('split');
 }
 
 function selectTrackById(id) {
@@ -5398,7 +5597,7 @@ function updateTrackList() {
     const modeTag = isTrackEditActive(t)
       ? ' · <span style="font-size:10px;color:#f0c878">редактируется</span>'
       : (isTrackDrawActive(t) ? ' · <span style="font-size:10px;color:#90c890">строится</span>' : '');
-    return `<div class="track-item${sel ? ' selected' : ''}" style="${sel ? 'background:#1a3a6a;border-left:3px solid #4a8adf;' : ''}" onclick="selectTrackById(${t.id})">
+    return `<div class="track-item${sel ? ' selected' : ''}" style="${sel ? 'background:var(--bg-selected);border-left:3px solid var(--border-bright);' : ''}" onclick="selectTrackById(${t.id})">
       <input type="checkbox" class="track-play-cb" data-track-id="${t.id}" onclick="event.stopPropagation()" style="accent-color:${t.color};margin-right:4px" title="Выбрать для плеера">
       <div class="track-color" style="background:${t.color};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px" title="Скрыть/показать" onclick="event.stopPropagation();toggleTrackVisible(${t.id})">${t.visible !== false ? '👁' : '○'}</div>
       <div class="track-info">
@@ -5448,15 +5647,16 @@ function loadGPXTracks(text, fname, options = {}) {
   const doc = new DOMParser().parseFromString(normalizeText(text), 'application/xml');
   const meta = options.meta || {};
   let count = 0;
+  let skippedPoints = 0;
   const importedTracks = [];
   xmlDescendantsByLocalName(doc, 'trk').forEach(trk => {
     const name = xmlTextByLocalNames(trk, 'name', { direct: true }) || ('Трек ' + (trackIdCounter));
     const points = [];
     const pointsData = [];
     xmlDescendantsByLocalName(trk, 'trkpt').forEach(pt => {
-      const lat = parseFloat(pt.getAttribute('lat')), lon = parseFloat(pt.getAttribute('lon'));
-      if (!isNaN(lat) && !isNaN(lon)) {
-        points.push(L.latLng(lat, lon));
+      const latlng = parseTrackLatLng(pt.getAttribute('lat'), pt.getAttribute('lon'));
+      if (latlng) {
+        points.push(latlng);
         const data = {};
         const ele = xmlDirectChildByLocalName(pt, 'ele');
         if (ele) data.ele = parseFloat(ele.textContent);
@@ -5487,6 +5687,8 @@ function loadGPXTracks(text, fname, options = {}) {
         const power = xmlExtensionText(pt, 'power');
         if (power) data.power = parseInt(power, 10);
         pointsData.push(data);
+      } else {
+        skippedPoints++;
       }
     });
     if (points.length < 2) return;
@@ -5529,7 +5731,7 @@ function loadGPXTracks(text, fname, options = {}) {
     renderLoadedSourceFiles();
   }
   if (!options.silent) {
-    showToast('✓ Загружено ' + count + ' треков из ' + fname);
+    showToast('✓ Загружено ' + count + ' треков из ' + fname + (skippedPoints ? ` · пропущено ${skippedPoints} некорр. точек` : ''));
     if (count > 0) {
       openModal('modal-tracks');
       fitToLatLngs(importedTracks.flatMap(track => track.points));
@@ -5807,13 +6009,14 @@ function startRouteEdit(routeId = selectedRouteId) {
     return;
   }
   currentRouteDraw = route;
+  selectedRouteId = route.id;
   currentRouteSession = { mode: 'edit', snapshot: cloneRouteState(route) };
   if (route.polyline && !map.hasLayer(route.polyline)) route.polyline.addTo(map);
   applyRouteStyle(route);
   setMode('routeedit');
   updateRouteBuildPanelState();
   updateRouteBuildList();
-  closeModal('modal-routes');
+  openModal('modal-routes');
   showToast('Режим редактирования маршрута: клик по карте или точке добавляет КП, двойной клик — сохранить');
 }
 
@@ -5845,9 +6048,13 @@ function updateRouteBuildList() {
     const coord = p.lat.toFixed(4) + ', ' + p.lng.toFixed(4);
     const radius = Number(currentRouteDraw.pointRadii?.[i]) || 0;
     const radiusBadge = radius > 0 ? ` · ${Math.round(radius)}м` : '';
-    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 4px;font-size:11px;color:var(--text-primary);border-bottom:1px solid #1a2a4a">'
-      + '<span>' + (i+1) + '. <b>' + escapeHtml(lbl) + '</b> <span style="color:var(--text-muted)">' + coord + radiusBadge + '</span></span>'
-      + '<span style="cursor:pointer;color:#e07070;padding:0 4px" onclick="removeRouteBuildPoint(' + i + ')" title="Удалить">✕</span>'
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 4px;font-size:11px;color:var(--text-primary);border-bottom:1px solid var(--row-border)">'
+      + '<span style="min-width:0;overflow:hidden;text-overflow:ellipsis">' + (i+1) + '. <b>' + escapeHtml(lbl) + '</b> <span style="color:var(--text-muted)">' + coord + radiusBadge + '</span></span>'
+      + '<span class="route-kp-actions">'
+      + '<button type="button" class="route-kp-btn" onclick="moveCurrentRouteBuildPoint(' + i + ',-1)" title="Выше"' + (i === 0 ? ' disabled' : '') + '>↑</button>'
+      + '<button type="button" class="route-kp-btn" onclick="moveCurrentRouteBuildPoint(' + i + ',1)" title="Ниже"' + (i === currentRouteDraw.points.length - 1 ? ' disabled' : '') + '>↓</button>'
+      + '<button type="button" class="route-kp-btn danger" onclick="removeRouteBuildPoint(' + i + ')" title="Удалить">✕</button>'
+      + '</span>'
       + '</div>';
   }).join('');
 }
@@ -5966,6 +6173,27 @@ function toggleRouteEl(headerEl) {
   if (arrow) arrow.textContent = visible ? '▸' : '▾';
 }
 let _dragRouteId = null, _dragKpIdx = null;
+function moveArrayItem(arr, fromIdx, toIdx) {
+  if (!Array.isArray(arr) || fromIdx < 0 || fromIdx >= arr.length) return;
+  const [item] = arr.splice(fromIdx, 1);
+  arr.splice(Math.max(0, Math.min(toIdx, arr.length)), 0, item);
+}
+
+function reorderRoutePoint(route, fromIdx, toIdx) {
+  if (!route || !Array.isArray(route.points)) return false;
+  const count = route.points.length;
+  if (fromIdx < 0 || fromIdx >= count) return false;
+  const targetIdx = Math.max(0, Math.min(toIdx, count - 1));
+  if (fromIdx === targetIdx) return false;
+  moveArrayItem(route.points, fromIdx, targetIdx);
+  moveArrayItem(route.labels, fromIdx, targetIdx);
+  moveArrayItem(route.pointRadii, fromIdx, targetIdx);
+  moveArrayItem(route.pointWaypointIds, fromIdx, targetIdx);
+  if (route.polyline) route.polyline.setLatLngs(route.points);
+  touchRoute(route);
+  return true;
+}
+
 function onRouteKpDragStart(e) {
   _dragRouteId = parseInt(e.target.dataset.routeId);
   _dragKpIdx = parseInt(e.target.dataset.kpIdx);
@@ -5988,40 +6216,31 @@ function onRouteKpDrop(e) {
   if (_dragKpIdx === toIdx) return;
   const r = routes.find(r => r.id === _dragRouteId);
   if (!r) return;
-  // Move point
-  const [pt] = r.points.splice(_dragKpIdx, 1);
-  r.points.splice(toIdx, 0, pt);
-  if (r.labels?.length) {
-    const [lb] = r.labels.splice(_dragKpIdx, 1);
-    r.labels.splice(toIdx, 0, lb);
+  if (reorderRoutePoint(r, _dragKpIdx, toIdx)) {
+    selectedRouteId = r.id;
+    updateRouteList();
+    if (currentRouteDraw?.id === r.id) updateRouteBuildList();
   }
-  if (r.pointRadii?.length) {
-    const [radius] = r.pointRadii.splice(_dragKpIdx, 1);
-    r.pointRadii.splice(toIdx, 0, radius);
-  }
-  if (r.pointWaypointIds?.length) {
-    const [waypointId] = r.pointWaypointIds.splice(_dragKpIdx, 1);
-    r.pointWaypointIds.splice(toIdx, 0, waypointId);
-  }
-  if (r.polyline) r.polyline.setLatLngs(r.points);
-  touchRoute(r);
-  updateRouteList();
   _dragRouteId = null; _dragKpIdx = null;
 }
 
 function moveRoutePoint(routeId, idx, dir) {
   const r = routes.find(r => r.id === routeId);
   if (!r) return;
-  const newIdx = idx + dir;
-  if (newIdx < 0 || newIdx >= r.points.length) return;
-  // Swap points
-  [r.points[idx], r.points[newIdx]] = [r.points[newIdx], r.points[idx]];
-  if (r.labels?.length) [r.labels[idx], r.labels[newIdx]] = [r.labels[newIdx], r.labels[idx]];
-  if (r.pointRadii?.length) [r.pointRadii[idx], r.pointRadii[newIdx]] = [r.pointRadii[newIdx], r.pointRadii[idx]];
-  if (r.pointWaypointIds?.length) [r.pointWaypointIds[idx], r.pointWaypointIds[newIdx]] = [r.pointWaypointIds[newIdx], r.pointWaypointIds[idx]];
-  if (r.polyline) r.polyline.setLatLngs(r.points);
-  touchRoute(r);
-  updateRouteList();
+  if (reorderRoutePoint(r, idx, idx + dir)) {
+    selectedRouteId = routeId;
+    updateRouteList();
+    if (currentRouteDraw?.id === routeId) updateRouteBuildList();
+  }
+}
+
+function moveCurrentRouteBuildPoint(idx, dir) {
+  if (!currentRouteDraw) return;
+  if (reorderRoutePoint(currentRouteDraw, idx, idx + dir)) {
+    updateRouteBuildPanelState();
+    updateRouteBuildList();
+    updateRouteList();
+  }
 }
 function deleteRoutePoint(routeId, idx) {
   const r = routes.find(r => r.id === routeId);
@@ -6034,6 +6253,10 @@ function deleteRoutePoint(routeId, idx) {
   if (r.polyline) r.polyline.setLatLngs(r.points);
   touchRoute(r);
   updateRouteList();
+  if (currentRouteDraw?.id === routeId) {
+    updateRouteBuildPanelState();
+    updateRouteBuildList();
+  }
   showToast('Точка маршрута удалена');
 }
 function renameRoute(routeId) {
@@ -6099,6 +6322,7 @@ function updateRoutePointLabel(routeId, idx, value) {
   route.labels[idx] = String(value || '').trim() || `КП${idx + 1}`;
   touchRoute(route);
   updateRouteList();
+  if (currentRouteDraw?.id === routeId) updateRouteBuildList();
 }
 
 function updateRoutePointRadius(routeId, idx, value) {
@@ -6108,6 +6332,7 @@ function updateRoutePointRadius(routeId, idx, value) {
   route.pointRadii[idx] = Math.max(0, parseInt(value || '0', 10) || 0);
   touchRoute(route);
   updateRouteList();
+  if (currentRouteDraw?.id === routeId) updateRouteBuildList();
 }
 
 function updateRouteList() {
@@ -6132,7 +6357,9 @@ function updateRouteList() {
       const prev = i > 0 ? r.points[i-1] : null;
       const dist = prev ? (prev.distanceTo(p)/1000).toFixed(1) + ' км' : '—';
       const bear = prev ? calcBearing(prev.lat, prev.lng, p.lat, p.lng).toFixed(0) + '°' : '';
-      const delBtn = `<span style="cursor:pointer;color:#e07070;font-size:11px;padding:0 2px" onclick="event.stopPropagation();deleteRoutePoint(${r.id},${i})" title="Удалить">✕</span>`;
+      const upBtn = `<button type="button" class="route-kp-btn" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},-1)" title="Выше"${i === 0 ? ' disabled' : ''}>↑</button>`;
+      const downBtn = `<button type="button" class="route-kp-btn" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},1)" title="Ниже"${i === r.points.length - 1 ? ' disabled' : ''}>↓</button>`;
+      const delBtn = `<button type="button" class="route-kp-btn danger" onclick="event.stopPropagation();deleteRoutePoint(${r.id},${i})" title="Удалить">✕</button>`;
       const radius = Number(r.pointRadii?.[i]) || 0;
       return `<div class="route-kp" draggable="true" data-route-id="${r.id}" data-kp-idx="${i}"
         ondragstart="onRouteKpDragStart(event)" ondragover="onRouteKpDragOver(event)" ondrop="onRouteKpDrop(event)"
@@ -6144,13 +6371,13 @@ function updateRouteList() {
         <span class="route-dist">${dist}${bear ? ' · ' + bear : ''}</span>
         <input type="number" min="0" step="1" value="${radius}" onchange="updateRoutePointRadius(${r.id},${i},this.value)" onclick="event.stopPropagation()"
           style="width:58px;background:var(--bg-sunken);border:1px solid var(--border-normal);border-radius:4px;color:var(--text-primary);padding:2px 4px;font-size:11px" title="Радиус КП, м">
-        <span style="display:flex;gap:2px;margin-left:4px">${delBtn}</span>
+        <span class="route-kp-actions">${upBtn}${downBtn}${delBtn}</span>
       </div>`;
     }).join('');
     const sel = r.id === selectedRouteId;
     const expanded = sel;
     return `<div class="route-item">
-      <div class="route-header" onclick="selectRouteById(${r.id});toggleRouteEl(this)" style="cursor:pointer;${sel ? 'background:#1a3a6a;border-left:3px solid #4a8adf;padding-left:5px;border-radius:4px' : ''}">
+      <div class="route-header" onclick="selectRouteById(${r.id});toggleRouteEl(this)" style="cursor:pointer;${sel ? 'background:var(--bg-selected);border-left:3px solid var(--border-bright);padding-left:5px;border-radius:4px' : ''}">
         <div style="display:flex;align-items:center;gap:8px">
           <span class="route-color-dot" style="background:${r.color}"></span>
           <input id="route-name-${r.id}" value="${escapeHtml(r.name)}" onclick="event.stopPropagation()" onchange="renameRoute(${r.id})"
@@ -6159,6 +6386,7 @@ function updateRouteList() {
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:11px;color:var(--text-muted)">${r.points.length} КП · ${km} км · ${(r.width || 3)}px${srcTag} <span class="route-arrow">${expanded ? '▾' : '▸'}</span></span>
+          <button type="button" class="route-kp-btn" onclick="event.stopPropagation();startRouteEdit(${r.id})" title="Редактировать КП">✎</button>
           <span style="font-size:12px;color:var(--text-secondary);cursor:pointer;padding:0 4px" onclick="event.stopPropagation();toggleRouteVisible(${r.id})" title="Скрыть/показать">${r.visible === false ? '○' : '👁'}</span>
           <span style="font-size:12px;color:var(--text-secondary);cursor:pointer;padding:0 4px" onclick="event.stopPropagation();centerRoute(${r.id})" title="Центрировать">🎯</span>
           <span style="font-size:12px;color:#e07070;cursor:pointer;padding:0 4px" onclick="event.stopPropagation();deleteRoute(${r.id})" title="Удалить">✕</span>
@@ -7725,7 +7953,15 @@ function applyState(state) {
   // 3. Restore tracks
   if (state.tracks && state.tracks.length > 0) {
     state.tracks.forEach(t => {
-      const points = t.points.map(p => L.latLng(p.lat, p.lng));
+      const points = [];
+      const pointsData = [];
+      (t.points || []).forEach((p, index) => {
+        const latlng = parseTrackLatLng(p?.lat, p?.lng);
+        if (!latlng) return;
+        points.push(latlng);
+        pointsData.push(Array.isArray(t.pointsData) && t.pointsData[index] ? t.pointsData[index] : {});
+      });
+      if (points.length < 2) return;
       const track = createTrackFromPoints(points, t.name, {
         id: t.id,
         color: t.color,
@@ -7737,7 +7973,7 @@ function applyState(state) {
         source: t.source || 'desktop',
         syncedAt: t.syncedAt || null
       });
-      track.pointsData = t.pointsData || [];
+      track.pointsData = pointsData;
       if (!track.visible) {
         if (track.polyline) map.removeLayer(track.polyline);
         if (track.markers) track.markers.forEach(m => map.removeLayer(m));
@@ -9380,6 +9616,7 @@ function setTheme(theme) {
 // Инициализация при загрузке
 (async function initApp() {
   initLinuxClickFallback();
+  setTheme(getTheme());
   await initWorkingDirectory();
   // Пробуем восстановить: сначала из файла, если нет — из localStorage
   const restoredFromFile = await loadStateFromFile();
@@ -10116,7 +10353,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.9</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.10</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:var(--text-muted)">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
@@ -10336,9 +10573,9 @@ async function nominatimSearch(query) {
           <div><div class="search-result-name">${name}</div><div class="search-result-type">${rest}</div></div>
         </div>
         <div style="display:flex;gap:3px;flex-shrink:0;align-items:center">
-          <span title="Маршрут отсюда" style="cursor:pointer;font-size:11px;background:#1a5a1a;color:#4adf7a;border-radius:3px;padding:2px 5px" onclick="event.stopPropagation();setRoutePoint('A',${r.lat},${r.lon},'${name.replace(/'/g,"\\'")}')">A</span>
-          <span title="Маршрут сюда" style="cursor:pointer;font-size:11px;background:#5a1a1a;color:#e07070;border-radius:3px;padding:2px 5px" onclick="event.stopPropagation();setRoutePoint('B',${r.lat},${r.lon},'${name.replace(/'/g,"\\'")}')">B</span>
-          <span title="Добавить точку" style="cursor:pointer;font-size:11px;background:#1a2a5a;color:#7ec8ff;border-radius:3px;padding:2px 5px" onclick="event.stopPropagation();addWaypointFromSearch(${r.lat},${r.lon},'${name.replace(/'/g,"\\'")}')">+</span>
+          <span title="Маршрут отсюда" style="cursor:pointer;font-size:11px;background:var(--bg-success);color:var(--accent-green);border-radius:3px;padding:2px 5px" onclick="event.stopPropagation();setRoutePoint('A',${r.lat},${r.lon},'${name.replace(/'/g,"\\'")}')">A</span>
+          <span title="Маршрут сюда" style="cursor:pointer;font-size:11px;background:var(--bg-danger);color:var(--accent-red);border-radius:3px;padding:2px 5px" onclick="event.stopPropagation();setRoutePoint('B',${r.lat},${r.lon},'${name.replace(/'/g,"\\'")}')">B</span>
+          <span title="Добавить точку" style="cursor:pointer;font-size:11px;background:var(--bg-selected-soft);color:var(--text-link);border-radius:3px;padding:2px 5px" onclick="event.stopPropagation();addWaypointFromSearch(${r.lat},${r.lon},'${name.replace(/'/g,"\\'")}')">+</span>
         </div>
       </div>`;
     }).join('');
@@ -10902,12 +11139,16 @@ function liveFormatBytes(value) {
 function liveAttachmentTypeLabel(type) {
   const normalized = String(type || '').trim().toLowerCase();
   const labels = {
-    gpx: 'GPX',
-    route: 'Маршрут',
-    track: 'Трек',
-    waypoints: 'Точки'
+    gpx: 'GPX-пакет',
+    route: 'GPX-пакет',
+    track: 'GPX-пакет',
+    waypoints: 'GPX-пакет'
   };
   return labels[normalized] || normalized.toUpperCase() || 'Вложение';
+}
+
+function liveShareSummaryText(payload) {
+  return `GPX-пакет · ${payload?.meta || 'Подготовлено к отправке'} · ${liveFormatBytes(liveUtf8Size(payload?.gpx || ''))}`;
 }
 
 function liveShareSafeName(name, fallback = 'share') {
@@ -11735,7 +11976,7 @@ function liveBuildSharePresets() {
     addPreset({
       id: 'all',
       type: 'gpx',
-      name: 'Карта целиком',
+      name: 'GPX: карта целиком',
       build: () => ({
         name: `desktop-map-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}`,
         type: 'gpx',
@@ -11748,11 +11989,11 @@ function liveBuildSharePresets() {
   if (waypoints.length) {
     addPreset({
       id: 'waypoints',
-      type: 'waypoints',
-      name: `Точки (${waypoints.length})`,
+      type: 'gpx',
+      name: `GPX: точки (${waypoints.length})`,
       build: () => ({
         name: liveShareSafeName(getActiveSet()?.name || 'waypoints', 'waypoints'),
-        type: 'waypoints',
+        type: 'gpx',
         gpx: buildGPXWithData(waypoints, [], []),
         meta: `${waypoints.length} точек`
       })
@@ -11762,11 +12003,11 @@ function liveBuildSharePresets() {
   if (activeSet && activeSetWaypoints.length > 0 && activeSetWaypoints.length !== waypoints.length) {
     addPreset({
       id: 'active-set',
-      type: 'waypoints',
-      name: `Активный набор: ${activeSet.name} (${activeSetWaypoints.length})`,
+      type: 'gpx',
+      name: `GPX: активный набор ${activeSet.name} (${activeSetWaypoints.length})`,
       build: () => ({
         name: liveShareSafeName(activeSet.name, 'active_set'),
-        type: 'waypoints',
+        type: 'gpx',
         gpx: buildGPXWithData(activeSetWaypoints, [], []),
         meta: `${activeSetWaypoints.length} точек`
       })
@@ -11779,11 +12020,11 @@ function liveBuildSharePresets() {
     if (activeSet && set.id === activeSet.id) return;
     addPreset({
       id: `set:${set.id}`,
-      type: 'waypoints',
-      name: `Набор: ${set.name} (${setWaypoints.length})`,
+      type: 'gpx',
+      name: `GPX: набор ${set.name} (${setWaypoints.length})`,
       build: () => ({
         name: liveShareSafeName(set.name, `set_${set.id}`),
-        type: 'waypoints',
+        type: 'gpx',
         gpx: buildGPXWithData(setWaypoints, [], []),
         meta: `${setWaypoints.length} точек`
       })
@@ -11794,11 +12035,11 @@ function liveBuildSharePresets() {
     const track = tracks.find(item => item.id === selectedTrackId);
     addPreset({
       id: 'selected-track',
-      type: 'track',
-      name: `Выбранный трек: ${track.name}`,
+      type: 'gpx',
+      name: `GPX: выбранный трек ${track.name}`,
       build: () => ({
         name: liveShareSafeName(track.name, `track_${track.id}`),
-        type: 'track',
+        type: 'gpx',
         gpx: buildGPXWithData([], [track], []),
         meta: `${track.points.length} точек`
       })
@@ -11808,11 +12049,11 @@ function liveBuildSharePresets() {
   if (tracks.length) {
     addPreset({
       id: 'tracks',
-      type: 'track',
-      name: `Все треки (${tracks.length})`,
+      type: 'gpx',
+      name: `GPX: все треки (${tracks.length})`,
       build: () => ({
         name: `tracks-${new Date().toISOString().slice(0, 10)}`,
-        type: 'track',
+        type: 'gpx',
         gpx: buildGPXWithData([], tracks, []),
         meta: `${tracks.length} треков`
       })
@@ -11823,11 +12064,11 @@ function liveBuildSharePresets() {
     if (track.id === selectedTrackId) return;
     addPreset({
       id: `track:${track.id}`,
-      type: 'track',
-      name: `Трек: ${track.name} (${track.points.length})`,
+      type: 'gpx',
+      name: `GPX: трек ${track.name} (${track.points.length})`,
       build: () => ({
         name: liveShareSafeName(track.name, `track_${track.id}`),
-        type: 'track',
+        type: 'gpx',
         gpx: buildGPXWithData([], [track], []),
         meta: `${track.points.length} точек`
       })
@@ -11837,13 +12078,13 @@ function liveBuildSharePresets() {
   if (activeOsrmRoute) {
     addPreset({
       id: 'osrm-active',
-      type: 'track',
-      name: `Дорожный маршрут: ${activeOsrmRoute.name}`,
+      type: 'gpx',
+      name: `GPX: дорожный маршрут ${activeOsrmRoute.name}`,
       build: () => {
         const track = liveBuildOsrmTrack(activeOsrmRoute);
         return {
           name: liveShareSafeName(activeOsrmRoute.name, `osrm_${activeOsrmRoute.id}`),
-          type: 'track',
+          type: 'gpx',
           gpx: buildGPXWithData([], track ? [track] : [], []),
           meta: `${(activeOsrmRoute.distance / 1000).toFixed(1)} км · ${formatOsrmDuration(activeOsrmRoute.duration)}`
         };
@@ -11854,11 +12095,11 @@ function liveBuildSharePresets() {
   if (routes.length) {
     addPreset({
       id: 'routes',
-      type: 'route',
-      name: `Все маршруты (${routes.length})`,
+      type: 'gpx',
+      name: `GPX: все маршруты (${routes.length})`,
       build: () => ({
         name: `routes-${new Date().toISOString().slice(0, 10)}`,
-        type: 'route',
+        type: 'gpx',
         gpx: buildGPXWithData([], [], routes),
         meta: `${routes.length} маршрутов`
       })
@@ -11868,11 +12109,11 @@ function liveBuildSharePresets() {
   routes.forEach(route => {
     addPreset({
       id: `route:${route.id}`,
-      type: 'route',
-      name: `Маршрут: ${route.name} (${route.points.length})`,
+      type: 'gpx',
+      name: `GPX: маршрут ${route.name} (${route.points.length})`,
       build: () => ({
         name: liveShareSafeName(route.name, `route_${route.id}`),
-        type: 'route',
+        type: 'gpx',
         gpx: buildGPXWithData([], [], [route]),
         meta: `${route.points.length} КП`
       })
@@ -11941,7 +12182,7 @@ async function liveOpenShareModal() {
   liveHandleShareTargetModeChange();
   const first = presets[0].build();
   nameInput.value = first.name;
-  summary.textContent = `Тип: ${liveAttachmentTypeLabel(first.type)} · ${first.meta || 'Подготовлено к отправке'} · ${liveFormatBytes(liveUtf8Size(first.gpx))}`;
+  summary.textContent = liveShareSummaryText(first);
   openModal('modal-live-share');
 }
 
@@ -11953,7 +12194,7 @@ function liveHandleSharePresetChange() {
   if (!preset || !nameInput || !summary) return;
   const payload = preset.build();
   nameInput.value = payload.name;
-  summary.textContent = `Тип: ${liveAttachmentTypeLabel(payload.type)} · ${payload.meta || 'Подготовлено к отправке'} · ${liveFormatBytes(liveUtf8Size(payload.gpx))}`;
+  summary.textContent = liveShareSummaryText(payload);
 }
 
 async function liveSendShareToGroup() {
@@ -12013,7 +12254,7 @@ async function liveSendShare() {
       senderName: 'Вы',
       senderUniqueId: senderDeviceId,
       senderStatusCode: liveState.myStatusCode,
-      text: `📦 ${name}`,
+      text: `📄 GPX: ${name}`,
       kind: 'attachment',
       attachment: {
         attachmentId: data.shareId || '',
@@ -12021,7 +12262,7 @@ async function liveSendShare() {
         name,
         remoteId: data.shareId || null,
         sizeBytes: payloadSize,
-        previewText: `📦 ${name}`,
+        previewText: `📄 GPX: ${name}`,
         api: mode === 'self' ? 'self-share' : 'group-share'
       },
       sentAt: Date.now(),
@@ -12090,7 +12331,7 @@ function liveShowNextShareInboxModal() {
   liveState.activeShareId = entry.shareId;
   liveState.activeShareEntry = entry;
   document.getElementById('live-share-inbox-title').textContent = `📥 ${entry.senderName || 'Участник'}`;
-  document.getElementById('live-share-inbox-body').textContent = `Поделился: «${entry.name || 'Вложение'}»\nТип: ${(entry.type || 'gpx').toUpperCase()} · ${Math.round((entry.size || 0) / 1024)} КБ`;
+  document.getElementById('live-share-inbox-body').textContent = `Поделился GPX-пакетом: «${entry.name || 'Вложение'}»\n${liveAttachmentTypeLabel(entry.type)} · ${Math.round((entry.size || 0) / 1024)} КБ`;
   const metaParts = [];
   if (entry.groupName) metaParts.push(`Группа: ${entry.groupName}`);
   if (entry.targetDeviceName) metaParts.push(`Устройство: ${entry.targetDeviceName}`);
@@ -12129,15 +12370,15 @@ async function liveAcceptIncomingShare() {
       targetName: isSelfShare ? (entry.senderName || entry.senderDeviceName || 'Моё устройство') : (entry.groupName || 'Группа'),
       senderName: entry.senderName || 'Участник',
       senderUniqueId: entry.senderUniqueId || null,
-      text: `📦 ${entry.name || 'Вложение'}`,
+      text: `📄 GPX: ${entry.name || 'Вложение'}`,
       kind: 'attachment',
       attachment: {
         attachmentId: shareId,
         type: entry.type || 'gpx',
-        name: entry.name || 'Вложение',
+        name: entry.name || 'GPX-пакет',
         remoteId: shareId,
         sizeBytes: Number(entry.size) || 0,
-        previewText: `📦 ${entry.name || 'Вложение'}`,
+        previewText: `📄 GPX: ${entry.name || 'Вложение'}`,
         api: entry.api || 'group-share'
       },
       sentAt: Date.parse(entry.timestamp || '') || Date.now(),
@@ -12149,7 +12390,7 @@ async function liveAcceptIncomingShare() {
     closeModal('modal-live-share-inbox');
     liveState.activeShareId = null;
     liveState.activeShareEntry = null;
-    showToast(`✓ Загружено: ${entry.name || 'Вложение'}`);
+    showToast(`✓ GPX загружен: ${entry.name || 'Вложение'}`);
     liveShowNextShareInboxModal();
   } catch (error) {
     showToast('Ошибка загрузки вложения');
@@ -12496,7 +12737,7 @@ liveLoadCache();
       </div>
       <div class="btn-row">
         <button class="btn-secondary" onclick="liveFetchMessages(false)">Обновить</button>
-        <button class="btn-secondary" onclick="liveOpenShareModal()">📦 Данные</button>
+        <button class="btn-secondary" onclick="liveOpenShareModal()">📄 GPX</button>
         <div style="flex:1"></div>
         <button class="btn-primary" onclick="liveSendMessage()">Отправить</button>
       </div>
@@ -12546,7 +12787,7 @@ liveLoadCache();
 <div class="modal-overlay" id="modal-live-share">
   <div class="modal" id="modal-live-share-win" style="top:90px;left:50%;transform:translateX(-50%);width:460px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-live-share-win')">
-      📦 Отправка данных
+      📄 Отправка GPX
       <span class="modal-close" onclick="closeModal('modal-live-share')">✕</span>
     </div>
     <div class="modal-body">
@@ -12558,7 +12799,7 @@ liveLoadCache();
         </select>
       </div>
       <div class="prop-field">
-        <label>Что отправить</label>
+        <label>Что упаковать в GPX</label>
         <select id="live-share-preset" onchange="liveHandleSharePresetChange()"></select>
       </div>
       <div class="prop-field" id="live-share-group-field">
@@ -12570,14 +12811,14 @@ liveLoadCache();
         <select id="live-share-device"></select>
       </div>
       <div class="prop-field">
-        <label>Название</label>
-        <input id="live-share-name" placeholder="Имя вложения">
+        <label>Название GPX</label>
+        <input id="live-share-name" placeholder="Имя GPX-файла">
       </div>
       <div id="live-share-summary" style="font-size:11px;color:var(--text-muted);margin-bottom:10px"></div>
       <div class="btn-row">
         <button class="btn-secondary" onclick="closeModal('modal-live-share')">Отмена</button>
         <div style="flex:1"></div>
-        <button class="btn-primary" onclick="liveSendShare()">Отправить</button>
+        <button class="btn-primary" onclick="liveSendShare()">Отправить GPX</button>
       </div>
     </div>
   </div>
@@ -12586,7 +12827,7 @@ liveLoadCache();
 <div class="modal-overlay" id="modal-live-share-inbox">
   <div class="modal" id="modal-live-share-inbox-win" style="top:30%;left:50%;transform:translateX(-50%);width:380px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-live-share-inbox-win')">
-      <span id="live-share-inbox-title">📥 Вложение</span>
+      <span id="live-share-inbox-title">📥 GPX-пакет</span>
       <span class="modal-close" onclick="liveDeclineIncomingShare()">✕</span>
     </div>
     <div class="modal-body">
