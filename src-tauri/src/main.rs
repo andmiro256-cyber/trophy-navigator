@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use serde::Serialize;
-use tauri::{Emitter, Manager, Runtime, Webview};
+use tauri::{AppHandle, Emitter, Manager, Runtime, Url, Webview, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
 #[derive(Serialize)]
@@ -66,7 +66,8 @@ async fn install_app_update<R: Runtime>(webview: Webview<R>, rid: u32) -> Result
     update
         .download_and_install(
             move |downloaded: usize, total: Option<u64>| {
-                let _ = webview_clone.emit("update-progress", DownloadProgress { downloaded, total });
+                let _ =
+                    webview_clone.emit("update-progress", DownloadProgress { downloaded, total });
             },
             || {},
         )
@@ -92,6 +93,111 @@ fn get_hardware_id() -> Result<String, String> {
     ))
 }
 
+#[tauri::command]
+fn open_map_viewer<R: Runtime>(
+    app: AppHandle<R>,
+    url: String,
+    title: String,
+) -> Result<(), String> {
+    let parsed_url = parse_map_viewer_url(&url)?;
+    let title = sanitize_map_viewer_title(&title);
+
+    if let Some(viewer) = app.get_webview_window("map_viewer") {
+        viewer.navigate(parsed_url).map_err(|e| e.to_string())?;
+        let _ = viewer.set_title(&title);
+        let _ = viewer.show();
+        let _ = viewer.set_focus();
+        return Ok(());
+    }
+
+    let width = 560.0;
+    let height = 430.0;
+    let (x, y) = map_viewer_position(&app, width, height);
+
+    let viewer = WebviewWindowBuilder::new(&app, "map_viewer", WebviewUrl::External(parsed_url))
+        .title(title)
+        .inner_size(width, height)
+        .min_inner_size(360.0, 260.0)
+        .position(x, y)
+        .resizable(true)
+        .prevent_overflow()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let _ = viewer.set_focus();
+    Ok(())
+}
+
+fn parse_map_viewer_url(raw_url: &str) -> Result<Url, String> {
+    let url = Url::parse(raw_url).map_err(|_| "Некорректная ссылка карты".to_string())?;
+    match url.scheme() {
+        "http" | "https" => {}
+        _ => return Err("Разрешены только http/https ссылки".to_string()),
+    }
+
+    let host = url
+        .host_str()
+        .ok_or_else(|| "В ссылке карты нет домена".to_string())?
+        .to_ascii_lowercase();
+
+    if is_allowed_map_host(&host) {
+        Ok(url)
+    } else {
+        Err("Можно открыть только Google/Yandex карты".to_string())
+    }
+}
+
+fn is_allowed_map_host(host: &str) -> bool {
+    host == "yandex.ru"
+        || host.ends_with(".yandex.ru")
+        || host == "yandex.com"
+        || host.ends_with(".yandex.com")
+        || host == "yandex.eu"
+        || host.ends_with(".yandex.eu")
+        || host == "google.com"
+        || host.ends_with(".google.com")
+        || host == "google.ru"
+        || host.ends_with(".google.ru")
+        || host == "maps.google.com"
+}
+
+fn sanitize_map_viewer_title(title: &str) -> String {
+    let trimmed = title.trim();
+    if trimmed.is_empty() {
+        "Карта точки".to_string()
+    } else {
+        trimmed.chars().take(80).collect()
+    }
+}
+
+fn map_viewer_position<R: Runtime>(app: &AppHandle<R>, width: f64, height: f64) -> (f64, f64) {
+    let monitor = app.get_webview_window("main").and_then(|window| {
+        window
+            .current_monitor()
+            .ok()
+            .flatten()
+            .or_else(|| window.primary_monitor().ok().flatten())
+    });
+
+    if let Some(monitor) = monitor {
+        let work_area = monitor.work_area();
+        let scale = monitor.scale_factor().max(1.0);
+        let margin = 24.0;
+        let available_width = work_area.size.width as f64 / scale;
+        let x_margin = if available_width > width + margin * 2.0 {
+            margin
+        } else {
+            0.0
+        };
+        let x = work_area.position.x as f64 / scale + x_margin;
+        let y = work_area.position.y as f64 / scale
+            + (work_area.size.height as f64 / scale - height - margin).max(margin);
+        (x, y)
+    } else {
+        (24.0, 120.0)
+    }
+}
+
 /// FNV-1a 64-bit hash — стабильный, детерминистичный, не зависит от версии Rust.
 fn fnv1a_64(data: &[u8]) -> u64 {
     let mut hash: u64 = 0xcbf29ce484222325;
@@ -107,7 +213,12 @@ fn get_raw_machine_id() -> Result<String, Box<dyn std::error::Error>> {
     // Читаем MachineGuid из реестра Windows
     use std::process::Command;
     let output = Command::new("reg")
-        .args(["query", r"HKLM\SOFTWARE\Microsoft\Cryptography", "/v", "MachineGuid"])
+        .args([
+            "query",
+            r"HKLM\SOFTWARE\Microsoft\Cryptography",
+            "/v",
+            "MachineGuid",
+        ])
         .output()?;
     let stdout = String::from_utf8_lossy(&output.stdout);
     // Парсим "MachineGuid    REG_SZ    xxxxxxxx-xxxx-..."
@@ -149,6 +260,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             check_app_update,
             install_app_update,
+            open_map_viewer,
             get_hardware_id
         ])
         .plugin(tauri_plugin_updater::Builder::new().build())

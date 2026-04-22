@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🧭 Trophy Navigator Desktop v0.9.9</title>
+  <title>🧭 Trophy Navigator Desktop v0.9.11</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -463,6 +463,13 @@
   .ctx-item.danger { color: var(--accent-red); }
   .ctx-item.danger:hover { background: var(--bg-danger); }
   .ctx-sep { height: 1px; background: var(--row-border); margin: 2px 0; }
+  .wpt-map-actions { display: flex; justify-content: center; gap: 4px; }
+  .wpt-map-btn {
+    width: 24px; height: 22px; display: inline-flex; align-items: center; justify-content: center;
+    background: var(--bg-interactive); border: 1px solid var(--border-normal); border-radius: 4px;
+    color: var(--text-secondary); cursor: pointer; font-size: 12px; line-height: 1;
+  }
+  .wpt-map-btn:hover { background: var(--row-hover); color: var(--text-primary); border-color: var(--border-bright); }
 
   /* ─── СВОЙСТВА ТОЧКИ ─── */
   .prop-field { margin-bottom: 10px; }
@@ -478,6 +485,12 @@
   .icon-cell.selected { background: var(--bg-sunken); border-color: #4a8adf; box-shadow: 0 0 0 2px rgba(74,138,223,0.3); }
   .prop-coords { display: flex; gap: 6px; }
   .prop-coords input { flex: 1; }
+  .external-map-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .external-map-btn {
+    background: var(--bg-interactive); border: 1px solid var(--border-normal); color: var(--text-secondary);
+    border-radius: 5px; padding: 6px 8px; cursor: pointer; font-size: 11px; text-align: center;
+  }
+  .external-map-btn:hover { background: var(--row-hover); color: var(--text-primary); border-color: var(--border-bright); }
   .btn-row { display: flex; gap: 6px; margin-top: 12px; justify-content: flex-end; }
   .btn-primary { background: var(--accent-blue); border: 1px solid var(--border-bright); color: var(--text-on-solid); border-radius: 5px; padding: 6px 14px; cursor: pointer; font-size: 12px; }
   .btn-primary:hover { filter: brightness(1.08); }
@@ -997,6 +1010,18 @@
     box-shadow: 0 2px 6px rgba(0,0,0,0.4) !important;
   }
   .ruler-label::before { display: none !important; }
+  #ruler-panel {
+    display: none; position: fixed; left: 14px; bottom: 38px; z-index: 3600;
+    width: min(340px, calc(100vw - 28px)); background: var(--modal-bg);
+    border: 1px solid rgba(255,106,0,0.55); border-radius: 6px;
+    box-shadow: var(--panel-shadow); padding: 8px;
+  }
+  .ruler-panel-title { display: flex; align-items: center; gap: 8px; color: var(--text-primary); font-size: 12px; margin-bottom: 8px; }
+  .ruler-panel-meta { color: #ffb066; font-weight: 600; }
+  .ruler-panel-count { color: var(--text-muted); margin-left: auto; }
+  .ruler-panel-actions { display: grid; grid-template-columns: 1fr 34px 70px 34px; gap: 6px; }
+  .ruler-panel-actions button { min-height: 28px; font-size: 11px; padding: 4px 6px; }
+  .ruler-panel-actions button:disabled { opacity: 0.45; cursor: not-allowed; }
 
   /* ─── SELECT — глобальная тема ─── */
   select {
@@ -1114,7 +1139,7 @@
   <!-- Режимы навигации -->
   <div class="tb-group" style="background:rgba(15,52,96,0.4);border:1px solid #1a3a6a;border-radius:6px;padding:2px 4px;gap:2px">
     <button class="tb-btn active" id="btn-hand" onclick="setMode('hand')" title="Навигация (H)" style="font-size:14px">🧭</button>
-    <button class="tb-btn" id="btn-ruler" onclick="setMode('ruler')" title="Линейка (M)" style="font-size:14px">📐</button>
+    <button class="tb-btn" id="btn-ruler" onclick="toggleMode('ruler')" title="Линейка (M)" style="font-size:14px">📐</button>
     <button class="tb-btn" id="btn-routing" onclick="openModal('modal-routing')" title="Маршрут по дорогам" style="font-size:14px">🛣</button>
   </div>
 
@@ -1253,7 +1278,21 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.9</span>
+  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.11</span>
+</div>
+
+<div id="ruler-panel">
+  <div class="ruler-panel-title">
+    <span>📐</span>
+    <span class="ruler-panel-meta" id="ruler-panel-total">0.00 км</span>
+    <span class="ruler-panel-count" id="ruler-panel-count">0 точек</span>
+  </div>
+  <div class="ruler-panel-actions">
+    <button id="ruler-track-btn" class="btn-primary" onclick="saveRulerAsTrack()">〜 В трек</button>
+    <button class="btn-secondary" onclick="undoRulerPoint()" title="Отменить последнюю точку">↩</button>
+    <button class="btn-secondary" onclick="clearRuler()" title="Очистить линейку">Очистить</button>
+    <button class="btn-secondary" onclick="setMode('hand')" title="Закрыть линейку">✕</button>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -1265,9 +1304,19 @@
   <div class="ctx-item" onclick="ctxAction('center')">🎯 Центрировать</div>
   <div class="ctx-item" onclick="ctxAction('copy')">📋 Копировать координаты</div>
   <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="ctxAction('map:yandex-map')">🗺 Яндекс Карты</div>
+  <div class="ctx-item" onclick="ctxAction('map:yandex-panorama')">👁 Яндекс Панорама</div>
+  <div class="ctx-item" onclick="ctxAction('map:google-map')">🌍 Google Maps</div>
+  <div class="ctx-item" onclick="ctxAction('map:google-streetview')">🚶 Street View</div>
+  <div class="ctx-sep"></div>
   <div class="ctx-item danger" onclick="ctxAction('delete')">🗑 Удалить</div>
 </div>
 <div id="ctx-menu-track">
+  <div class="ctx-item" onclick="ctxTrackAction('map:yandex-map')">🗺 Яндекс Карты здесь</div>
+  <div class="ctx-item" onclick="ctxTrackAction('map:yandex-panorama')">👁 Яндекс Панорама здесь</div>
+  <div class="ctx-item" onclick="ctxTrackAction('map:google-map')">🌍 Google Maps здесь</div>
+  <div class="ctx-item" onclick="ctxTrackAction('map:google-streetview')">🚶 Street View здесь</div>
+  <div class="ctx-sep"></div>
   <div class="ctx-item danger" onclick="ctxTrackAction('delete')">🗑 Удалить точку</div>
   <div class="ctx-item" onclick="ctxTrackAction('split')">✂️ Разбить трек здесь</div>
 </div>
@@ -1276,6 +1325,11 @@
   <div class="ctx-item" onclick="ctxMapAction('center')">🎯 Центрировать карту</div>
   <div class="ctx-item" onclick="ctxMapAction('copycoords')">📋 Копировать координаты</div>
   <div class="ctx-item" onclick="ctxMapAction('measure')">📐 Измерить расстояние отсюда</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="ctxMapAction('map:yandex-map')">🗺 Яндекс Карты здесь</div>
+  <div class="ctx-item" onclick="ctxMapAction('map:yandex-panorama')">👁 Яндекс Панорама здесь</div>
+  <div class="ctx-item" onclick="ctxMapAction('map:google-map')">🌍 Google Maps здесь</div>
+  <div class="ctx-item" onclick="ctxMapAction('map:google-streetview')">🚶 Street View здесь</div>
   <div class="ctx-item" id="ctx-undo-route" onclick="ctxMapAction('undoroute')" style="display:none">↩ Убрать последнюю точку маршрута</div>
   <div class="ctx-sep"></div>
   <div class="ctx-item" onclick="ctxMapAction('routefrom')">🟢 Маршрут отсюда</div>
@@ -1343,7 +1397,7 @@
         </div>
       </div>
       <table class="wpt-table">
-        <thead><tr><th></th><th></th><th>#</th><th>Название</th><th>Координаты</th><th>R</th></tr></thead>
+        <thead><tr><th></th><th></th><th>#</th><th>Название</th><th>Координаты</th><th>Карта</th><th>R</th></tr></thead>
         <tbody id="wpt-tbody"></tbody>
       </table>
     </div>
@@ -1446,6 +1500,15 @@
         <div class="prop-coords">
           <input id="prop-lat" value="55°45.132'N" placeholder="Широта">
           <input id="prop-lng" value="37°36.934'E" placeholder="Долгота">
+        </div>
+      </div>
+      <div class="prop-field">
+        <label>Открыть координату</label>
+        <div class="external-map-links">
+          <button type="button" class="external-map-btn" onclick="openWaypointExternalMap('yandex-map')">Яндекс Карты</button>
+          <button type="button" class="external-map-btn" onclick="openWaypointExternalMap('yandex-panorama')">Я.Панорама</button>
+          <button type="button" class="external-map-btn" onclick="openWaypointExternalMap('google-map')">Google Maps</button>
+          <button type="button" class="external-map-btn" onclick="openWaypointExternalMap('google-streetview')">Street View</button>
         </div>
       </div>
       <div class="btn-row">
@@ -2478,6 +2541,145 @@ function parseCoordinateInput(value, pos, neg) {
   return Number.isFinite(decimal) ? decimal : NaN;
 }
 
+function getWaypointPropCoordinates() {
+  const lat = parseCoordinateInput(document.getElementById('prop-lat')?.value, 'N', 'S');
+  const lng = parseCoordinateInput(document.getElementById('prop-lng')?.value, 'E', 'W');
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { lat, lng };
+}
+
+function formatMapCoord(value) {
+  return Number(value).toFixed(7);
+}
+
+function buildWaypointExternalMapUrl(kind, coords) {
+  const lat = formatMapCoord(coords.lat);
+  const lng = formatMapCoord(coords.lng);
+  const query = `${lat},${lng}`;
+  const yandexPoint = `${lng},${lat}`;
+  switch (kind) {
+    case 'yandex-map':
+      return `https://yandex.ru/maps/?ll=${encodeURIComponent(yandexPoint)}&z=17&pt=${encodeURIComponent(`${yandexPoint},pm2rdm`)}`;
+    case 'yandex-panorama':
+      return `https://yandex.ru/maps/?ll=${encodeURIComponent(yandexPoint)}&z=18&l=stv%2Csta&panorama%5Bpoint%5D=${encodeURIComponent(yandexPoint)}&pt=${encodeURIComponent(`${yandexPoint},pm2rdm`)}`;
+    case 'google-map':
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+    case 'google-streetview':
+      return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(query)}`;
+    default:
+      return null;
+  }
+}
+
+function getWaypointExternalMapTitle(kind) {
+  switch (kind) {
+    case 'yandex-map':
+      return 'Яндекс Карты';
+    case 'yandex-panorama':
+      return 'Яндекс Панорама';
+    case 'google-map':
+      return 'Google Maps';
+    case 'google-streetview':
+      return 'Google Street View';
+    default:
+      return 'Карта точки';
+  }
+}
+
+async function openExternalUrl(url) {
+  if (!url) return false;
+  try {
+    const opener = window.__TAURI__?.opener;
+    if (opener?.openUrl) await opener.openUrl(url);
+    else if (opener?.open) await opener.open(url);
+    else window.open(url, '_blank', 'noopener');
+    return true;
+  } catch (e) {
+    console.warn('Cannot open external URL:', e);
+    return false;
+  }
+}
+
+async function openMapViewerUrl(url, title) {
+  if (!url) return 'failed';
+  if (isTauriRuntime()) {
+    try {
+      await tauriInvoke('open_map_viewer', { url, title });
+      return 'viewer';
+    } catch (e) {
+      console.warn('Cannot open map viewer window:', e);
+    }
+  }
+  return await openExternalUrl(url) ? 'browser' : 'failed';
+}
+
+function getWaypointMarkerCoordinates(marker) {
+  if (!marker) return null;
+  const live = typeof marker.getLatLng === 'function' ? marker.getLatLng() : null;
+  const lat = Number(marker.wpData?.lat ?? live?.lat);
+  const lng = Number(marker.wpData?.lng ?? live?.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { lat, lng };
+}
+
+async function openWaypointMarkerMap(marker, kind) {
+  const coords = getWaypointMarkerCoordinates(marker);
+  if (!coords) {
+    showToast('Некорректные координаты точки');
+    return;
+  }
+  const url = buildWaypointExternalMapUrl(kind, coords);
+  if (!url) return;
+  const name = marker.wpData?.name ? ` · ${marker.wpData.name}` : '';
+  const title = `${getWaypointExternalMapTitle(kind)}${name} · ${formatMapCoord(coords.lat)}, ${formatMapCoord(coords.lng)}`;
+  const mode = await openMapViewerUrl(url, title);
+  if (mode === 'viewer') showToast('Открываю окно карты');
+  else if (mode === 'browser') showToast('Открываю карту во внешнем браузере');
+  else showToast('Не удалось открыть карту');
+}
+
+function openWaypointMapByIndex(index, kind) {
+  const marker = waypoints[index];
+  if (!marker) {
+    showToast('Точка уже недоступна');
+    return;
+  }
+  openWaypointMarkerMap(marker, kind);
+}
+
+async function openMapAtLatLng(latlng, kind, label = 'Карта') {
+  const coords = {
+    lat: Number(latlng?.lat),
+    lng: Number(latlng?.lng)
+  };
+  if (!Number.isFinite(coords.lat) || !Number.isFinite(coords.lng) || Math.abs(coords.lat) > 90 || Math.abs(coords.lng) > 180) {
+    showToast('Некорректные координаты');
+    return;
+  }
+  const url = buildWaypointExternalMapUrl(kind, coords);
+  if (!url) return;
+  const title = `${getWaypointExternalMapTitle(kind)} · ${label} · ${formatMapCoord(coords.lat)}, ${formatMapCoord(coords.lng)}`;
+  const mode = await openMapViewerUrl(url, title);
+  if (mode === 'viewer') showToast('Открываю окно карты');
+  else if (mode === 'browser') showToast('Открываю карту во внешнем браузере');
+  else showToast('Не удалось открыть карту');
+}
+
+async function openWaypointExternalMap(kind) {
+  const coords = getWaypointPropCoordinates();
+  if (!coords) {
+    showToast('Некорректные координаты точки');
+    return;
+  }
+  const url = buildWaypointExternalMapUrl(kind, coords);
+  if (!url) return;
+  const title = `${getWaypointExternalMapTitle(kind)} · ${formatMapCoord(coords.lat)}, ${formatMapCoord(coords.lng)}`;
+  const mode = await openMapViewerUrl(url, title);
+  if (mode === 'viewer') showToast('Открываю окно карты');
+  else if (mode === 'browser') showToast('Открываю карту во внешнем браузере');
+  else showToast('Не удалось открыть карту');
+}
+
 function escapeXml(text) {
   return escapeHtml(text).replace(/&#39;/g, '&apos;');
 }
@@ -2994,6 +3196,12 @@ function updateWptTable() {
       <td style="color:var(--text-muted)">${d.num}</td>
       <td style="font-weight:500">${d.name}${syncBadge}${srcHint}</td>
       <td style="font-family:monospace;font-size:11px">${formatDm(d.lat, 'N', 'S')} ${formatDm(d.lng, 'E', 'W')}</td>
+      <td onclick="event.stopPropagation()">
+        <div class="wpt-map-actions">
+          <button type="button" class="wpt-map-btn" title="Яндекс Карты" onclick="openWaypointMapByIndex(${idx}, 'yandex-map')">🗺</button>
+          <button type="button" class="wpt-map-btn" title="Яндекс Панорама" onclick="openWaypointMapByIndex(${idx}, 'yandex-panorama')">👁</button>
+        </div>
+      </td>
       <td style="text-align:center">${d.radius}м</td>
     </tr>`;
   }).join('');
@@ -3148,6 +3356,7 @@ function setMode(mode) {
   }
   document.getElementById('sb-mode').textContent = modeNames[mode] || mode;
   map.getContainer().style.cursor = mode === 'hand' ? '' : 'crosshair';
+  updateRulerPanel();
   if (mode !== 'hand') showToast('Режим: ' + modeNames[mode]);
 }
 function toggleMode(mode) {
@@ -3208,7 +3417,7 @@ document.addEventListener('keydown', e => {
       if (!e.ctrlKey) startNewRoute();
       break;
     case 'm': case 'M':
-      if (!e.ctrlKey) setMode('ruler');
+      if (!e.ctrlKey) toggleMode('ruler');
       break;
     case 'd': case 'D':
       if (!e.ctrlKey) startAreaSelect();
@@ -4513,8 +4722,8 @@ function showCtxMenu(e, marker) {
   ctxTarget = marker;
   const m = document.getElementById('ctx-menu');
   // Prevent menu from appearing off-screen
-  const x = Math.min(e.clientX, window.innerWidth - 180);
-  const y = Math.min(e.clientY, window.innerHeight - 200);
+  const x = Math.min(e.clientX, window.innerWidth - 220);
+  const y = Math.min(e.clientY, window.innerHeight - 340);
   m.style.left = x+'px'; m.style.top = y+'px';
   m.classList.add('open');
   // Stop native event to prevent browser context menu
@@ -4524,7 +4733,9 @@ function showCtxMenu(e, marker) {
 function showCtxMenuTable(e, idx) {
   e.preventDefault(); ctxTarget = waypoints[idx];
   const m = document.getElementById('ctx-menu');
-  m.style.left = e.clientX+'px'; m.style.top = e.clientY+'px';
+  const x = Math.min(e.clientX, window.innerWidth - 220);
+  const y = Math.min(e.clientY, window.innerHeight - 340);
+  m.style.left = x+'px'; m.style.top = y+'px';
   m.classList.add('open');
 }
 function closeCtxMenu() {
@@ -4533,36 +4744,57 @@ function closeCtxMenu() {
   document.getElementById('ctx-menu-track').classList.remove('open');
 }
 
-let ctxTrackTarget = null; // { track, idx, marker }
+function showMapCtxMenuAt(e, latlng) {
+  ctxTarget = null;
+  ctxLatLng = latlng || map.mouseEventToLatLng(e);
+  closeCtxMenu();
+  const m = document.getElementById('ctx-menu-map');
+  const undoEl = document.getElementById('ctx-undo-route');
+  if (undoEl) undoEl.style.display = (isRouteCaptureMode() && currentRouteDraw?.points.length > 0) ? 'block' : 'none';
+  const x = Math.min(e.clientX, window.innerWidth - 220);
+  const y = Math.min(e.clientY, window.innerHeight - 340);
+  m.style.left = x+'px'; m.style.top = y+'px';
+  m.classList.add('open');
+  e.preventDefault?.();
+  e.stopPropagation?.();
+}
 
-function showTrackPointCtxMenu(e, track, idx, marker) {
+let ctxTrackTarget = null; // { track, idx, marker, latlng }
+
+function showTrackPointCtxMenu(e, track, idx, marker, latlng = null) {
   closeCtxMenu();
   ctxHandledByMarker = true;
-  ctxTrackTarget = { track, idx, marker };
+  ctxTrackTarget = { track, idx, marker, latlng };
   selectedTrackId = track.id;
   if (isTrackEditActive(track)) {
     currentTrackEdit.selectedPointIdx = idx;
     updateTrackBuildPanel(track);
   }
   const m = document.getElementById('ctx-menu-track');
-  const x = Math.min(e.clientX, window.innerWidth - 160);
-  const y = Math.min(e.clientY, window.innerHeight - 80);
+  const x = Math.min(e.clientX, window.innerWidth - 220);
+  const y = Math.min(e.clientY, window.innerHeight - 260);
   m.style.left = x + 'px'; m.style.top = y + 'px';
   m.classList.add('open');
   e.preventDefault();
   e.stopPropagation();
 }
 
-function ctxTrackAction(action) {
+async function ctxTrackAction(action) {
   const t = ctxTrackTarget;
   closeCtxMenu();
   if (!t) return;
-  const { track, idx, marker } = t;
+  const { track, idx, marker, latlng } = t;
   if (!track || idx < 0 || idx >= track.points.length) {
     showToast('Точка трека уже недоступна');
     return;
   }
   selectedTrackId = track.id;
+
+  if (action.startsWith('map:')) {
+    const point = latlng || marker?.getLatLng?.() || track.points[idx];
+    await openMapAtLatLng(point, action.slice(4), `трек ${track.name || ''}`.trim());
+    return;
+  }
 
   if (action === 'delete') {
     if (!canEditTrackGeometry(track)) {
@@ -4641,7 +4873,7 @@ function ctxTrackAction(action) {
     showToast(`Трек разбит на "${name1}" и "${name2}"`);
   }
 }
-function ctxAction(action) {
+async function ctxAction(action) {
   const target = ctxTarget; // capture reference before closing
   closeCtxMenu();
   if (!target) return;
@@ -4658,6 +4890,9 @@ function ctxAction(action) {
     navigator.clipboard.writeText(txt).catch(() => {});
     showToast('Скопировано: ' + txt);
   }
+  else if (action.startsWith('map:')) {
+    await openWaypointMarkerMap(target, action.slice(4));
+  }
   else if (action === 'delete') {
     const hadCircle = !!target.wpCircle;
     if (target.wpCircle) map.removeLayer(target.wpCircle);
@@ -4669,7 +4904,7 @@ function ctxAction(action) {
     showToast('Точка удалена (Ctrl+Z — отменить)');
   }
 }
-function ctxMapAction(action) {
+async function ctxMapAction(action) {
   closeCtxMenu();
   if (!ctxLatLng) return;
   if (action === 'addwpt') {
@@ -4682,6 +4917,8 @@ function ctxMapAction(action) {
     const txt = ctxLatLng.lat.toFixed(5) + ', ' + ctxLatLng.lng.toFixed(5);
     navigator.clipboard.writeText(txt).catch(() => {});
     showToast('Скопировано: ' + txt);
+  } else if (action.startsWith('map:')) {
+    await openMapAtLatLng(ctxLatLng, action.slice(4), 'точка на карте');
   } else if (action === 'undoroute') {
     if (currentRouteDraw && currentRouteDraw.points.length > 0) {
       removeRouteBuildPoint(currentRouteDraw.points.length - 1);
@@ -4710,16 +4947,7 @@ map.getContainer().addEventListener('contextmenu', e => {
   if (ctxHandledByMarker) { ctxHandledByMarker = false; return; }
   // Don't show map context menu if waypoint context menu is already open
   if (document.getElementById('ctx-menu').classList.contains('open')) return;
-  ctxTarget = null;
-  ctxLatLng = map.mouseEventToLatLng(e);
-  closeCtxMenu();
-  const m = document.getElementById('ctx-menu-map');
-  const undoEl = document.getElementById('ctx-undo-route');
-  if (undoEl) undoEl.style.display = (isRouteCaptureMode() && currentRouteDraw?.points.length > 0) ? 'block' : 'none';
-  const x = Math.min(e.clientX, window.innerWidth - 180);
-  const y = Math.min(e.clientY, window.innerHeight - 200);
-  m.style.left = x+'px'; m.style.top = y+'px';
-  m.classList.add('open');
+  showMapCtxMenuAt(e);
 });
 
 // ─────────────────────────────────────────────
@@ -5110,7 +5338,7 @@ function createTrackMarker(track, idx) {
   // ПКМ — контекстное меню
   m.on('contextmenu', function(e) {
     L.DomEvent.stop(e);
-    showTrackPointCtxMenu(e.originalEvent, track, m._trackIdx, m);
+    showTrackPointCtxMenu(e.originalEvent, track, m._trackIdx, m, m.getLatLng());
   });
   m.on('click', function(e) {
     if (!isTrackEditActive(track)) return;
@@ -5163,7 +5391,7 @@ function bindTrackPolyline(track) {
       if (d < minDist) { minDist = d; closestIdx = i; }
     });
     const marker = track.markers?.[closestIdx] || null;
-    showTrackPointCtxMenu(e.originalEvent, track, closestIdx, marker);
+    showTrackPointCtxMenu(e.originalEvent, track, closestIdx, marker, clickLatLng);
   });
 }
 
@@ -5852,6 +6080,15 @@ function applyRouteStyle(route) {
   });
 }
 
+function bindRoutePolyline(route) {
+  if (!route?.polyline || route.polyline._routeCtxBound) return;
+  route.polyline._routeCtxBound = true;
+  route.polyline.on('contextmenu', e => {
+    L.DomEvent.stop(e);
+    showMapCtxMenuAt(e.originalEvent || e, e.latlng);
+  });
+}
+
 function createRouteFromPoints(points, name, labels = [], options = {}) {
   const id = Number.isInteger(options.id) ? options.id : routeIdCounter++;
   if (Number.isInteger(options.id)) routeIdCounter = Math.max(routeIdCounter, options.id + 1);
@@ -5882,6 +6119,7 @@ function createRouteFromPoints(points, name, labels = [], options = {}) {
   normalizeRoutePointRadii(route, route.points.length);
   normalizeRoutePointWaypointIds(route, route.points.length);
   applyRouteStyle(route);
+  bindRoutePolyline(route);
   routes.push(route);
   return route;
 }
@@ -5937,6 +6175,7 @@ function restoreRouteState(route, snapshot) {
     route.polyline.setLatLngs(route.points);
   }
   applyRouteStyle(route);
+  bindRoutePolyline(route);
   if (route.visible === false) {
     if (map.hasLayer(route.polyline)) map.removeLayer(route.polyline);
   } else if (!map.hasLayer(route.polyline)) {
@@ -6034,6 +6273,7 @@ function addRoutePoint(latlng, label, options = {}) {
     currentRouteDraw.polyline = L.polyline(currentRouteDraw.points, {
       color: currentRouteDraw.color, weight: currentRouteDraw.width || 3, opacity: 0.9, dashArray: currentRouteDraw.dashArray || '8 4'
     }).addTo(map);
+    bindRoutePolyline(currentRouteDraw);
   }
   applyRouteStyle(currentRouteDraw);
   updateRouteBuildPanelState();
@@ -8096,13 +8336,34 @@ let rulerLines = [];
 let rulerMarkers = [];
 let rulerTotalDist = 0;
 
+function formatPointCount(count) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${count} точка`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${count} точки`;
+  return `${count} точек`;
+}
+
+function updateRulerPanel() {
+  const panel = document.getElementById('ruler-panel');
+  if (!panel) return;
+  const shouldShow = currentMode === 'ruler' || rulerPoints.length > 0;
+  panel.style.display = shouldShow ? 'block' : 'none';
+  const totalEl = document.getElementById('ruler-panel-total');
+  const countEl = document.getElementById('ruler-panel-count');
+  const trackBtn = document.getElementById('ruler-track-btn');
+  if (totalEl) totalEl.textContent = `${(rulerTotalDist / 1000).toFixed(2)} км`;
+  if (countEl) countEl.textContent = formatPointCount(rulerPoints.length);
+  if (trackBtn) trackBtn.disabled = rulerPoints.length < 2;
+}
+
 function startRulerFrom(latlng) {
   clearRuler();
   setMode('ruler');
   addRulerPoint(latlng);
 }
 
-function addRulerPoint(latlng) {
+function addRulerPoint(latlng, options = {}) {
   rulerPoints.push(latlng);
   const idx = rulerPoints.length;
   const marker = L.circleMarker(latlng, {
@@ -8128,15 +8389,63 @@ function addRulerPoint(latlng) {
     rulerMarkers.push(label);
   }
   rulerMarkers.push(marker);
+  updateRulerPanel();
 
   const totalKm = (rulerTotalDist / 1000).toFixed(2);
-  showToast(`📐 Линейка: ${totalKm} км · ${idx} ${idx === 1 ? 'точка' : 'точек'} (ESC — сброс)`);
+  if (!options.silent) showToast(`📐 Линейка: ${totalKm} км · ${formatPointCount(idx)}`);
+}
+
+function rebuildRuler(points) {
+  rulerLines.forEach(l => map.removeLayer(l));
+  rulerMarkers.forEach(m => map.removeLayer(m));
+  rulerPoints = [];
+  rulerLines = [];
+  rulerMarkers = [];
+  rulerTotalDist = 0;
+  points.forEach(point => addRulerPoint(L.latLng(point.lat, point.lng), { silent: true }));
+  updateRulerPanel();
+}
+
+function undoRulerPoint() {
+  if (rulerPoints.length === 0) return;
+  const points = rulerPoints.slice(0, -1);
+  rebuildRuler(points);
+  showToast(points.length ? 'Убрана последняя точка линейки' : 'Линейка очищена');
+}
+
+function saveRulerAsTrack() {
+  if (rulerPoints.length < 2) {
+    showToast('Нужно минимум 2 точки линейки');
+    return;
+  }
+  const points = rulerPoints.map(point => L.latLng(point.lat, point.lng));
+  const track = createTrackFromPoints(points, `Линейка ${trackIdCounter}`, {
+    color: '#ff6a00',
+    width: 3,
+    pointSize: 3,
+    source: 'ruler',
+    createdAt: getIsoNow(),
+    updatedAt: getIsoNow()
+  });
+  track.pointsData = points.map(() => ({}));
+  touchTrack(track);
+  selectedTrackId = track.id;
+  clearRuler();
+  setMode('hand');
+  updateTrackList();
+  openModal('modal-tracks');
+  showToast('✓ Трек создан из линейки: ' + track.name + ' · ' + trackLen(track).toFixed(2) + ' км');
+  saveState();
 }
 
 function clearRuler() {
   rulerLines.forEach(l => map.removeLayer(l));
   rulerMarkers.forEach(m => map.removeLayer(m));
-  rulerPoints = []; rulerLines = []; rulerMarkers = []; rulerTotalDist = 0;
+  rulerPoints = [];
+  rulerLines = [];
+  rulerMarkers = [];
+  rulerTotalDist = 0;
+  updateRulerPanel();
 }
 
 // Перехватываем клик в режиме ruler
@@ -10353,7 +10662,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.10</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.11</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:var(--text-muted)">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
