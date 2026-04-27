@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🧭 Trophy Navigator Desktop v0.9.11</title>
+  <title>🧭 Trophy Navigator Desktop v0.9.12</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -510,6 +510,12 @@
   .track-controls { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--row-border); }
   .ctrl-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; color: var(--text-secondary); }
   .ctrl-row input[type=range] { flex: 1; accent-color: #4a8adf; }
+  .clear-data-list { max-height: 260px; overflow: auto; background: var(--bg-sunken); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 8px; margin: 10px 0 12px; text-align: left; }
+  .clear-data-row { display: flex; align-items: center; gap: 8px; padding: 7px 6px; border-bottom: 1px solid var(--row-border); cursor: pointer; }
+  .clear-data-row:last-child { border-bottom: none; }
+  .clear-data-row:hover { background: var(--row-hover); border-radius: 5px; }
+  .clear-data-title { font-size: 12px; color: var(--text-primary); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .clear-data-meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
 
   /* ─── СИНХРОНИЗАЦИЯ ─── */
   .sync-status { display: flex; align-items: center; gap: 8px; padding: 10px; background: var(--bg-sunken); border-radius: 6px; margin-bottom: 12px; }
@@ -1278,7 +1284,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.11</span>
+  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.12</span>
 </div>
 
 <div id="ruler-panel">
@@ -1317,6 +1323,7 @@
   <div class="ctx-item" onclick="ctxTrackAction('map:google-map')">🌍 Google Maps здесь</div>
   <div class="ctx-item" onclick="ctxTrackAction('map:google-streetview')">🚶 Street View здесь</div>
   <div class="ctx-sep"></div>
+  <div class="ctx-item danger" onclick="ctxTrackAction('delete-track')">🗑 Удалить весь трек</div>
   <div class="ctx-item danger" onclick="ctxTrackAction('delete')">🗑 Удалить точку</div>
   <div class="ctx-item" onclick="ctxTrackAction('split')">✂️ Разбить трек здесь</div>
 </div>
@@ -2081,18 +2088,23 @@
      МОДАЛЬНОЕ ОКНО: ПОДТВЕРЖДЕНИЕ ОЧИСТКИ
 ════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-clear-confirm">
-  <div class="modal" style="top:30%;left:50%;transform:translateX(-50%);width:340px">
+  <div class="modal" style="top:18%;left:50%;transform:translateX(-50%);width:430px">
     <div class="modal-header" style="background:#6a2a2a">
-      🗑 Удалить всё
+      🗑 Удалить данные
       <span class="modal-close" onclick="closeModal('modal-clear-confirm')">✕</span>
     </div>
-    <div class="modal-body" style="text-align:center;padding:20px">
-      <div style="font-size:13px;color:#e0e0e0;margin-bottom:12px">Удалить все данные с карты?</div>
-      <div id="clear-confirm-info" style="font-size:12px;color:var(--text-secondary);margin-bottom:16px"></div>
-      <div style="font-size:11px;color:#e07070;margin-bottom:16px">Это действие нельзя отменить</div>
+    <div class="modal-body" style="text-align:center;padding:18px">
+      <div style="font-size:13px;color:var(--text-primary);margin-bottom:8px">Выберите, что убрать с карты</div>
+      <div id="clear-confirm-info" style="font-size:12px;color:var(--text-secondary);margin-bottom:8px"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+        <button class="btn-secondary" style="padding:4px 10px;font-size:11px" onclick="setClearDataSelection(true)">Все</button>
+        <button class="btn-secondary" style="padding:4px 10px;font-size:11px" onclick="setClearDataSelection(false)">Снять</button>
+      </div>
+      <div id="clear-data-list" class="clear-data-list"></div>
+      <div style="font-size:11px;color:#e07070;margin-bottom:16px">Удаление нельзя отменить</div>
       <div style="display:flex;gap:8px">
         <button class="btn-secondary" style="flex:1" onclick="closeModal('modal-clear-confirm')">Отмена</button>
-        <button class="btn-primary" style="flex:1;background:#8a2a2a;border-color:#a03030" onclick="clearAllDataConfirmed()">🗑 Удалить</button>
+        <button id="clear-delete-btn" class="btn-primary" style="flex:1;background:#8a2a2a;border-color:#a03030" onclick="clearSelectedDataConfirmed()">🗑 Удалить</button>
       </div>
     </div>
   </div>
@@ -2827,6 +2839,32 @@ function sourceFormatLabel(format) {
   return map[normalized] || normalized.toUpperCase();
 }
 
+function normalizeEntityIdList(values) {
+  return [...new Set((Array.isArray(values) ? values : [])
+    .map(value => String(value ?? '').trim())
+    .filter(Boolean))];
+}
+
+function normalizeSourceEntityIds(ids = {}) {
+  return {
+    waypoints: normalizeEntityIdList(ids.waypoints),
+    tracks: normalizeEntityIdList(ids.tracks),
+    routes: normalizeEntityIdList(ids.routes),
+    gpxFiles: normalizeEntityIdList(ids.gpxFiles)
+  };
+}
+
+function mergeSourceEntityIds(a = {}, b = {}) {
+  const left = normalizeSourceEntityIds(a);
+  const right = normalizeSourceEntityIds(b);
+  return {
+    waypoints: normalizeEntityIdList([...left.waypoints, ...right.waypoints]),
+    tracks: normalizeEntityIdList([...left.tracks, ...right.tracks]),
+    routes: normalizeEntityIdList([...left.routes, ...right.routes]),
+    gpxFiles: normalizeEntityIdList([...left.gpxFiles, ...right.gpxFiles])
+  };
+}
+
 function upsertLoadedSourceFile(entry = {}) {
   const name = String(entry.name || '').trim();
   if (!name) return null;
@@ -2834,6 +2872,7 @@ function upsertLoadedSourceFile(entry = {}) {
   const path = String(entry.path || '').trim();
   const key = `${format}::${path || name}`;
   const existing = loadedSourceFiles.find(item => item.key === key);
+  const entityIds = mergeSourceEntityIds(existing?.entityIds, entry.entityIds);
   const next = {
     id: existing?.id || entry.id || makeEntityId('src'),
     key,
@@ -2847,7 +2886,8 @@ function upsertLoadedSourceFile(entry = {}) {
       waypoints: Number(entry.entityCounts?.waypoints) || 0,
       tracks: Number(entry.entityCounts?.tracks) || 0,
       routes: Number(entry.entityCounts?.routes) || 0
-    }
+    },
+    entityIds
   };
   if (existing) {
     Object.assign(existing, next);
@@ -2884,6 +2924,24 @@ function renderLoadedSourceFiles() {
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${meta}</div>
     </div>`;
   }).join('');
+}
+
+function pruneLoadedSourceFiles() {
+  const waypointIds = new Set(waypoints.map(marker => marker?.wpData?.id).filter(Boolean).map(String));
+  const trackIds = new Set(tracks.map(track => String(track.id)));
+  const routeIds = new Set(routes.map(route => String(route.id)));
+  const gpxIds = new Set(importedGpxFiles.map(file => String(file.id)));
+  const anyEntityLeft = waypointIds.size || trackIds.size || routeIds.size || gpxIds.size;
+  loadedSourceFiles = loadedSourceFiles.filter(file => {
+    const ids = normalizeSourceEntityIds(file.entityIds);
+    const hasTrackedIds = ids.waypoints.length || ids.tracks.length || ids.routes.length || ids.gpxFiles.length;
+    if (!hasTrackedIds) return anyEntityLeft;
+    return ids.waypoints.some(id => waypointIds.has(id)) ||
+      ids.tracks.some(id => trackIds.has(id)) ||
+      ids.routes.some(id => routeIds.has(id)) ||
+      ids.gpxFiles.some(id => gpxIds.has(id));
+  });
+  renderLoadedSourceFiles();
 }
 
 function xmlLocalName(node) {
@@ -3036,6 +3094,22 @@ function isTrackHeaderRow(parts) {
   const hasOziStyleTail = parts.length >= 7 && parts.slice(4, 7).every(value => /^-?\d*$/.test(String(value ?? '').trim()));
   if (!nameLooksTextual && colorCode <= 1) return false;
   return nameLooksTextual || hasOziStyleTail;
+}
+
+function oziSerialToIso(value) {
+  const serial = Number(String(value ?? '').trim().replace(',', '.'));
+  if (!Number.isFinite(serial) || serial <= 0) return null;
+  const date = new Date((serial - 25569) * 86400000);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function parseOziTrackPointData(parts) {
+  const data = {};
+  const eleFeet = Number(String(parts?.[3] ?? '').trim().replace(',', '.'));
+  if (Number.isFinite(eleFeet) && eleFeet !== -777) data.ele = eleFeet / 3.28084;
+  const isoFromSerial = oziSerialToIso(parts?.[4]);
+  if (isoFromSerial) data.time = isoFromSerial;
+  return data;
 }
 
 function makeDivIcon(data) {
@@ -4513,6 +4587,7 @@ function loadGPXWaypoints(text, fname, options = {}) {
   }
   let count = 0;
   const imported = [];
+  const importedIds = [];
   wpts.forEach(wpt => {
     const lat = parseFloat(wpt.getAttribute('lat'));
     const lon = parseFloat(wpt.getAttribute('lon'));
@@ -4530,7 +4605,10 @@ function loadGPXWaypoints(text, fname, options = {}) {
     if (parsePositiveNumber(tndRadius) > 0) extra.radius = parsePositiveNumber(tndRadius);
     else if (parsePositiveNumber(proximity) > 0) extra.radius = parsePositiveNumber(proximity);
     const marker = addWaypoint(L.latLng(lat, lon), xmlTextByLocalNames(wpt, 'name'), extra);
-    if (marker) imported.push(marker.getLatLng());
+    if (marker) {
+      imported.push(marker.getLatLng());
+      importedIds.push(marker.wpData.id);
+    }
     count++;
   });
   if (!options.silent) {
@@ -4540,18 +4618,23 @@ function loadGPXWaypoints(text, fname, options = {}) {
       fitToLatLngs(imported);
     }
   }
+  if (options.returnDetails) return { count, ids: importedIds };
   return count;
 }
 function loadGPXFile(text, fname, meta = {}) {
-  const wCount = loadGPXWaypoints(text, fname, { silent: true, meta });
-  const tCount = loadGPXTracks(text, fname, { silent: true, meta });
-  const rCount = loadGPXRoutes(text, fname, { silent: true, meta });
+  const wResult = loadGPXWaypoints(text, fname, { silent: true, meta, returnDetails: true });
+  const tResult = loadGPXTracks(text, fname, { silent: true, meta, skipSourceRegistry: true, returnDetails: true });
+  const rResult = loadGPXRoutes(text, fname, { silent: true, meta, skipSourceRegistry: true, returnDetails: true });
+  const wCount = wResult.count || 0;
+  const tCount = tResult.count || 0;
+  const rCount = rResult.count || 0;
   if (wCount > 0) openModal('modal-wpts');
   if (tCount > 0) openModal('modal-tracks');
   if (rCount > 0) openModal('modal-routes');
   if (wCount + tCount + rCount > 0) {
+    const gpxId = makeEntityId('gpx');
     importedGpxFiles.push({
-      id: makeEntityId('gpx'),
+      id: gpxId,
       name: fname,
       content: text,
       importedAt: getIsoNow(),
@@ -4564,7 +4647,13 @@ function loadGPXFile(text, fname, meta = {}) {
       name: fname,
       path: meta.path || '',
       format: 'gpx',
-      entityCounts: { waypoints: wCount, tracks: tCount, routes: rCount }
+      entityCounts: { waypoints: wCount, tracks: tCount, routes: rCount },
+      entityIds: {
+        waypoints: wResult.ids || [],
+        tracks: tResult.ids || [],
+        routes: rResult.ids || [],
+        gpxFiles: [gpxId]
+      }
     });
     renderLoadedSourceFiles();
   }
@@ -4576,6 +4665,7 @@ function loadWPT(text, fname, meta = {}) {
   const lines = normalizeText(text).split(/\r?\n/).slice(4);
   let count = 0;
   const imported = [];
+  const importedIds = [];
   lines.forEach(line => {
     const p = splitCsvLine(line);
     if (p.length < 4) return;
@@ -4589,14 +4679,18 @@ function loadWPT(text, fname, meta = {}) {
       color: wptColor || undefined,
       silent: true
     });
-    if (marker) imported.push(marker.getLatLng());
+    if (marker) {
+      imported.push(marker.getLatLng());
+      importedIds.push(marker.wpData.id);
+    }
     count++;
   });
   upsertLoadedSourceFile({
     name: fname,
     path: meta.path || '',
     format: 'wpt',
-    entityCounts: { waypoints: count, tracks: 0, routes: 0 }
+    entityCounts: { waypoints: count, tracks: 0, routes: 0 },
+    entityIds: { waypoints: importedIds }
   });
   renderLoadedSourceFiles();
   showToast('✓ Загружено ' + count + ' точек из ' + fname);
@@ -4611,10 +4705,14 @@ function loadPLT(text, fname, meta = {}) {
   let count = 0;
   let skippedPoints = 0;
   const importedTracks = [];
+  const importedTrackIds = [];
   let current = null;
   const finalizeTrack = () => {
     if (!current || current.points.length < 2) return;
-    importedTracks.push(createTrackFromPoints(current.points, current.name, { color: current.color || undefined }));
+    const track = createTrackFromPoints(current.points, current.name, { color: current.color || undefined });
+    track.pointsData = current.pointsData || [];
+    importedTracks.push(track);
+    importedTrackIds.push(String(track.id));
     count++;
   };
   lines.slice(lines[0]?.includes('OziExplorer Track Point File Version') ? 4 : 0).forEach(line => {
@@ -4626,19 +4724,21 @@ function loadPLT(text, fname, meta = {}) {
       current = {
         name: p[3]?.trim() || `${baseName} ${count + 1}`,
         color: oziColorToHex(p[2], null),
-        points: []
+        points: [],
+        pointsData: []
       };
       return;
     }
     if (current && p.length === 1 && /^\d+$/.test(p[0])) return;
     if (isTrackPointRow(p)) {
-      if (!current) current = { name: `${baseName} ${count + 1}`, points: [] };
+      if (!current) current = { name: `${baseName} ${count + 1}`, points: [], pointsData: [] };
       const latlng = parseTrackLatLng(p[0], p[1]);
       if (!latlng) {
         skippedPoints++;
         return;
       }
       current.points.push(latlng);
+      current.pointsData.push(parseOziTrackPointData(p));
       return;
     }
   });
@@ -4648,7 +4748,8 @@ function loadPLT(text, fname, meta = {}) {
     name: fname,
     path: meta.path || '',
     format: 'plt',
-    entityCounts: { waypoints: 0, tracks: count, routes: 0 }
+    entityCounts: { waypoints: 0, tracks: count, routes: 0 },
+    entityIds: { tracks: importedTrackIds }
   });
   renderLoadedSourceFiles();
   showToast('✓ Загружено ' + count + ' треков из ' + fname + (skippedPoints ? ` · пропущено ${skippedPoints} некорр. точек` : ''));
@@ -4661,13 +4762,16 @@ function loadRTE(text, fname, meta = {}) {
   let current = null;
   let count = 0;
   const importedRoutes = [];
+  const importedRouteIds = [];
   const finalizeRoute = () => {
     if (!current?.points.length || current.points.length < 2) return;
-    importedRoutes.push(createRouteFromPoints(current.points, current.name, current.labels, {
+    const route = createRouteFromPoints(current.points, current.name, current.labels, {
       color: current.color || undefined,
       pointRadii: current.pointRadii,
       pointWaypointIds: current.pointWaypointIds
-    }));
+    });
+    importedRoutes.push(route);
+    importedRouteIds.push(String(route.id));
     count++;
   };
   normalizeText(text).split(/\r?\n/).forEach(line => {
@@ -4699,7 +4803,8 @@ function loadRTE(text, fname, meta = {}) {
     name: fname,
     path: meta.path || '',
     format: 'rte',
-    entityCounts: { waypoints: 0, tracks: 0, routes: count }
+    entityCounts: { waypoints: 0, tracks: 0, routes: count },
+    entityIds: { routes: importedRouteIds }
   });
   renderLoadedSourceFiles();
   showToast('✓ Загружено ' + count + ' маршрутов из ' + fname);
@@ -4793,6 +4898,11 @@ async function ctxTrackAction(action) {
   if (action.startsWith('map:')) {
     const point = latlng || marker?.getLatLng?.() || track.points[idx];
     await openMapAtLatLng(point, action.slice(4), `трек ${track.name || ''}`.trim());
+    return;
+  }
+
+  if (action === 'delete-track') {
+    deleteTrackObject(track);
     return;
   }
 
@@ -5248,6 +5358,38 @@ function removeTrackObject(track) {
   }
   removeTrackMarkers(track);
   tracks = tracks.filter(item => item !== track);
+}
+
+function deleteTrackObject(track, options = {}) {
+  if (!track) return false;
+  if (currentTrackDraw?.id === track.id) {
+    currentTrackDraw = null;
+    currentTrackSnapshot = null;
+    document.getElementById('track-build-panel').style.display = 'none';
+    setMode('hand');
+  }
+  if (currentTrackEdit?.track?.id === track.id) {
+    currentTrackEdit = null;
+    document.getElementById('track-build-panel').style.display = 'none';
+    setMode('hand');
+  }
+  removeTrackObject(track);
+  if (selectedTrackId === track.id) {
+    selectedTrackId = null;
+    document.getElementById('track-controls').style.display = 'none';
+  }
+  pruneLoadedSourceFiles();
+  updateTrackList();
+  if (!options.silent) {
+    saveState();
+    showToast('Трек удалён');
+  }
+  return true;
+}
+
+function deleteTrackById(id) {
+  const track = tracks.find(item => item.id === id);
+  deleteTrackObject(track);
 }
 
 function formatTrackPointTooltip(track, idx) {
@@ -5776,23 +5918,7 @@ function continueSelectedTrack() {
 }
 function deleteSelectedTrack() {
   const t = tracks.find(t => t.id === selectedTrackId);
-  if (!t) return;
-  if (currentTrackDraw?.id === t.id) {
-    currentTrackDraw = null;
-    currentTrackSnapshot = null;
-    document.getElementById('track-build-panel').style.display = 'none';
-    setMode('hand');
-  }
-  if (currentTrackEdit?.track?.id === t.id) {
-    currentTrackEdit = null;
-    document.getElementById('track-build-panel').style.display = 'none';
-    setMode('hand');
-  }
-  removeTrackObject(t);
-  selectedTrackId = null;
-  document.getElementById('track-controls').style.display = 'none';
-  updateTrackList();
-  showToast('Трек удалён');
+  deleteTrackObject(t);
 }
 function toggleTrackVisible(id) {
   const t = tracks.find(t => t.id === id);
@@ -5834,6 +5960,7 @@ function updateTrackList() {
           onfocus="this.style.borderBottomColor='#4a8adf'" onblur="this.style.borderBottomColor='transparent'">${syncInfo}
         <div class="track-meta">${t.points.length} точек · ${km} км${srcTag}${modeTag}</div>
       </div>
+      <span style="font-size:12px;color:#e07070;cursor:pointer;padding:0 4px" onclick="event.stopPropagation();deleteTrackById(${t.id})" title="Удалить трек">✕</span>
     </div>`;
   }).join('');
 }
@@ -5856,27 +5983,77 @@ function saveTracksGPX() {
   gpx += '</gpx>';
   downloadText('tracks.gpx', 'application/gpx+xml', gpx);
 }
+
+function dateToOziSerial(date) {
+  return date.getTime() / 86400000 + 25569;
+}
+
+function pad2(value) {
+  return String(value).padStart(2, '0');
+}
+
+function formatOziDate(date) {
+  return `${pad2(date.getDate())}.${pad2(date.getMonth() + 1)}.${date.getFullYear()}`;
+}
+
+function formatOziTime(date) {
+  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
+}
+
+function buildOziTrackPointRow(point, data = {}, breakFlag = 0) {
+  const eleMeters = Number(data.ele);
+  const altitudeFeet = Number.isFinite(eleMeters) ? eleMeters * 3.28084 : 0;
+  const date = data.time ? new Date(data.time) : null;
+  const hasDate = date && !Number.isNaN(date.getTime());
+  const oziDate = hasDate ? dateToOziSerial(date).toFixed(8) : '0.00000000';
+  const dateText = hasDate ? formatOziDate(date) : '';
+  const timeText = hasDate ? formatOziTime(date) : '';
+  return [
+    point.lat.toFixed(8),
+    point.lng.toFixed(8),
+    breakFlag ? 1 : 0,
+    altitudeFeet.toFixed(8),
+    oziDate,
+    dateText,
+    timeText
+  ].join(',');
+}
+
 function saveTracksPLT() {
   if (tracks.length === 0) { showToast('Нет треков для сохранения'); return; }
+  const exportTracks = tracks.map(track => ({
+    track,
+    points: track.points.map((point, index) => ({
+      point: parseTrackLatLng(point?.lat, point?.lng),
+      data: track.pointsData?.[index] || {}
+    })).filter(item => item.point)
+  })).filter(item => item.points.length >= 2);
+  if (exportTracks.length === 0) { showToast('Нет корректных треков для сохранения'); return; }
+  const totalPoints = exportTracks.reduce((sum, item) => sum + item.points.length, 0);
+  const firstTrack = exportTracks[0].track;
+  const exportName = exportTracks.length === 1 ? firstTrack.name : `${firstTrack.name || 'Треки'} + ${exportTracks.length - 1}`;
   const rows = [
     'OziExplorer Track Point File Version 2.1',
     'WGS 84',
     'Altitude is in Feet',
-    'Reserved 3'
+    'Reserved 3',
+    `0,2,${hexToOziColor(firstTrack.color)},${csvField(exportName)},1,0,2,8421376`,
+    String(totalPoints)
   ];
-  tracks.forEach((t, index) => {
-    rows.push(`${index},0,${hexToOziColor(t.color)},${csvField(t.name)},0,0,2,8421376`);
-    rows.push(String(t.points.length));
-    t.points.forEach((p, pointIndex) => rows.push(`${p.lat.toFixed(6)},${p.lng.toFixed(6)},${pointIndex === 0 ? 1 : 0},0,0,0`));
+  exportTracks.forEach((item, trackIndex) => {
+    item.points.forEach((entry, pointIndex) => {
+      rows.push(buildOziTrackPointRow(entry.point, entry.data, trackIndex > 0 && pointIndex === 0));
+    });
   });
   downloadText('tracks.plt', 'text/plain', rows.join('\r\n'));
 }
 function loadGPXTracks(text, fname, options = {}) {
   const doc = new DOMParser().parseFromString(normalizeText(text), 'application/xml');
-  const meta = options.meta || {};
+  const meta = options.meta || options || {};
   let count = 0;
   let skippedPoints = 0;
   const importedTracks = [];
+  const importedTrackIds = [];
   xmlDescendantsByLocalName(doc, 'trk').forEach(trk => {
     const name = xmlTextByLocalNames(trk, 'name', { direct: true }) || ('Трек ' + (trackIdCounter));
     const points = [];
@@ -5946,15 +6123,17 @@ function loadGPXTracks(text, fname, options = {}) {
     }
     t.pointsData = pointsData;
     importedTracks.push(t);
+    importedTrackIds.push(String(t.id));
     count++;
   });
   updateTrackList();
-  if (count > 0) {
+  if (count > 0 && !options.skipSourceRegistry) {
     upsertLoadedSourceFile({
       name: fname,
       path: meta.path || '',
       format: 'gpx',
-      entityCounts: { waypoints: 0, tracks: count, routes: 0 }
+      entityCounts: { waypoints: 0, tracks: count, routes: 0 },
+      entityIds: { tracks: importedTrackIds }
     });
     renderLoadedSourceFiles();
   }
@@ -5965,6 +6144,7 @@ function loadGPXTracks(text, fname, options = {}) {
       fitToLatLngs(importedTracks.flatMap(track => track.points));
     }
   }
+  if (options.returnDetails) return { count, ids: importedTrackIds };
   return count;
 }
 
@@ -6368,6 +6548,15 @@ function routeLen(r) {
 function deleteRoute(id) {
   const r = routes.find(r => r.id === id);
   if (!r) return;
+  removeRouteObject(r);
+  updateRouteList();
+  saveState();
+  showToast('Маршрут удалён');
+}
+
+function removeRouteObject(r) {
+  if (!r) return false;
+  const id = r.id;
   if (currentRouteDraw?.id === id) {
     currentRouteDraw = null;
     currentRouteSession = null;
@@ -6380,8 +6569,8 @@ function deleteRoute(id) {
     selectedRouteId = null;
     document.getElementById('route-controls').style.display = 'none';
   }
-  updateRouteList();
-  showToast('Маршрут удалён');
+  pruneLoadedSourceFiles();
+  return true;
 }
 function centerRoute(id) {
   const r = routes.find(r => r.id === id);
@@ -6674,9 +6863,10 @@ function saveRoutesRTE() {
 }
 function loadGPXRoutes(text, fname, options = {}) {
   const doc = new DOMParser().parseFromString(normalizeText(text), 'application/xml');
-  const meta = options.meta || {};
+  const meta = options.meta || options || {};
   let count = 0;
   const importedRoutes = [];
+  const importedRouteIds = [];
   xmlDescendantsByLocalName(doc, 'rte').forEach(rte => {
     const name = xmlTextByLocalNames(rte, 'name', { direct: true }) || ('Маршрут ' + routeIdCounter);
     const points = [];
@@ -6699,22 +6889,25 @@ function loadGPXRoutes(text, fname, options = {}) {
       pointWaypointIds.push(waypointId || linked?.wpData?.id || null);
     });
     if (points.length < 2) return;
-    importedRoutes.push(createRouteFromPoints(points, name, labels, {
+    const route = createRouteFromPoints(points, name, labels, {
       color: routeColor || undefined,
       width: routeWidth,
       dashArray: routeDashArray || '8 4',
       pointRadii,
       pointWaypointIds
-    }));
+    });
+    importedRoutes.push(route);
+    importedRouteIds.push(String(route.id));
     count++;
   });
   updateRouteList();
-  if (count > 0) {
+  if (count > 0 && !options.skipSourceRegistry) {
     upsertLoadedSourceFile({
       name: fname,
       path: meta.path || '',
       format: 'gpx',
-      entityCounts: { waypoints: 0, tracks: 0, routes: count }
+      entityCounts: { waypoints: 0, tracks: 0, routes: count },
+      entityIds: { routes: importedRouteIds }
     });
     renderLoadedSourceFiles();
   }
@@ -6725,6 +6918,7 @@ function loadGPXRoutes(text, fname, options = {}) {
       fitToLatLngs(importedRoutes.flatMap(route => route.points));
     }
   }
+  if (options.returnDetails) return { count, ids: importedRouteIds };
   return count;
 }
 
@@ -8076,7 +8270,8 @@ function collectState() {
         waypoints: Number(file.entityCounts?.waypoints) || 0,
         tracks: Number(file.entityCounts?.tracks) || 0,
         routes: Number(file.entityCounts?.routes) || 0
-      }
+      },
+      entityIds: normalizeSourceEntityIds(file.entityIds)
     }))
   };
   return state;
@@ -8118,14 +8313,127 @@ function clearCurrentData() {
   if (routeControls) routeControls.style.display = 'none';
 }
 
+function removeWaypointList(list) {
+  const toRemove = new Set((list || []).filter(Boolean));
+  if (toRemove.size === 0) return 0;
+  toRemove.forEach(marker => {
+    if (marker.wpCircle) map.removeLayer(marker.wpCircle);
+    marker.remove();
+  });
+  waypoints = waypoints.filter(marker => !toRemove.has(marker));
+  waypointSets.forEach(set => {
+    set.waypoints = set.waypoints.filter(marker => !toRemove.has(marker));
+  });
+  if (activeWaypoint && toRemove.has(activeWaypoint)) activeWaypoint = null;
+  if (waypoints.length === 0) wpCounter = 1;
+  updateSetSelector();
+  updateWptTable();
+  pruneLoadedSourceFiles();
+  return toRemove.size;
+}
+
+function getClearDataItems() {
+  const items = [];
+  waypointSets
+    .filter(set => set.waypoints.length > 0)
+    .forEach(set => {
+      items.push({
+        key: `wptset:${set.id}`,
+        type: 'wptset',
+        id: set.id,
+        title: `Точки: ${set.name || 'Набор'}`,
+        meta: `${set.waypoints.length} точек${set.visible ? '' : ' · скрыт'}`
+      });
+    });
+  const assigned = new Set(waypointSets.flatMap(set => set.waypoints));
+  const orphanWaypoints = waypoints.filter(marker => !assigned.has(marker));
+  if (orphanWaypoints.length > 0) {
+    items.push({
+      key: 'wpt-orphan',
+      type: 'wpt-orphan',
+      title: 'Точки без набора',
+      meta: `${orphanWaypoints.length} точек`
+    });
+  }
+  tracks.forEach(track => {
+    items.push({
+      key: `track:${track.id}`,
+      type: 'track',
+      id: track.id,
+      title: `Трек: ${track.name || `#${track.id}`}`,
+      meta: `${track.points.length} точек · ${trackLen(track).toFixed(1)} км${track.visible === false ? ' · скрыт' : ''}`
+    });
+  });
+  routes.forEach(route => {
+    items.push({
+      key: `route:${route.id}`,
+      type: 'route',
+      id: route.id,
+      title: `Маршрут: ${route.name || `#${route.id}`}`,
+      meta: `${route.points.length} КП · ${routeLen(route).toFixed(1)} км${route.visible === false ? ' · скрыт' : ''}`
+    });
+  });
+  importedGpxFiles.forEach(file => {
+    items.push({
+      key: `gpx:${file.id}`,
+      type: 'gpx',
+      id: file.id,
+      title: `GPX пакет: ${file.name || file.id}`,
+      meta: file.importedAt ? `импортирован ${new Date(file.importedAt).toLocaleString('ru-RU')}` : 'синхронизация/обмен'
+    });
+  });
+  if (loadedSourceFiles.length > 0) {
+    items.push({
+      key: 'source-registry',
+      type: 'source-registry',
+      title: 'Список загруженных файлов',
+      meta: `${loadedSourceFiles.length} записей в меню «Файлы»`
+    });
+  }
+  return items;
+}
+
+function renderClearDataList() {
+  const listEl = document.getElementById('clear-data-list');
+  if (!listEl) return;
+  const items = getClearDataItems();
+  if (items.length === 0) {
+    listEl.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px">Нет данных для удаления</div>';
+    updateClearDeleteButton();
+    return;
+  }
+  listEl.innerHTML = items.map(item => `<label class="clear-data-row">
+    <input type="checkbox" class="clear-data-cb" data-clear-key="${escapeHtml(item.key)}" checked onchange="updateClearDeleteButton()" style="accent-color:#e07070">
+    <div style="min-width:0;flex:1">
+      <div class="clear-data-title">${escapeHtml(item.title)}</div>
+      <div class="clear-data-meta">${escapeHtml(item.meta)}</div>
+    </div>
+  </label>`).join('');
+  updateClearDeleteButton();
+}
+
+function setClearDataSelection(checked) {
+  document.querySelectorAll('.clear-data-cb').forEach(cb => { cb.checked = checked; });
+  updateClearDeleteButton();
+}
+
+function updateClearDeleteButton() {
+  const btn = document.getElementById('clear-delete-btn');
+  if (!btn) return;
+  const count = document.querySelectorAll('.clear-data-cb:checked').length;
+  btn.disabled = count === 0;
+  btn.textContent = count > 0 ? `🗑 Удалить (${count})` : '🗑 Удалить';
+}
+
 function showClearConfirm() {
   const wpCount = waypoints.length;
   const trkCount = tracks.length;
   const rteCount = routes.length;
-  const total = wpCount + trkCount + rteCount;
+  const total = wpCount + trkCount + rteCount + importedGpxFiles.length + loadedSourceFiles.length;
   if (total === 0) { showToast('Карта уже пуста'); return; }
   document.getElementById('clear-confirm-info').innerHTML =
-    `Точек: <b>${wpCount}</b> · Треков: <b>${trkCount}</b> · Маршрутов: <b>${rteCount}</b>`;
+    `Точек: <b>${wpCount}</b> · Треков: <b>${trkCount}</b> · Маршрутов: <b>${rteCount}</b> · GPX: <b>${importedGpxFiles.length}</b>`;
+  renderClearDataList();
   openModal('modal-clear-confirm');
 }
 
@@ -8138,7 +8446,69 @@ function clearAllDataConfirmed() {
     waypointSetIdCounter = 2;
   }
   undoStack.length = 0;
+  updateSetSelector();
+  updateWptTable();
+  updateTrackList();
+  updateRouteList();
+  renderLoadedSourceFiles();
+  saveState();
   showToast('🗑 Все данные удалены');
+}
+
+function clearSelectedDataConfirmed() {
+  const keys = [...document.querySelectorAll('.clear-data-cb:checked')].map(cb => cb.dataset.clearKey);
+  if (keys.length === 0) { showToast('Ничего не выбрано'); return; }
+  let removed = 0;
+  keys.forEach(key => {
+    if (key.startsWith('wptset:')) {
+      const id = parseInt(key.slice(7), 10);
+      const set = waypointSets.find(item => item.id === id);
+      if (!set) return;
+      removed += removeWaypointList([...set.waypoints]);
+      waypointSets = waypointSets.filter(item => item.id !== id);
+      if (activeSetId === id) activeSetId = waypointSets[0]?.id || null;
+      return;
+    }
+    if (key === 'wpt-orphan') {
+      const assigned = new Set(waypointSets.flatMap(set => set.waypoints));
+      removed += removeWaypointList(waypoints.filter(marker => !assigned.has(marker)));
+      return;
+    }
+    if (key.startsWith('track:')) {
+      const id = parseInt(key.slice(6), 10);
+      if (deleteTrackObject(tracks.find(track => track.id === id), { silent: true })) removed++;
+      return;
+    }
+    if (key.startsWith('route:')) {
+      const id = parseInt(key.slice(6), 10);
+      if (removeRouteObject(routes.find(route => route.id === id))) removed++;
+      return;
+    }
+    if (key.startsWith('gpx:')) {
+      const id = key.slice(4);
+      const before = importedGpxFiles.length;
+      importedGpxFiles = importedGpxFiles.filter(file => String(file.id) !== id);
+      if (importedGpxFiles.length !== before) removed++;
+      return;
+    }
+    if (key === 'source-registry') {
+      removed += loadedSourceFiles.length;
+      loadedSourceFiles = [];
+    }
+  });
+  if (waypointSets.length === 0) {
+    waypointSets.push({ id: waypointSetIdCounter++, name: 'Основной', visible: true, waypoints: [] });
+    activeSetId = waypointSets[0].id;
+  }
+  pruneLoadedSourceFiles();
+  updateSetSelector();
+  updateWptTable();
+  updateTrackList();
+  updateRouteList();
+  renderLoadedSourceFiles();
+  saveState();
+  closeModal('modal-clear-confirm');
+  showToast(`🗑 Удалено: ${removed}`);
 }
 
 function applyState(state) {
@@ -8298,7 +8668,8 @@ function applyState(state) {
         waypoints: Number(file.entityCounts?.waypoints) || 0,
         tracks: Number(file.entityCounts?.tracks) || 0,
         routes: Number(file.entityCounts?.routes) || 0
-      }
+      },
+      entityIds: normalizeSourceEntityIds(file.entityIds)
     }));
   } else {
     loadedSourceFiles = [];
@@ -8428,7 +8799,6 @@ function saveRulerAsTrack() {
     updatedAt: getIsoNow()
   });
   track.pointsData = points.map(() => ({}));
-  touchTrack(track);
   selectedTrackId = track.id;
   clearRuler();
   setMode('hand');
@@ -8524,6 +8894,7 @@ function buildSyncPayload(fullState, checks) {
         wpCounter: fullState.counters.wpCounter,
         waypointSetIdCounter: fullState.counters.waypointSetIdCounter
       },
+      replace: true,
       updatedAt
     };
   }
@@ -8531,6 +8902,7 @@ function buildSyncPayload(fullState, checks) {
     payload.tracks = {
       items: fullState.tracks,
       counters: { trackIdCounter: fullState.counters.trackIdCounter },
+      replace: true,
       updatedAt
     };
   }
@@ -8538,11 +8910,12 @@ function buildSyncPayload(fullState, checks) {
     payload.routes = {
       items: fullState.routes,
       counters: { routeIdCounter: fullState.counters.routeIdCounter },
+      replace: true,
       updatedAt
     };
   }
   if (checks.gpx) {
-    payload.gpx = { items: fullState.gpxFiles, updatedAt };
+    payload.gpx = { items: fullState.gpxFiles, replace: true, updatedAt };
     payload.gpxFiles = fullState.gpxFiles;
   }
 
@@ -10662,7 +11035,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.11</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.12</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:var(--text-muted)">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
