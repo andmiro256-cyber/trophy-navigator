@@ -10,12 +10,16 @@
     "dialog:allow-message",
     "dialog:allow-ask",
     "fs:default",
+    "fs:allow-read-file",
     "fs:allow-read-text-file",
+    "fs:allow-copy-file",
     "fs:allow-write-text-file",
     "fs:allow-write-file",
     "fs:allow-exists",
     "fs:allow-mkdir",
     "fs:allow-read-dir",
+    "fs:allow-remove",
+    "fs:allow-stat",
     {
       "identifier": "fs:scope",
       "allow": [{ "path": "**" }]

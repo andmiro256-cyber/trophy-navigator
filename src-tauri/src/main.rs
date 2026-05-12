@@ -2,8 +2,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use serde::Serialize;
+use std::io::Read;
+use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, Runtime, Url, Webview, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_updater::{Update, UpdaterExt};
+
+const MAX_TILE_BYTES: u64 = 2 * 1024 * 1024;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -126,6 +130,48 @@ fn open_map_viewer<R: Runtime>(
 
     let _ = viewer.set_focus();
     Ok(())
+}
+
+#[tauri::command]
+async fn fetch_tile_bytes(url: String) -> Result<Vec<u8>, String> {
+    tauri::async_runtime::spawn_blocking(move || fetch_tile_bytes_blocking(&url))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn fetch_tile_bytes_blocking(raw_url: &str) -> Result<Vec<u8>, String> {
+    let parsed = Url::parse(raw_url).map_err(|_| "Некорректный URL тайла".to_string())?;
+    match parsed.scheme() {
+        "http" | "https" => {}
+        _ => return Err("Разрешены только http/https тайлы".to_string()),
+    }
+
+    let agent = ureq::AgentBuilder::new()
+        .timeout_connect(Duration::from_secs(8))
+        .timeout_read(Duration::from_secs(15))
+        .build();
+
+    let response = agent
+        .get(raw_url)
+        .set("User-Agent", "TrophyNavigator/0.9 tile-cache")
+        .set(
+            "Accept",
+            "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+        )
+        .call()
+        .map_err(|e| e.to_string())?;
+
+    if !(200..300).contains(&response.status()) {
+        return Err(format!("HTTP {}", response.status()));
+    }
+
+    let mut bytes = Vec::new();
+    let mut reader = response.into_reader().take(MAX_TILE_BYTES + 1);
+    reader.read_to_end(&mut bytes).map_err(|e| e.to_string())?;
+    if bytes.len() as u64 > MAX_TILE_BYTES {
+        return Err("Тайл слишком большой".to_string());
+    }
+    Ok(bytes)
 }
 
 fn parse_map_viewer_url(raw_url: &str) -> Result<Url, String> {
@@ -261,6 +307,7 @@ fn main() {
             check_app_update,
             install_app_update,
             open_map_viewer,
+            fetch_tile_bytes,
             get_hardware_id
         ])
         .plugin(tauri_plugin_updater::Builder::new().build())

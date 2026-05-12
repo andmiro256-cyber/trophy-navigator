@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🧭 Trophy Navigator Desktop v0.9.12</title>
+  <title>🧭 Trophy Navigator Desktop v0.9.13</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -1284,7 +1284,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.12</span>
+  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.13</span>
 </div>
 
 <div id="ruler-panel">
@@ -1956,9 +1956,9 @@
 
       <!-- ВКЛАДКА: ЗАГРУЗИТЬ ФАЙЛ -->
       <div class="tab-content" id="tab-offline-load">
-        <div style="border:2px dashed #2a4a7a;border-radius:8px;padding:30px;text-align:center;cursor:pointer;margin-bottom:12px" onclick="showToast('Открываем диалог выбора файла...')">
+        <div id="offline-map-dropzone" style="border:2px dashed #2a4a7a;border-radius:8px;padding:30px;text-align:center;cursor:pointer;margin-bottom:12px" onclick="importOfflineMapFile()">
           <div style="font-size:32px;margin-bottom:8px">📂</div>
-          <div style="color:var(--text-secondary);font-size:13px;margin-bottom:4px">Нажмите или перетащите файл</div>
+          <div style="color:var(--text-secondary);font-size:13px;margin-bottom:4px">Нажмите, выберите файл или перетащите сюда</div>
           <div style="color:var(--text-muted);font-size:11px">.sqlitedb · .mbtiles · .rmap</div>
         </div>
         <div style="font-size:11px;color:var(--text-muted)">
@@ -2320,7 +2320,18 @@
 // Фикс для EPSG:3395 — без этого нижние тайлы пропадают
 L.CRS.EPSG3395.infinite = true;
 let currentCRS = 'EPSG3857';
-const map = L.map('map', { zoomControl: true, attributionControl: false, maxZoom: 22 }).setView([55.75, 37.62], 10);
+const map = L.map('map', { zoomControl: true, attributionControl: false, maxZoom: 22, preferCanvas: true }).setView([55.75, 37.62], 10);
+const trackCanvasRenderer = L.canvas({ padding: 0.5 });
+function createTrackPolylineLayer(points, options = {}) {
+  return L.polyline(points, {
+    color: options.color || '#4adf7a',
+    weight: options.weight || options.width || 3,
+    opacity: options.opacity ?? 0.85,
+    dashArray: options.dashArray || null,
+    renderer: trackCanvasRenderer,
+    smoothFactor: options.smoothFactor ?? 1.5
+  });
+}
 // Pane для тайловых оверлеев — выше базового слоя (tilePane=200), ниже маркеров (overlayPane=400)
 map.createPane('overlayTiles');
 map.getPane('overlayTiles').style.zIndex = 350;
@@ -2417,10 +2428,9 @@ function undoLastAction() {
       tracks.splice(insertIndex, 0, originalTrack);
     }
     if (!originalTrack.polyline) {
-      originalTrack.polyline = L.polyline(originalTrack.points, {
+      originalTrack.polyline = createTrackPolylineLayer(originalTrack.points, {
         color: originalTrack.color,
-        weight: originalTrack.width,
-        opacity: 0.85
+        weight: originalTrack.width
       }).addTo(map);
       bindTrackPolyline(originalTrack);
     } else if (originalTrack.visible !== false && !map.hasLayer(originalTrack.polyline)) {
@@ -3780,7 +3790,7 @@ const TileCache = {
       try {
         const exists = await this.has(url); // readonly, no stats pollution
         if (!exists) {
-          const blob = await _imgToBlob(url);
+          const blob = await fetchTileBlobForCache(url);
           if (blob) await this.put(url, blob, layerName);
         }
       } catch {}
@@ -3818,6 +3828,44 @@ function _imgToBlob(url) {
   });
 }
 
+function guessTileMime(url) {
+  const clean = String(url || '').split('?')[0].toLowerCase();
+  if (clean.endsWith('.jpg') || clean.endsWith('.jpeg')) return 'image/jpeg';
+  if (clean.endsWith('.webp')) return 'image/webp';
+  if (clean.endsWith('.gif')) return 'image/gif';
+  return 'image/png';
+}
+
+async function fetchTileBlobForCache(url) {
+  try {
+    const resp = await fetch(url);
+    if (resp.ok) {
+      const blob = await resp.blob();
+      if (blob && blob.size > 0) return blob;
+    }
+  } catch {}
+
+  if (isTauriRuntime()) {
+    try {
+      const bytes = await tauriInvoke('fetch_tile_bytes', { url });
+      const data = new Uint8Array(bytes);
+      if (data.length > 0) return new Blob([data], { type: guessTileMime(url) });
+    } catch (e) {
+      console.warn('Native tile cache fetch failed:', e);
+    }
+  }
+
+  return _imgToBlob(url);
+}
+
+async function cacheTileUrl(url, layerName) {
+  if (!TileCache.db || !TileCache._enabled) return;
+  try {
+    const blob = await fetchTileBlobForCache(url);
+    if (blob) await TileCache.put(url, blob, layerName);
+  } catch {}
+}
+
 // ─── Cached TileLayer ───
 const CachedTileLayer = L.TileLayer.extend({
   createTile: function(coords, done) {
@@ -3828,7 +3876,6 @@ const CachedTileLayer = L.TileLayer.extend({
     const self = this;
 
     if (!TileCache._enabled || !TileCache.db) {
-      tile.crossOrigin = 'anonymous';
       tile.src = url;
       tile.onload = () => done(null, tile);
       tile.onerror = () => done(new Error('tile'), tile);
@@ -3843,20 +3890,10 @@ const CachedTileLayer = L.TileLayer.extend({
         tile.onerror = () => { URL.revokeObjectURL(blobUrl); done(new Error('cached tile err'), tile); };
         tile.src = blobUrl;
       } else {
-        // Cache miss — load via img (no CORS issues), then cache via canvas
-        tile.crossOrigin = 'anonymous';
+        // Cache miss — show tile normally, then save bytes through native fetch fallback.
         tile.onload = () => {
           done(null, tile);
-          // Background: convert to blob and cache
-          try {
-            const c = document.createElement('canvas');
-            c.width = tile.naturalWidth || 256;
-            c.height = tile.naturalHeight || 256;
-            c.getContext('2d').drawImage(tile, 0, 0);
-            c.toBlob(blob => {
-              if (blob) TileCache.put(url, blob, cacheName);
-            }, 'image/png');
-          } catch {}
+          cacheTileUrl(url, cacheName);
           // Prefetch neighbors
           if (TileCache._prefetch) {
             const z = coords.z, x = coords.x, y = coords.y;
@@ -5244,6 +5281,9 @@ let currentTrackSnapshot = null;
 let currentTrackEdit = null;
 let selectedTrackId = null;
 const trackPalette = ['#df4a4a','#4adf7a','#4a8adf','#dfdf4a','#df7a4a','#df4adf','#4adfe0','#7a4adf'];
+const TRACK_MARKER_FULL_RENDER_LIMIT = 600;
+const TRACK_MARKER_DETAIL_ZOOM = 15;
+const TRACK_MARKER_BOUNDS_PAD = 0.25;
 
 function cloneTrackPointsData(pointsData = []) {
   return pointsData.map(point => point ? { ...point } : {});
@@ -5272,10 +5312,28 @@ function canEditTrackGeometry(track) {
   return isTrackDrawActive(track) || isTrackEditActive(track);
 }
 
+function isLargeTrack(track) {
+  return (track?.points?.length || 0) > TRACK_MARKER_FULL_RENDER_LIMIT;
+}
+
+function trackUsesViewportMarkers(track) {
+  return !!(
+    track &&
+    track.visible !== false &&
+    !isTrackDrawActive(track) &&
+    !isTrackEditActive(track) &&
+    (track.pointSize ?? 3) > 0 &&
+    isLargeTrack(track) &&
+    map.getZoom() >= TRACK_MARKER_DETAIL_ZOOM
+  );
+}
+
 function shouldShowTrackMarkers(track) {
   if (!track || track.visible === false) return false;
   if (isTrackDrawActive(track) || isTrackEditActive(track)) return true;
-  return (track.pointSize ?? 3) > 0;
+  if ((track.pointSize ?? 3) <= 0) return false;
+  if (!isLargeTrack(track)) return true;
+  return map.getZoom() >= TRACK_MARKER_DETAIL_ZOOM;
 }
 
 function setTrackPanelState(mode, track) {
@@ -5329,10 +5387,9 @@ function restoreTrackGeometry(track, snapshot) {
   if (track.polyline) {
     track.polyline.setLatLngs(track.points);
   } else if (track.points.length > 0) {
-    track.polyline = L.polyline(track.points, {
+    track.polyline = createTrackPolylineLayer(track.points, {
       color: track.color,
-      weight: track.width,
-      opacity: 0.85
+      weight: track.width
     });
     if (track.visible !== false) track.polyline.addTo(map);
     bindTrackPolyline(track);
@@ -5502,7 +5559,13 @@ function addTrackMarkers(track) {
   }
   if (!track.markers) track.markers = [];
   track.markers.forEach(m => map.removeLayer(m));
-  track.markers = track.points.map((_, i) => createTrackMarker(track, i));
+  const renderViewportOnly = trackUsesViewportMarkers(track);
+  const bounds = renderViewportOnly ? map.getBounds().pad(TRACK_MARKER_BOUNDS_PAD) : null;
+  track.markers = [];
+  track.points.forEach((point, i) => {
+    if (bounds && !bounds.contains(point)) return;
+    track.markers.push(createTrackMarker(track, i));
+  });
 }
 
 function removeTrackMarkers(track) {
@@ -5510,6 +5573,15 @@ function removeTrackMarkers(track) {
   track.markers.forEach(m => map.removeLayer(m));
   track.markers = [];
 }
+
+function refreshViewportTrackMarkers() {
+  tracks.forEach(track => {
+    if (!isLargeTrack(track)) return;
+    if (trackUsesViewportMarkers(track) || track.markers?.length) syncTrackMarkers(track);
+  });
+}
+
+map.on('zoomend moveend', refreshViewportTrackMarkers);
 
 function bindTrackPolyline(track) {
   if (!track?.polyline || track.polyline._trackBound) return;
@@ -5542,7 +5614,7 @@ function createTrackFromPoints(points, name, options = {}) {
   if (Number.isInteger(options.id)) trackIdCounter = Math.max(trackIdCounter, options.id + 1);
   const color = options.color || trackPalette[(id - 1) % trackPalette.length];
   const width = options.width || 3;
-  const polyline = L.polyline(points, { color, weight: width, opacity: 0.85 });
+  const polyline = createTrackPolylineLayer(points, { color, weight: width });
   if (options.visible !== false) polyline.addTo(map);
   const pointSize = options.pointSize ?? 3;
   const track = {
@@ -5611,8 +5683,9 @@ function addTrackPoint(latlng) {
   if (currentTrackDraw.polyline) {
     currentTrackDraw.polyline.setLatLngs(currentTrackDraw.points);
   } else {
-    currentTrackDraw.polyline = L.polyline(currentTrackDraw.points, {
-      color: currentTrackDraw.color, weight: currentTrackDraw.width, opacity: 0.85
+    currentTrackDraw.polyline = createTrackPolylineLayer(currentTrackDraw.points, {
+      color: currentTrackDraw.color,
+      weight: currentTrackDraw.width
     }).addTo(map);
     bindTrackPolyline(currentTrackDraw);
   }
@@ -5951,6 +6024,11 @@ function updateTrackList() {
     const modeTag = isTrackEditActive(t)
       ? ' · <span style="font-size:10px;color:#f0c878">редактируется</span>'
       : (isTrackDrawActive(t) ? ' · <span style="font-size:10px;color:#90c890">строится</span>' : '');
+    const pointTag = trackUsesViewportMarkers(t)
+      ? ` · <span style="font-size:10px;color:var(--text-muted)" title="У большого трека точки показываются с z${TRACK_MARKER_DETAIL_ZOOM} только в текущем экране">точки по экрану</span>`
+      : (isLargeTrack(t) && (t.pointSize ?? 3) > 0
+        ? ` · <span style="font-size:10px;color:var(--text-muted)" title="Точки появятся с z${TRACK_MARKER_DETAIL_ZOOM}">точки с z${TRACK_MARKER_DETAIL_ZOOM}</span>`
+        : '');
     return `<div class="track-item${sel ? ' selected' : ''}" style="${sel ? 'background:var(--bg-selected);border-left:3px solid var(--border-bright);' : ''}" onclick="selectTrackById(${t.id})">
       <input type="checkbox" class="track-play-cb" data-track-id="${t.id}" onclick="event.stopPropagation()" style="accent-color:${t.color};margin-right:4px" title="Выбрать для плеера">
       <div class="track-color" style="background:${t.color};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px" title="Скрыть/показать" onclick="event.stopPropagation();toggleTrackVisible(${t.id})">${t.visible !== false ? '👁' : '○'}</div>
@@ -5958,7 +6036,7 @@ function updateTrackList() {
         <input class="track-name" value="${escapeHtml(t.name)}" onclick="event.stopPropagation()" onchange="renameTrack(${t.id},this.value)"
           style="background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text-primary);font-size:13px;font-weight:500;outline:none;width:100%;padding:0"
           onfocus="this.style.borderBottomColor='#4a8adf'" onblur="this.style.borderBottomColor='transparent'">${syncInfo}
-        <div class="track-meta">${t.points.length} точек · ${km} км${srcTag}${modeTag}</div>
+        <div class="track-meta">${t.points.length} точек · ${km} км${srcTag}${modeTag}${pointTag}</div>
       </div>
       <span style="font-size:12px;color:#e07070;cursor:pointer;padding:0 4px" onclick="event.stopPropagation();deleteTrackById(${t.id})" title="Удалить трек">✕</span>
     </div>`;
@@ -7854,19 +7932,244 @@ async function getOfflineSqlJs() {
   return offlineSqlJsReady;
 }
 
+const OFFLINE_MAP_EXTENSIONS = ['sqlitedb', 'mbtiles', 'rmap'];
+
+function getFileNameFromPath(path) {
+  return String(path || '').split(/[\\/]/).pop() || '';
+}
+
+function isOfflineMapFileName(name) {
+  const ext = normalizeFileFormat(name);
+  return OFFLINE_MAP_EXTENSIONS.includes(ext);
+}
+
+function sanitizeOfflineMapFileName(name) {
+  const raw = getFileNameFromPath(name) || 'map.sqlitedb';
+  const ext = normalizeFileFormat(raw);
+  const safeExt = OFFLINE_MAP_EXTENSIONS.includes(ext) ? ext : 'sqlitedb';
+  const base = raw.replace(/\.[^.]+$/, '')
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^\.+|\.+$/g, '') || 'map';
+  return `${base}.${safeExt}`;
+}
+
+async function ensureOfflineMapsDir() {
+  if (!window.__TAURI__) throw new Error('Импорт карт доступен только в приложении');
+  if (!appDataPath) await initWorkingDirectory();
+  if (!appDataPath) throw new Error('Рабочая папка недоступна');
+  const mapsDir = appDataPath + '/maps';
+  const { exists, mkdir } = window.__TAURI__.fs;
+  if (!(await exists(mapsDir))) await mkdir(mapsDir, { recursive: true });
+  return mapsDir;
+}
+
+async function buildUniqueOfflineMapPath(originalName) {
+  const mapsDir = await ensureOfflineMapsDir();
+  const safeName = sanitizeOfflineMapFileName(originalName);
+  const ext = normalizeFileFormat(safeName);
+  const base = safeName.replace(/\.[^.]+$/, '');
+  const { exists } = window.__TAURI__.fs;
+  let candidate = safeName;
+  let index = 2;
+  while (await exists(mapsDir + '/' + candidate)) {
+    candidate = `${base}_${index}.${ext}`;
+    index++;
+  }
+  return { fileName: candidate, path: mapsDir + '/' + candidate };
+}
+
+async function installOfflineMapBytes(bytes, originalName, sourcePath = '') {
+  const ext = normalizeFileFormat(originalName);
+  if (!OFFLINE_MAP_EXTENSIONS.includes(ext)) {
+    showToast('Формат карты не поддерживается: .' + ext);
+    return false;
+  }
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  if (!data.length) {
+    showToast('Файл карты пустой');
+    return false;
+  }
+  const { fileName, path } = await buildUniqueOfflineMapPath(originalName);
+  showToast(`Копируем карту ${fileName}...`);
+  const { writeFile } = window.__TAURI__.fs;
+  await writeFile(path, data);
+  if (sourcePath) {
+    const dir = String(sourcePath).replace(/[\\/][^\\/]+$/, '');
+    if (dir && dir !== sourcePath) {
+      lastOpenDir = dir;
+      localStorage.setItem('tnd-last-open-dir', dir);
+    }
+  }
+  showToast(`✓ Карта добавлена: ${fileName}`);
+  await scanOfflineMaps();
+  const listTab = document.querySelector('#modal-offline .tab-btn[onclick*="tab-offline-list"]');
+  if (listTab) switchTab(listTab, 'tab-offline-list');
+  return true;
+}
+
+async function installOfflineMapFromPath(sourcePath, originalName) {
+  const ext = normalizeFileFormat(originalName);
+  if (!OFFLINE_MAP_EXTENSIONS.includes(ext)) {
+    showToast('Формат карты не поддерживается: .' + ext);
+    return false;
+  }
+  const { fileName, path } = await buildUniqueOfflineMapPath(originalName);
+  showToast(`Копируем карту ${fileName}...`);
+  const fs = window.__TAURI__.fs;
+  if (typeof fs.copyFile === 'function') {
+    await fs.copyFile(sourcePath, path);
+  } else {
+    const data = await fs.readFile(sourcePath);
+    await fs.writeFile(path, data);
+  }
+  const dir = String(sourcePath).replace(/[\\/][^\\/]+$/, '');
+  if (dir && dir !== sourcePath) {
+    lastOpenDir = dir;
+    localStorage.setItem('tnd-last-open-dir', dir);
+  }
+  showToast(`✓ Карта добавлена: ${fileName}`);
+  await scanOfflineMaps();
+  const listTab = document.querySelector('#modal-offline .tab-btn[onclick*="tab-offline-list"]');
+  if (listTab) switchTab(listTab, 'tab-offline-list');
+  return true;
+}
+
+async function importOfflineMapFile() {
+  if (!window.__TAURI__) {
+    showToast('Выбор файлов карт доступен только в desktop-приложении');
+    return;
+  }
+  try {
+    await ensureOfflineMapsDir();
+    const { open } = window.__TAURI__.dialog;
+    const selection = await open({
+      multiple: true,
+      directory: false,
+      defaultPath: lastOpenDir || (appDataPath ? appDataPath + '/maps' : undefined),
+      filters: [{ name: 'Offline maps', extensions: OFFLINE_MAP_EXTENSIONS }]
+    });
+    if (!selection) return;
+    const paths = Array.isArray(selection) ? selection : [selection];
+    let imported = 0;
+    for (const item of paths) {
+      const p = typeof item === 'object' && item.path ? item.path : String(item);
+      if (!p) continue;
+      const fileName = getFileNameFromPath(p);
+      if (await installOfflineMapFromPath(p, fileName)) imported++;
+    }
+    if (imported > 1) showToast(`✓ Добавлено карт: ${imported}`);
+  } catch (e) {
+    console.warn('importOfflineMapFile error:', e);
+    showToast('Ошибка загрузки карты: ' + (e.message || e));
+  }
+}
+
+async function installOfflineMapBrowserFile(file) {
+  try {
+    if (!file || !isOfflineMapFileName(file.name)) return false;
+    if (!window.__TAURI__) {
+      showToast('Перетаскивание карт доступно только в desktop-приложении');
+      return false;
+    }
+    if (file.path) return installOfflineMapFromPath(file.path, file.name);
+    const buffer = await file.arrayBuffer();
+    return installOfflineMapBytes(buffer, file.name, file.path || file.name);
+  } catch (e) {
+    console.warn('installOfflineMapBrowserFile error:', e);
+    showToast('Ошибка загрузки карты: ' + (e.message || e));
+    return false;
+  }
+}
+
+function offlineDbFirstRow(db, sql) {
+  const res = db.exec(sql);
+  return res.length && res[0].values.length ? res[0].values[0] : null;
+}
+
+function offlineDbTableColumns(db, table) {
+  try {
+    const res = db.exec(`PRAGMA table_info(${table})`);
+    return new Set((res[0]?.values || []).map(row => String(row[1]).toLowerCase()));
+  } catch {
+    return new Set();
+  }
+}
+
+function detectOfflineTileSource(db) {
+  const cols = offlineDbTableColumns(db, 'tiles');
+  if (cols.has('zoom_level') && cols.has('tile_column') && cols.has('tile_row') && cols.has('tile_data')) {
+    const meta = {};
+    try {
+      const rows = db.exec('SELECT name, value FROM metadata');
+      (rows[0]?.values || []).forEach(([name, value]) => { meta[String(name).toLowerCase()] = String(value || '').toLowerCase(); });
+    } catch {}
+    const [minZ, maxZ] = offlineDbFirstRow(db, 'SELECT MIN(zoom_level), MAX(zoom_level) FROM tiles') || [1, 18];
+    const format = meta.format || '';
+    const mime = format.includes('jpg') || format.includes('jpeg') ? 'image/jpeg'
+      : (format.includes('webp') ? 'image/webp' : 'image/png');
+    const scheme = meta.scheme === 'xyz' ? 'xyz' : 'tms';
+    return {
+      minZ: Number(minZ) || 1,
+      maxZ: Number(maxZ) || 18,
+      mime,
+      bind: coords => {
+        const y = scheme === 'tms' ? (Math.pow(2, coords.z) - 1 - coords.y) : coords.y;
+        return [coords.x, y, coords.z];
+      },
+      sql: 'SELECT tile_data FROM tiles WHERE tile_column=? AND tile_row=? AND zoom_level=?'
+    };
+  }
+
+  if (cols.has('x') && cols.has('y') && cols.has('z') && cols.has('image')) {
+    let minZ = 1, maxZ = 18, isLocus = false;
+    try {
+      const row = offlineDbFirstRow(db, 'SELECT minzoom, maxzoom FROM info LIMIT 1');
+      if (row) {
+        const z1 = Number(row[0]), z2 = Number(row[1]);
+        if (z1 > z2) {
+          isLocus = true;
+          minZ = 17 - z1;
+          maxZ = 17 - z2;
+        } else {
+          minZ = z1;
+          maxZ = z2;
+        }
+      }
+    } catch {
+      const row = offlineDbFirstRow(db, 'SELECT MIN(z), MAX(z) FROM tiles');
+      if (row) {
+        const zMin = Number(row[0]), zMax = Number(row[1]);
+        if (zMin > 10) { isLocus = true; minZ = 17 - zMax; maxZ = 17 - zMin; }
+        else { minZ = zMin; maxZ = zMax; }
+      }
+    }
+    return {
+      minZ: Number(minZ) || 1,
+      maxZ: Number(maxZ) || 18,
+      mime: 'image/png',
+      bind: coords => [coords.x, coords.y, isLocus ? 17 - coords.z : coords.z],
+      sql: cols.has('s')
+        ? 'SELECT image FROM tiles WHERE x=? AND y=? AND z=? ORDER BY s LIMIT 1'
+        : 'SELECT image FROM tiles WHERE x=? AND y=? AND z=? LIMIT 1'
+    };
+  }
+
+  throw new Error('Неизвестная структура SQLite/MBTiles');
+}
+
 async function scanOfflineMaps() {
   if (!window.__TAURI__ || !appDataPath) {
     showToast('Рабочая папка недоступна');
     return;
   }
-  const { readDir, readFile } = window.__TAURI__.fs;
+  const { readDir } = window.__TAURI__.fs;
   const mapsDir = appDataPath + '/maps';
 
   try {
     const entries = await readDir(mapsDir);
-    const sqlFiles = entries.filter(e =>
-      e.name && (e.name.endsWith('.sqlitedb') || e.name.endsWith('.mbtiles'))
-    );
+    const sqlFiles = entries.filter(e => e.name && isOfflineMapFileName(e.name));
 
     const listEl = document.getElementById('offline-maps-list');
     const emptyEl = document.getElementById('offline-maps-empty');
@@ -7899,6 +8202,7 @@ async function scanOfflineMaps() {
       // Escape filename for safe HTML insertion
       const safeName = fname.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
+      const fnameArg = JSON.stringify(fname);
       const card = document.createElement('div');
       card.className = 'offline-map-card';
       card.innerHTML = `
@@ -7908,10 +8212,10 @@ async function scanOfflineMaps() {
           <div class="omc-meta">${sizeStr}</div>
         </div>
         <div class="omc-actions">
-          <button class="omc-btn ${isActive ? 'active' : ''}" onclick="toggleOfflineMap('${fname.replace(/'/g, "\\'")}', this)">
+          <button class="omc-btn ${isActive ? 'active' : ''}" onclick="toggleOfflineMap(${fnameArg}, this)">
             ${isActive ? '✓ Вкл' : '◯ Выкл'}
           </button>
-          <button class="omc-btn delete" onclick="deleteOfflineMap('${fname.replace(/'/g, "\\'")}')">🗑</button>
+          <button class="omc-btn delete" onclick="deleteOfflineMap(${fnameArg})">🗑</button>
         </div>
       `;
       listEl.appendChild(card);
@@ -7948,34 +8252,9 @@ async function toggleOfflineMap(fname, btn) {
     const data = await readFile(entry._path);
     const db = new SQL.Database(new Uint8Array(data));
     entry.db = db;
-
-    // Detect format: try info table, fallback to tiles table
-    let minZ = 1, maxZ = 18, isLocus = false;
-    try {
-      const infoRes = db.exec('SELECT minzoom, maxzoom FROM info LIMIT 1');
-      if (infoRes.length > 0) {
-        const row = infoRes[0].values[0];
-        const z1 = row[0], z2 = row[1];
-        if (z1 > z2) {
-          isLocus = true;
-          minZ = 17 - z1;
-          maxZ = 17 - z2;
-        } else {
-          minZ = z1;
-          maxZ = z2;
-        }
-      }
-    } catch {
-      // Fallback: probe tiles table directly
-      try {
-        const probe = db.exec('SELECT MIN(z), MAX(z) FROM tiles');
-        if (probe.length > 0) {
-          const [zMin, zMax] = probe[0].values[0];
-          if (zMin > 10) { isLocus = true; minZ = 17 - zMax; maxZ = 17 - zMin; }
-          else { minZ = zMin; maxZ = zMax; }
-        }
-      } catch {}
-    }
+    const tileSource = detectOfflineTileSource(db);
+    const minZ = Math.min(tileSource.minZ, tileSource.maxZ);
+    const maxZ = Math.max(tileSource.minZ, tileSource.maxZ);
 
     // Create custom Leaflet TileLayer from SQLite
     const EMPTY_TILE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
@@ -7984,17 +8263,13 @@ async function toggleOfflineMap(fname, btn) {
         const tile = document.createElement('img');
         tile.setAttribute('role', 'presentation');
 
-        const z = isLocus ? 17 - coords.z : coords.z;
-        const x = coords.x;
-        const y = coords.y;
-
         let stmt = null;
         try {
-          stmt = db.prepare('SELECT image FROM tiles WHERE x=? AND y=? AND z=?');
-          stmt.bind([x, y, z]);
+          stmt = db.prepare(tileSource.sql);
+          stmt.bind(tileSource.bind(coords));
           if (stmt.step()) {
             const imgData = stmt.get()[0];
-            const blob = new Blob([imgData], { type: 'image/png' });
+            const blob = new Blob([imgData], { type: tileSource.mime });
             tile.src = URL.createObjectURL(blob);
             tile.onload = () => { URL.revokeObjectURL(tile.src); done(null, tile); };
             tile.onerror = () => { URL.revokeObjectURL(tile.src); done(new Error('tile error'), tile); };
@@ -10138,6 +10413,10 @@ mapEl.addEventListener('drop', e => {
   e.preventDefault(); mapEl.style.outline = '';
   const files = e.dataTransfer.files;
   for (const f of files) {
+    if (isOfflineMapFileName(f.name)) {
+      installOfflineMapBrowserFile(f);
+      continue;
+    }
     const ext = f.name.toLowerCase().split('.').pop();
     const reader = new FileReader();
     reader.onload = ev => {
@@ -10151,6 +10430,46 @@ mapEl.addEventListener('drop', e => {
     reader.readAsText(f);
   }
 });
+
+function setupOfflineMapDropzone() {
+  const zone = document.getElementById('offline-map-dropzone');
+  if (!zone) return;
+  const setActive = active => {
+    zone.style.borderColor = active ? 'var(--accent-blue)' : '#2a4a7a';
+    zone.style.background = active ? 'var(--bg-selected-soft)' : '';
+  };
+  ['dragenter', 'dragover'].forEach(type => {
+    zone.addEventListener(type, e => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'copy';
+      setActive(true);
+    });
+  });
+  ['dragleave', 'dragend'].forEach(type => {
+    zone.addEventListener(type, e => {
+      e.preventDefault();
+      e.stopPropagation();
+      setActive(false);
+    });
+  });
+  zone.addEventListener('drop', async e => {
+    e.preventDefault();
+    e.stopPropagation();
+    setActive(false);
+    const files = Array.from(e.dataTransfer.files || []).filter(file => isOfflineMapFileName(file.name));
+    if (!files.length) {
+      showToast('Перетащите .sqlitedb, .mbtiles или .rmap');
+      return;
+    }
+    let imported = 0;
+    for (const file of files) {
+      if (await installOfflineMapBrowserFile(file)) imported++;
+    }
+    if (imported > 1) showToast(`✓ Добавлено карт: ${imported}`);
+  });
+}
+setupOfflineMapDropzone();
 
 // ─── Справка горячих клавиш (?) ───
 function showShortcutsHelp() {
@@ -11035,7 +11354,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.12</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.13</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:var(--text-muted)">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
