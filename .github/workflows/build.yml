@@ -144,8 +144,6 @@ jobs:
           MANIFEST_FILE=${{ steps.channel.outputs.manifest_file }}
           APPIMAGE_SIG=$(cat artifacts/TrophyNavigator-Linux/*.AppImage.sig 2>/dev/null || echo "")
           NSIS_SIG=$(cat artifacts/TrophyNavigator-Windows/*.exe.sig 2>/dev/null || echo "")
-          APPIMAGE_URL_FILE=${{ steps.assets.outputs.appimage_asset_name }}
-          NSIS_URL_FILE=${{ steps.assets.outputs.nsis_asset_name }}
           cat > "$MANIFEST_FILE" << EOF
           {
             "version": "$VERSION",
@@ -154,11 +152,11 @@ jobs:
             "platforms": {
               "linux-x86_64": {
                 "signature": "$APPIMAGE_SIG",
-                "url": "https://github.com/andmiro256-cyber/trophy-navigator/releases/download/v$VERSION/$APPIMAGE_URL_FILE"
+                "url": "https://trophynav.ru/releases/trophy-navigator-desktop_${VERSION}_amd64.AppImage"
               },
               "windows-x86_64": {
                 "signature": "$NSIS_SIG",
-                "url": "https://github.com/andmiro256-cyber/trophy-navigator/releases/download/v$VERSION/$NSIS_URL_FILE"
+                "url": "https://trophynav.ru/releases/trophy-navigator-desktop_${VERSION}_x64-setup.exe"
               }
             }
           }
