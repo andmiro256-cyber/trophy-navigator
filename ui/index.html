@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🧭 Trophy Navigator Desktop v0.9.13</title>
+  <title>🧭 Trophy Navigator Desktop v0.9.14</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -1284,7 +1284,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.13</span>
+  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.14</span>
 </div>
 
 <div id="ruler-panel">
@@ -1958,15 +1958,19 @@
       <div class="tab-content" id="tab-offline-load">
         <div id="offline-map-dropzone" style="border:2px dashed #2a4a7a;border-radius:8px;padding:30px;text-align:center;cursor:pointer;margin-bottom:12px" onclick="importOfflineMapFile()">
           <div style="font-size:32px;margin-bottom:8px">📂</div>
-          <div style="color:var(--text-secondary);font-size:13px;margin-bottom:4px">Нажмите, выберите файл или перетащите сюда</div>
-          <div style="color:var(--text-muted);font-size:11px">.sqlitedb · .mbtiles · .rmap</div>
+          <div style="color:var(--text-secondary);font-size:13px;margin-bottom:4px">Нажмите, выберите файл на диске или перетащите сюда</div>
+          <div style="color:var(--text-muted);font-size:11px">.sqlitedb · .mbtiles · .rmap · .db · .sqlite</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button class="btn-primary" style="flex:1;font-size:11px" onclick="importOfflineMapFile()">Подключить файл</button>
+          <button class="btn-secondary" style="flex:1;font-size:11px" onclick="copyOfflineMapFile()">Скопировать в папку</button>
         </div>
         <div style="font-size:11px;color:var(--text-muted)">
           <div style="margin-bottom:4px">Поддерживаемые форматы:</div>
           <div>• <b style="color:var(--text-secondary)">.sqlitedb</b> — RMaps / Locus Maps</div>
           <div>• <b style="color:var(--text-secondary)">.mbtiles</b> — стандарт MBTiles</div>
           <div>• <b style="color:var(--text-secondary)">.rmap</b> — OziExplorer растровые карты</div>
-          <div style="margin-top:8px;color:var(--text-muted)">После загрузки карта появится в списке "Мои карты" и будет доступна в переключателе слоёв</div>
+          <div style="margin-top:8px;color:var(--text-muted)">Подключённая карта появится в списке "Мои карты" и будет доступна в переключателе слоёв</div>
         </div>
       </div>
 
@@ -2322,6 +2326,7 @@ L.CRS.EPSG3395.infinite = true;
 let currentCRS = 'EPSG3857';
 const map = L.map('map', { zoomControl: true, attributionControl: false, maxZoom: 22, preferCanvas: true }).setView([55.75, 37.62], 10);
 const trackCanvasRenderer = L.canvas({ padding: 0.5 });
+const trackPointCanvasRenderer = L.canvas({ padding: 0.5 });
 function createTrackPolylineLayer(points, options = {}) {
   return L.polyline(points, {
     color: options.color || '#4adf7a',
@@ -3574,6 +3579,7 @@ function bingQuadKey(x, y, z) {
 // ─────────────────────────────────────────────
 const TileCache = {
   db: null,
+  _opening: null,
   _totalSize: 0,
   _tileCount: 0,
   _enabled: true,
@@ -3584,9 +3590,10 @@ const TileCache = {
   _sessionHits: 0,
   _sessionMisses: 0,
 
-  async open() {
-    if (this.db) return;
-    return new Promise((resolve, reject) => {
+  open() {
+    if (this.db) return Promise.resolve();
+    if (this._opening) return this._opening;
+    this._opening = new Promise((resolve) => {
       const req = indexedDB.open('tnd-tile-cache', 1);
       req.onupgradeneeded = (e) => {
         const db = e.target.result;
@@ -3603,6 +3610,7 @@ const TileCache = {
       };
       req.onerror = () => { console.warn('TileCache: IndexedDB error'); resolve(); };
     });
+    return this._opening;
   },
 
   _loadSettings() {
@@ -3875,41 +3883,58 @@ const CachedTileLayer = L.TileLayer.extend({
     const cacheName = this.options._cacheName || 'unknown';
     const self = this;
 
-    if (!TileCache._enabled || !TileCache.db) {
-      tile.src = url;
+    const directLoad = () => {
       tile.onload = () => done(null, tile);
       tile.onerror = () => done(new Error('tile'), tile);
-      return tile;
-    }
+      tile.src = url;
+    };
 
-    TileCache.get(url).then(cached => {
-      if (cached) {
-        // Cache hit — load from blob
-        const blobUrl = URL.createObjectURL(cached);
-        tile.onload = () => { URL.revokeObjectURL(blobUrl); done(null, tile); };
-        tile.onerror = () => { URL.revokeObjectURL(blobUrl); done(new Error('cached tile err'), tile); };
-        tile.src = blobUrl;
-      } else {
-        // Cache miss — show tile normally, then save bytes through native fetch fallback.
-        tile.onload = () => {
-          done(null, tile);
-          cacheTileUrl(url, cacheName);
-          // Prefetch neighbors
-          if (TileCache._prefetch) {
-            const z = coords.z, x = coords.x, y = coords.y;
-            for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
-              if (dx === 0 && dy === 0) continue;
-              try {
-                const nUrl = self.getTileUrl({ x: x + dx, y: y + dy, z });
-                TileCache.queuePrefetch(nUrl, cacheName);
-              } catch {}
-            }
-          }
-        };
-        tile.onerror = () => done(new Error('tile'), tile);
-        tile.src = url;
+    const renderFromBlob = (blob) => {
+      const blobUrl = URL.createObjectURL(blob);
+      tile.onload = () => { URL.revokeObjectURL(blobUrl); done(null, tile); };
+      tile.onerror = () => {
+        URL.revokeObjectURL(blobUrl);
+        // Corrupt/invalid blob (rare): fall back to direct network load
+        directLoad();
+      };
+      tile.src = blobUrl;
+    };
+
+    const prefetchNeighbors = () => {
+      if (!TileCache._prefetch) return;
+      const z = coords.z, x = coords.x, y = coords.y;
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        try {
+          const nUrl = self.getTileUrl({ x: x + dx, y: y + dy, z });
+          TileCache.queuePrefetch(nUrl, cacheName);
+        } catch {}
       }
-    });
+    };
+
+    TileCache.open().then(() => {
+      if (!TileCache._enabled || !TileCache.db) {
+        directLoad();
+        return;
+      }
+      TileCache.get(url).then(cached => {
+        if (cached) {
+          renderFromBlob(cached);
+          return;
+        }
+        // Cache miss: single fetch via fetchTileBlobForCache, render + save from same blob
+        fetchTileBlobForCache(url).then(blob => {
+          if (!blob || !blob.size) {
+            directLoad();
+            return;
+          }
+          renderFromBlob(blob);
+          TileCache.put(url, blob, cacheName);
+          prefetchNeighbors();
+        }).catch(() => directLoad());
+      }).catch(() => directLoad());
+    }).catch(() => directLoad());
+
     return tile;
   }
 });
@@ -3921,7 +3946,7 @@ function cachedTileLayer(url, opts, name) {
   return L.tileLayer(url, opts);
 }
 
-const BingTileLayer = L.TileLayer.extend({
+const BingTileLayer = CachedTileLayer.extend({
   getTileUrl: function(coords) {
     const z = coords.z, x = coords.x, y = coords.y;
     let quadKey = '';
@@ -3951,8 +3976,8 @@ function makeBaseLayer(name) {
         cachedTileLayer('https://core-renderer-tiles.maps.yandex.net/tiles?l=skl&x={x}&y={y}&z={z}&scale=1&lang=ru_RU', { maxNativeZoom: 19, maxZoom: 22 }, 'Яндекс Подписи')
       ]);
     }
-    case 'Спутник Bing':   return new BingTileLayer('https://ecn.t0.tiles.virtualearth.net/tiles/a{q}?g=14000', { maxNativeZoom: 19, maxZoom: 22 });
-    case 'Гибрид Bing':    return new BingTileLayer('https://ecn.t0.tiles.virtualearth.net/tiles/h{q}?g=14000&mkt=ru-RU', { maxNativeZoom: 19, maxZoom: 22 });
+    case 'Спутник Bing':   return new BingTileLayer('https://ecn.t0.tiles.virtualearth.net/tiles/a{q}?g=14000', { maxNativeZoom: 19, maxZoom: 22, _cacheName: 'Спутник Bing' });
+    case 'Гибрид Bing':    return new BingTileLayer('https://ecn.t0.tiles.virtualearth.net/tiles/h{q}?g=14000&mkt=ru-RU', { maxNativeZoom: 19, maxZoom: 22, _cacheName: 'Гибрид Bing' });
   }
 
   // Lookup from server catalog — используем proxy URL
@@ -4257,7 +4282,7 @@ function setLayer(name, el) {
 // ОВЕРЛЕЙНЫЕ СЛОИ
 // ─────────────────────────────────────────────
 // Wikimapia: через прокси на сервере (ресайз 531→256, кэш)
-const WikimapiaLayer = L.TileLayer.extend({
+const WikimapiaLayer = CachedTileLayer.extend({
   getTileUrl: function(coords) {
     return 'http://87.120.84.254:9222/tiles/wikimapia_hybrid/' + coords.z + '/' + coords.x + '/' + coords.y;
   }
@@ -4268,14 +4293,14 @@ const overlayLayers = {
   'Hiking тропы':   L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png', { maxZoom: 18, opacity: 0.7, pane: 'overlayTiles' }),
   'MTB тропы':      L.tileLayer('https://tile.waymarkedtrails.org/mtb/{z}/{x}/{y}.png', { maxZoom: 18, opacity: 0.7, pane: 'overlayTiles' }),
   'ESRI транспорт': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, pane: 'overlayTiles' }),
-  'Wikimapia':      new WikimapiaLayer('', { maxZoom: 18, opacity: 0.8, pane: 'overlayTiles' }),
+  'Wikimapia':      new WikimapiaLayer('', { maxZoom: 18, opacity: 0.8, pane: 'overlayTiles', _cacheName: 'Wikimapia' }),
   'Windy рельеф':   L.tileLayer('https://tiles.windy.com/tiles/v8.1/darkmap/{z}/{x}/{y}.png', { maxZoom: 18, opacity: 0.5, pane: 'overlayTiles' }),
   'Горнолыжные трассы': L.tileLayer('https://tiles.opensnowmap.org/pistes/{z}/{x}/{y}.png', { maxZoom: 18, opacity: 0.9, pane: 'overlayTiles' }),
   'Лыжные трассы':  L.tileLayer('https://tiles.opensnowmap.org/piste/{z}/{x}/{y}.png', { maxZoom: 18, opacity: 0.9, pane: 'overlayTiles' }),
 };
 
 // Пересоздаём Bing дороги с quadkey
-overlayLayers['Bing дороги'] = new BingTileLayer('https://ecn.t0.tiles.virtualearth.net/tiles/r{q}?g=14000&mkt=ru-RU&shading=hill', { maxZoom: 19, opacity: 0.7, pane: 'overlayTiles' });
+overlayLayers['Bing дороги'] = new BingTileLayer('https://ecn.t0.tiles.virtualearth.net/tiles/r{q}?g=14000&mkt=ru-RU&shading=hill', { maxZoom: 19, opacity: 0.7, pane: 'overlayTiles', _cacheName: 'Bing дороги' });
 
 function toggleOverlay(name, cb) {
   const layer = overlayLayers[name];
@@ -5282,8 +5307,12 @@ let currentTrackEdit = null;
 let selectedTrackId = null;
 const trackPalette = ['#df4a4a','#4adf7a','#4a8adf','#dfdf4a','#df7a4a','#df4adf','#4adfe0','#7a4adf'];
 const TRACK_MARKER_FULL_RENDER_LIMIT = 600;
-const TRACK_MARKER_DETAIL_ZOOM = 15;
+const TRACK_MARKER_DETAIL_ZOOM = 17;
+const TRACK_MARKER_GLOBAL_FULL_RENDER_LIMIT = 1200;
 const TRACK_MARKER_BOUNDS_PAD = 0.25;
+const TRACK_POINT_HIT_RADIUS_PX = 12;
+let trackHoverTooltip = null;
+let trackMarkerRefreshScheduled = false;
 
 function cloneTrackPointsData(pointsData = []) {
   return pointsData.map(point => point ? { ...point } : {});
@@ -5316,6 +5345,24 @@ function isLargeTrack(track) {
   return (track?.points?.length || 0) > TRACK_MARKER_FULL_RENDER_LIMIT;
 }
 
+function getVisibleTrackMarkerPointCount() {
+  return tracks.reduce((sum, track) => {
+    if (!track || track.visible === false) return sum;
+    if (isTrackDrawActive(track) || isTrackEditActive(track)) return sum;
+    if ((track.pointSize ?? 3) <= 0) return sum;
+    return sum + (track.points?.length || 0);
+  }, 0);
+}
+
+function trackNeedsDetailMarkers(track) {
+  return !!(
+    track &&
+    !isTrackDrawActive(track) &&
+    !isTrackEditActive(track) &&
+    (isLargeTrack(track) || getVisibleTrackMarkerPointCount() > TRACK_MARKER_GLOBAL_FULL_RENDER_LIMIT)
+  );
+}
+
 function trackUsesViewportMarkers(track) {
   return !!(
     track &&
@@ -5323,7 +5370,7 @@ function trackUsesViewportMarkers(track) {
     !isTrackDrawActive(track) &&
     !isTrackEditActive(track) &&
     (track.pointSize ?? 3) > 0 &&
-    isLargeTrack(track) &&
+    trackNeedsDetailMarkers(track) &&
     map.getZoom() >= TRACK_MARKER_DETAIL_ZOOM
   );
 }
@@ -5332,7 +5379,7 @@ function shouldShowTrackMarkers(track) {
   if (!track || track.visible === false) return false;
   if (isTrackDrawActive(track) || isTrackEditActive(track)) return true;
   if ((track.pointSize ?? 3) <= 0) return false;
-  if (!isLargeTrack(track)) return true;
+  if (!trackNeedsDetailMarkers(track)) return true;
   return map.getZoom() >= TRACK_MARKER_DETAIL_ZOOM;
 }
 
@@ -5493,7 +5540,9 @@ function createTrackMarker(track, idx) {
     color: isSelected ? '#ffffff' : track.color,
     fillColor: track.color,
     fillOpacity: isSelected ? 1 : 0.7,
-    weight: isSelected ? 2 : 1
+    weight: isSelected ? 2 : 1,
+    renderer: trackPointCanvasRenderer,
+    bubblingMouseEvents: false
   }).addTo(map);
   m._trackIdx = idx;
   m.bindTooltip(() => formatTrackPointTooltip(track, m._trackIdx), {
@@ -5540,8 +5589,11 @@ function createTrackMarker(track, idx) {
     showTrackPointCtxMenu(e.originalEvent, track, m._trackIdx, m, m.getLatLng());
   });
   m.on('click', function(e) {
-    if (!isTrackEditActive(track)) return;
     L.DomEvent.stop(e);
+    if (!isTrackEditActive(track)) {
+      showTrackPointHoverTooltip(track, m._trackIdx);
+      return;
+    }
     if (currentTrackEdit?.track?.id === track.id) {
       currentTrackEdit.selectedPointIdx = m._trackIdx;
       syncTrackMarkers(track);
@@ -5552,44 +5604,130 @@ function createTrackMarker(track, idx) {
   return m;
 }
 
+function getTrackMarker(track, idx) {
+  if (!track) return null;
+  if (track.markerMap instanceof Map) return track.markerMap.get(idx) || null;
+  return track.markers?.find(marker => marker._trackIdx === idx) || null;
+}
+
 function addTrackMarkers(track) {
   if (!track || !shouldShowTrackMarkers(track)) {
     removeTrackMarkers(track);
     return;
   }
-  if (!track.markers) track.markers = [];
-  track.markers.forEach(m => map.removeLayer(m));
+  const markerMap = track.markerMap instanceof Map
+    ? track.markerMap
+    : new Map((track.markers || []).map(marker => [marker._trackIdx, marker]));
   const renderViewportOnly = trackUsesViewportMarkers(track);
   const bounds = renderViewportOnly ? map.getBounds().pad(TRACK_MARKER_BOUNDS_PAD) : null;
-  track.markers = [];
+  const wanted = new Set();
   track.points.forEach((point, i) => {
     if (bounds && !bounds.contains(point)) return;
-    track.markers.push(createTrackMarker(track, i));
+    wanted.add(i);
+    const marker = markerMap.get(i);
+    if (marker) {
+      marker.setLatLng(point);
+      return;
+    }
+    markerMap.set(i, createTrackMarker(track, i));
   });
+  markerMap.forEach((marker, idx) => {
+    if (wanted.has(idx)) return;
+    if (map.hasLayer(marker)) map.removeLayer(marker);
+    markerMap.delete(idx);
+  });
+  track.markerMap = markerMap;
+  track.markers = Array.from(markerMap.values()).sort((a, b) => a._trackIdx - b._trackIdx);
 }
 
 function removeTrackMarkers(track) {
-  if (!track.markers) return;
-  track.markers.forEach(m => map.removeLayer(m));
+  if (track.markerMap instanceof Map) {
+    track.markerMap.forEach(marker => {
+      if (map.hasLayer(marker)) map.removeLayer(marker);
+    });
+    track.markerMap.clear();
+  } else if (track.markers) {
+    track.markers.forEach(marker => {
+      if (map.hasLayer(marker)) map.removeLayer(marker);
+    });
+  }
   track.markers = [];
+  track.markerMap = new Map();
+  closeTrackPointHoverTooltip();
 }
 
 function refreshViewportTrackMarkers() {
   tracks.forEach(track => {
-    if (!isLargeTrack(track)) return;
+    if (!trackNeedsDetailMarkers(track)) return;
     if (trackUsesViewportMarkers(track) || track.markers?.length) syncTrackMarkers(track);
   });
 }
 
-map.on('zoomend moveend', refreshViewportTrackMarkers);
+function scheduleTrackMarkerRefresh() {
+  if (trackMarkerRefreshScheduled) return;
+  trackMarkerRefreshScheduled = true;
+  requestAnimationFrame(() => {
+    trackMarkerRefreshScheduled = false;
+    refreshViewportTrackMarkers();
+  });
+}
+
+map.on('zoomend moveend', scheduleTrackMarkerRefresh);
+
+function findNearestTrackPointHit(track, latlng, maxPx = TRACK_POINT_HIT_RADIUS_PX) {
+  if (!track || track.visible === false || !track.points?.length) return null;
+  if (!shouldShowTrackMarkers(track)) return null;
+  const bounds = map.getBounds().pad(TRACK_MARKER_BOUNDS_PAD);
+  const target = map.latLngToLayerPoint(latlng);
+  let best = null;
+  track.points.forEach((point, idx) => {
+    if (!bounds.contains(point)) return;
+    const dist = target.distanceTo(map.latLngToLayerPoint(point));
+    if (dist > maxPx) return;
+    if (!best || dist < best.dist) best = { idx, point, dist };
+  });
+  return best;
+}
+
+function showTrackPointHoverTooltip(track, idx) {
+  if (!trackHoverTooltip) {
+    trackHoverTooltip = L.tooltip({
+      direction: 'top',
+      offset: [0, -6],
+      opacity: 0.95,
+      className: 'track-point-tooltip'
+    });
+  }
+  trackHoverTooltip
+    .setLatLng(track.points[idx])
+    .setContent(formatTrackPointTooltip(track, idx))
+    .addTo(map);
+}
+
+function closeTrackPointHoverTooltip() {
+  if (trackHoverTooltip && map.hasLayer(trackHoverTooltip)) {
+    map.removeLayer(trackHoverTooltip);
+  }
+}
 
 function bindTrackPolyline(track) {
   if (!track?.polyline || track.polyline._trackBound) return;
   track.polyline._trackBound = true;
+  track.polyline.on('mousemove', e => {
+    const hit = findNearestTrackPointHit(track, e.latlng);
+    if (hit) showTrackPointHoverTooltip(track, hit.idx);
+    else closeTrackPointHoverTooltip();
+  });
+  track.polyline.on('mouseout', closeTrackPointHoverTooltip);
   track.polyline.on('click', e => {
     L.DomEvent.stop(e);
     if (isTrackEditActive(track)) {
       insertTrackPointAtSegment(track, e.latlng);
+      return;
+    }
+    const hit = findNearestTrackPointHit(track, e.latlng);
+    if (hit) {
+      showTrackPointHoverTooltip(track, hit.idx);
       return;
     }
     selectTrackById(track.id);
@@ -5604,7 +5742,7 @@ function bindTrackPolyline(track) {
       const d = clickLatLng.distanceTo(p);
       if (d < minDist) { minDist = d; closestIdx = i; }
     });
-    const marker = track.markers?.[closestIdx] || null;
+    const marker = getTrackMarker(track, closestIdx);
     showTrackPointCtxMenu(e.originalEvent, track, closestIdx, marker, clickLatLng);
   });
 }
@@ -7864,6 +8002,7 @@ async function downloadTiles() {
         const { writeFile } = window.__TAURI__.fs;
         await writeFile(savePath, uint8);
         const fname = savePath.split(/[\\/]/).pop();
+        await registerOfflineMapPath(savePath, fname, { silent: true, switchTab: false });
         showToast(signal.aborted
           ? `⏹ Остановлено. Сохранено: ${fname} (${savedCount} тайлов)`
           : `✅ Сохранено: ${fname} (${savedCount} тайлов)`);
@@ -7920,22 +8059,59 @@ function stopTileDownload() {
 // ОФЛАЙН КАРТЫ — СКАНИРОВАНИЕ И ОТОБРАЖЕНИЕ
 // ─────────────────────────────────────────────
 
-let offlineMaps = {};       // { filename: { db, layer, active } }
-let offlineSqlJsReady = null; // Promise<SQL>
-
-async function getOfflineSqlJs() {
-  if (!offlineSqlJsReady) {
-    offlineSqlJsReady = initSqlJs({
-      locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
-    });
-  }
-  return offlineSqlJsReady;
-}
-
-const OFFLINE_MAP_EXTENSIONS = ['sqlitedb', 'mbtiles', 'rmap'];
+let offlineMaps = {};       // { pathKey: { name, _path, layer, active, info } }
+const OFFLINE_MAP_REGISTRY_KEY = 'tnd-offline-map-sources';
+const OFFLINE_MAP_EXTENSIONS = ['sqlitedb', 'mbtiles', 'rmap', 'db', 'sqlite'];
+const OFFLINE_EMPTY_TILE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
 function getFileNameFromPath(path) {
   return String(path || '').split(/[\\/]/).pop() || '';
+}
+
+function normalizeOfflineMapPath(path) {
+  return String(path || '').replace(/\\/g, '/').replace(/\/+$/, '');
+}
+
+function getOfflineMapRegistry() {
+  try {
+    const list = JSON.parse(localStorage.getItem(OFFLINE_MAP_REGISTRY_KEY) || '[]');
+    return Array.isArray(list) ? list.filter(item => item && item.path) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveOfflineMapRegistry(list) {
+  const unique = [];
+  const seen = new Set();
+  for (const item of list) {
+    const path = normalizeOfflineMapPath(item.path);
+    if (!path || seen.has(path)) continue;
+    seen.add(path);
+    unique.push({
+      path,
+      name: item.name || getFileNameFromPath(path),
+      addedAt: item.addedAt || getIsoNow()
+    });
+  }
+  localStorage.setItem(OFFLINE_MAP_REGISTRY_KEY, JSON.stringify(unique));
+}
+
+function removeOfflineMapRegistryPath(path) {
+  const target = normalizeOfflineMapPath(path);
+  saveOfflineMapRegistry(getOfflineMapRegistry().filter(item => normalizeOfflineMapPath(item.path) !== target));
+}
+
+function toUint8Array(value) {
+  if (!value) return new Uint8Array();
+  if (value instanceof Uint8Array) return value;
+  if (value instanceof ArrayBuffer) return new Uint8Array(value);
+  if (Array.isArray(value)) return new Uint8Array(value);
+  if (Array.isArray(value.data)) return new Uint8Array(value.data);
+  if (value.buffer instanceof ArrayBuffer) {
+    return new Uint8Array(value.buffer, value.byteOffset || 0, value.byteLength || value.buffer.byteLength);
+  }
+  return new Uint8Array();
 }
 
 function isOfflineMapFileName(name) {
@@ -8036,33 +8212,105 @@ async function installOfflineMapFromPath(sourcePath, originalName) {
   return true;
 }
 
-async function importOfflineMapFile() {
+async function registerOfflineMapPath(sourcePath, originalName, options = {}) {
+  if (!window.__TAURI__) {
+    showToast('Подключение карт доступно только в desktop-приложении');
+    return false;
+  }
+  const fileName = originalName || getFileNameFromPath(sourcePath);
+  const ext = normalizeFileFormat(fileName || sourcePath);
+  if (!OFFLINE_MAP_EXTENSIONS.includes(ext)) {
+    showToast('Формат карты не поддерживается: .' + ext);
+    return false;
+  }
+  const path = normalizeOfflineMapPath(sourcePath);
+  if (!path) return false;
+  try {
+    const { exists } = window.__TAURI__.fs;
+    if (!(await exists(path))) {
+      showToast('Файл карты не найден');
+      return false;
+    }
+    if (appDataPath && path.startsWith(normalizeOfflineMapPath(appDataPath + '/maps') + '/')) {
+      await scanOfflineMaps();
+      if (!options.silent) showToast(`✓ Карта найдена в папке приложения: ${fileName}`);
+      return true;
+    }
+    const registry = getOfflineMapRegistry().filter(item => normalizeOfflineMapPath(item.path) !== path);
+    registry.push({ path, name: fileName, addedAt: getIsoNow() });
+    saveOfflineMapRegistry(registry);
+    const dir = path.replace(/[\\/][^\\/]+$/, '');
+    if (dir && dir !== path) {
+      lastOpenDir = dir;
+      localStorage.setItem('tnd-last-open-dir', dir);
+    }
+    if (!options.silent) showToast(`✓ Карта подключена: ${fileName}`);
+    await scanOfflineMaps();
+    if (options.switchTab !== false) {
+      const listTab = document.querySelector('#modal-offline .tab-btn[onclick*="tab-offline-list"]');
+      if (listTab) switchTab(listTab, 'tab-offline-list');
+    }
+    return true;
+  } catch (e) {
+    console.warn('registerOfflineMapPath error:', e);
+    showToast('Ошибка подключения карты: ' + (e.message || e));
+    return false;
+  }
+}
+
+async function chooseOfflineMapPaths() {
   if (!window.__TAURI__) {
     showToast('Выбор файлов карт доступен только в desktop-приложении');
-    return;
+    return [];
   }
+  await ensureOfflineMapsDir();
+  const { open } = window.__TAURI__.dialog;
+  const selection = await open({
+    multiple: true,
+    directory: false,
+    defaultPath: lastOpenDir || (appDataPath ? appDataPath + '/maps' : undefined),
+    filters: [{ name: 'Offline maps', extensions: OFFLINE_MAP_EXTENSIONS }]
+  });
+  if (!selection) return [];
+  return Array.isArray(selection) ? selection : [selection];
+}
+
+async function importOfflineMapFile() {
   try {
-    await ensureOfflineMapsDir();
-    const { open } = window.__TAURI__.dialog;
-    const selection = await open({
-      multiple: true,
-      directory: false,
-      defaultPath: lastOpenDir || (appDataPath ? appDataPath + '/maps' : undefined),
-      filters: [{ name: 'Offline maps', extensions: OFFLINE_MAP_EXTENSIONS }]
-    });
-    if (!selection) return;
-    const paths = Array.isArray(selection) ? selection : [selection];
+    const paths = await chooseOfflineMapPaths();
     let imported = 0;
     for (const item of paths) {
       const p = typeof item === 'object' && item.path ? item.path : String(item);
       if (!p) continue;
-      const fileName = getFileNameFromPath(p);
-      if (await installOfflineMapFromPath(p, fileName)) imported++;
+      if (await registerOfflineMapPath(p, getFileNameFromPath(p), { switchTab: false })) imported++;
     }
-    if (imported > 1) showToast(`✓ Добавлено карт: ${imported}`);
+    if (imported === 1) {
+      const listTab = document.querySelector('#modal-offline .tab-btn[onclick*="tab-offline-list"]');
+      if (listTab) switchTab(listTab, 'tab-offline-list');
+    } else if (imported > 1) {
+      showToast(`✓ Подключено карт: ${imported}`);
+      const listTab = document.querySelector('#modal-offline .tab-btn[onclick*="tab-offline-list"]');
+      if (listTab) switchTab(listTab, 'tab-offline-list');
+    }
   } catch (e) {
     console.warn('importOfflineMapFile error:', e);
-    showToast('Ошибка загрузки карты: ' + (e.message || e));
+    showToast('Ошибка подключения карты: ' + (e.message || e));
+  }
+}
+
+async function copyOfflineMapFile() {
+  try {
+    const paths = await chooseOfflineMapPaths();
+    let imported = 0;
+    for (const item of paths) {
+      const p = typeof item === 'object' && item.path ? item.path : String(item);
+      if (!p) continue;
+      if (await installOfflineMapFromPath(p, getFileNameFromPath(p))) imported++;
+    }
+    if (imported > 1) showToast(`✓ Скопировано карт: ${imported}`);
+  } catch (e) {
+    console.warn('copyOfflineMapFile error:', e);
+    showToast('Ошибка копирования карты: ' + (e.message || e));
   }
 }
 
@@ -8073,7 +8321,7 @@ async function installOfflineMapBrowserFile(file) {
       showToast('Перетаскивание карт доступно только в desktop-приложении');
       return false;
     }
-    if (file.path) return installOfflineMapFromPath(file.path, file.name);
+    if (file.path) return registerOfflineMapPath(file.path, file.name);
     const buffer = await file.arrayBuffer();
     return installOfflineMapBytes(buffer, file.name, file.path || file.name);
   } catch (e) {
@@ -8164,58 +8412,101 @@ async function scanOfflineMaps() {
     showToast('Рабочая папка недоступна');
     return;
   }
-  const { readDir } = window.__TAURI__.fs;
+  const { readDir, exists } = window.__TAURI__.fs;
   const mapsDir = appDataPath + '/maps';
 
   try {
-    const entries = await readDir(mapsDir);
-    const sqlFiles = entries.filter(e => e.name && isOfflineMapFileName(e.name));
-
     const listEl = document.getElementById('offline-maps-list');
     const emptyEl = document.getElementById('offline-maps-empty');
     listEl.innerHTML = '';
 
-    if (sqlFiles.length === 0) {
+    const previousMaps = offlineMaps;
+    const nextMaps = {};
+    const sources = [];
+    const seenPaths = new Set();
+
+    let entries = [];
+    try {
+      entries = await readDir(mapsDir);
+    } catch {
+      entries = [];
+    }
+    entries
+      .filter(e => e.name && isOfflineMapFileName(e.name))
+      .forEach(file => {
+        const path = normalizeOfflineMapPath(mapsDir + '/' + file.name);
+        seenPaths.add(path);
+        sources.push({ key: path, name: file.name, path, external: false });
+      });
+
+    getOfflineMapRegistry().forEach(item => {
+      const path = normalizeOfflineMapPath(item.path);
+      if (!path || seenPaths.has(path) || !isOfflineMapFileName(item.name || path)) return;
+      seenPaths.add(path);
+      sources.push({ key: path, name: item.name || getFileNameFromPath(path), path, external: true });
+    });
+
+    Object.entries(previousMaps).forEach(([key, entry]) => {
+      if (seenPaths.has(key)) return;
+      if (entry.layer && map.hasLayer(entry.layer)) map.removeLayer(entry.layer);
+      if (entry.db) entry.db.close();
+    });
+
+    offlineMaps = nextMaps;
+
+    if (sources.length === 0) {
       emptyEl.style.display = 'block';
       return;
     }
     emptyEl.style.display = 'none';
 
-    for (const file of sqlFiles) {
-      const fname = file.name;
-      const fpath = mapsDir + '/' + fname;
-      const isActive = offlineMaps[fname] && offlineMaps[fname].active;
+    for (const source of sources) {
+      const key = source.key;
+      const fname = source.name;
+      const fpath = source.path;
+      const previous = previousMaps[key] || {};
+      const isActive = !!previous.active;
+      const existsOk = await exists(fpath).catch(() => false);
 
       // Get file size via stat (не читаем весь файл в память)
       let sizeStr = '';
-      try {
+      if (existsOk) try {
         const { stat } = window.__TAURI__.fs;
         const meta = await stat(fpath);
         const sizeMB = (meta.size / (1024 * 1024)).toFixed(1);
         sizeStr = sizeMB + ' МБ';
       } catch {
         sizeStr = '?';
+      } else {
+        sizeStr = 'файл не найден';
       }
-      if (!offlineMaps[fname]) offlineMaps[fname] = {};
-      offlineMaps[fname]._path = fpath;
+      nextMaps[key] = {
+        ...previous,
+        name: fname,
+        _path: fpath,
+        external: source.external,
+        missing: !existsOk
+      };
 
       // Escape filename for safe HTML insertion
       const safeName = fname.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      const sourceLabel = source.external ? 'внешний файл' : 'папка приложения';
+      const metaText = existsOk ? `${sizeStr} · ${sourceLabel}` : sizeStr;
 
-      const fnameArg = JSON.stringify(fname);
+      const keyArg = JSON.stringify(key);
       const card = document.createElement('div');
       card.className = 'offline-map-card';
       card.innerHTML = `
         <span class="omc-icon">🗺</span>
         <div class="omc-info">
           <div class="omc-name" title="${safeName}">${safeName}</div>
-          <div class="omc-meta">${sizeStr}</div>
+          <div class="omc-meta">${metaText}</div>
         </div>
         <div class="omc-actions">
-          <button class="omc-btn ${isActive ? 'active' : ''}" onclick="toggleOfflineMap(${fnameArg}, this)">
+          <button class="omc-btn ${isActive ? 'active' : ''}" ${existsOk ? '' : 'disabled'} onclick="toggleOfflineMap(${keyArg}, this)">
             ${isActive ? '✓ Вкл' : '◯ Выкл'}
           </button>
-          <button class="omc-btn delete" onclick="deleteOfflineMap(${fnameArg})">🗑</button>
+          <button class="omc-btn delete" onclick="deleteOfflineMap(${keyArg})">🗑</button>
         </div>
       `;
       listEl.appendChild(card);
@@ -8241,48 +8532,50 @@ async function toggleOfflineMap(fname, btn) {
     return;
   }
 
-  // Activate — load SQLite and create tile layer
+  if (!isTauriRuntime()) {
+    showToast('Офлайн карты доступны только в desktop-приложении');
+    return;
+  }
+
+  // Activate — inspect SQLite once, then request tiles from Rust one by one
   entry._loading = true;
   if (btn) btn.disabled = true;
   try {
     showToast('Загрузка карты...');
-    const SQL = await getOfflineSqlJs();
-
-    const { readFile } = window.__TAURI__.fs;
-    const data = await readFile(entry._path);
-    const db = new SQL.Database(new Uint8Array(data));
-    entry.db = db;
-    const tileSource = detectOfflineTileSource(db);
-    const minZ = Math.min(tileSource.minZ, tileSource.maxZ);
-    const maxZ = Math.max(tileSource.minZ, tileSource.maxZ);
+    const info = await tauriInvoke('inspect_offline_map', { path: entry._path });
+    entry.info = info;
+    const minZ = Math.min(info.minZoom, info.maxZoom);
+    const maxZ = Math.max(info.minZoom, info.maxZoom);
 
     // Create custom Leaflet TileLayer from SQLite
-    const EMPTY_TILE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
     const OfflineTileLayer = L.TileLayer.extend({
       createTile: function(coords, done) {
         const tile = document.createElement('img');
         tile.setAttribute('role', 'presentation');
-
-        let stmt = null;
-        try {
-          stmt = db.prepare(tileSource.sql);
-          stmt.bind(tileSource.bind(coords));
-          if (stmt.step()) {
-            const imgData = stmt.get()[0];
-            const blob = new Blob([imgData], { type: tileSource.mime });
-            tile.src = URL.createObjectURL(blob);
-            tile.onload = () => { URL.revokeObjectURL(tile.src); done(null, tile); };
-            tile.onerror = () => { URL.revokeObjectURL(tile.src); done(new Error('tile error'), tile); };
-          } else {
-            tile.src = EMPTY_TILE;
+        tauriInvoke('read_offline_tile', {
+          path: entry._path,
+          x: coords.x,
+          y: coords.y,
+          z: coords.z
+        }).then(raw => {
+          const data = toUint8Array(raw);
+          if (!data.length) {
+            tile.src = OFFLINE_EMPTY_TILE;
             done(null, tile);
+            return;
           }
-        } catch (e) {
-          tile.src = EMPTY_TILE;
+          const blobUrl = URL.createObjectURL(new Blob([data], { type: info.mime || 'image/png' }));
+          tile.onload = () => { URL.revokeObjectURL(blobUrl); done(null, tile); };
+          tile.onerror = () => {
+            URL.revokeObjectURL(blobUrl);
+            tile.src = OFFLINE_EMPTY_TILE;
+            done(null, tile);
+          };
+          tile.src = blobUrl;
+        }).catch(() => {
+          tile.src = OFFLINE_EMPTY_TILE;
           done(null, tile);
-        } finally {
-          if (stmt) stmt.free();
-        }
+        });
         return tile;
       }
     });
@@ -8300,7 +8593,7 @@ async function toggleOfflineMap(fname, btn) {
     entry.active = true;
 
     if (btn) { btn.textContent = '✓ Вкл'; btn.classList.add('active'); }
-    showToast(`✅ Карта ${fname} подключена (z${minZ}-${maxZ})`);
+    showToast(`✅ Карта ${entry.name || getFileNameFromPath(entry._path)} подключена (z${minZ}-${maxZ})`);
     updateOfflineLayersList();
   } catch (e) {
     console.error('toggleOfflineMap error:', e);
@@ -8312,23 +8605,29 @@ async function toggleOfflineMap(fname, btn) {
 }
 
 async function deleteOfflineMap(fname) {
-  const ok = await tndConfirmDanger(`Удалить офлайн-карту «${fname}»?`, 'Удалить');
+  const entry = offlineMaps[fname];
+  if (!entry) return;
+  const title = entry.external
+    ? `Убрать офлайн-карту «${entry.name}» из списка? Файл на диске не будет удалён.`
+    : `Удалить офлайн-карту «${entry.name}»?`;
+  const ok = await tndConfirmDanger(title, entry.external ? 'Убрать' : 'Удалить');
   if (!ok) return;
 
   // Deactivate first
-  const entry = offlineMaps[fname];
   if (entry) {
     if (entry.layer) map.removeLayer(entry.layer);
     if (entry.db) entry.db.close();
     delete offlineMaps[fname];
   }
 
-  // Delete file
-  if (window.__TAURI__ && appDataPath) {
+  if (entry.external) {
+    removeOfflineMapRegistryPath(entry._path);
+    showToast(`Карта ${entry.name} убрана из списка`);
+  } else if (window.__TAURI__ && appDataPath) {
     try {
       const { remove } = window.__TAURI__.fs;
-      await remove(appDataPath + '/maps/' + fname);
-      showToast(`🗑 Карта ${fname} удалена`);
+      await remove(entry._path);
+      showToast(`🗑 Карта ${entry.name} удалена`);
     } catch (e) {
       showToast('Ошибка удаления: ' + e.message);
     }
@@ -8355,7 +8654,7 @@ function updateOfflineLayersList() {
   list.innerHTML = '';
 
   activeEntries.forEach(([fname, entry]) => {
-    const shortName = fname.replace(/\.(sqlitedb|mbtiles)$/i, '');
+    const shortName = (entry.name || getFileNameFromPath(fname)).replace(/\.(sqlitedb|mbtiles|rmap|db|sqlite)$/i, '');
     const div = document.createElement('div');
     div.className = 'overlay-layer';
     div.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 0';
@@ -10459,7 +10758,7 @@ function setupOfflineMapDropzone() {
     setActive(false);
     const files = Array.from(e.dataTransfer.files || []).filter(file => isOfflineMapFileName(file.name));
     if (!files.length) {
-      showToast('Перетащите .sqlitedb, .mbtiles или .rmap');
+      showToast('Перетащите .sqlitedb, .mbtiles, .rmap, .db или .sqlite');
       return;
     }
     let imported = 0;
@@ -11354,7 +11653,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.13</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.14</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:var(--text-muted)">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>

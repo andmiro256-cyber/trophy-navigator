@@ -1,7 +1,9 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use serde::Serialize;
+use std::collections::HashSet;
 use std::io::Read;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, Runtime, Url, Webview, WebviewUrl, WebviewWindowBuilder};
@@ -174,6 +176,461 @@ fn fetch_tile_bytes_blocking(raw_url: &str) -> Result<Vec<u8>, String> {
     Ok(bytes)
 }
 
+#[derive(Clone, Copy)]
+enum OfflineMapFormat {
+    RMaps,
+    MBTiles,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OfflineMapInfo {
+    format: String,
+    min_zoom: i32,
+    max_zoom: i32,
+    mime: String,
+    bounds: Option<[f64; 4]>,
+    inverted: bool,
+    scheme: String,
+}
+
+struct OfflineTileSource {
+    format: OfflineMapFormat,
+    min_zoom: i32,
+    max_zoom: i32,
+    mime: String,
+    bounds: Option<[f64; 4]>,
+    inverted: bool,
+    mbtiles_tms: bool,
+}
+
+#[tauri::command]
+async fn inspect_offline_map(path: String) -> Result<OfflineMapInfo, String> {
+    tauri::async_runtime::spawn_blocking(move || inspect_offline_map_blocking(&path))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn read_offline_tile(
+    path: String,
+    x: i64,
+    y: i64,
+    z: i64,
+) -> Result<tauri::ipc::Response, String> {
+    let bytes =
+        tauri::async_runtime::spawn_blocking(move || read_offline_tile_blocking(&path, x, y, z))
+            .await
+            .map_err(|e| e.to_string())??;
+    Ok(tauri::ipc::Response::new(bytes.unwrap_or_default()))
+}
+
+fn inspect_offline_map_blocking(path: &str) -> Result<OfflineMapInfo, String> {
+    let conn = open_offline_map_db(path)?;
+    let source = detect_offline_tile_source(&conn)?;
+    Ok(OfflineMapInfo {
+        format: match source.format {
+            OfflineMapFormat::RMaps => "rmaps".to_string(),
+            OfflineMapFormat::MBTiles => "mbtiles".to_string(),
+        },
+        min_zoom: source.min_zoom,
+        max_zoom: source.max_zoom,
+        mime: source.mime,
+        bounds: source.bounds,
+        inverted: source.inverted,
+        scheme: if source.mbtiles_tms {
+            "tms".to_string()
+        } else {
+            "xyz".to_string()
+        },
+    })
+}
+
+fn read_offline_tile_blocking(
+    path: &str,
+    x: i64,
+    y: i64,
+    z: i64,
+) -> Result<Option<Vec<u8>>, String> {
+    let conn = open_offline_map_db(path)?;
+    let source = detect_offline_tile_source(&conn)?;
+    let data = match source.format {
+        OfflineMapFormat::RMaps => query_rmaps_tile(&conn, &source, x, y, z)?,
+        OfflineMapFormat::MBTiles => query_mbtiles_tile(&conn, &source, x, y, z)?,
+    };
+    Ok(data.filter(|bytes| is_supported_raster_tile_data(bytes)))
+}
+
+fn open_offline_map_db(path: &str) -> Result<Connection, String> {
+    let conn = Connection::open_with_flags(
+        path,
+        OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )
+    .map_err(|e| format!("Не удалось открыть SQLite карту: {e}"))?;
+    let _ = conn.busy_timeout(Duration::from_secs(2));
+    let _ = conn.pragma_update(None, "cache_size", -4096);
+    let _ = conn.pragma_update(None, "mmap_size", 268_435_456_i64);
+    Ok(conn)
+}
+
+fn detect_offline_tile_source(conn: &Connection) -> Result<OfflineTileSource, String> {
+    let cols = offline_table_columns(conn, "tiles")?;
+    if cols.contains("zoom_level")
+        && cols.contains("tile_column")
+        && cols.contains("tile_row")
+        && cols.contains("tile_data")
+    {
+        return detect_mbtiles_source(conn);
+    }
+    if cols.contains("x") && cols.contains("y") && cols.contains("z") && cols.contains("image") {
+        return detect_rmaps_source(conn);
+    }
+    Err("Неизвестная структура SQLite/MBTiles".to_string())
+}
+
+fn offline_table_columns(conn: &Connection, table: &str) -> Result<HashSet<String>, String> {
+    let mut stmt = conn
+        .prepare(&format!("PRAGMA table_info({table})"))
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |row| row.get::<_, String>(1))
+        .map_err(|e| e.to_string())?;
+    let mut cols = HashSet::new();
+    for row in rows {
+        cols.insert(row.map_err(|e| e.to_string())?.to_ascii_lowercase());
+    }
+    Ok(cols)
+}
+
+fn detect_mbtiles_source(conn: &Connection) -> Result<OfflineTileSource, String> {
+    let metadata_scheme = metadata_value(conn, "scheme").unwrap_or_default();
+    let mbtiles_tms = metadata_scheme.to_ascii_lowercase() != "xyz";
+    let metadata_format = metadata_value(conn, "format").unwrap_or_default();
+    let mut mime = match metadata_format.to_ascii_lowercase().as_str() {
+        value if value.contains("jpg") || value.contains("jpeg") => "image/jpeg".to_string(),
+        value if value.contains("webp") => "image/webp".to_string(),
+        _ => "image/png".to_string(),
+    };
+    if let Some(sample) = sample_tile_data(conn, OfflineMapFormat::MBTiles)? {
+        if !is_supported_raster_tile_data(&sample) {
+            return Err("Векторные MBTiles пока не поддерживаются".to_string());
+        }
+        mime = detect_mime(&sample).to_string();
+    }
+
+    let min_zoom = metadata_value(conn, "minzoom")
+        .and_then(|v| v.parse::<i32>().ok())
+        .or_else(|| {
+            query_i32(conn, "SELECT MIN(zoom_level) FROM tiles")
+                .ok()
+                .flatten()
+        })
+        .unwrap_or(1);
+    let max_zoom = metadata_value(conn, "maxzoom")
+        .and_then(|v| v.parse::<i32>().ok())
+        .or_else(|| {
+            query_i32(conn, "SELECT MAX(zoom_level) FROM tiles")
+                .ok()
+                .flatten()
+        })
+        .unwrap_or(18);
+
+    Ok(OfflineTileSource {
+        format: OfflineMapFormat::MBTiles,
+        min_zoom,
+        max_zoom,
+        mime,
+        bounds: mbtiles_bounds(conn, mbtiles_tms).ok().flatten(),
+        inverted: false,
+        mbtiles_tms,
+    })
+}
+
+fn detect_rmaps_source(conn: &Connection) -> Result<OfflineTileSource, String> {
+    if let Some(sample) = sample_tile_data(conn, OfflineMapFormat::RMaps)? {
+        if !is_supported_raster_tile_data(&sample) {
+            return Err("Файл не похож на растровую SQLite-карту".to_string());
+        }
+    }
+    let (min_stored, max_stored) =
+        query_i32_pair(conn, "SELECT MIN(z), MAX(z) FROM tiles")?.unwrap_or((1, 18));
+    let inverted = detect_rmaps_inverted(conn).unwrap_or(true);
+    let (min_zoom, max_zoom) = if inverted {
+        (17 - max_stored, 17 - min_stored)
+    } else {
+        (min_stored, max_stored)
+    };
+
+    Ok(OfflineTileSource {
+        format: OfflineMapFormat::RMaps,
+        min_zoom: min_zoom.clamp(0, 30),
+        max_zoom: max_zoom.clamp(0, 30),
+        mime: sample_tile_data(conn, OfflineMapFormat::RMaps)?
+            .as_deref()
+            .map(detect_mime)
+            .unwrap_or("image/png")
+            .to_string(),
+        bounds: rmaps_bounds(conn, inverted).ok().flatten(),
+        inverted,
+        mbtiles_tms: false,
+    })
+}
+
+fn metadata_value(conn: &Connection, name: &str) -> Option<String> {
+    conn.query_row(
+        "SELECT value FROM metadata WHERE lower(name)=lower(?) LIMIT 1",
+        [name],
+        |row| row.get::<_, String>(0),
+    )
+    .optional()
+    .ok()
+    .flatten()
+}
+
+fn query_i32(conn: &Connection, sql: &str) -> Result<Option<i32>, String> {
+    conn.query_row(sql, [], |row| row.get::<_, Option<i32>>(0))
+        .map_err(|e| e.to_string())
+}
+
+fn query_i32_pair(conn: &Connection, sql: &str) -> Result<Option<(i32, i32)>, String> {
+    conn.query_row(sql, [], |row| {
+        let a = row.get::<_, Option<i32>>(0)?;
+        let b = row.get::<_, Option<i32>>(1)?;
+        Ok(a.zip(b))
+    })
+    .map_err(|e| e.to_string())
+}
+
+fn sample_tile_data(
+    conn: &Connection,
+    format: OfflineMapFormat,
+) -> Result<Option<Vec<u8>>, String> {
+    let sql = match format {
+        OfflineMapFormat::RMaps => "SELECT image FROM tiles LIMIT 1",
+        OfflineMapFormat::MBTiles => "SELECT tile_data FROM tiles LIMIT 1",
+    };
+    conn.query_row(sql, [], |row| row.get::<_, Vec<u8>>(0))
+        .optional()
+        .map_err(|e| e.to_string())
+}
+
+fn detect_rmaps_inverted(conn: &Connection) -> Result<bool, String> {
+    let mut stmt = conn
+        .prepare("SELECT z, MAX(x), MAX(y) FROM tiles GROUP BY z ORDER BY z")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |row| {
+            let z = row.get::<_, i32>(0)?;
+            let max_x = row.get::<_, i64>(1)?;
+            let max_y = row.get::<_, i64>(2)?;
+            Ok((z, max_x.max(max_y)))
+        })
+        .map_err(|e| e.to_string())?;
+    let stats: Result<Vec<_>, _> = rows.collect();
+    let stats = stats.map_err(|e| e.to_string())?;
+
+    if stats.is_empty() {
+        return Ok(true);
+    }
+    if stats.len() == 1 {
+        let (stored_z, max_coord) = stats[0];
+        let fits_normal = max_coord < tile_matrix_size(stored_z).unwrap_or(0);
+        let fits_inverted = max_coord < tile_matrix_size((17 - stored_z).max(0)).unwrap_or(0);
+        return Ok(match (fits_normal, fits_inverted) {
+            (true, false) => false,
+            (false, true) => true,
+            _ => true,
+        });
+    }
+    Ok(stats.last().map(|(_, max)| *max).unwrap_or(0)
+        < stats.first().map(|(_, max)| *max).unwrap_or(0))
+}
+
+fn tile_matrix_size(z: i32) -> Option<i64> {
+    if !(0..=30).contains(&z) {
+        return None;
+    }
+    Some(1_i64 << z)
+}
+
+fn mbtiles_bounds(conn: &Connection, tms_y: bool) -> Result<Option<[f64; 4]>, String> {
+    if let Some(raw_bounds) = metadata_value(conn, "bounds") {
+        let parts: Vec<f64> = raw_bounds
+            .split(',')
+            .filter_map(|part| part.trim().parse::<f64>().ok())
+            .collect();
+        if parts.len() == 4 {
+            return Ok(Some([parts[3], parts[1], parts[2], parts[0]])); // north, south, east, west
+        }
+    }
+    let max_zoom = query_i32(conn, "SELECT MAX(zoom_level) FROM tiles")?.unwrap_or(0);
+    bounds_from_tile_range(
+        conn,
+        max_zoom,
+        max_zoom,
+        "tile_column",
+        "tile_row",
+        "zoom_level",
+        tms_y,
+    )
+}
+
+fn rmaps_bounds(conn: &Connection, inverted: bool) -> Result<Option<[f64; 4]>, String> {
+    let stored_min = query_i32(conn, "SELECT MIN(z) FROM tiles")?.unwrap_or(0);
+    let actual_z = if inverted {
+        17 - stored_min
+    } else {
+        stored_min
+    };
+    bounds_from_tile_range(conn, stored_min, actual_z, "x", "y", "z", false)
+}
+
+fn bounds_from_tile_range(
+    conn: &Connection,
+    stored_z: i32,
+    actual_z: i32,
+    x_col: &str,
+    y_col: &str,
+    z_col: &str,
+    tms_y: bool,
+) -> Result<Option<[f64; 4]>, String> {
+    let n = tile_matrix_size(actual_z).ok_or_else(|| "Некорректный zoom карты".to_string())? as f64;
+    let sql = format!(
+        "SELECT MIN({x_col}), MAX({x_col}), MIN({y_col}), MAX({y_col}) FROM tiles WHERE {z_col}=?"
+    );
+    let range: Option<(i64, i64, i64, i64)> = conn
+        .query_row(sql.as_str(), [stored_z], |row| {
+            let min_x = row.get::<_, Option<i64>>(0)?;
+            let max_x = row.get::<_, Option<i64>>(1)?;
+            let min_y = row.get::<_, Option<i64>>(2)?;
+            let max_y = row.get::<_, Option<i64>>(3)?;
+            Ok(match (min_x, max_x, min_y, max_y) {
+                (Some(a), Some(b), Some(c), Some(d)) => Some((a, b, c, d)),
+                _ => None,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let Some((min_x, max_x, min_y, max_y)) = range else {
+        return Ok(None);
+    };
+
+    let west = min_x as f64 / n * 360.0 - 180.0;
+    let east = (max_x + 1) as f64 / n * 360.0 - 180.0;
+    let (north, south) = if tms_y {
+        let max_tile = tile_matrix_size(actual_z).unwrap_or(1) - 1;
+        let min_y_xyz = max_tile - max_y;
+        let max_y_xyz = max_tile - min_y;
+        (
+            tile_to_lat(min_y_xyz, actual_z),
+            tile_to_lat(max_y_xyz + 1, actual_z),
+        )
+    } else {
+        (
+            tile_to_lat(min_y, actual_z),
+            tile_to_lat(max_y + 1, actual_z),
+        )
+    };
+
+    Ok(Some([north, south, east, west]))
+}
+
+fn tile_to_lat(y: i64, z: i32) -> f64 {
+    let n = std::f64::consts::PI
+        - 2.0 * std::f64::consts::PI * y as f64 / tile_matrix_size(z).unwrap_or(1) as f64;
+    n.sinh().atan().to_degrees()
+}
+
+fn query_rmaps_tile(
+    conn: &Connection,
+    source: &OfflineTileSource,
+    x: i64,
+    y: i64,
+    z: i64,
+) -> Result<Option<Vec<u8>>, String> {
+    let combinations = if source.inverted {
+        [(true, false), (false, false), (true, true), (false, true)]
+    } else {
+        [(false, false), (true, false), (false, true), (true, true)]
+    };
+    for (invert_z, invert_y) in combinations {
+        if let Some(data) = query_rmaps_tile_with_formula(conn, x, y, z, invert_z, invert_y)? {
+            return Ok(Some(data));
+        }
+    }
+    Ok(None)
+}
+
+fn query_rmaps_tile_with_formula(
+    conn: &Connection,
+    x: i64,
+    y: i64,
+    z: i64,
+    invert_z: bool,
+    invert_y: bool,
+) -> Result<Option<Vec<u8>>, String> {
+    let rz = if invert_z { 17 - z } else { z };
+    let ry = if invert_y {
+        tile_matrix_size(z as i32).unwrap_or(1) - 1 - y
+    } else {
+        y
+    };
+    conn.query_row(
+        "SELECT image FROM tiles WHERE x=? AND y=? AND z=? LIMIT 1",
+        (x, ry, rz),
+        |row| row.get::<_, Vec<u8>>(0),
+    )
+    .optional()
+    .map_err(|e| e.to_string())
+}
+
+fn query_mbtiles_tile(
+    conn: &Connection,
+    source: &OfflineTileSource,
+    x: i64,
+    y: i64,
+    z: i64,
+) -> Result<Option<Vec<u8>>, String> {
+    let tms_y = tile_matrix_size(z as i32).unwrap_or(1) - 1 - y;
+    let first_y = if source.mbtiles_tms { tms_y } else { y };
+    let second_y = if source.mbtiles_tms { y } else { tms_y };
+    if let Some(data) = query_mbtiles_tile_y(conn, x, first_y, z)? {
+        return Ok(Some(data));
+    }
+    query_mbtiles_tile_y(conn, x, second_y, z)
+}
+
+fn query_mbtiles_tile_y(
+    conn: &Connection,
+    x: i64,
+    y: i64,
+    z: i64,
+) -> Result<Option<Vec<u8>>, String> {
+    conn.query_row(
+        "SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=? LIMIT 1",
+        (z, x, y),
+        |row| row.get::<_, Vec<u8>>(0),
+    )
+    .optional()
+    .map_err(|e| e.to_string())
+}
+
+fn detect_mime(data: &[u8]) -> &'static str {
+    if data.len() >= 2 && data[0] == 0xFF && data[1] == 0xD8 {
+        "image/jpeg"
+    } else if data.len() >= 4 && data[0] == 0x89 && data[1] == 0x50 {
+        "image/png"
+    } else if data.len() >= 12 && &data[0..4] == b"RIFF" && &data[8..12] == b"WEBP" {
+        "image/webp"
+    } else {
+        "application/octet-stream"
+    }
+}
+
+fn is_supported_raster_tile_data(data: &[u8]) -> bool {
+    matches!(detect_mime(data), "image/jpeg" | "image/png" | "image/webp")
+}
+
 fn parse_map_viewer_url(raw_url: &str) -> Result<Url, String> {
     let url = Url::parse(raw_url).map_err(|_| "Некорректная ссылка карты".to_string())?;
     match url.scheme() {
@@ -308,6 +765,8 @@ fn main() {
             install_app_update,
             open_map_viewer,
             fetch_tile_bytes,
+            inspect_offline_map,
+            read_offline_tile,
             get_hardware_id
         ])
         .plugin(tauri_plugin_updater::Builder::new().build())
