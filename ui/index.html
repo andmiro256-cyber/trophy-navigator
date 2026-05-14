@@ -2326,7 +2326,7 @@ L.CRS.EPSG3395.infinite = true;
 let currentCRS = 'EPSG3857';
 const map = L.map('map', { zoomControl: true, attributionControl: false, maxZoom: 22, preferCanvas: true }).setView([55.75, 37.62], 10);
 const trackCanvasRenderer = L.canvas({ padding: 0.5 });
-const trackPointCanvasRenderer = L.canvas({ padding: 0.5 });
+const trackPointCanvasRenderer = L.canvas({ padding: 0.5, tolerance: 8 });
 function createTrackPolylineLayer(points, options = {}) {
   return L.polyline(points, {
     color: options.color || '#4adf7a',
@@ -3170,10 +3170,17 @@ function refreshWaypoint(marker, options = {}) {
   updateWaypointCircle(marker);
 }
 
+let quickRenamePopup = null;
+
 function openQuickRename(marker) {
   const popupId = `wp-rename-${marker.wpData.num}`;
   const value = escapeHtml(marker.wpData.name);
-  marker.bindPopup(`
+  if (quickRenamePopup && map.hasLayer(quickRenamePopup)) {
+    map.removeLayer(quickRenamePopup);
+  }
+  quickRenamePopup = L.popup({ closeButton: false, offset: [0, -12], autoClose: true, closeOnClick: true })
+    .setLatLng(marker.getLatLng())
+    .setContent(`
     <div style="min-width:180px">
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Быстрое переименование</div>
       <input id="${popupId}" value="${value}" maxlength="16" style="width:100%;padding:5px 6px;border:1px solid var(--border-normal);border-radius:4px;background:var(--bg-sunken);color:var(--text-primary)">
@@ -3182,7 +3189,8 @@ function openQuickRename(marker) {
         <button onclick="openWaypointPropsByNum(${marker.wpData.num})" style="flex:1;padding:5px 6px;border:1px solid var(--border-normal);border-radius:4px;background:var(--bg-interactive);color:var(--text-secondary);cursor:pointer">Свойства</button>
       </div>
     </div>
-  `, { closeButton: false, offset: [0, -12] }).openPopup();
+  `)
+    .openOn(map);
   setTimeout(() => {
     const input = document.getElementById(popupId);
     if (input) {
@@ -3313,7 +3321,8 @@ function showWptPopup(marker) {
 function openWaypointPropsByNum(num) {
   const marker = waypoints.find(m => m.wpData.num === num);
   if (!marker) return;
-  marker.closePopup();
+  map.closePopup(quickRenamePopup);
+  quickRenamePopup = null;
   showWptPopup(marker);
 }
 
@@ -3321,15 +3330,19 @@ function applyQuickRename(num) {
   const marker = waypoints.find(m => m.wpData.num === num);
   const input = document.getElementById(`wp-rename-${num}`);
   if (!marker || !input) return;
+  const oldName = marker.wpData.name;
   marker.wpData.name = input.value.trim().slice(0, 16) || marker.wpData.name;
   refreshWaypoint(marker);
+  syncWaypointReferences(marker, { oldName, syncRadius: false });
   updateWptTable();
-  marker.closePopup();
+  map.closePopup(quickRenamePopup);
+  quickRenamePopup = null;
   showToast('Название точки обновлено');
 }
 
 function applyWaypointProps() {
   if (!activeWaypoint) { closeModal('modal-wpt-props'); return; }
+  const oldName = activeWaypoint.wpData.name;
   const name = document.getElementById('prop-name').value.trim().slice(0, 16);
   const lat = parseCoordinateInput(document.getElementById('prop-lat').value, 'N', 'S');
   const lng = parseCoordinateInput(document.getElementById('prop-lng').value, 'E', 'W');
@@ -3344,6 +3357,7 @@ function applyWaypointProps() {
   activeWaypoint.wpData.icon = document.querySelector('.icon-cell.selected')?.dataset.symbol || '⬤';
   activeWaypoint.setLatLng([lat, lng]);
   refreshWaypoint(activeWaypoint);
+  syncWaypointReferences(activeWaypoint, { oldName, syncRadius: true });
   updateWptTable();
   closeModal('modal-wpt-props');
   showToast('Точка сохранена');
@@ -3410,6 +3424,70 @@ function getRoutePointRadius(route, idx, fallbackRadius) {
     if (Number.isFinite(radius) && radius > 0) return radius;
   }
   return fallback;
+}
+
+function latLngDistanceMeters(a, b) {
+  if (!a || !b) return Infinity;
+  try { return L.latLng(a.lat, a.lng).distanceTo(L.latLng(b.lat, b.lng)); }
+  catch { return Infinity; }
+}
+
+function routePointMatchesWaypoint(route, idx, marker, oldName = '') {
+  if (!route || !marker?.wpData || !route.points?.[idx]) return false;
+  const waypointId = String(marker.wpData.id || '').trim();
+  normalizeRoutePointWaypointIds(route, route.points.length);
+  if (waypointId && String(route.pointWaypointIds[idx] || '').trim() === waypointId) return true;
+  if (latLngDistanceMeters(route.points[idx], marker.getLatLng()) > 2) return false;
+  const routeLabel = normalizeWaypointLabel(route.labels?.[idx]);
+  const oldLabel = normalizeWaypointLabel(oldName);
+  const newLabel = normalizeWaypointLabel(marker.wpData.name);
+  return !route.pointWaypointIds[idx] || (oldLabel && routeLabel === oldLabel) || (newLabel && routeLabel === newLabel);
+}
+
+function syncWaypointReferences(marker, options = {}) {
+  if (!marker?.wpData) return;
+  const oldName = options.oldName || '';
+  const newName = String(marker.wpData.name || '').trim();
+  const waypointId = String(marker.wpData.id || '').trim();
+  let routeChanged = false;
+  let currentRouteChanged = false;
+
+  routes.forEach(route => {
+    if (!route?.points?.length) return;
+    normalizeRoutePointWaypointIds(route, route.points.length);
+    normalizeRoutePointRadii(route, route.points.length);
+    let changed = false;
+    route.points.forEach((_, idx) => {
+      if (!routePointMatchesWaypoint(route, idx, marker, oldName)) return;
+      if (newName && route.labels[idx] !== newName) {
+        route.labels[idx] = newName;
+        changed = true;
+      }
+      if (waypointId && route.pointWaypointIds[idx] !== waypointId) {
+        route.pointWaypointIds[idx] = waypointId;
+        changed = true;
+      }
+      if (options.syncRadius) {
+        const radius = Math.max(0, Number(marker.wpData.radius) || 0);
+        if ((Number(route.pointRadii[idx]) || 0) !== radius) {
+          route.pointRadii[idx] = radius;
+          changed = true;
+        }
+      }
+    });
+    if (changed) {
+      touchRoute(route);
+      routeChanged = true;
+      if (currentRouteDraw?.id === route.id) currentRouteChanged = true;
+    }
+  });
+
+  syncOsrmWaypointReferences(marker, oldName);
+  if (routeChanged) updateRouteList();
+  if (currentRouteChanged) {
+    updateRouteBuildPanelState();
+    updateRouteBuildList();
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -4071,6 +4149,85 @@ function getLayerEmoji(label) {
   return '\u{1F5FA}';
 }
 
+function fallbackLayerMaxZoom(name) {
+  const limits = {
+    'OpenStreetMap': 19,
+    'OpenTopoMap': 17,
+    '2GIS': 18,
+    'Яндекс Схема': 19,
+    'Яндекс Гибрид': 19,
+    'Яндекс Спутник': 19,
+    'Спутник Google': 22,
+    'Гибрид Google': 22,
+    'Карты Google': 22,
+    'Рельеф Google': 22,
+    'Спутник Bing': 20,
+    'Гибрид Bing': 20,
+    'Спутник ESRI': 22,
+    'ESRI Clarity': 19,
+    'Космоснимки рельеф': 14,
+    'CyclOSM': 19,
+    'OSM Humanitarian': 19,
+    'TF Outdoors': 22,
+    'LoMaps': 22,
+    'TF Transport': 22,
+    'TF Велосипед': 22,
+    'MTB Map': 18,
+    'Michelin': 18,
+    'ГГЦ 250м': 15,
+    'ГГЦ 500м': 14,
+    'ГГЦ 1км': 13,
+    'ГГЦ 2км': 12,
+    'Генштаб 250м': 15,
+    'OSM GPS треки': 20,
+    'Hiking тропы': 19,
+    'MTB тропы': 19,
+    'ESRI транспорт': 18,
+    'Wikimapia': 18,
+    'Windy рельеф': 18,
+    'Горнолыжные трассы': 18,
+    'Лыжные трассы': 18,
+    'Bing дороги': 20
+  };
+  return limits[name] || 18;
+}
+
+function getLayerAvailableMaxZoom(name) {
+  const entry = getCatalogEntryByLabel(name, true);
+  return entry ? catalogMaxZoom(entry, 18) : fallbackLayerMaxZoom(name);
+}
+
+function getSelectedDownloadLayerNames() {
+  const names = [];
+  const base = getSelectedBaseLayer();
+  if (base) names.push(base);
+  const layer2 = document.getElementById('dl-layer2-select')?.value || '';
+  if (layer2) names.push(layer2);
+  return names.concat(getSelectedOverlays());
+}
+
+function getDownloadAvailableMaxZoom() {
+  const limits = getSelectedDownloadLayerNames()
+    .map(getLayerAvailableMaxZoom)
+    .filter(value => Number.isFinite(value));
+  return limits.length ? Math.min(...limits) : 18;
+}
+
+function applyDownloadZoomLimit() {
+  const limit = getDownloadAvailableMaxZoom();
+  const minEl = document.getElementById('dl-zoom-min');
+  const maxEl = document.getElementById('dl-zoom-max');
+  if (!minEl || !maxEl) return limit;
+  minEl.max = String(limit);
+  maxEl.max = String(limit);
+  if (parseInt(maxEl.value, 10) > limit) maxEl.value = String(limit);
+  if (parseInt(minEl.value, 10) > limit) minEl.value = String(limit);
+  if (parseInt(minEl.value, 10) > parseInt(maxEl.value, 10)) minEl.value = maxEl.value;
+  document.getElementById('dl-zoom-min-val').textContent = minEl.value;
+  document.getElementById('dl-zoom-max-val').textContent = maxEl.value;
+  return limit;
+}
+
 // Fallback emoji map (used before catalog loads)
 const layerEmoji = {
   'OpenStreetMap':'\u{1F5FA}', 'OpenTopoMap':'\u{1F3D4}', '2GIS':'\u{1F5FA}',
@@ -4184,7 +4341,9 @@ function normalizeCatalog(data) {
     key: e.key || e.id, label: e.label || e.name,
     url: e.proxy ? SERVER + e.proxy : e.url,
     subdomains: e.subdomains || '', tms: e.url_type === 'tms' || !!e.tms,
-    maxZoom: e.maxZoom || e.maxzoom || 18, opacity: e.opacity,
+    minZoom: Number(e.minZoom ?? e.minzoom ?? 0) || 0,
+    maxZoom: Number(e.maxZoom ?? e.maxzoom ?? 18) || 18,
+    opacity: e.opacity,
     proxy: e.proxy ? SERVER + e.proxy : null
   });
   if (data.base) data.base = data.base.map(norm);
@@ -4192,8 +4351,41 @@ function normalizeCatalog(data) {
   return data;
 }
 
+function catalogMaxZoom(entry, fallback = 18) {
+  const value = Number(entry?.maxZoom ?? entry?.maxzoom ?? fallback);
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.min(22, Math.floor(value)));
+}
+
+function normalizeLayerLookupText(value) {
+  return String(value || '')
+    .replace(/\.[^.\\/]+$/i, '')
+    .replace(/_?\d+$/i, '')
+    .replace(/\+.*$/u, '')
+    .replace(/_z\d+\s*-\s*\d+.*$/iu, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function getCatalogEntryByLabel(label, includeOverlays = true) {
+  if (!tileCatalog || !label) return null;
+  const pools = includeOverlays
+    ? [...(tileCatalog.base || []), ...(tileCatalog.overlays || [])]
+    : [...(tileCatalog.base || [])];
+  const direct = pools.find(entry => entry.label === label || entry.key === label);
+  if (direct) return direct;
+  const needle = normalizeLayerLookupText(label);
+  if (!needle) return null;
+  return pools.find(entry =>
+    normalizeLayerLookupText(entry.label) === needle ||
+    normalizeLayerLookupText(entry.key) === needle
+  ) || null;
+}
+
 function loadTileCatalog() {
-  fetch('https://trophynav.ru/api/tiles-catalog.json')
+  return fetch('https://trophynav.ru/api/tiles-catalog.json')
     .then(resp => {
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       return resp.json();
@@ -4359,6 +4551,7 @@ function openFile(accept, callback) {
           const text = await readTextFile(p);
           callback(text, fname, { path: p, format: normalizeFileFormat(fname) });
         }
+        saveState({ fileDelay: 1000 });
       }).catch(err => {
         console.warn('Tauri dialog/fs error:', err);
         openFileHtmlFallback(accept, callback);
@@ -4378,9 +4571,18 @@ function openFileHtmlFallback(accept, callback) {
   input.multiple = true;
   input.onchange = e => {
     const files = Array.from(e.target.files || []);
+    let pending = files.length;
+    const done = () => {
+      pending--;
+      if (pending <= 0) saveState({ fileDelay: 1000 });
+    };
     files.forEach(file => {
       const reader = new FileReader();
-      reader.onload = ev => callback(ev.target.result, file.name, { path: file.name, format: normalizeFileFormat(file.name) });
+      reader.onload = ev => {
+        callback(ev.target.result, file.name, { path: file.name, format: normalizeFileFormat(file.name) });
+        done();
+      };
+      reader.onerror = done;
       reader.readAsText(file, 'UTF-8');
     });
   };
@@ -5252,6 +5454,10 @@ function openModal(id) {
     const pathEl = document.getElementById('setting-workdir-path');
     if (pathEl) pathEl.textContent = appDataPath || 'Не инициализирована';
   }
+  if (id === 'modal-layers') {
+    updateOfflineLayersList();
+    if (window.__TAURI__ && appDataPath) scanOfflineMaps();
+  }
 }
 function closeModal(id) {
   const overlay = document.getElementById(id);
@@ -5312,6 +5518,7 @@ const TRACK_MARKER_GLOBAL_FULL_RENDER_LIMIT = 1200;
 const TRACK_MARKER_BOUNDS_PAD = 0.25;
 const TRACK_POINT_HIT_RADIUS_PX = 12;
 let trackHoverTooltip = null;
+let trackHoverTooltipTarget = null;
 let trackMarkerRefreshScheduled = false;
 
 function cloneTrackPointsData(pointsData = []) {
@@ -5499,8 +5706,10 @@ function deleteTrackById(id) {
 function formatTrackPointTooltip(track, idx) {
   const pt = track.points[idx];
   const data = track.pointsData?.[idx] || {};
+  const trackName = (track.name && String(track.name).trim()) ? track.name : `Трек #${track.id}`;
   let html = `<div style="font-size:11px;line-height:1.5;min-width:160px">`;
-  html += `<b>Точка #${idx + 1}</b> из ${track.points.length}<br>`;
+  html += `<b>${escapeHtml(trackName)}</b><br>`;
+  html += `<b>Точка:</b> ${idx + 1} из ${track.points.length}<br>`;
   html += `<b>Lat:</b> ${pt.lat.toFixed(6)}<br>`;
   html += `<b>Lon:</b> ${pt.lng.toFixed(6)}<br>`;
   if (data.ele != null && !isNaN(data.ele)) html += `<b>Высота:</b> ${data.ele.toFixed(1)} м<br>`;
@@ -5545,10 +5754,15 @@ function createTrackMarker(track, idx) {
     bubblingMouseEvents: false
   }).addTo(map);
   m._trackIdx = idx;
-  m.bindTooltip(() => formatTrackPointTooltip(track, m._trackIdx), {
-    direction: 'top', offset: [0, -6], opacity: 0.95,
-    className: 'track-point-tooltip'
+  m.on('mouseover', function(e) {
+    L.DomEvent.stop(e);
+    showTrackPointHoverTooltip(track, m._trackIdx);
   });
+  m.on('mousemove', function(e) {
+    L.DomEvent.stop(e);
+    showTrackPointHoverTooltip(track, m._trackIdx);
+  });
+  m.on('mouseout', closeTrackPointHoverTooltip);
   // Перетаскивание левой кнопкой
   m.on('mousedown', function(e) {
     if (!canEditTrackGeometry(track)) return;
@@ -5558,7 +5772,7 @@ function createTrackMarker(track, idx) {
       currentTrackEdit.selectedPointIdx = m._trackIdx;
       updateTrackBuildPanel(track);
     }
-    m.closeTooltip();
+    closeTrackPointHoverTooltip();
     const undoSnapshot = snapshotTrackGeometry(track);
     let moved = false;
     const onMove = ev => {
@@ -5690,14 +5904,22 @@ function findNearestTrackPointHit(track, latlng, maxPx = TRACK_POINT_HIT_RADIUS_
 }
 
 function showTrackPointHoverTooltip(track, idx) {
+  if (!track?.points?.[idx]) return;
+  const targetKey = `${track.id}:${idx}`;
   if (!trackHoverTooltip) {
     trackHoverTooltip = L.tooltip({
       direction: 'top',
       offset: [0, -6],
       opacity: 0.95,
+      interactive: false,
       className: 'track-point-tooltip'
     });
   }
+  if (trackHoverTooltipTarget === targetKey && map.hasLayer(trackHoverTooltip)) {
+    trackHoverTooltip.setLatLng(track.points[idx]);
+    return;
+  }
+  trackHoverTooltipTarget = targetKey;
   trackHoverTooltip
     .setLatLng(track.points[idx])
     .setContent(formatTrackPointTooltip(track, idx))
@@ -5708,6 +5930,7 @@ function closeTrackPointHoverTooltip() {
   if (trackHoverTooltip && map.hasLayer(trackHoverTooltip)) {
     map.removeLayer(trackHoverTooltip);
   }
+  trackHoverTooltipTarget = null;
 }
 
 function bindTrackPolyline(track) {
@@ -7493,7 +7716,7 @@ function openDownloadSettings(bounds) {
     if (entry.label === currentBaseLayerName) rb.checked = true;
     rb.onchange = updateDownloadEstimate;
     lbl.appendChild(rb);
-    const maxZ = entry.maxZoom || 18;
+    const maxZ = catalogMaxZoom(entry, 18);
     lbl.appendChild(document.createTextNode(
       `${getLayerEmoji(entry.label)} ${entry.label} (z${maxZ})`
     ));
@@ -7660,6 +7883,7 @@ function getOverlayOpacities() {
 
 function updateDownloadEstimate() {
   if (!window._dlBounds) return;
+  applyDownloadZoomLimit();
   const zMin = parseInt(document.getElementById('dl-zoom-min').value);
   const zMax = parseInt(document.getElementById('dl-zoom-max').value);
   const polygon = window._dlPolygon || null;
@@ -7772,6 +7996,7 @@ async function downloadTiles() {
   const bounds = window._dlBounds;
   if (!bounds) { showToast('Область не выбрана'); return; }
 
+  applyDownloadZoomLimit();
   const zMin = parseInt(document.getElementById('dl-zoom-min').value);
   const zMax = parseInt(document.getElementById('dl-zoom-max').value);
   if (zMin > zMax) { showToast('Зум "от" должен быть ≤ зум "до"'); return; }
@@ -8456,6 +8681,7 @@ async function scanOfflineMaps() {
 
     if (sources.length === 0) {
       emptyEl.style.display = 'block';
+      updateOfflineLayersList();
       return;
     }
     emptyEl.style.display = 'none';
@@ -8511,9 +8737,26 @@ async function scanOfflineMaps() {
       `;
       listEl.appendChild(card);
     }
+    updateOfflineLayersList();
   } catch (e) {
     console.warn('scanOfflineMaps error:', e);
     document.getElementById('offline-maps-empty').style.display = 'block';
+  }
+}
+
+function fitOfflineMapBounds(bounds, maxZoom) {
+  if (!Array.isArray(bounds) || bounds.length !== 4) return;
+  const [north, south, east, west] = bounds.map(Number);
+  if (![north, south, east, west].every(Number.isFinite)) return;
+  if (north <= south || east <= west) return;
+  try {
+    const mapBounds = L.latLngBounds([south, west], [north, east]);
+    map.fitBounds(mapBounds.pad(0.04), {
+      padding: [24, 24],
+      maxZoom: Math.min(Math.max(Number(maxZoom) || 14, 12), 16)
+    });
+  } catch (e) {
+    console.warn('fitOfflineMapBounds error:', e);
   }
 }
 
@@ -8546,6 +8789,10 @@ async function toggleOfflineMap(fname, btn) {
     entry.info = info;
     const minZ = Math.min(info.minZoom, info.maxZoom);
     const maxZ = Math.max(info.minZoom, info.maxZoom);
+    if (currentCRS !== 'EPSG3857') {
+      removeActiveOverlaysForCRSChange();
+      switchCRS(false);
+    }
 
     // Create custom Leaflet TileLayer from SQLite
     const OfflineTileLayer = L.TileLayer.extend({
@@ -8582,7 +8829,8 @@ async function toggleOfflineMap(fname, btn) {
 
     const layer = new OfflineTileLayer('', {
       minZoom: minZ,
-      maxZoom: maxZ,
+      maxZoom: 22,
+      minNativeZoom: minZ,
       maxNativeZoom: maxZ,
       tms: false,
       errorTileUrl: ''
@@ -8594,6 +8842,7 @@ async function toggleOfflineMap(fname, btn) {
 
     if (btn) { btn.textContent = '✓ Вкл'; btn.classList.add('active'); }
     showToast(`✅ Карта ${entry.name || getFileNameFromPath(entry._path)} подключена (z${minZ}-${maxZ})`);
+    fitOfflineMapBounds(info.bounds, maxZ);
     updateOfflineLayersList();
   } catch (e) {
     console.error('toggleOfflineMap error:', e);
@@ -8642,10 +8891,9 @@ function updateOfflineLayersList() {
   const list = document.getElementById('offline-layers-list');
   if (!section || !list) return;
 
-  // Собираем активные офлайн-карты
-  const activeEntries = Object.entries(offlineMaps).filter(([, e]) => e.active && e.layer);
+  const entries = Object.entries(offlineMaps);
 
-  if (activeEntries.length === 0) {
+  if (entries.length === 0) {
     section.style.display = 'none';
     return;
   }
@@ -8653,7 +8901,7 @@ function updateOfflineLayersList() {
   section.style.display = 'block';
   list.innerHTML = '';
 
-  activeEntries.forEach(([fname, entry]) => {
+  entries.forEach(([fname, entry]) => {
     const shortName = (entry.name || getFileNameFromPath(fname)).replace(/\.(sqlitedb|mbtiles|rmap|db|sqlite)$/i, '');
     const div = document.createElement('div');
     div.className = 'overlay-layer';
@@ -8661,18 +8909,28 @@ function updateOfflineLayersList() {
 
     const cb = document.createElement('input');
     cb.type = 'checkbox';
-    cb.checked = map.hasLayer(entry.layer);
-    cb.onchange = () => {
+    cb.checked = !!(entry.layer && map.hasLayer(entry.layer));
+    cb.disabled = !!entry.missing || !!entry._loading;
+    cb.onchange = async () => {
       if (cb.checked) {
-        entry.layer.addTo(map);
+        if (entry.layer) {
+          entry.layer.addTo(map);
+          entry.active = true;
+        } else {
+          cb.disabled = true;
+          await toggleOfflineMap(fname);
+        }
       } else {
-        map.removeLayer(entry.layer);
+        if (entry.layer && map.hasLayer(entry.layer)) map.removeLayer(entry.layer);
+        entry.layer = null;
+        entry.active = false;
       }
+      updateOfflineLayersList();
     };
 
     const nameEl = document.createElement('span');
     nameEl.className = 'overlay-name';
-    nameEl.textContent = shortName;
+    nameEl.textContent = entry.missing ? `${shortName} (нет файла)` : shortName;
     nameEl.title = fname;
 
     const opSlider = document.createElement('input');
@@ -8680,15 +8938,17 @@ function updateOfflineLayersList() {
     opSlider.className = 'opacity-slider';
     opSlider.min = '0';
     opSlider.max = '100';
-    opSlider.value = '100';
+    opSlider.value = String(Math.round((entry.opacity ?? 1) * 100));
+    opSlider.disabled = !entry.layer;
     opSlider.oninput = () => {
-      entry.layer.setOpacity(parseInt(opSlider.value) / 100);
+      entry.opacity = parseInt(opSlider.value) / 100;
+      if (entry.layer) entry.layer.setOpacity(entry.opacity);
       opVal.textContent = opSlider.value + '%';
     };
 
     const opVal = document.createElement('span');
     opVal.className = 'opacity-val';
-    opVal.textContent = '100%';
+    opVal.textContent = opSlider.value + '%';
 
     div.appendChild(cb);
     div.appendChild(nameEl);
@@ -8733,12 +8993,30 @@ function tauriInvoke(command, args = {}) {
   return invoke(command, args);
 }
 
+async function relaunchAppAfterUpdate() {
+  const processApi = window.__TAURI__?.process;
+  if (typeof processApi?.relaunch === 'function') {
+    await processApi.relaunch();
+    return;
+  }
+  if (typeof processApi?.restart === 'function') {
+    await processApi.restart();
+    return;
+  }
+  if (typeof window.__TAURI__?.core?.invoke === 'function') {
+    await window.__TAURI__.core.invoke('plugin:process|restart');
+    return;
+  }
+  await tauriInvoke('plugin:process|restart');
+}
+
 // ─────────────────────────────────────────────
 // СОХРАНЕНИЕ / ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ
 // ─────────────────────────────────────────────
 function collectState() {
   const state = {
     version: APP_STATE_VERSION,
+    savedAt: getIsoNow(),
     map: {
       center: { lat: map.getCenter().lat, lng: map.getCenter().lng },
       zoom: map.getZoom(),
@@ -8851,10 +9129,40 @@ function collectState() {
   return state;
 }
 
-function saveState() {
+let stateFileSaveTimer = null;
+let stateFileSaveInFlight = false;
+let statePersistenceReady = false;
+
+function scheduleStateFileSave(delay = 8000) {
+  if (!window.__TAURI__ || !appDataPath || !statePersistenceReady) return;
+  clearTimeout(stateFileSaveTimer);
+  stateFileSaveTimer = setTimeout(() => {
+    saveStateToFile();
+  }, delay);
+}
+
+function saveState(options = {}) {
   try {
     localStorage.setItem('tnd-state', JSON.stringify(collectState()));
+    if (options.file !== false) scheduleStateFileSave(options.fileDelay);
   } catch (e) { console.warn('Save state failed:', e); }
+}
+
+function readLocalState() {
+  let raw;
+  try { raw = localStorage.getItem('tnd-state'); } catch { return null; }
+  if (!raw) return null;
+  try {
+    const state = JSON.parse(raw);
+    return state && state.version === APP_STATE_VERSION ? state : null;
+  } catch {
+    return null;
+  }
+}
+
+function stateSavedAtMs(state) {
+  const ts = Date.parse(state?.savedAt || state?.updatedAt || '');
+  return Number.isFinite(ts) ? ts : 0;
 }
 
 // --- Apply state (shared between restoreState and syncPull) ---
@@ -9249,6 +9557,9 @@ function applyState(state) {
     loadedSourceFiles = [];
   }
   renderLoadedSourceFiles();
+  updateWptTable();
+  updateTrackList();
+  updateRouteList();
 
   // 5. Restore map view and layer
   if (state.map) {
@@ -9264,12 +9575,8 @@ function applyState(state) {
 }
 
 function restoreState() {
-  let raw;
-  try { raw = localStorage.getItem('tnd-state'); } catch (e) { return; }
-  if (!raw) return;
-  let state;
-  try { state = JSON.parse(raw); } catch (e) { return; }
-  if (!state || state.version !== 1) return;
+  const state = readLocalState();
+  if (!state) return;
   try { applyState(state); } catch (e) { console.warn('Restore state failed:', e); }
 }
 
@@ -10196,9 +10503,16 @@ async function installPendingUpdate() {
     await tauriInvoke('install_app_update', { rid: pendingUpdateRid });
     if (unlisten) unlisten();
     status.style.color = '#4adf7a';
-    status.textContent = '✓ Обновление установлено. Если приложение не перезапустилось само, запустите его снова.';
+    status.textContent = '✓ Обновление установлено. Перезапускаем приложение...';
     pendingUpdateRid = null;
     pendingUpdateVersion = null;
+    try {
+      await new Promise(resolve => setTimeout(resolve, 700));
+      await relaunchAppAfterUpdate();
+    } catch (restartError) {
+      console.warn('App relaunch after update failed:', restartError);
+      status.textContent = '✓ Обновление установлено. Закройте приложение и запустите его снова.';
+    }
   } catch (e) {
     if (unlisten) unlisten();
     status.style.color = '#df7a4a';
@@ -10307,12 +10621,19 @@ async function initWorkingDirectory() {
 
 async function saveStateToFile() {
   if (!window.__TAURI__ || !appDataPath) return;
+  if (stateFileSaveInFlight) {
+    scheduleStateFileSave(2000);
+    return;
+  }
+  stateFileSaveInFlight = true;
   try {
     const { writeTextFile } = window.__TAURI__.fs;
     const state = collectState();
     await writeTextFile(appDataPath + '/session.json', JSON.stringify(state, null, 2));
   } catch (e) {
     console.warn('Auto-save to file failed:', e);
+  } finally {
+    stateFileSaveInFlight = false;
   }
 }
 
@@ -10321,18 +10642,65 @@ async function loadStateFromFile() {
   try {
     const { readTextFile, exists } = window.__TAURI__.fs;
     const path = appDataPath + '/session.json';
-    if (!(await exists(path))) return false;
-    const raw = await readTextFile(path);
-    const state = JSON.parse(raw);
-    if (state && state.version === 1) {
+    const localState = readLocalState();
+    let fileState = null;
+    if (await exists(path)) {
+      const raw = await readTextFile(path);
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.version === APP_STATE_VERSION) fileState = parsed;
+    }
+    const state = stateSavedAtMs(localState) > stateSavedAtMs(fileState) ? localState : fileState;
+    if (state) {
       applyState(state);
-      console.log('State restored from file');
+      saveState({ file: false });
+      console.log(state === localState ? 'State restored from localStorage' : 'State restored from file');
+      if (state === localState) scheduleStateFileSave(500);
       return true;
     }
   } catch (e) {
     console.warn('Load state from file failed:', e);
   }
   return false;
+}
+
+async function recoverPersistedGpxIfNeeded() {
+  if (!window.__TAURI__ || !appDataPath) return 0;
+  const { readDir, readTextFile } = window.__TAURI__.fs;
+  let recovered = 0;
+
+  const loadDir = async (subdir, shouldLoad, loader) => {
+    if (!shouldLoad()) return;
+    let entries = [];
+    try { entries = await readDir(appDataPath + '/' + subdir); } catch { return; }
+    const files = entries
+      .filter(entry => entry.name && /\.gpx$/i.test(entry.name))
+      .sort((a, b) => String(a.name).localeCompare(String(b.name), 'ru'));
+    for (const file of files) {
+      const path = appDataPath + '/' + subdir + '/' + file.name;
+      try {
+        const text = await readTextFile(path);
+        const before = { waypoints: waypoints.length, tracks: tracks.length, routes: routes.length };
+        loader(text, file.name, { path, format: 'gpx', silent: true });
+        if (waypoints.length !== before.waypoints || tracks.length !== before.tracks || routes.length !== before.routes) recovered++;
+      } catch (e) {
+        console.warn('Failed to recover persisted GPX:', path, e);
+      }
+    }
+  };
+
+  await loadDir('waypoints', () => waypoints.length === 0, loadGPXWaypoints);
+  await loadDir('tracks', () => tracks.length === 0, loadGPXTracks);
+  await loadDir('routes', () => routes.length === 0, loadGPXRoutes);
+
+  if (recovered > 0) {
+    updateWptTable();
+    updateTrackList();
+    updateRouteList();
+    renderLoadedSourceFiles();
+    saveState({ fileDelay: 1000 });
+    showToast(`✓ Восстановлены данные из файлов: ${recovered}`);
+  }
+  return recovered;
 }
 
 // Автосохранение на диск каждые 60 сек
@@ -10920,11 +11288,14 @@ function setTheme(theme) {
   await initWorkingDirectory();
   // Пробуем восстановить: сначала из файла, если нет — из localStorage
   const restoredFromFile = await loadStateFromFile();
+  statePersistenceReady = true;
   if (restoredFromFile) {
     showToast('✓ Сессия восстановлена');
+    scheduleStateFileSave(500);
   } else {
     restoreState(); // fallback на localStorage
   }
+  await recoverPersistedGpxIfNeeded();
   // Восстановить позицию карты из localStorage
   const savedView = localStorage.getItem('tnd-map-view');
   if (savedView) {
@@ -12028,6 +12399,50 @@ function setRoutePoint(point, lat, lon, name) {
   document.getElementById('search-results').classList.remove('has-results');
   if (routeFromLatLng && routeToLatLng) calculateOsrmRoute();
   else showToast('Точка ' + point + ' задана: ' + name);
+}
+
+function osrmEndpointMatchesWaypoint(latlng, label, marker, oldName = '') {
+  if (!latlng || !marker?.wpData) return false;
+  if (latLngDistanceMeters(latlng, marker.getLatLng()) > 2) return false;
+  const normalizedLabel = normalizeWaypointLabel(label);
+  const oldLabel = normalizeWaypointLabel(oldName);
+  const newLabel = normalizeWaypointLabel(marker.wpData.name);
+  return !normalizedLabel || normalizedLabel === oldLabel || normalizedLabel === newLabel;
+}
+
+function syncOsrmWaypointReferences(marker, oldName = '') {
+  if (!marker?.wpData) return;
+  const newName = String(marker.wpData.name || '').trim();
+  if (!newName) return;
+  const fromInput = document.getElementById('route-from-input');
+  const toInput = document.getElementById('route-to-input');
+  if (fromInput && osrmEndpointMatchesWaypoint(routeFromLatLng, fromInput.value, marker, oldName)) {
+    fromInput.value = newName;
+  }
+  if (toInput && osrmEndpointMatchesWaypoint(routeToLatLng, toInput.value, marker, oldName)) {
+    toInput.value = newName;
+  }
+
+  let changed = false;
+  osrmState.items.forEach(route => {
+    let routeChanged = false;
+    if (osrmEndpointMatchesWaypoint(route.fromLatLng, route.fromLabel, marker, oldName)) {
+      route.fromLabel = newName;
+      routeChanged = true;
+    }
+    if (osrmEndpointMatchesWaypoint(route.toLatLng, route.toLabel, marker, oldName)) {
+      route.toLabel = newName;
+      routeChanged = true;
+    }
+    if (routeChanged) {
+      const old = String(oldName || '').trim();
+      route.name = old && String(route.name || '').includes(old)
+        ? String(route.name).split(old).join(newName)
+        : buildOsrmRouteName(route.fromLabel, route.toLabel, 1, 1);
+      changed = true;
+    }
+  });
+  if (changed) renderOsrmRouteList();
 }
 
 function addWaypointFromSearch(lat, lon, name) {
