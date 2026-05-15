@@ -151,6 +151,7 @@ jobs:
         id: assets
         run: |
           install -d release-assets
+          find artifacts -maxdepth 5 -type f | sort
           copy_release_asset() {
             local src="$1"
             local prefix="${2:-}"
@@ -167,10 +168,10 @@ jobs:
           APPIMAGE_SRC=$(find artifacts/TrophyNavigator-Linux -maxdepth 1 -type f -name '*.AppImage' | head -n 1)
           NSIS_SRC=$(find artifacts/TrophyNavigator-Windows -maxdepth 1 -type f -name '*.exe' | head -n 1)
           MSI_SRC=$(find artifacts/TrophyNavigator-Windows-msi -maxdepth 1 -type f -name '*.msi' | head -n 1)
-          MACOS_ARM64_DMG_SRC=$(find artifacts/TrophyNavigator-macOS-arm64 -maxdepth 1 -type f -name '*.dmg' | head -n 1)
-          MACOS_X64_DMG_SRC=$(find artifacts/TrophyNavigator-macOS-x64 -maxdepth 1 -type f -name '*.dmg' | head -n 1)
-          MACOS_ARM64_APP_SRC=$(find artifacts/TrophyNavigator-macOS-arm64 -maxdepth 1 -type f -name '*.app.tar.gz' | head -n 1)
-          MACOS_X64_APP_SRC=$(find artifacts/TrophyNavigator-macOS-x64 -maxdepth 1 -type f -name '*.app.tar.gz' | head -n 1)
+          MACOS_ARM64_DMG_SRC=$(find artifacts/TrophyNavigator-macOS-arm64 -type f -name '*.dmg' | head -n 1)
+          MACOS_X64_DMG_SRC=$(find artifacts/TrophyNavigator-macOS-x64 -type f -name '*.dmg' | head -n 1)
+          MACOS_ARM64_APP_SRC=$(find artifacts/TrophyNavigator-macOS-arm64 -type f -name '*.app.tar.gz' | head -n 1)
+          MACOS_X64_APP_SRC=$(find artifacts/TrophyNavigator-macOS-x64 -type f -name '*.app.tar.gz' | head -n 1)
           if [ -z "$APPIMAGE_SRC" ] || [ -z "$NSIS_SRC" ]; then
             echo "Release artifacts not found" >&2
             exit 1
