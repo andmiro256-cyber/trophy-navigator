@@ -4,13 +4,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🧭 Trophy Navigator Desktop v0.9.14</title>
+  <title>🧭 Trophy Navigator Desktop v0.9.16</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
 <style>
   /* ─── CSS Variables (дизайн-система) ─── */
   :root {
@@ -1284,7 +1281,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.14</span>
+  <span id="app-version-label" style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.16</span>
 </div>
 
 <div id="ruler-panel">
@@ -2318,6 +2315,60 @@
 <div id="toast"></div>
 
 <script>
+const TND_SQL_JS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js';
+const TND_SQL_WASM_BASE = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/';
+const TND_CHART_JS_URL = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js';
+const TND_CHART_ANNOTATION_URL = 'https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js';
+const tndScriptLoadPromises = {};
+
+function loadScriptOnce(src) {
+  if (!src) return Promise.reject(new Error('Пустой URL скрипта'));
+  if (tndScriptLoadPromises[src]) return tndScriptLoadPromises[src];
+  const existing = [...document.scripts].find(script => script.src === src);
+  if (existing?.dataset.loaded === '1') return Promise.resolve();
+  tndScriptLoadPromises[src] = new Promise((resolve, reject) => {
+    const script = existing || document.createElement('script');
+    const timeout = setTimeout(() => reject(new Error('Таймаут загрузки ' + src)), 15000);
+    script.onload = () => {
+      clearTimeout(timeout);
+      script.dataset.loaded = '1';
+      resolve();
+    };
+    script.onerror = () => {
+      clearTimeout(timeout);
+      reject(new Error('Не удалось загрузить ' + src));
+    };
+    if (!existing) {
+      script.src = src;
+      script.async = true;
+      document.head.appendChild(script);
+    }
+  }).catch(error => {
+    delete tndScriptLoadPromises[src];
+    throw error;
+  });
+  return tndScriptLoadPromises[src];
+}
+
+async function ensureSqlJsLoaded() {
+  if (typeof initSqlJs !== 'function') await loadScriptOnce(TND_SQL_JS_URL);
+  if (typeof initSqlJs !== 'function') throw new Error('sql.js не загрузился');
+  return initSqlJs;
+}
+
+async function ensureChartJsLoaded() {
+  if (typeof Chart === 'undefined') await loadScriptOnce(TND_CHART_JS_URL);
+  if (typeof Chart === 'undefined') throw new Error('Chart.js не загрузился');
+  if (!window.__tndChartAnnotationLoaded) {
+    await loadScriptOnce(TND_CHART_ANNOTATION_URL);
+    if (window.ChartAnnotation && Chart.register) {
+      Chart.register(window.ChartAnnotation);
+    }
+    window.__tndChartAnnotationLoaded = true;
+  }
+  return Chart;
+}
+
 // ─────────────────────────────────────────────
 // КАРТА
 // ─────────────────────────────────────────────
@@ -7990,6 +8041,155 @@ function getTileUrl(layerName, x, y, z) {
   }
 }
 
+function normalizeNativeSubdomains(value) {
+  if (Array.isArray(value)) return value.map(String).filter(Boolean);
+  const text = String(value || '').trim();
+  if (!text) return [];
+  if (text.includes(',') || text.includes('|') || /\s/.test(text)) {
+    return text.split(/[,\s|]+/).map(s => s.trim()).filter(Boolean);
+  }
+  return [...text];
+}
+
+function nativeLayerSource(urlTemplate, options = {}) {
+  const hasXyz = urlTemplate && urlTemplate.includes('{x}') && urlTemplate.includes('{y}') && urlTemplate.includes('{z}');
+  const hasQuadkey = urlTemplate && urlTemplate.includes('{q}');
+  if (!hasXyz && !hasQuadkey) {
+    return null;
+  }
+  return {
+    urlTemplate,
+    tms: !!options.tms,
+    subdomains: normalizeNativeSubdomains(options.subdomains)
+  };
+}
+
+function getNativeDownloadLayerSource(layerName) {
+  const entry = getCatalogEntryByLabel(layerName, true);
+  if (entry?.url) {
+    return nativeLayerSource(entry.url, {
+      tms: !!entry.tms,
+      subdomains: entry.subdomains || ''
+    });
+  }
+
+  switch (layerName) {
+    case 'OpenStreetMap':  return nativeLayerSource('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { subdomains: 'abc' });
+    case 'OpenTopoMap':    return nativeLayerSource('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { subdomains: 'abc' });
+    case '2GIS':           return nativeLayerSource('https://tile2.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1');
+    case 'Яндекс Схема':   return nativeLayerSource('https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU');
+    case 'Яндекс Гибрид':  return nativeLayerSource('https://core-sat.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&scale=1&lang=ru_RU');
+    case 'Спутник Google': return nativeLayerSource('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { subdomains: ['0','1','2','3'] });
+    case 'Гибрид Google':  return nativeLayerSource('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { subdomains: ['0','1','2','3'] });
+    case 'Спутник Bing':   return nativeLayerSource('https://ecn.t0.tiles.virtualearth.net/tiles/a{q}?g=14000');
+    case 'Гибрид Bing':    return nativeLayerSource('https://ecn.t0.tiles.virtualearth.net/tiles/h{q}?g=14000&mkt=ru-RU');
+    case 'Спутник ESRI':   return nativeLayerSource('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+    case 'ESRI Clarity':   return nativeLayerSource('https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false');
+    case 'Яндекс Спутник': return nativeLayerSource('https://sat0{s}.maps.yandex.net/tiles?l=sat&x={x}&y={y}&z={z}&lang=ru_RU', { subdomains: '1234' });
+    case 'Космоснимки рельеф': return nativeLayerSource('https://{s}tilecart.kosmosnimki.ru/rw/{z}/{x}/{y}.png', { subdomains: 'ab' });
+    case 'Карты Google':   return nativeLayerSource('https://mt{s}.google.com/vt/lyrs=m&hl=ru&x={x}&y={y}&z={z}', { subdomains: ['0','1','2','3'] });
+    case 'Рельеф Google':  return nativeLayerSource('https://mt{s}.google.com/vt/lyrs=t&hl=ru&x={x}&y={y}&z={z}', { subdomains: ['0','1','2','3'] });
+    case 'CyclOSM':        return nativeLayerSource('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', { subdomains: 'abc' });
+    case 'OSM Humanitarian': return nativeLayerSource('https://tile-{s}.openstreetmap.fr/hot/{z}/{x}/{y}.png', { subdomains: 'ab' });
+    case 'TF Outdoors':    return nativeLayerSource('https://{s}.tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38', { subdomains: 'abc' });
+    case 'LoMaps':         return nativeLayerSource('https://{s}.tile.thunderforest.com/locus-4za/{z}/{x}/{y}.png?apikey=7c352c8ff1244dd8b732e349e0b0fe8d', { subdomains: 'abc' });
+    case 'TF Transport':   return nativeLayerSource('https://{s}.tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38', { subdomains: 'abc' });
+    case 'TF Велосипед':   return nativeLayerSource('https://{s}.tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38', { subdomains: 'abc' });
+    case 'MTB Map':        return nativeLayerSource('http://tile.mtbmap.cz/mtbmap_tiles/{z}/{x}/{y}.png');
+    case 'Michelin':       return nativeLayerSource('https://map1.viamichelin.com/map/mapdirect?map=viamichelin&z={z}&x={x}&y={y}&format=png&version=201901161110&layer=background&locale=default&cs=1&protocol=https');
+    case 'ГГЦ 250м':       return nativeLayerSource('https://tiles.nakarte.me/ggc250/{z}/{x}/{y}', { tms: true });
+    case 'ГГЦ 500м':       return nativeLayerSource('https://tiles.nakarte.me/ggc500/{z}/{x}/{y}', { tms: true });
+    case 'ГГЦ 1км':        return nativeLayerSource('https://tiles.nakarte.me/ggc1000/{z}/{x}/{y}', { tms: true });
+    case 'ГГЦ 2км':        return nativeLayerSource('https://tiles.nakarte.me/ggc2000/{z}/{x}/{y}', { tms: true });
+    case 'Генштаб 250м':   return nativeLayerSource('https://tiles.nakarte.me/topo001m/{z}/{x}/{y}', { tms: true });
+    default: return null;
+  }
+}
+
+function cleanupDownloadSelectionState() {
+  if (dlSelectRect) { map.removeLayer(dlSelectRect); dlSelectRect = null; }
+  dlPolygonMarkers.forEach(m => map.removeLayer(m));
+  dlPolygonMarkers = [];
+  dlPolygonPoints = [];
+  if (dlPolygonShape) { map.removeLayer(dlPolygonShape); dlPolygonShape = null; }
+  window._dlPolygon = null;
+}
+
+function restoreDownloadControls() {
+  document.getElementById('dl-progress-area').style.display = 'none';
+  document.getElementById('dl-buttons').style.display = 'flex';
+  dlAbortController = null;
+}
+
+function updateNativeDownloadProgress(progress, startTime) {
+  const total = Math.max(1, Number(progress?.total || 0));
+  const done = Math.max(0, Number(progress?.done || 0));
+  const saved = Math.max(0, Number(progress?.saved || 0));
+  const errors = Math.max(0, Number(progress?.errors || 0));
+  const bytes = Math.max(0, Number(progress?.bytes || 0));
+  const pct = Math.min(100, Math.round(done / total * 100));
+  const elapsed = (Date.now() - startTime) / 1000;
+  const speed = elapsed > 0 ? Math.round(done / elapsed) : 0;
+  const remaining = speed > 0 ? Math.max(0, Math.round((total - done) / speed)) : 0;
+  document.getElementById('dl-prog-bar').style.width = pct + '%';
+  document.getElementById('dl-prog-status').textContent =
+    `${done.toLocaleString('ru')} / ${total.toLocaleString('ru')} тайлов (${pct}%) · сохранено ${saved.toLocaleString('ru')}`;
+  document.getElementById('dl-prog-speed').textContent =
+    `${speed} т/с · ${(bytes / 1048576).toFixed(1)} МБ · ошибок ${errors.toLocaleString('ru')} · ~${remaining} сек`;
+}
+
+async function downloadTilesNative({ savePath, layerName, source, zMin, zMax, est, polygon, dlFormat }) {
+  const startTime = Date.now();
+  let unlisten = null;
+  if (window.__TAURI__?.event?.listen) {
+    unlisten = await window.__TAURI__.event.listen('offline-download-progress', (e) => {
+      updateNativeDownloadProgress(e.payload, startTime);
+    });
+  }
+
+  dlAbortController = {
+    abort() {
+      tauriInvoke('cancel_offline_map_download').catch(e => console.warn('cancel offline download failed:', e));
+    }
+  };
+
+  try {
+    const result = await tauriInvoke('download_offline_map', {
+      request: {
+        path: savePath,
+        urlTemplate: source.urlTemplate,
+        subdomains: source.subdomains || [],
+        tms: !!source.tms,
+        format: dlFormat,
+        zMin,
+        zMax,
+        ranges: est.ranges.map(r => ({
+          z: r.z,
+          xMin: r.xMin,
+          xMax: r.xMax,
+          yMin: r.yMin,
+          yMax: r.yMax
+        })),
+        polygon: Array.isArray(polygon) ? polygon.map(p => ({ lat: p.lat, lng: p.lng })) : null,
+        total: est.total
+      }
+    });
+    updateNativeDownloadProgress(result, startTime);
+
+    if (result.saved > 0) {
+      const fname = savePath.split(/[\\/]/).pop();
+      await registerOfflineMapPath(savePath, fname, { silent: true, switchTab: false });
+      showToast(result.aborted
+        ? `⏹ Остановлено. Сохранено: ${fname} (${result.saved} тайлов)`
+        : `✅ Сохранено: ${fname} (${result.saved} тайлов)`);
+    } else {
+      showToast(result.aborted ? 'Скачивание остановлено, тайлы не сохранены' : 'Не удалось скачать ни одного тайла');
+    }
+  } finally {
+    if (unlisten) unlisten();
+  }
+}
+
 // ─── Основная функция скачивания ───
 
 async function downloadTiles() {
@@ -8005,6 +8205,10 @@ async function downloadTiles() {
   const filename = document.getElementById('dl-filename').value || 'map.sqlitedb';
   const polygon = window._dlPolygon || null;
   const est = estimateTiles(bounds, zMin, zMax, polygon);
+  const dlFormat = document.getElementById('dl-format').value; // 'osmand' or 'locus'
+  const selectedOverlays = getSelectedOverlays();
+  const selectedLayer2Name = document.getElementById('dl-layer2-select').value;
+  const nativeSource = getNativeDownloadLayerSource(layerName);
 
   // Tauri save dialog — default to maps/ subfolder
   let savePath = null;
@@ -8027,12 +8231,36 @@ async function downloadTiles() {
     }
   }
 
+  const canUseNativeDownload = !!(savePath && isTauriRuntime() && nativeSource && selectedOverlays.length === 0 && !selectedLayer2Name);
+
   // Показать прогресс
   document.getElementById('dl-buttons').style.display = 'none';
   document.getElementById('dl-progress-area').style.display = 'block';
   document.getElementById('dl-prog-bar').style.width = '0%';
-  document.getElementById('dl-prog-status').textContent = 'Инициализация sql.js...';
+  document.getElementById('dl-prog-status').textContent = canUseNativeDownload ? 'Подготовка файла...' : 'Инициализация sql.js...';
   document.getElementById('dl-prog-speed').textContent = '';
+
+  if (canUseNativeDownload) {
+    try {
+      await downloadTilesNative({
+        savePath,
+        layerName,
+        source: nativeSource,
+        zMin,
+        zMax,
+        est,
+        polygon,
+        dlFormat
+      });
+      cleanupDownloadSelectionState();
+    } catch (e) {
+      console.error('Native download error:', e);
+      showToast('Ошибка скачивания: ' + (e.message || e));
+    } finally {
+      restoreDownloadControls();
+    }
+    return;
+  }
 
   dlAbortController = new AbortController();
   const signal = dlAbortController.signal;
@@ -8040,12 +8268,12 @@ async function downloadTiles() {
 
   try {
     // Инициализация sql.js
-    const SQL = await initSqlJs({
-      locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
+    const initSqlJsFn = await ensureSqlJsLoaded();
+    const SQL = await initSqlJsFn({
+      locateFile: file => `${TND_SQL_WASM_BASE}${file}`
     });
     db = new SQL.Database();
 
-    const dlFormat = document.getElementById('dl-format').value; // 'osmand' or 'locus'
     const zStore = (z) => dlFormat === 'locus' ? 17 - z : z;
 
     db.run('CREATE TABLE tiles (x INTEGER, y INTEGER, z INTEGER, s INTEGER, image BLOB, PRIMARY KEY (x,y,z,s))');
@@ -8691,7 +8919,7 @@ async function scanOfflineMaps() {
       const fname = source.name;
       const fpath = source.path;
       const previous = previousMaps[key] || {};
-      const isActive = !!previous.active;
+      const isActive = isOfflineMapActive(previous);
       const existsOk = await exists(fpath).catch(() => false);
 
       // Get file size via stat (не читаем весь файл в память)
@@ -8711,11 +8939,13 @@ async function scanOfflineMaps() {
         name: fname,
         _path: fpath,
         external: source.external,
-        missing: !existsOk
+        missing: !existsOk,
+        active: isActive
       };
 
       // Escape filename for safe HTML insertion
       const safeName = fname.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      const safeKey = key.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
       const sourceLabel = source.external ? 'внешний файл' : 'папка приложения';
       const metaText = existsOk ? `${sizeStr} · ${sourceLabel}` : sizeStr;
 
@@ -8729,7 +8959,7 @@ async function scanOfflineMaps() {
           <div class="omc-meta">${metaText}</div>
         </div>
         <div class="omc-actions">
-          <button class="omc-btn ${isActive ? 'active' : ''}" ${existsOk ? '' : 'disabled'} onclick="toggleOfflineMap(${keyArg}, this)">
+          <button class="omc-btn ${isActive ? 'active' : ''}" data-offline-key="${safeKey}" ${existsOk ? '' : 'disabled'} onclick="toggleOfflineMap(${keyArg}, this)">
             ${isActive ? '✓ Вкл' : '◯ Выкл'}
           </button>
           <button class="omc-btn delete" onclick="deleteOfflineMap(${keyArg})">🗑</button>
@@ -8742,6 +8972,31 @@ async function scanOfflineMaps() {
     console.warn('scanOfflineMaps error:', e);
     document.getElementById('offline-maps-empty').style.display = 'block';
   }
+}
+
+function isOfflineMapActive(entry) {
+  return !!(entry?.layer && map.hasLayer(entry.layer));
+}
+
+function updateOfflineMapCardState(key) {
+  const btn = [...document.querySelectorAll('.offline-map-card [data-offline-key]')]
+    .find(node => node.dataset.offlineKey === key);
+  if (!btn) return;
+  const active = isOfflineMapActive(offlineMaps[key]);
+  btn.textContent = active ? '✓ Вкл' : '◯ Выкл';
+  btn.classList.toggle('active', active);
+}
+
+function deactivateOfflineMap(key) {
+  const entry = offlineMaps[key];
+  if (!entry) return false;
+  if (entry.layer && map.hasLayer(entry.layer)) map.removeLayer(entry.layer);
+  entry.layer = null;
+  if (entry.db) { entry.db.close(); entry.db = null; }
+  entry.active = false;
+  updateOfflineMapCardState(key);
+  updateOfflineLayersList();
+  return true;
 }
 
 function fitOfflineMapBounds(bounds, maxZoom) {
@@ -8764,14 +9019,9 @@ async function toggleOfflineMap(fname, btn) {
   const entry = offlineMaps[fname];
   if (!entry || entry._loading) return;
 
-  if (entry.active) {
-    // Deactivate
-    if (entry.layer) { map.removeLayer(entry.layer); entry.layer = null; }
-    if (entry.db) { entry.db.close(); entry.db = null; }
-    entry.active = false;
-    if (btn) { btn.textContent = '◯ Выкл'; btn.classList.remove('active'); }
-    showToast(`Карта ${fname} отключена`);
-    updateOfflineLayersList();
+  if (isOfflineMapActive(entry) || entry.active) {
+    deactivateOfflineMap(fname);
+    showToast(`Карта ${entry.name || getFileNameFromPath(entry._path)} отключена`);
     return;
   }
 
@@ -8840,7 +9090,7 @@ async function toggleOfflineMap(fname, btn) {
     entry.layer = layer;
     entry.active = true;
 
-    if (btn) { btn.textContent = '✓ Вкл'; btn.classList.add('active'); }
+    updateOfflineMapCardState(fname);
     showToast(`✅ Карта ${entry.name || getFileNameFromPath(entry._path)} подключена (z${minZ}-${maxZ})`);
     fitOfflineMapBounds(info.bounds, maxZ);
     updateOfflineLayersList();
@@ -8895,6 +9145,7 @@ function updateOfflineLayersList() {
 
   if (entries.length === 0) {
     section.style.display = 'none';
+    list.innerHTML = '';
     return;
   }
 
@@ -8916,14 +9167,13 @@ function updateOfflineLayersList() {
         if (entry.layer) {
           entry.layer.addTo(map);
           entry.active = true;
+          updateOfflineMapCardState(fname);
         } else {
           cb.disabled = true;
           await toggleOfflineMap(fname);
         }
       } else {
-        if (entry.layer && map.hasLayer(entry.layer)) map.removeLayer(entry.layer);
-        entry.layer = null;
-        entry.active = false;
+        deactivateOfflineMap(fname);
       }
       updateOfflineLayersList();
     };
@@ -8992,6 +9242,41 @@ function tauriInvoke(command, args = {}) {
   if (typeof invoke !== 'function') throw new Error('Tauri IPC недоступен');
   return invoke(command, args);
 }
+
+let appDisplayVersion = '0.9.16';
+
+function getCurrentAppVersion() {
+  return normalizeVersion(appDisplayVersion || document.getElementById('about-version')?.textContent || '0.9.16');
+}
+
+function setDisplayedAppVersion(version) {
+  const normalized = normalizeVersion(version);
+  if (!normalized) return;
+  appDisplayVersion = normalized;
+  document.title = `🧭 Trophy Navigator Desktop v${normalized}`;
+
+  const appVersionLabel = document.getElementById('app-version-label');
+  if (appVersionLabel) appVersionLabel.textContent = `Trophy Navigator · v${normalized}`;
+
+  const aboutVersion = document.getElementById('about-version');
+  if (aboutVersion) aboutVersion.textContent = normalized;
+}
+
+async function refreshDisplayedAppVersion() {
+  if (!isTauriRuntime()) {
+    setDisplayedAppVersion(appDisplayVersion);
+    return;
+  }
+  try {
+    const version = await tauriInvoke('get_app_version');
+    setDisplayedAppVersion(version);
+  } catch (e) {
+    console.warn('App version lookup failed:', e);
+    setDisplayedAppVersion(appDisplayVersion);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', refreshDisplayedAppVersion, { once: true });
 
 async function relaunchAppAfterUpdate() {
   const processApi = window.__TAURI__?.process;
@@ -10442,7 +10727,7 @@ async function fallbackCheckForUpdates(silent = false) {
     if (!r.ok) throw new Error('Нет ответа');
     const data = await r.json();
     const latest = normalizeVersion(data.tag_name || data.name || '?');
-    const current = normalizeVersion(document.getElementById('about-version').textContent);
+    const current = getCurrentAppVersion();
     const published = formatPublishedDate(data.published_at);
     const versionDiff = compareVersions(latest, current);
     if (versionDiff === 0) {
@@ -10548,7 +10833,7 @@ async function checkForUpdates(silent = false) {
     const update = await tauriInvoke('check_app_update');
     if (!update) {
       status.style.color = '#4adf7a';
-      status.textContent = '✓ У вас актуальная версия ' + normalizeVersion(document.getElementById('about-version').textContent);
+      status.textContent = '✓ У вас актуальная версия ' + getCurrentAppVersion();
       resetUpdateButton();
       return;
     }
@@ -11281,10 +11566,21 @@ function setTheme(theme) {
   if (sel && sel.value !== theme) sel.value = theme;
 }
 
+function waitForFirstPaint() {
+  return new Promise(resolve => {
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => setTimeout(resolve, 0));
+    } else {
+      setTimeout(resolve, 0);
+    }
+  });
+}
+
 // Инициализация при загрузке
 (async function initApp() {
   initLinuxClickFallback();
   setTheme(getTheme());
+  await waitForFirstPaint();
   await initWorkingDirectory();
   // Пробуем восстановить: сначала из файла, если нет — из localStorage
   const restoredFromFile = await loadStateFromFile();
@@ -11667,8 +11963,18 @@ function rrRenderSegments() {
 }
 
 // ─── Charts ───
-function rrRenderCharts() {
-  const { track, raceStartIdx, raceEndIdx, hitCPs, segments } = rrData;
+async function rrRenderCharts() {
+  const data = rrData;
+  if (!data) return;
+  try {
+    await ensureChartJsLoaded();
+  } catch (e) {
+    console.warn('Chart.js load failed:', e);
+    showToast('Графики временно недоступны: не загрузился Chart.js');
+    return;
+  }
+  if (rrData !== data) return;
+  const { track, raceStartIdx, raceEndIdx, hitCPs, segments } = data;
   const pts = track.points, pd = track.pointsData;
 
   // Build distance array for speed line chart
@@ -12024,7 +12330,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.14</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.16</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:var(--text-muted)">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>

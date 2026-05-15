@@ -1,15 +1,20 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use rusqlite::{Connection, OpenFlags, OptionalExtension};
-use serde::Serialize;
+use rusqlite::{params, Connection, OpenFlags, OptionalExtension};
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::fs;
 use std::io::Read;
+use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, Runtime, Url, Webview, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
 const MAX_TILE_BYTES: u64 = 2 * 1024 * 1024;
+const OFFLINE_DOWNLOAD_BATCH_SIZE: u64 = 250;
+static OFFLINE_DOWNLOAD_CANCELLED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -19,6 +24,11 @@ struct UpdateInfo {
     version: String,
     date: Option<String>,
     body: Option<String>,
+}
+
+#[tauri::command]
+fn get_app_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
 }
 
 #[tauri::command]
@@ -142,16 +152,23 @@ async fn fetch_tile_bytes(url: String) -> Result<Vec<u8>, String> {
 }
 
 fn fetch_tile_bytes_blocking(raw_url: &str) -> Result<Vec<u8>, String> {
+    let agent = tile_fetch_agent();
+    fetch_tile_bytes_with_agent(&agent, raw_url)
+}
+
+fn tile_fetch_agent() -> ureq::Agent {
+    ureq::AgentBuilder::new()
+        .timeout_connect(Duration::from_secs(8))
+        .timeout_read(Duration::from_secs(15))
+        .build()
+}
+
+fn fetch_tile_bytes_with_agent(agent: &ureq::Agent, raw_url: &str) -> Result<Vec<u8>, String> {
     let parsed = Url::parse(raw_url).map_err(|_| "Некорректный URL тайла".to_string())?;
     match parsed.scheme() {
         "http" | "https" => {}
         _ => return Err("Разрешены только http/https тайлы".to_string()),
     }
-
-    let agent = ureq::AgentBuilder::new()
-        .timeout_connect(Duration::from_secs(8))
-        .timeout_read(Duration::from_secs(15))
-        .build();
 
     let response = agent
         .get(raw_url)
@@ -174,6 +191,371 @@ fn fetch_tile_bytes_blocking(raw_url: &str) -> Result<Vec<u8>, String> {
         return Err("Тайл слишком большой".to_string());
     }
     Ok(bytes)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct OfflineDownloadRequest {
+    path: String,
+    url_template: String,
+    subdomains: Vec<String>,
+    tms: bool,
+    format: String,
+    z_min: i32,
+    z_max: i32,
+    ranges: Vec<OfflineDownloadRange>,
+    polygon: Option<Vec<OfflineDownloadPoint>>,
+    total: u64,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct OfflineDownloadRange {
+    z: i32,
+    x_min: i64,
+    x_max: i64,
+    y_min: i64,
+    y_max: i64,
+}
+
+#[derive(Deserialize)]
+struct OfflineDownloadPoint {
+    lat: f64,
+    lng: f64,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OfflineDownloadProgress {
+    done: u64,
+    total: u64,
+    saved: u64,
+    errors: u64,
+    bytes: u64,
+    finished: bool,
+    aborted: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OfflineDownloadResult {
+    done: u64,
+    total: u64,
+    saved: u64,
+    errors: u64,
+    bytes: u64,
+    aborted: bool,
+}
+
+#[tauri::command]
+fn cancel_offline_map_download() {
+    OFFLINE_DOWNLOAD_CANCELLED.store(true, Ordering::SeqCst);
+}
+
+#[tauri::command]
+async fn download_offline_map<R: Runtime>(
+    app: AppHandle<R>,
+    request: OfflineDownloadRequest,
+) -> Result<OfflineDownloadResult, String> {
+    OFFLINE_DOWNLOAD_CANCELLED.store(false, Ordering::SeqCst);
+    tauri::async_runtime::spawn_blocking(move || download_offline_map_blocking(app, request))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn download_offline_map_blocking<R: Runtime>(
+    app: AppHandle<R>,
+    request: OfflineDownloadRequest,
+) -> Result<OfflineDownloadResult, String> {
+    validate_offline_download_request(&request)?;
+    prepare_offline_download_target(&request.path)?;
+
+    let conn = create_offline_download_db(&request)?;
+    let agent = tile_fetch_agent();
+    let polygon = request.polygon.as_deref();
+    let mut done = 0_u64;
+    let mut saved = 0_u64;
+    let mut errors = 0_u64;
+    let mut bytes_total = 0_u64;
+    let mut batch_pending = 0_u64;
+    let mut aborted = false;
+
+    conn.execute_batch("BEGIN IMMEDIATE")
+        .map_err(|e| e.to_string())?;
+
+    'download: for range in &request.ranges {
+        for x in range.x_min..=range.x_max {
+            for y in range.y_min..=range.y_max {
+                if OFFLINE_DOWNLOAD_CANCELLED.load(Ordering::SeqCst) {
+                    aborted = true;
+                    break 'download;
+                }
+
+                if let Some(points) = polygon {
+                    let lat = tile_to_lat_fraction(y as f64 + 0.5, range.z);
+                    let lng = tile_to_lng_fraction(x as f64 + 0.5, range.z);
+                    if !point_in_polygon(lat, lng, points) {
+                        continue;
+                    }
+                }
+
+                let url = build_download_tile_url(&request, x, y, range.z)?;
+                match fetch_tile_bytes_with_agent(&agent, &url) {
+                    Ok(bytes) => {
+                        let stored_z = stored_download_zoom(&request.format, range.z);
+                        let byte_len = bytes.len() as u64;
+                        conn.execute(
+                            "INSERT OR IGNORE INTO tiles VALUES (?,?,?,?,?)",
+                            params![x, y, stored_z, 0_i32, bytes.as_slice()],
+                        )
+                        .map_err(|e| e.to_string())?;
+                        saved += 1;
+                        bytes_total += byte_len;
+                        batch_pending += 1;
+                    }
+                    Err(_) => {
+                        errors += 1;
+                    }
+                }
+
+                done += 1;
+
+                if batch_pending >= OFFLINE_DOWNLOAD_BATCH_SIZE {
+                    conn.execute_batch("COMMIT; BEGIN IMMEDIATE")
+                        .map_err(|e| e.to_string())?;
+                    batch_pending = 0;
+                }
+
+                if done % 10 == 0 || done == request.total {
+                    emit_offline_download_progress(
+                        &app,
+                        done,
+                        request.total,
+                        saved,
+                        errors,
+                        bytes_total,
+                        false,
+                        false,
+                    );
+                }
+            }
+        }
+    }
+
+    conn.execute_batch("COMMIT").map_err(|e| e.to_string())?;
+    let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE); PRAGMA journal_mode=DELETE;");
+
+    emit_offline_download_progress(
+        &app,
+        done,
+        request.total,
+        saved,
+        errors,
+        bytes_total,
+        true,
+        aborted,
+    );
+
+    Ok(OfflineDownloadResult {
+        done,
+        total: request.total,
+        saved,
+        errors,
+        bytes: bytes_total,
+        aborted,
+    })
+}
+
+fn validate_offline_download_request(request: &OfflineDownloadRequest) -> Result<(), String> {
+    if request.path.trim().is_empty() {
+        return Err("Не выбран путь сохранения".to_string());
+    }
+    if request.url_template.trim().is_empty() {
+        return Err("У слоя нет URL шаблона для скачивания".to_string());
+    }
+    if request.ranges.is_empty() || request.total == 0 {
+        return Err("В выбранной области нет тайлов".to_string());
+    }
+    if request.z_min > request.z_max {
+        return Err("Некорректный диапазон zoom".to_string());
+    }
+    if request.z_min < 0 || request.z_max > 30 {
+        return Err("Zoom вне поддерживаемого диапазона".to_string());
+    }
+    for range in &request.ranges {
+        if range.z < request.z_min
+            || range.z > request.z_max
+            || range.x_min > range.x_max
+            || range.y_min > range.y_max
+            || range.x_min < 0
+            || range.y_min < 0
+        {
+            return Err("Некорректный диапазон тайлов".to_string());
+        }
+    }
+    Ok(())
+}
+
+fn prepare_offline_download_target(path: &str) -> Result<(), String> {
+    let target = Path::new(path);
+    if let Some(parent) = target.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("Не удалось создать папку карты: {e}"))?;
+    }
+    match fs::remove_file(target) {
+        Ok(()) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => return Err(format!("Не удалось заменить старый файл карты: {e}")),
+    }
+    let _ = fs::remove_file(format!("{path}-wal"));
+    let _ = fs::remove_file(format!("{path}-shm"));
+    Ok(())
+}
+
+fn create_offline_download_db(request: &OfflineDownloadRequest) -> Result<Connection, String> {
+    let conn = Connection::open(&request.path)
+        .map_err(|e| format!("Не удалось создать SQLite карту: {e}"))?;
+    conn.busy_timeout(Duration::from_secs(5))
+        .map_err(|e| e.to_string())?;
+    conn.execute_batch(
+        "
+        PRAGMA journal_mode=DELETE;
+        PRAGMA synchronous=NORMAL;
+        PRAGMA temp_store=MEMORY;
+        CREATE TABLE tiles (x INTEGER, y INTEGER, z INTEGER, s INTEGER, image BLOB, PRIMARY KEY (x,y,z,s));
+        CREATE TABLE info (minzoom INTEGER, maxzoom INTEGER);
+        ",
+    )
+    .map_err(|e| e.to_string())?;
+
+    let info_min = if request.format == "locus" {
+        stored_download_zoom(&request.format, request.z_max)
+    } else {
+        stored_download_zoom(&request.format, request.z_min)
+    };
+    let info_max = if request.format == "locus" {
+        stored_download_zoom(&request.format, request.z_min)
+    } else {
+        stored_download_zoom(&request.format, request.z_max)
+    };
+    conn.execute(
+        "INSERT INTO info VALUES (?, ?)",
+        params![info_min, info_max],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(conn)
+}
+
+fn stored_download_zoom(format: &str, z: i32) -> i32 {
+    if format == "locus" {
+        17 - z
+    } else {
+        z
+    }
+}
+
+fn emit_offline_download_progress<R: Runtime>(
+    app: &AppHandle<R>,
+    done: u64,
+    total: u64,
+    saved: u64,
+    errors: u64,
+    bytes: u64,
+    finished: bool,
+    aborted: bool,
+) {
+    let _ = app.emit(
+        "offline-download-progress",
+        OfflineDownloadProgress {
+            done,
+            total,
+            saved,
+            errors,
+            bytes,
+            finished,
+            aborted,
+        },
+    );
+}
+
+fn build_download_tile_url(
+    request: &OfflineDownloadRequest,
+    x: i64,
+    y: i64,
+    z: i32,
+) -> Result<String, String> {
+    let final_y = if request.tms {
+        tile_matrix_size(z).ok_or_else(|| "Некорректный zoom тайла".to_string())?
+            - 1
+            - y
+    } else {
+        y
+    };
+    let subdomain = pick_download_subdomain(&request.subdomains, x, y, z);
+    let quadkey = if request.url_template.contains("{q}") {
+        bing_quad_key(x, y, z)
+    } else {
+        String::new()
+    };
+    Ok(request
+        .url_template
+        .replace("{x}", &x.to_string())
+        .replace("{y}", &final_y.to_string())
+        .replace("{z}", &z.to_string())
+        .replace("{s}", &subdomain)
+        .replace("{q}", &quadkey))
+}
+
+fn pick_download_subdomain(subdomains: &[String], x: i64, y: i64, z: i32) -> String {
+    if subdomains.is_empty() {
+        return String::new();
+    }
+    let idx = ((x * 31 + y * 17 + z as i64).unsigned_abs() as usize) % subdomains.len();
+    subdomains[idx].clone()
+}
+
+fn bing_quad_key(x: i64, y: i64, z: i32) -> String {
+    let mut quadkey = String::with_capacity(z.max(0) as usize);
+    for i in (1..=z).rev() {
+        let mask = 1_i64 << (i - 1);
+        let mut digit = 0_u8;
+        if (x & mask) != 0 {
+            digit += 1;
+        }
+        if (y & mask) != 0 {
+            digit += 2;
+        }
+        quadkey.push(char::from(b'0' + digit));
+    }
+    quadkey
+}
+
+fn tile_to_lng_fraction(x: f64, z: i32) -> f64 {
+    x / tile_matrix_size(z).unwrap_or(1) as f64 * 360.0 - 180.0
+}
+
+fn tile_to_lat_fraction(y: f64, z: i32) -> f64 {
+    let n = std::f64::consts::PI
+        - 2.0 * std::f64::consts::PI * y / tile_matrix_size(z).unwrap_or(1) as f64;
+    n.sinh().atan().to_degrees()
+}
+
+fn point_in_polygon(lat: f64, lng: f64, polygon: &[OfflineDownloadPoint]) -> bool {
+    if polygon.len() < 3 {
+        return true;
+    }
+    let mut inside = false;
+    let mut j = polygon.len() - 1;
+    for i in 0..polygon.len() {
+        let yi = polygon[i].lat;
+        let xi = polygon[i].lng;
+        let yj = polygon[j].lat;
+        let xj = polygon[j].lng;
+        if ((yi > lat) != (yj > lat)) && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) {
+            inside = !inside;
+        }
+        j = i;
+    }
+    inside
 }
 
 #[derive(Clone, Copy)]
@@ -761,10 +1143,13 @@ fn get_raw_machine_id() -> Result<String, Box<dyn std::error::Error>> {
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
+            get_app_version,
             check_app_update,
             install_app_update,
             open_map_viewer,
             fetch_tile_bytes,
+            download_offline_map,
+            cancel_offline_map_download,
             inspect_offline_map,
             read_offline_tile,
             get_hardware_id

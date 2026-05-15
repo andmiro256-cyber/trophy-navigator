@@ -2,7 +2,7 @@
   "productName": "Trophy Navigator Desktop",
 
 
-  "version": "0.9.15",
+  "version": "0.9.16",
   "identifier": "ru.trophy-nav.desktop",
   "build": {
     "frontendDist": "../ui"
@@ -11,7 +11,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "🧭 Trophy Navigator Desktop v0.9.14",
+        "title": "Trophy Navigator Desktop",
         "width": 1280,
         "height": 800,
         "minWidth": 900,
@@ -41,7 +41,8 @@
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.png",
-      "icons/icon.ico"
+      "icons/icon.ico",
+      "icons/icon.icns"
     ]
   }
 }

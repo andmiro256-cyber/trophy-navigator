@@ -66,8 +66,45 @@ jobs:
             src-tauri/target/release/bundle/appimage/*.AppImage
             src-tauri/target/release/bundle/appimage/*.AppImage.sig
 
+  build-macos:
+    name: build-macos-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-15
+            artifact: TrophyNavigator-macOS-arm64
+          - arch: x64
+            runner: macos-15-intel
+            artifact: TrophyNavigator-macOS-x64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: macos-${{ matrix.arch }}
+      - name: Install tauri-cli
+        run: cargo install tauri-cli --version "^2"
+      - name: Build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        run: cargo tauri build
+        working-directory: src-tauri
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            src-tauri/target/release/bundle/dmg/*.dmg
+            src-tauri/target/release/bundle/macos/*.app.tar.gz
+            src-tauri/target/release/bundle/macos/*.app.tar.gz.sig
+
   release:
-    needs: [build-windows, build-linux]
+    needs: [build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'release:'))
     permissions:
@@ -114,26 +151,57 @@ jobs:
         id: assets
         run: |
           install -d release-assets
+          copy_release_asset() {
+            local src="$1"
+            local prefix="${2:-}"
+            local file asset
+            file="$(basename "$src")"
+            asset="${file// /.}"
+            if [ -n "$prefix" ] && [ -e "release-assets/$asset" ]; then
+              asset="${prefix}.${asset}"
+            fi
+            cp "$src" "release-assets/$asset"
+            printf '%s' "$asset"
+          }
+
           APPIMAGE_SRC=$(find artifacts/TrophyNavigator-Linux -maxdepth 1 -type f -name '*.AppImage' | head -n 1)
           NSIS_SRC=$(find artifacts/TrophyNavigator-Windows -maxdepth 1 -type f -name '*.exe' | head -n 1)
           MSI_SRC=$(find artifacts/TrophyNavigator-Windows-msi -maxdepth 1 -type f -name '*.msi' | head -n 1)
+          MACOS_ARM64_DMG_SRC=$(find artifacts/TrophyNavigator-macOS-arm64 -maxdepth 1 -type f -name '*.dmg' | head -n 1)
+          MACOS_X64_DMG_SRC=$(find artifacts/TrophyNavigator-macOS-x64 -maxdepth 1 -type f -name '*.dmg' | head -n 1)
+          MACOS_ARM64_APP_SRC=$(find artifacts/TrophyNavigator-macOS-arm64 -maxdepth 1 -type f -name '*.app.tar.gz' | head -n 1)
+          MACOS_X64_APP_SRC=$(find artifacts/TrophyNavigator-macOS-x64 -maxdepth 1 -type f -name '*.app.tar.gz' | head -n 1)
           if [ -z "$APPIMAGE_SRC" ] || [ -z "$NSIS_SRC" ]; then
             echo "Release artifacts not found" >&2
             exit 1
           fi
 
-          APPIMAGE_FILE=$(basename "$APPIMAGE_SRC")
-          NSIS_FILE=$(basename "$NSIS_SRC")
-          APPIMAGE_ASSET_NAME="${APPIMAGE_FILE// /.}"
-          NSIS_ASSET_NAME="${NSIS_FILE// /.}"
-
-          cp "$APPIMAGE_SRC" "release-assets/$APPIMAGE_ASSET_NAME"
-          cp "$NSIS_SRC" "release-assets/$NSIS_ASSET_NAME"
+          APPIMAGE_ASSET_NAME=$(copy_release_asset "$APPIMAGE_SRC")
+          NSIS_ASSET_NAME=$(copy_release_asset "$NSIS_SRC")
 
           if [ -n "$MSI_SRC" ]; then
-            MSI_FILE=$(basename "$MSI_SRC")
-            MSI_ASSET_NAME="${MSI_FILE// /.}"
-            cp "$MSI_SRC" "release-assets/$MSI_ASSET_NAME"
+            copy_release_asset "$MSI_SRC" >/dev/null
+          fi
+
+          if [ -n "$MACOS_ARM64_DMG_SRC" ]; then
+            cp "$MACOS_ARM64_DMG_SRC" "release-assets/Trophy.Navigator.Desktop_${{ steps.version.outputs.version }}_aarch64.dmg"
+          fi
+          if [ -n "$MACOS_X64_DMG_SRC" ]; then
+            cp "$MACOS_X64_DMG_SRC" "release-assets/Trophy.Navigator.Desktop_${{ steps.version.outputs.version }}_x64.dmg"
+          fi
+
+          if [ -n "$MACOS_ARM64_APP_SRC" ]; then
+            cp "$MACOS_ARM64_APP_SRC" "release-assets/Trophy.Navigator.Desktop_${{ steps.version.outputs.version }}_aarch64.app.tar.gz"
+            cp "${MACOS_ARM64_APP_SRC}.sig" "release-assets/Trophy.Navigator.Desktop_${{ steps.version.outputs.version }}_aarch64.app.tar.gz.sig"
+          fi
+          if [ -n "$MACOS_X64_APP_SRC" ]; then
+            cp "$MACOS_X64_APP_SRC" "release-assets/Trophy.Navigator.Desktop_${{ steps.version.outputs.version }}_x64.app.tar.gz"
+            cp "${MACOS_X64_APP_SRC}.sig" "release-assets/Trophy.Navigator.Desktop_${{ steps.version.outputs.version }}_x64.app.tar.gz.sig"
+          fi
+
+          if [ -z "$MACOS_ARM64_DMG_SRC" ] || [ -z "$MACOS_X64_DMG_SRC" ] || [ -z "$MACOS_ARM64_APP_SRC" ] || [ -z "$MACOS_X64_APP_SRC" ]; then
+            echo "::error::macOS DMG/updater artifacts were not found for all architectures"
+            exit 1
           fi
 
           echo "appimage_asset_name=$APPIMAGE_ASSET_NAME" >> "$GITHUB_OUTPUT"
@@ -144,10 +212,14 @@ jobs:
           MANIFEST_FILE=${{ steps.channel.outputs.manifest_file }}
           APPIMAGE_SIG=$(cat artifacts/TrophyNavigator-Linux/*.AppImage.sig 2>/dev/null || echo "")
           NSIS_SIG=$(cat artifacts/TrophyNavigator-Windows/*.exe.sig 2>/dev/null || echo "")
+          MACOS_ARM64_SIG=$(cat "release-assets/Trophy.Navigator.Desktop_${VERSION}_aarch64.app.tar.gz.sig")
+          MACOS_X64_SIG=$(cat "release-assets/Trophy.Navigator.Desktop_${VERSION}_x64.app.tar.gz.sig")
+          MACOS_ARM64_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VERSION}/Trophy.Navigator.Desktop_${VERSION}_aarch64.app.tar.gz"
+          MACOS_X64_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VERSION}/Trophy.Navigator.Desktop_${VERSION}_x64.app.tar.gz"
           cat > "$MANIFEST_FILE" << EOF
           {
             "version": "$VERSION",
-            "notes": "Исправлено: офлайн-карты появляются в общем списке слоёв и включаются оттуда; скачивание учитывает реальный maxzoom серверного каталога, а показ растягивает последний доступный зум до 22. Быстрое переименование точек повторно открывается и обновляет названия в маршрутах/OSRM. После перезапуска восстанавливаются списки треков и маршрутов. Linux updater после установки перезапускает приложение. Попап точки трека показывает имя трека.",
+            "notes": "Исправлено: ускорен старт приложения на Linux за счёт отложенной загрузки внешних библиотек; обычное скачивание офлайн-карт переведено на native SQLite writer без большого пика RAM; скачанные офлайн-карты корректно выключаются из списка. В GitHub Release добавлены macOS DMG-сборки для Apple Silicon и Intel.",
             "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "platforms": {
               "linux-x86_64": {
@@ -157,6 +229,14 @@ jobs:
               "windows-x86_64": {
                 "signature": "$NSIS_SIG",
                 "url": "https://trophynav.ru/releases/trophy-navigator-desktop_${VERSION}_x64-setup.exe"
+              },
+              "darwin-aarch64": {
+                "signature": "$MACOS_ARM64_SIG",
+                "url": "$MACOS_ARM64_URL"
+              },
+              "darwin-x86_64": {
+                "signature": "$MACOS_X64_SIG",
+                "url": "$MACOS_X64_URL"
               }
             }
           }
@@ -172,16 +252,16 @@ jobs:
             ## Trophy Navigator Desktop v${{ steps.version.outputs.version }}
 
             ### Исправлено
-            - Офлайн-карты теперь появляются в общем списке слоёв и включаются оттуда.
-            - При скачивании карт верхний зум ограничивается реальным `maxzoom` из серверного каталога; при просмотре последний доступный зум растягивается до z22.
-            - Быстрое переименование точек можно вызывать повторно; новые имена синхронизируются в маршрутах и OSRM.
-            - После перезапуска приложения обновляются списки треков и маршрутов, а сохранённые GPX поднимаются из рабочей папки, если session пустая.
-            - Linux updater после установки пытается перезапустить приложение автоматически.
-            - Попап точки трека показывает имя трека первой строкой.
+            - Ускорен старт приложения на Linux: внешние `sql.js` и `Chart.js` больше не блокируют первый экран.
+            - Обычное скачивание офлайн-карт теперь пишет SQLite на диск через native Rust без большого пика RAM.
+            - Скачанные офлайн-карты корректно выключаются из списка и синхронизируют состояние с боковым списком слоёв.
+            - Видимая версия приложения берётся из Tauri/Cargo, а не из hardcoded HTML.
 
             ### Скачать
             - **Windows**: `Trophy.Navigator.Desktop_*_x64-setup.exe` или `Trophy.Navigator.Desktop_*_x64_en-US.msi`
             - **Linux**: `Trophy.Navigator.Desktop_*_amd64.AppImage`
+            - **macOS Apple Silicon**: `Trophy.Navigator.Desktop_*_aarch64.dmg`
+            - **macOS Intel**: `Trophy.Navigator.Desktop_*_x64.dmg`
 
             ### Обновление
             В приложении: **ℹ О программе → Проверить обновление**
@@ -189,6 +269,9 @@ jobs:
             release-assets/*.exe
             release-assets/*.msi
             release-assets/*.AppImage
+            release-assets/*.dmg
+            release-assets/*.app.tar.gz
+            release-assets/*.app.tar.gz.sig
             ${{ steps.channel.outputs.manifest_file }}
       - name: Publish updater manifest to server
         env:
