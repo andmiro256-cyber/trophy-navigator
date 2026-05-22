@@ -2,8 +2,8 @@
 
 ## Status
 Active — экосистема из двух приложений-компаньонов (как Mac + iPhone):
-- **Android** v2.9.6 — полевая навигация, GPS, треки, live мониторинг, оффлайн карты
-- **Desktop** v0.9.0 — планирование, роутинг, анализ, офлайн карты, кэш, темы
+- **Android** v2.9.7 — полевая навигация, GPS, треки, live мониторинг, оффлайн карты
+- **Desktop** v0.9.3 — планирование, роутинг, анализ, офлайн карты, кэш, темы, sync/licensing, track edit, multi-route
 
 ## Description
 Trophy Navigator — экосистема навигации для трофи-рейдов.
@@ -14,10 +14,12 @@ Trophy Navigator — экосистема навигации для трофи-�
 - Сайт: trophynav.ru (nginx, /opt/trophy-desktop/)
 
 ## Current State
-- Last session: 2026-03-28 (мега-сессия)
-- **Android: v2.9.6** deployed
-- **Desktop: v0.9.0** deployed — Windows .exe + Linux AppImage on trophynav.ru
-- GitHub Actions CI: тег v0.9.0, Windows + Linux автосборка
+- Last session: 2026-04-19
+- **Android: v2.9.7** deployed
+- **Desktop: v0.9.3** deployed — GitHub Release (`.exe`, `.msi`, `.AppImage`) + desktop updater manifest on production
+- GitHub Actions CI: Windows + Linux автосборка, GitHub Release, desktop updater manifest deploy to DE2 через repo secrets
+- Desktop monitoring/live API parity сильно подтянут: production `favorites`, `status`, `messages`, `group-share` работают через `trophynav.ru/api/live2/*`
+- Desktop получил рабочий `SAS/Ozi .rte` import/export после регресса в последнем обновлении
 - VPN: relay 158.160.243.222 (белые списки), Premium28/Premium Max подписки
 - Скилл vpn-agent создан
 - План переезда AI-агентов на отдельный сервер BOT
@@ -30,6 +32,11 @@ Trophy Navigator — экосистема навигации для трофи-�
 - Пользователь может скрывать карты (localStorage tnd-hidden-layers)
 - Автосохранение: localStorage + session.json каждые 30/60 сек
 - State restore: initApp → loadStateFromFile || restoreState (один вызов, без дублирования)
+- **TileCache:** IndexedDB implementation in `ui/index.html` with LRU eviction and neighbor prefetching.
+- **Yandex Fix:** Server-side reprojection via `yandex-reproject.js` using `sharp` to convert EPSG:3395 to EPSG:3857.
+- **Sync Logic:** Email-based synchronization with license propagation across up to 3 devices per user.
+- **Security:** HWID generated via FNV-1a hash of system IDs (Registry/machine-id).
+
 - Signing key: ~/.tauri/tnd-signing.key (env TAURI_SIGNING_PRIVATE_KEY, PASSWORD="")
 - Build: `TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/tnd-signing.key)" TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" cargo tauri build --bundles appimage`
 - AppImage WM_CLASS: trophy-navigator-desktop
@@ -41,6 +48,16 @@ Trophy Navigator — экосистема навигации для трофи-�
 - Каталог: /opt/trophy-desktop/api/tiles-catalog.json + /opt/tnd-sync/data/tile_catalog.json
 - parse_zmp.py: парсит AnyGIS ZMP → tile_catalog.json (cron воскресенье 03:00)
 - API: /api/state, /api/email/register, /api/email/info/:email, /api/desktop/trial, /api/desktop/license, /api/tiles-catalog.json
+- Monitoring API: `/api/live2/favorites`, `/api/live2/status`, `/api/live2/messages/inbox`, `/api/live2/messages/direct`, `/api/live2/messages/group`, `/api/live2/group-share*`
+- Updater channels разведены: Android stable/beta = `/var/www/updates/latest.json` и `/var/www/updates/latest-beta.json`, Desktop stable/beta = `/var/www/updates/latest-desktop.json` и `/var/www/updates/latest-desktop-beta.json`
+
+## Architecture Notes — Android (RaceNav)
+- **GNSS/RЭB:** `GnssStatusMonitor` analyzes C/N0 and satellite count to detect signal jamming.
+- **Background GPS:** `TrackingService` uses `START_STICKY` + frequent `WakeLock` resets to stay alive on Chinese ROMs.
+- **Sync:** Shares the same `sync-server` via `BackupManager`. Uses full-overwrite restore (no merging yet).
+- **Identification:** Multi-layered HWID (Android ID + Widevine DRM ID + self-generated UUID in prefs/external file).
+- **Licensing:** 7-day trial, supports Master-keys (obfuscated) and server-side email verification.
+
 
 ## Architecture Notes — Mail Server (DE2)
 - Postfix + Dovecot + Roundcube, webmail https://trophynav.ru/mail/
@@ -56,6 +73,7 @@ Trophy Navigator — экосистема навигации для трофи-�
 - Яндекс Спутник: смещение ~15км (EPSG:3395 vs EPSG:3857)
 - Краш без интернета — LiveUsersPoller с таймаутами, но MapLibre внутренние ретраи не контролируем
 - Нужно полевое тестирование сегментации трека и bearing interpolation
+- Нужен реальный desktop↔Android end-to-end smoke по monitoring/sync на физическом Android-устройстве
 
 ## Decisions Made
 - [2026-03-26] Офлайн карты: раздельные файлы (подход Б), связка по имени, авто-подключение всех слоёв при выборе, подменю для вкл/выкл отдельных слоёв
@@ -78,6 +96,10 @@ Trophy Navigator — экосистема навигации для трофи-�
 - [2026-03-19] Деплой — только с явного разрешения пользователя
 - [2026-03-19] macOS отложен ($99/год нецелесообразно)
 - [2026-03-17] Меню данных: 4 таба WP/RTE/TRK/GPX
+- [2026-04-11] Android companion sync выровнен с текущим TND сервером: `POST /api/email/register`, `GET /api/sync/pull`, `POST /api/sync/push`, синхронизируются точки, треки и маршруты
+- [2026-04-11] Версионный план Android: следующий stable `2.9.6 / 375`, локальная dev/beta линия `2.9.74 / 375`
+- [2026-04-17] Desktop updater больше не делит `latest.json` с Android: desktop endpoint `/api/updates/latest.json` читает только `latest-desktop*.json`, Android сохраняет старые `latest*.json`
+- [2026-04-17] GitHub Actions для desktop использует repo secrets `UPDATES_DEPLOY_*` и vars `UPDATES_DEPLOY_*` для выкладки updater manifest на DE2
 
 ## Next Steps (приоритет)
 1. **Архив гонок** — публикация Race Report на сервер (trophynav.ru/races/{slug})
@@ -87,6 +109,12 @@ Trophy Navigator — экосистема навигации для трофи-�
 5. **Личная статистика сезона** — агрегация треков по email
 6. **Подготовка сервера** — async writes, rate-limit, SQLite
 ## Session History
+- [2026-04-18/19] Desktop parity + production monitoring stabilized: закрыт регресс `Ozi/SAS .rte` import/export в desktop, подтянут основной Android-like monitoring на desktop (статусы, direct/group messages, inbox, attachments, group-share, richer share presets, thread badges, import вложений из истории), серверный `sync-server` выровнен по live API-контрактам. На проде найден ложный дефект: файл `/opt/tnd-sync/server.js` уже содержал новые `live2` route-ы, но `pm2 tnd-sync` продолжал отвечать как старая версия. Проверка отдельным запуском на `:9325` подтвердила корректность кода; после `pm2 delete/start/save` production `9222` и внешний `https://trophynav.ru/api/live2/*` начали отдавать рабочие `favorites/status/messages/group-share`. Публичный smoke через временные email подтвердил direct/group messaging, inbox, share delivery, download и ack.
+- [2026-04-17] Desktop auto-update fixed end-to-end: выпущен GitHub Release `v0.9.3` с Windows NSIS, Windows MSI, Linux AppImage и updater manifest. На проде найден конфликт каналов: `trophynav.ru/api/updates/latest.json` и `/updates/latest.json` оба указывали на Android `latest.json`. Исправлено: production `tnd-sync` на DE2 патчен на отдельные desktop manifest paths `/var/www/updates/latest-desktop.json` и `/var/www/updates/latest-desktop-beta.json`, `pm2 tnd-sync` перезапущен, публичная проверка `api/updates/latest.json` теперь возвращает desktop `0.9.3`, при этом Android stable/beta не сломаны. Для будущих релизов в GitHub repo настроены secrets `UPDATES_DEPLOY_HOST`, `UPDATES_DEPLOY_SSH_KEY`, `UPDATES_DEPLOY_USER` и vars `UPDATES_DEPLOY_PATH`, `UPDATES_BETA_DEPLOY_PATH`, `UPDATES_DEPLOY_PORT`; выделен отдельный deploy key `trophy_nav_actions_ed25519` на DE2.
+- [2026-04-17] Android release/infra cleanup: DE2 возвращён к нормальной схеме `nginx :80/:443 + tnd-sync :9222`, `apache2` отключён, из `nginx/sites-enabled` убраны backup-конфиги, beta deploy в GitHub Actions переписан на реальный путь `/var/www/updates` с `DEPLOY_HOST` + `DEPLOY_SSH_KEY`, первый run `24554419238` прошёл успешно. Публичная проверка: `https://trophynav.ru/api/update/beta` -> `2.9.78 / 379`, `https://trophynav.ru/updates/racenav-beta.apk` -> `200 OK`.
+- [2026-04-17] Android stable promoted from current beta-tested code: stable опубликован как `2.9.7 / 379`, beta осталась `2.9.78 / 379`. Stable APK собран в отдельном временном worktree, чтобы main-дерево не откатывать с beta/dev версии. На DE2 обновлены `racenav.apk` и `latest.json`, предыдущий stable `2.9.6 / 375` заархивирован. Публичная проверка: `https://trophynav.ru/updates/latest.json` -> `2.9.7 / 379`, `https://trophynav.ru/updates/racenav.apk` -> `200 OK`.
+- [2026-04-11 поздно] Android sync hotfix реально выкачен пользователям: из clean worktree собраны release APK без посторонних локальных правок, stable опубликован как `2.9.6 / 375`, beta как `2.9.74 / 375`. На DE2 обновлены `racenav.apk`, `latest.json`, `racenav-beta.apk`, `latest-beta.json`; предыдущие `stable 2.9.5 / 374` и `beta 2.9.73 / 374` заархивированы. Публичная проверка: `updates/latest.json` и `api/update/beta` уже отдают новые версии.
+- [2026-04-11] Android sync hotfix prepared: старый companion ходил в мёртвый `GET /api/sync/by-email/:email` и legacy `/api/state`, при push отправлял только активный трек. Исправлено: новый email/key flow, modern sync API, push/pull для точек/треков/маршрутов, локальная dev/beta версия поднята до `2.9.74 / 375`, следующий stable зарезервирован как `2.9.6 / 375`. Проверка: `:app:compileDebugKotlin`, `:app:assembleDebug` — OK.
 - [2026-03-27/28] Desktop v0.8.2→v0.9.0 deployed: полигон-скачивание (ConvexHull, point-in-polygon), динамический выбор слоёв (radio+overlay opacity), офлайн карты (SQLite TileLayer, scan maps/, секция в layer selector), кэш тайлов (IndexedDB LRU 1-10GB, img→canvas→blob обход CORS, prefetch), светлая/тёмная тема (CSS vars, anti-flash), 160+ inline→CSS vars рефакторинг, баги Pavel Mironov (rename+sync push), Windows link restored на сайте, план социальных фич (архив гонок, карта проходимости, маршруты, попутчики). 5 раундов ревью Тома, 2 ревью Краба.
 - [2026-03-27 день] Desktop v0.8.2→v0.9.0: полигон-скачивание (ConvexHull), офлайн карты (SQLite TileLayer, scan maps/), кэш тайлов (IndexedDB LRU 1-10GB, prefetch), светлая/тёмная тема, 160+ inline→CSS vars, overlay opacity, zoom range, фикс rename/sync push/overlay names, Windows link restored, deploy v0.9.0
 - [2026-03-27] Desktop v0.8.0→v0.8.2: Race Report, Live Android-style, единый каталог карт, UX (dialogs/dnd/onboarding/shortcuts), лицензии Android↔Desktop, русские карты, лимит 3 устройства: Race Report (трек×маршрут, графики, timeline, экспорт HTML), Live маркеры Android-style (ромбы, цвета, PRO gold, fix String(id)), настройки размера маркеров/подписей, UI (Загрузить, контакты info@trophynav.ru), latest.json обновлён

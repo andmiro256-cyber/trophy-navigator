@@ -3,10 +3,11 @@
 
 use rusqlite::{params, Connection, OpenFlags, OptionalExtension};
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 use std::fs;
 use std::io::Read;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, Runtime, Url, Webview, WebviewUrl, WebviewWindowBuilder};
@@ -89,6 +90,28 @@ async fn install_app_update<R: Runtime>(webview: Webview<R>, rid: u32) -> Result
         )
         .await
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn save_state_atomic(path: String, data: String) -> Result<(), String> {
+    let target_path = Path::new(&path);
+    let parent = target_path.parent().ok_or_else(|| "Неверный путь".to_string())?;
+    
+    // Создаем директорию, если её нет
+    if !parent.exists() {
+        fs::create_dir_all(parent).map_err(|e| format!("Не удалось создать папку сессии: {e}"))?;
+    }
+    
+    // Создаем .tmp файл в той же папке
+    let tmp_path = target_path.with_extension("json.tmp");
+    
+    // Записываем данные в .tmp
+    fs::write(&tmp_path, data).map_err(|e| format!("Не удалось записать временный файл: {e}"))?;
+    
+    // Переименовываем временный файл в целевой (атомарно)
+    fs::rename(&tmp_path, target_path).map_err(|e| format!("Не удалось сохранить файл сессии: {e}"))?;
+    
+    Ok(())
 }
 
 /// Получить аппаратный ID машины для привязки лицензии.
@@ -224,6 +247,20 @@ struct OfflineDownloadPoint {
     lng: f64,
 }
 
+struct TileDownloadTask {
+    x: i64,
+    y: i64,
+    z: i32,
+    url: String,
+}
+
+struct TileDownloadResult {
+    x: i64,
+    y: i64,
+    z: i32,
+    res: Result<Vec<u8>, String>,
+}
+
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct OfflineDownloadProgress {
@@ -271,8 +308,73 @@ fn download_offline_map_blocking<R: Runtime>(
     prepare_offline_download_target(&request.path)?;
 
     let conn = create_offline_download_db(&request)?;
-    let agent = tile_fetch_agent();
     let polygon = request.polygon.as_deref();
+    
+    // Сначала генерируем список всех тайлов для скачивания
+    let mut tasks = Vec::new();
+    for range in &request.ranges {
+        for x in range.x_min..=range.x_max {
+            for y in range.y_min..=range.y_max {
+                if let Some(points) = polygon {
+                    let lat = tile_to_lat_fraction(y as f64 + 0.5, range.z);
+                    let lng = tile_to_lng_fraction(x as f64 + 0.5, range.z);
+                    if !point_in_polygon(lat, lng, points) {
+                        continue;
+                    }
+                }
+                let url = build_download_tile_url(&request, x, y, range.z)?;
+                tasks.push(TileDownloadTask { x, y, z: range.z, url });
+            }
+        }
+    }
+
+    let total_tasks = tasks.len() as u64;
+    let queue = Arc::new(Mutex::new(VecDeque::from(tasks)));
+    let (tx, rx) = std::sync::mpsc::channel::<TileDownloadResult>();
+
+    // Запускаем пул параллельных рабочих потоков для скачивания (8 потоков)
+    let num_workers = 8;
+    let mut workers = Vec::new();
+    
+    for _ in 0..num_workers {
+        let queue_clone = Arc::clone(&queue);
+        let tx_clone = tx.clone();
+        let agent = tile_fetch_agent();
+        
+        let handle = std::thread::spawn(move || {
+            loop {
+                if OFFLINE_DOWNLOAD_CANCELLED.load(Ordering::SeqCst) {
+                    break;
+                }
+                
+                let task = {
+                    let mut q = queue_clone.lock().unwrap();
+                    q.pop_front()
+                };
+                
+                let Some(task) = task else {
+                    break; // Очередь пуста
+                };
+                
+                let res = fetch_tile_bytes_with_agent(&agent, &task.url);
+                let download_res = TileDownloadResult {
+                    x: task.x,
+                    y: task.y,
+                    z: task.z,
+                    res,
+                };
+                
+                if tx_clone.send(download_res).is_err() {
+                    break;
+                }
+            }
+        });
+        workers.push(handle);
+    }
+    
+    // Закрываем исходный передатчик, чтобы приемник закрылся, когда все потоки закончат работу
+    drop(tx);
+
     let mut done = 0_u64;
     let mut saved = 0_u64;
     let mut errors = 0_u64;
@@ -283,63 +385,55 @@ fn download_offline_map_blocking<R: Runtime>(
     conn.execute_batch("BEGIN IMMEDIATE")
         .map_err(|e| e.to_string())?;
 
-    'download: for range in &request.ranges {
-        for x in range.x_min..=range.x_max {
-            for y in range.y_min..=range.y_max {
-                if OFFLINE_DOWNLOAD_CANCELLED.load(Ordering::SeqCst) {
-                    aborted = true;
-                    break 'download;
-                }
+    for result in rx {
+        if OFFLINE_DOWNLOAD_CANCELLED.load(Ordering::SeqCst) {
+            aborted = true;
+            break;
+        }
 
-                if let Some(points) = polygon {
-                    let lat = tile_to_lat_fraction(y as f64 + 0.5, range.z);
-                    let lng = tile_to_lng_fraction(x as f64 + 0.5, range.z);
-                    if !point_in_polygon(lat, lng, points) {
-                        continue;
-                    }
-                }
-
-                let url = build_download_tile_url(&request, x, y, range.z)?;
-                match fetch_tile_bytes_with_agent(&agent, &url) {
-                    Ok(bytes) => {
-                        let stored_z = stored_download_zoom(&request.format, range.z);
-                        let byte_len = bytes.len() as u64;
-                        conn.execute(
-                            "INSERT OR IGNORE INTO tiles VALUES (?,?,?,?,?)",
-                            params![x, y, stored_z, 0_i32, bytes.as_slice()],
-                        )
-                        .map_err(|e| e.to_string())?;
-                        saved += 1;
-                        bytes_total += byte_len;
-                        batch_pending += 1;
-                    }
-                    Err(_) => {
-                        errors += 1;
-                    }
-                }
-
-                done += 1;
-
-                if batch_pending >= OFFLINE_DOWNLOAD_BATCH_SIZE {
-                    conn.execute_batch("COMMIT; BEGIN IMMEDIATE")
-                        .map_err(|e| e.to_string())?;
-                    batch_pending = 0;
-                }
-
-                if done % 10 == 0 || done == request.total {
-                    emit_offline_download_progress(
-                        &app,
-                        done,
-                        request.total,
-                        saved,
-                        errors,
-                        bytes_total,
-                        false,
-                        false,
-                    );
-                }
+        match result.res {
+            Ok(bytes) => {
+                let stored_z = stored_download_zoom(&request.format, result.z);
+                let byte_len = bytes.len() as u64;
+                conn.execute(
+                    "INSERT OR IGNORE INTO tiles VALUES (?,?,?,?,?)",
+                    params![result.x, result.y, stored_z, 0_i32, bytes.as_slice()],
+                )
+                .map_err(|e| e.to_string())?;
+                saved += 1;
+                bytes_total += byte_len;
+                batch_pending += 1;
+            }
+            Err(_) => {
+                errors += 1;
             }
         }
+
+        done += 1;
+
+        if batch_pending >= OFFLINE_DOWNLOAD_BATCH_SIZE {
+            conn.execute_batch("COMMIT; BEGIN IMMEDIATE")
+                .map_err(|e| e.to_string())?;
+            batch_pending = 0;
+        }
+
+        if done % 10 == 0 || done == total_tasks {
+            emit_offline_download_progress(
+                &app,
+                done,
+                total_tasks,
+                saved,
+                errors,
+                bytes_total,
+                false,
+                false,
+            );
+        }
+    }
+
+    // Ждем завершения всех рабочих потоков
+    for worker in workers {
+        let _ = worker.join();
     }
 
     conn.execute_batch("COMMIT").map_err(|e| e.to_string())?;
@@ -348,7 +442,7 @@ fn download_offline_map_blocking<R: Runtime>(
     emit_offline_download_progress(
         &app,
         done,
-        request.total,
+        total_tasks,
         saved,
         errors,
         bytes_total,
@@ -358,7 +452,7 @@ fn download_offline_map_blocking<R: Runtime>(
 
     Ok(OfflineDownloadResult {
         done,
-        total: request.total,
+        total: total_tasks,
         saved,
         errors,
         bytes: bytes_total,
@@ -1152,7 +1246,8 @@ fn main() {
             cancel_offline_map_download,
             inspect_offline_map,
             read_offline_tile,
-            get_hardware_id
+            get_hardware_id,
+            save_state_atomic
         ])
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
