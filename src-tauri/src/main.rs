@@ -3,19 +3,21 @@
 
 use rusqlite::{params, Connection, OpenFlags, OptionalExtension};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs;
 use std::io::Read;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
+use std::sync::{Arc, Mutex, OnceLock};
+use std::time::{Duration, SystemTime};
 use tauri::{AppHandle, Emitter, Manager, Runtime, Url, Webview, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
 const MAX_TILE_BYTES: u64 = 2 * 1024 * 1024;
 const OFFLINE_DOWNLOAD_BATCH_SIZE: u64 = 250;
+const OFFLINE_TILE_CACHE_LIMIT: usize = 4;
 static OFFLINE_DOWNLOAD_CANCELLED: AtomicBool = AtomicBool::new(false);
+static OFFLINE_TILE_CACHE: OnceLock<Mutex<OfflineTileCache>> = OnceLock::new();
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -95,22 +97,25 @@ async fn install_app_update<R: Runtime>(webview: Webview<R>, rid: u32) -> Result
 #[tauri::command]
 fn save_state_atomic(path: String, data: String) -> Result<(), String> {
     let target_path = Path::new(&path);
-    let parent = target_path.parent().ok_or_else(|| "Неверный путь".to_string())?;
-    
+    let parent = target_path
+        .parent()
+        .ok_or_else(|| "Неверный путь".to_string())?;
+
     // Создаем директорию, если её нет
     if !parent.exists() {
         fs::create_dir_all(parent).map_err(|e| format!("Не удалось создать папку сессии: {e}"))?;
     }
-    
+
     // Создаем .tmp файл в той же папке
     let tmp_path = target_path.with_extension("json.tmp");
-    
+
     // Записываем данные в .tmp
     fs::write(&tmp_path, data).map_err(|e| format!("Не удалось записать временный файл: {e}"))?;
-    
+
     // Переименовываем временный файл в целевой (атомарно)
-    fs::rename(&tmp_path, target_path).map_err(|e| format!("Не удалось сохранить файл сессии: {e}"))?;
-    
+    fs::rename(&tmp_path, target_path)
+        .map_err(|e| format!("Не удалось сохранить файл сессии: {e}"))?;
+
     Ok(())
 }
 
@@ -309,7 +314,7 @@ fn download_offline_map_blocking<R: Runtime>(
 
     let conn = create_offline_download_db(&request)?;
     let polygon = request.polygon.as_deref();
-    
+
     // Сначала генерируем список всех тайлов для скачивания
     let mut tasks = Vec::new();
     for range in &request.ranges {
@@ -323,7 +328,12 @@ fn download_offline_map_blocking<R: Runtime>(
                     }
                 }
                 let url = build_download_tile_url(&request, x, y, range.z)?;
-                tasks.push(TileDownloadTask { x, y, z: range.z, url });
+                tasks.push(TileDownloadTask {
+                    x,
+                    y,
+                    z: range.z,
+                    url,
+                });
             }
         }
     }
@@ -335,27 +345,27 @@ fn download_offline_map_blocking<R: Runtime>(
     // Запускаем пул параллельных рабочих потоков для скачивания (8 потоков)
     let num_workers = 8;
     let mut workers = Vec::new();
-    
+
     for _ in 0..num_workers {
         let queue_clone = Arc::clone(&queue);
         let tx_clone = tx.clone();
         let agent = tile_fetch_agent();
-        
+
         let handle = std::thread::spawn(move || {
             loop {
                 if OFFLINE_DOWNLOAD_CANCELLED.load(Ordering::SeqCst) {
                     break;
                 }
-                
+
                 let task = {
                     let mut q = queue_clone.lock().unwrap();
                     q.pop_front()
                 };
-                
+
                 let Some(task) = task else {
                     break; // Очередь пуста
                 };
-                
+
                 let res = fetch_tile_bytes_with_agent(&agent, &task.url);
                 let download_res = TileDownloadResult {
                     x: task.x,
@@ -363,7 +373,7 @@ fn download_offline_map_blocking<R: Runtime>(
                     z: task.z,
                     res,
                 };
-                
+
                 if tx_clone.send(download_res).is_err() {
                     break;
                 }
@@ -371,7 +381,7 @@ fn download_offline_map_blocking<R: Runtime>(
         });
         workers.push(handle);
     }
-    
+
     // Закрываем исходный передатчик, чтобы приемник закрылся, когда все потоки закончат работу
     drop(tx);
 
@@ -670,6 +680,7 @@ struct OfflineMapInfo {
     scheme: String,
 }
 
+#[derive(Clone)]
 struct OfflineTileSource {
     format: OfflineMapFormat,
     min_zoom: i32,
@@ -678,6 +689,19 @@ struct OfflineTileSource {
     bounds: Option<[f64; 4]>,
     inverted: bool,
     mbtiles_tms: bool,
+}
+
+struct OfflineTileSession {
+    conn: Connection,
+    source: OfflineTileSource,
+    len: u64,
+    modified: Option<SystemTime>,
+}
+
+#[derive(Default)]
+struct OfflineTileCache {
+    sessions: HashMap<String, OfflineTileSession>,
+    order: VecDeque<String>,
 }
 
 #[tauri::command]
@@ -702,24 +726,11 @@ async fn read_offline_tile(
 }
 
 fn inspect_offline_map_blocking(path: &str) -> Result<OfflineMapInfo, String> {
-    let conn = open_offline_map_db(path)?;
-    let source = detect_offline_tile_source(&conn)?;
-    Ok(OfflineMapInfo {
-        format: match source.format {
-            OfflineMapFormat::RMaps => "rmaps".to_string(),
-            OfflineMapFormat::MBTiles => "mbtiles".to_string(),
-        },
-        min_zoom: source.min_zoom,
-        max_zoom: source.max_zoom,
-        mime: source.mime,
-        bounds: source.bounds,
-        inverted: source.inverted,
-        scheme: if source.mbtiles_tms {
-            "tms".to_string()
-        } else {
-            "xyz".to_string()
-        },
-    })
+    let mut cache = offline_tile_cache()
+        .lock()
+        .map_err(|_| "Кэш офлайн-карт недоступен".to_string())?;
+    let session = cache.get_or_open(path)?;
+    Ok(offline_source_to_info(&session.source))
 }
 
 fn read_offline_tile_blocking(
@@ -728,13 +739,99 @@ fn read_offline_tile_blocking(
     y: i64,
     z: i64,
 ) -> Result<Option<Vec<u8>>, String> {
-    let conn = open_offline_map_db(path)?;
-    let source = detect_offline_tile_source(&conn)?;
-    let data = match source.format {
-        OfflineMapFormat::RMaps => query_rmaps_tile(&conn, &source, x, y, z)?,
-        OfflineMapFormat::MBTiles => query_mbtiles_tile(&conn, &source, x, y, z)?,
+    let mut cache = offline_tile_cache()
+        .lock()
+        .map_err(|_| "Кэш офлайн-карт недоступен".to_string())?;
+    let session = cache.get_or_open(path)?;
+    let data = match session.source.format {
+        OfflineMapFormat::RMaps => query_rmaps_tile(&session.conn, &session.source, x, y, z)?,
+        OfflineMapFormat::MBTiles => query_mbtiles_tile(&session.conn, &session.source, x, y, z)?,
     };
     Ok(data.filter(|bytes| is_supported_raster_tile_data(bytes)))
+}
+
+fn offline_tile_cache() -> &'static Mutex<OfflineTileCache> {
+    OFFLINE_TILE_CACHE.get_or_init(|| Mutex::new(OfflineTileCache::default()))
+}
+
+impl OfflineTileCache {
+    fn get_or_open(&mut self, path: &str) -> Result<&mut OfflineTileSession, String> {
+        let key = normalize_offline_map_cache_key(path);
+        let (len, modified) = offline_map_file_signature(path)?;
+        let stale = self
+            .sessions
+            .get(&key)
+            .map(|session| session.len != len || session.modified != modified)
+            .unwrap_or(true);
+
+        if stale {
+            self.sessions.remove(&key);
+            self.order.retain(|existing| existing != &key);
+            let conn = open_offline_map_db(path)?;
+            let source = detect_offline_tile_source(&conn)?;
+            self.sessions.insert(
+                key.clone(),
+                OfflineTileSession {
+                    conn,
+                    source,
+                    len,
+                    modified,
+                },
+            );
+        }
+
+        self.touch(&key);
+        self.evict_old();
+        self.sessions
+            .get_mut(&key)
+            .ok_or_else(|| "Не удалось открыть офлайн-карту".to_string())
+    }
+
+    fn touch(&mut self, key: &str) {
+        self.order.retain(|existing| existing != key);
+        self.order.push_back(key.to_string());
+    }
+
+    fn evict_old(&mut self) {
+        while self.sessions.len() > OFFLINE_TILE_CACHE_LIMIT {
+            let Some(old_key) = self.order.pop_front() else {
+                break;
+            };
+            self.sessions.remove(&old_key);
+        }
+    }
+}
+
+fn normalize_offline_map_cache_key(path: &str) -> String {
+    fs::canonicalize(path)
+        .ok()
+        .and_then(|path| path.to_str().map(str::to_owned))
+        .unwrap_or_else(|| path.to_string())
+}
+
+fn offline_map_file_signature(path: &str) -> Result<(u64, Option<SystemTime>), String> {
+    let metadata =
+        fs::metadata(path).map_err(|e| format!("Не удалось прочитать файл карты: {e}"))?;
+    Ok((metadata.len(), metadata.modified().ok()))
+}
+
+fn offline_source_to_info(source: &OfflineTileSource) -> OfflineMapInfo {
+    OfflineMapInfo {
+        format: match source.format {
+            OfflineMapFormat::RMaps => "rmaps".to_string(),
+            OfflineMapFormat::MBTiles => "mbtiles".to_string(),
+        },
+        min_zoom: source.min_zoom,
+        max_zoom: source.max_zoom,
+        mime: source.mime.clone(),
+        bounds: source.bounds,
+        inverted: source.inverted,
+        scheme: if source.mbtiles_tms {
+            "tms".to_string()
+        } else {
+            "xyz".to_string()
+        },
+    }
 }
 
 fn open_offline_map_db(path: &str) -> Result<Connection, String> {

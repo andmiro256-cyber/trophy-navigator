@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🧭 Trophy Navigator Desktop v0.9.16</title>
+  <title>🧭 Trophy Navigator Desktop v0.9.18</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -390,6 +390,16 @@
   .wpt-table tr:hover td { background: var(--row-hover); cursor: pointer; }
   .wpt-table tr.selected td { background: var(--bg-sunken); }
   .wpt-icon { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: middle; }
+  .tnd-wp-marker { overflow: visible !important; }
+  .tnd-wp-marker .tnd-wp-dot {
+    position: relative; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5); color: #fff; font-weight: bold; overflow: visible;
+  }
+  .tnd-wp-marker .tnd-wp-label {
+    position: absolute; left: 26px; top: 2px; white-space: nowrap; font-size: 10px;
+    color: #fff; text-shadow: 1px 1px 2px #000, -1px -1px 2px #000; pointer-events: none;
+  }
 
   /* ─── СПИСОК МАРШРУТОВ ─── */
   .route-item { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
@@ -1281,7 +1291,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span id="app-version-label" style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.16</span>
+  <span id="app-version-label" style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.18</span>
 </div>
 
 <div id="ruler-panel">
@@ -2389,6 +2399,9 @@ function createTrackPolylineLayer(points, options = {}) {
   });
 }
 // Pane для тайловых оверлеев — выше базового слоя (tilePane=200), ниже маркеров (overlayPane=400)
+map.createPane('offlineTiles');
+map.getPane('offlineTiles').style.zIndex = 210;
+map.getPane('offlineTiles').style.pointerEvents = 'none';
 map.createPane('overlayTiles');
 map.getPane('overlayTiles').style.zIndex = 350;
 // Слои карты управляются через baseLayers (см. ниже функцию setLayer)
@@ -3162,18 +3175,117 @@ function isTrackHeaderRow(parts) {
   return nameLooksTextual || hasOziStyleTail;
 }
 
+function formatIsoWithLocalOffset(date, options = {}) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+  const pad = (value, size = 2) => String(value).padStart(size, '0');
+  const millis = date.getMilliseconds();
+  const millisPart = options.includeMillis && millis ? `.${pad(millis, 3)}` : '';
+  const offsetMinutes = -date.getTimezoneOffset();
+  const offsetSign = offsetMinutes >= 0 ? '+' : '-';
+  const offsetAbs = Math.abs(offsetMinutes);
+  const offset = `${offsetSign}${pad(Math.floor(offsetAbs / 60))}:${pad(offsetAbs % 60)}`;
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}${millisPart}${offset}`;
+}
+
+function parseOziTextDateTime(dateText, timeText) {
+  const dateRaw = String(dateText ?? '').trim();
+  const timeRaw = String(timeText ?? '').trim();
+  if (!dateRaw || !timeRaw) return null;
+  let year, month, day;
+  let match = dateRaw.match(/^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})$/);
+  if (match) {
+    year = Number(match[1]);
+    month = Number(match[2]);
+    day = Number(match[3]);
+  } else {
+    match = dateRaw.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})$/);
+    if (!match) return null;
+    day = Number(match[1]);
+    month = Number(match[2]);
+    year = Number(match[3]);
+    if (year < 100) year += year >= 70 ? 1900 : 2000;
+  }
+  const timeMatch = timeRaw.match(/^(\d{1,2}):(\d{2})(?::(\d{2})(?:[.,](\d{1,3}))?)?$/);
+  if (!timeMatch) return null;
+  const hour = Number(timeMatch[1]);
+  const minute = Number(timeMatch[2]);
+  const second = Number(timeMatch[3] || 0);
+  const millisecond = timeMatch[4] ? Number(String(timeMatch[4]).padEnd(3, '0')) : 0;
+  const date = new Date(year, month - 1, day, hour, minute, second, millisecond);
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day ||
+    date.getHours() !== hour ||
+    date.getMinutes() !== minute ||
+    date.getSeconds() !== second
+  ) return null;
+  return formatIsoWithLocalOffset(date, { includeMillis: millisecond > 0 });
+}
+
 function oziSerialToIso(value) {
   const serial = Number(String(value ?? '').trim().replace(',', '.'));
   if (!Number.isFinite(serial) || serial <= 0) return null;
-  const date = new Date((serial - 25569) * 86400000);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  const utcDate = new Date(Math.round((serial - 25569) * 86400) * 1000);
+  if (Number.isNaN(utcDate.getTime())) return null;
+  const localDate = new Date(
+    utcDate.getUTCFullYear(),
+    utcDate.getUTCMonth(),
+    utcDate.getUTCDate(),
+    utcDate.getUTCHours(),
+    utcDate.getUTCMinutes(),
+    utcDate.getUTCSeconds(),
+    utcDate.getUTCMilliseconds()
+  );
+  return formatIsoWithLocalOffset(localDate);
+}
+
+function normalizeLegacyOziIsoTime(value) {
+  const raw = String(value ?? '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(raw)) return null;
+  const parsedDate = new Date(raw);
+  const legacyDate = Number.isNaN(parsedDate.getTime()) ? parsedDate : new Date(Math.round(parsedDate.getTime() / 1000) * 1000);
+  if (Number.isNaN(legacyDate.getTime())) return null;
+  const localDate = new Date(
+    legacyDate.getUTCFullYear(),
+    legacyDate.getUTCMonth(),
+    legacyDate.getUTCDate(),
+    legacyDate.getUTCHours(),
+    legacyDate.getUTCMinutes(),
+    legacyDate.getUTCSeconds(),
+    legacyDate.getUTCMilliseconds()
+  );
+  return formatIsoWithLocalOffset(localDate, { includeMillis: legacyDate.getUTCMilliseconds() > 0 });
+}
+
+function normalizeLegacyPltTrackTimes() {
+  const pltTrackIds = new Set();
+  loadedSourceFiles.forEach(file => {
+    if (normalizeFileFormat(file.name, file.format) !== 'plt') return;
+    normalizeEntityIdList(file.entityIds?.tracks).forEach(id => pltTrackIds.add(String(id)));
+  });
+  if (pltTrackIds.size === 0) return;
+  tracks.forEach(track => {
+    if (!pltTrackIds.has(String(track.id)) || !Array.isArray(track.pointsData)) return;
+    let changed = false;
+    track.pointsData = track.pointsData.map(pointData => {
+      if (!pointData?.time) return pointData || {};
+      const fixedTime = normalizeLegacyOziIsoTime(pointData.time);
+      if (!fixedTime || fixedTime === pointData.time) return pointData;
+      changed = true;
+      return { ...pointData, time: fixedTime };
+    });
+    if (changed) track._legacyPltTimeNormalized = true;
+  });
 }
 
 function parseOziTrackPointData(parts) {
   const data = {};
   const eleFeet = Number(String(parts?.[3] ?? '').trim().replace(',', '.'));
   if (Number.isFinite(eleFeet) && eleFeet !== -777) data.ele = eleFeet / 3.28084;
-  const isoFromSerial = oziSerialToIso(parts?.[4]);
+  const isoFromText = parseOziTextDateTime(parts?.[5], parts?.[6]);
+  const isoFromSerial = isoFromText || oziSerialToIso(parts?.[4]);
   if (isoFromSerial) data.time = isoFromSerial;
   return data;
 }
@@ -3184,13 +3296,23 @@ function makeDivIcon(data) {
   const symbol = escapeHtml(rawIcon.length > 2 ? garminToEmoji(rawIcon) : rawIcon);
   const nameLabel = data.name ? escapeHtml(data.name) : '';
   return L.divIcon({
-    className: '',
-    html: `<div style="position:relative;background:${data.color};width:24px;height:24px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.5);color:#fff;font-weight:bold">
+    className: 'tnd-wp-marker',
+    html: `<div class="tnd-wp-dot" style="background:${data.color}">
       <span>${symbol}</span>
-      <span style="position:absolute;left:26px;top:2px;white-space:nowrap;font-size:10px;color:#fff;text-shadow:1px 1px 2px #000,-1px -1px 2px #000;pointer-events:none">${nameLabel}</span>
+      <span class="tnd-wp-label">${nameLabel}</span>
     </div>`,
-    iconSize: [22,22], iconAnchor: [11,11]
+    iconSize: [24,24], iconAnchor: [12,12]
   });
+}
+
+function makeWaypointMarkerOptions(data) {
+  return {
+    draggable: !objectsLocked,
+    icon: makeDivIcon(data),
+    zIndexOffset: 1200,
+    riseOnHover: true,
+    riseOffset: 500
+  };
 }
 
 function updateWaypointCircle(marker) {
@@ -3279,7 +3401,7 @@ function addWaypoint(latlng, nameHint, extra = {}) {
     source: extra.source || 'desktop',
     syncedAt: extra.syncedAt || null
   };
-  const marker = L.marker(latlng, { draggable: !objectsLocked, icon: makeDivIcon(wpData) });
+  const marker = L.marker(latlng, makeWaypointMarkerOptions(wpData));
   marker.wpData = wpData;
   marker.addTo(map);
   refreshWaypoint(marker, { touch: false });
@@ -3558,6 +3680,9 @@ const btnMap = { hand:'btn-hand', waypoint:'btn-wpt', track:'btn-trk', trackedit
 
 function setMode(mode) {
   if (currentMode === 'ruler' && mode !== 'ruler') clearRuler();
+  if (['waypoint', 'track', 'trackedit', 'route', 'routeedit', 'ruler'].includes(mode)) {
+    closeTransientMapModals();
+  }
   currentMode = mode;
   document.querySelectorAll('[id^=btn-]:not(#btn-map-layer)').forEach(b => b.classList.remove('active'));
   const btn = document.getElementById(btnMap[mode]);
@@ -3718,6 +3843,15 @@ const TileCache = {
   _prefetching: false,
   _sessionHits: 0,
   _sessionMisses: 0,
+  _statsLoaded: false,
+  _statsDirty: false,
+  _calcSizePromise: null,
+  _accessUpdates: new Map(),
+  _accessFlushTimer: null,
+  _saveQueue: [],
+  _saveInflight: new Set(),
+  _saveActive: 0,
+  _saveConcurrency: 2,
 
   open() {
     if (this.db) return Promise.resolve();
@@ -3735,7 +3869,7 @@ const TileCache = {
       req.onsuccess = (e) => {
         this.db = e.target.result;
         this._loadSettings();
-        this._calcSize().then(resolve);
+        resolve();
       };
       req.onerror = () => { console.warn('TileCache: IndexedDB error'); resolve(); };
     });
@@ -3760,8 +3894,9 @@ const TileCache = {
   },
 
   async _calcSize() {
-    if (!this.db) return;
-    return new Promise(resolve => {
+    if (!this.db) return Promise.resolve();
+    if (this._calcSizePromise) return this._calcSizePromise;
+    this._calcSizePromise = new Promise(resolve => {
       const tx = this.db.transaction('tiles', 'readonly');
       const store = tx.objectStore('tiles');
       let total = 0, count = 0;
@@ -3769,24 +3904,33 @@ const TileCache = {
       cur.onsuccess = (e) => {
         const c = e.target.result;
         if (c) { total += c.value.size || 0; count++; c.continue(); }
-        else { this._totalSize = total; this._tileCount = count; resolve(); }
+        else {
+          this._totalSize = total;
+          this._tileCount = count;
+          this._statsLoaded = true;
+          this._statsDirty = false;
+          this._calcSizePromise = null;
+          resolve();
+        }
       };
-      cur.onerror = () => resolve();
+      cur.onerror = () => {
+        this._calcSizePromise = null;
+        resolve();
+      };
     });
+    return this._calcSizePromise;
   },
 
   async get(url) {
     if (!this.db || !this._enabled) return null;
     return new Promise(resolve => {
-      const tx = this.db.transaction('tiles', 'readwrite');
+      const tx = this.db.transaction('tiles', 'readonly');
       const store = tx.objectStore('tiles');
       const req = store.get(url);
       req.onsuccess = (e) => {
         const rec = e.target.result;
         if (rec) {
-          rec.lastAccess = Date.now();
-          rec.accessCount = (rec.accessCount || 0) + 1;
-          store.put(rec);
+          this._queueAccessUpdate(url, (rec.accessCount || 0) + 1);
           this._sessionHits++;
           resolve(rec.blob);
         } else {
@@ -3796,6 +3940,34 @@ const TileCache = {
       };
       req.onerror = () => resolve(null);
     });
+  },
+
+  _queueAccessUpdate(url, accessCount) {
+    if (!this.db || !this._enabled) return;
+    this._accessUpdates.set(url, { lastAccess: Date.now(), accessCount });
+    if (this._accessFlushTimer) return;
+    this._accessFlushTimer = setTimeout(() => this._flushAccessUpdates(), 1500);
+  },
+
+  _flushAccessUpdates() {
+    this._accessFlushTimer = null;
+    if (!this.db || this._accessUpdates.size === 0) return;
+    const updates = [...this._accessUpdates.entries()];
+    this._accessUpdates.clear();
+    try {
+      const tx = this.db.transaction('tiles', 'readwrite');
+      const store = tx.objectStore('tiles');
+      updates.forEach(([url, access]) => {
+        const req = store.get(url);
+        req.onsuccess = () => {
+          const rec = req.result;
+          if (!rec) return;
+          rec.lastAccess = access.lastAccess;
+          rec.accessCount = Math.max(rec.accessCount || 0, access.accessCount || 0);
+          store.put(rec);
+        };
+      });
+    } catch {}
   },
 
   async has(url) {
@@ -3814,21 +3986,22 @@ const TileCache = {
     return new Promise(resolve => {
       const tx = this.db.transaction('tiles', 'readwrite');
       const store = tx.objectStore('tiles');
+      let old = null;
       // Check existing to avoid totalSize drift
       const getReq = store.get(url);
       getReq.onsuccess = () => {
-        const old = getReq.result;
-        if (old) {
-          this._totalSize -= old.size || 0;
-          this._tileCount--;
-        }
+        old = getReq.result || null;
         const rec = { url, blob, size, layerName, lastAccess: Date.now(), accessCount: old ? (old.accessCount || 0) + 1 : 1, createdAt: old ? old.createdAt : Date.now() };
         store.put(rec);
       };
       tx.oncomplete = () => {
-        this._totalSize += size;
-        this._tileCount++;
-        if (this._totalSize > this._maxBytes) this._evict();
+        if (this._statsLoaded) {
+          this._totalSize += size - (old?.size || 0);
+          if (!old) this._tileCount++;
+          if (this._totalSize > this._maxBytes) this._evict();
+        } else {
+          this._statsDirty = true;
+        }
         resolve();
       };
       tx.onerror = () => resolve();
@@ -3901,8 +4074,10 @@ const TileCache = {
       cur.onsuccess = (e) => {
         const c = e.target.result;
         if (c) {
-          this._totalSize -= c.value.size || 0;
-          this._tileCount--;
+          if (this._statsLoaded) {
+            this._totalSize -= c.value.size || 0;
+            this._tileCount--;
+          }
           c.delete();
           c.continue();
         } else { resolve(); }
@@ -3919,6 +4094,35 @@ const TileCache = {
   },
 
   clearPrefetchQueue() { this._prefetchQueue.length = 0; },
+
+  queueSave(url, layerName) {
+    if (!this.db || !this._enabled || this._saveInflight.has(url)) return;
+    this._saveInflight.add(url);
+    this._saveQueue.push({ url, layerName });
+    if (this._saveQueue.length > 96) {
+      const dropped = this._saveQueue.splice(0, this._saveQueue.length - 96);
+      dropped.forEach(item => this._saveInflight.delete(item.url));
+    }
+    this._processSaveQueue();
+  },
+
+  _processSaveQueue() {
+    if (!this.db || !this._enabled) return;
+    while (this._saveActive < this._saveConcurrency && this._saveQueue.length > 0) {
+      const item = this._saveQueue.shift();
+      this._saveActive++;
+      fetchTileBlobForCache(item.url)
+        .then(blob => {
+          if (blob && blob.size) return this.put(item.url, blob, item.layerName);
+        })
+        .catch(() => {})
+        .finally(() => {
+          this._saveActive--;
+          this._saveInflight.delete(item.url);
+          if (this._saveQueue.length > 0) setTimeout(() => this._processSaveQueue(), 80);
+        });
+    }
+  },
 
   async _processPrefetch() {
     this._prefetching = true;
@@ -4011,22 +4215,59 @@ const CachedTileLayer = L.TileLayer.extend({
     const url = this.getTileUrl(coords);
     const cacheName = this.options._cacheName || 'unknown';
     const self = this;
+    let directStarted = false;
+    let doneCalled = false;
+    let fallbackTimer = null;
+    let objectUrl = null;
+
+    const clearFallbackTimer = () => {
+      if (fallbackTimer) {
+        clearTimeout(fallbackTimer);
+        fallbackTimer = null;
+      }
+    };
+
+    const finish = (err) => {
+      if (doneCalled) return;
+      doneCalled = true;
+      clearFallbackTimer();
+      done(err, tile);
+    };
 
     const directLoad = () => {
-      tile.onload = () => done(null, tile);
-      tile.onerror = () => done(new Error('tile'), tile);
+      if (directStarted || doneCalled) return;
+      directStarted = true;
+      clearFallbackTimer();
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        objectUrl = null;
+      }
+      tile.onload = () => finish(null);
+      tile.onerror = () => finish(new Error('tile'));
       tile.src = url;
     };
 
     const renderFromBlob = (blob) => {
-      const blobUrl = URL.createObjectURL(blob);
-      tile.onload = () => { URL.revokeObjectURL(blobUrl); done(null, tile); };
+      if (directStarted || doneCalled) return false;
+      clearFallbackTimer();
+      objectUrl = URL.createObjectURL(blob);
+      tile.onload = () => {
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+          objectUrl = null;
+        }
+        finish(null);
+      };
       tile.onerror = () => {
-        URL.revokeObjectURL(blobUrl);
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+          objectUrl = null;
+        }
         // Corrupt/invalid blob (rare): fall back to direct network load
         directLoad();
       };
-      tile.src = blobUrl;
+      tile.src = objectUrl;
+      return true;
     };
 
     const prefetchNeighbors = () => {
@@ -4041,6 +4282,17 @@ const CachedTileLayer = L.TileLayer.extend({
       }
     };
 
+    const saveMissInBackground = () => {
+      setTimeout(() => {
+        TileCache.queueSave(url, cacheName);
+        prefetchNeighbors();
+      }, 1000);
+    };
+
+    // Rendering must not depend on IndexedDB/native fetch latency.
+    // If cache lookup is not fast, fall back to the normal browser image load.
+    fallbackTimer = setTimeout(() => directLoad(), 700);
+
     TileCache.open().then(() => {
       if (!TileCache._enabled || !TileCache.db) {
         directLoad();
@@ -4051,16 +4303,8 @@ const CachedTileLayer = L.TileLayer.extend({
           renderFromBlob(cached);
           return;
         }
-        // Cache miss: single fetch via fetchTileBlobForCache, render + save from same blob
-        fetchTileBlobForCache(url).then(blob => {
-          if (!blob || !blob.size) {
-            directLoad();
-            return;
-          }
-          renderFromBlob(blob);
-          TileCache.put(url, blob, cacheName);
-          prefetchNeighbors();
-        }).catch(() => directLoad());
+        directLoad();
+        saveMissInBackground();
       }).catch(() => directLoad());
     }).catch(() => directLoad());
 
@@ -4069,10 +4313,21 @@ const CachedTileLayer = L.TileLayer.extend({
 });
 
 function cachedTileLayer(url, opts, name) {
+  const layerOpts = tuneTileLayerOptions(opts, name);
   if (TileCache._enabled) {
-    return new CachedTileLayer(url, { ...opts, _cacheName: name });
+    return new CachedTileLayer(url, { ...layerOpts, _cacheName: name });
   }
-  return L.tileLayer(url, opts);
+  return L.tileLayer(url, layerOpts);
+}
+
+function tuneTileLayerOptions(opts = {}, name = '') {
+  const tuned = { ...opts };
+  if (/Google/i.test(name)) {
+    tuned.keepBuffer = Math.max(Number(tuned.keepBuffer) || 0, 5);
+    tuned.updateWhenIdle = false;
+    tuned.updateInterval = Math.min(Number(tuned.updateInterval) || 150, 100);
+  }
+  return tuned;
 }
 
 const BingTileLayer = CachedTileLayer.extend({
@@ -4186,6 +4441,87 @@ async function showHiddenLayersManager() {
 let currentBaseLayer = makeBaseLayer('OpenStreetMap');
 let currentBaseLayerName = 'OpenStreetMap';
 currentBaseLayer.addTo(map);
+let offlineBaseModeActive = false;
+
+function getActiveOfflineMapEntries() {
+  return Object.values(offlineMaps || {}).filter(entry => entry?.layer && map.hasLayer(entry.layer));
+}
+
+function hasActiveOfflineMaps() {
+  return getActiveOfflineMapEntries().length > 0;
+}
+
+function setLayerStatusText(label, emoji = '🗺') {
+  const toolbarEl = document.getElementById('current-layer-name');
+  const statusEl = document.getElementById('sb-layer');
+  if (toolbarEl) toolbarEl.textContent = `${emoji} ${label}`;
+  if (statusEl) statusEl.textContent = label;
+}
+
+function updateBaseLayerStatusText() {
+  const activeOffline = getActiveOfflineMapEntries();
+  if (activeOffline.length > 0) {
+    const primary = activeOffline[activeOffline.length - 1];
+    const shortName = (primary.name || getFileNameFromPath(primary._path || '') || 'Офлайн карта')
+      .replace(/\.(sqlitedb|mbtiles|rmap|db|sqlite)$/i, '');
+    setLayerStatusText(activeOffline.length > 1 ? `${shortName} +${activeOffline.length - 1}` : shortName, '📦');
+    return;
+  }
+  const label = currentBaseLayerName.startsWith('custom:')
+    ? currentBaseLayerName.replace(/^custom:/, '')
+    : currentBaseLayerName;
+  setLayerStatusText(label, layerEmoji[currentBaseLayerName] || getLayerEmoji(label));
+}
+
+function updateOnlineBaseForOfflineState() {
+  const offlineActive = hasActiveOfflineMaps();
+  if (offlineActive) {
+    offlineBaseModeActive = true;
+    if (currentBaseLayer && map.hasLayer(currentBaseLayer)) {
+      map.removeLayer(currentBaseLayer);
+    }
+    if (currentCRS !== 'EPSG3857') {
+      removeActiveOverlaysForCRSChange();
+      switchCRS(false);
+    }
+  } else if (offlineBaseModeActive) {
+    offlineBaseModeActive = false;
+    const needYandex = yandexLayers.has(currentBaseLayerName);
+    switchCRS(needYandex);
+    if (currentBaseLayer && !map.hasLayer(currentBaseLayer)) {
+      currentBaseLayer.addTo(map);
+    }
+  }
+  updateBaseLayerStatusText();
+}
+
+function deactivateActiveOfflineMapsForOnlineBase() {
+  let changed = false;
+  Object.entries(offlineMaps || {}).forEach(([key, entry]) => {
+    if (!entry) return;
+    if (entry._loading) {
+      entry._cancelActivation = true;
+      changed = true;
+    }
+    if (entry.layer && map.hasLayer(entry.layer)) {
+      map.removeLayer(entry.layer);
+      changed = true;
+    }
+    if (entry.layer || entry.active) changed = true;
+    entry.layer = null;
+    if (entry.db) {
+      entry.db.close();
+      entry.db = null;
+    }
+    entry.active = false;
+    updateOfflineMapCardState(key);
+  });
+  if (!changed) return false;
+  offlineBaseModeActive = false;
+  updateOfflineLayersList();
+  updateBaseLayerStatusText();
+  return true;
+}
 
 // Free layer keys (not premium)
 const FREE_LAYER_KEYS = new Set(['osm', 'topo', 'cyclosm', 'osm_hot']);
@@ -4509,6 +4845,7 @@ function removeActiveOverlaysForCRSChange() {
 function setLayer(name, el) {
   const layer = makeBaseLayer(name);
   if (!layer) { console.warn('Layer not found:', name); return; }
+  deactivateActiveOfflineMapsForOnlineBase();
 
   // CRS переключение
   const needYandex = yandexLayers.has(name);
@@ -4522,9 +4859,7 @@ function setLayer(name, el) {
   currentBaseLayer = layer;
   currentBaseLayerName = name;
   layer.addTo(map);
-  const emoji = layerEmoji[name] || getLayerEmoji(name);
-  document.getElementById('current-layer-name').textContent = emoji + ' ' + name;
-  document.getElementById('sb-layer').textContent = name;
+  updateBaseLayerStatusText();
   document.querySelectorAll('.base-layer').forEach(d => d.classList.remove('active'));
   const layerEl = el || [...document.querySelectorAll('.base-layer')].find(node => node.dataset.layer === name);
   if (layerEl) layerEl.classList.add('active');
@@ -5251,6 +5586,7 @@ async function ctxTrackAction(action) {
     track.markers?.forEach((m, i) => { m._trackIdx = i; });
     if (track.polyline) track.polyline.setLatLngs(track.points);
     syncTrackMarkers(track);
+    closeTrackPointPopup();
     if (currentTrackEdit?.track?.id === track.id) currentTrackEdit.selectedPointIdx = null;
     touchTrack(track);
     updateTrackBuildPanel(track);
@@ -5581,6 +5917,7 @@ const TRACK_MARKER_BOUNDS_PAD = 0.25;
 const TRACK_POINT_HIT_RADIUS_PX = 12;
 let trackHoverTooltip = null;
 let trackHoverTooltipTarget = null;
+let trackPointPopup = null;
 let trackMarkerRefreshScheduled = false;
 
 function cloneTrackPointsData(pointsData = []) {
@@ -5724,6 +6061,7 @@ function removeTrackObject(track) {
   if (!track) return;
   stopTrackPlayerForTrack(track.id);
   if (rrData?.track?.id === track.id) rrClose();
+  closeTrackPointPopup();
   if (track.polyline) {
     track.polyline.off?.();
     if (map.hasLayer(track.polyline)) map.removeLayer(track.polyline);
@@ -5778,8 +6116,10 @@ function formatTrackPointTooltip(track, idx) {
   if (data.time) {
     try {
       const d = new Date(data.time);
-      html += `<b>Время:</b> ${d.toLocaleString('ru-RU')}<br>`;
-    } catch(_) { html += `<b>Время:</b> ${data.time}<br>`; }
+      html += `<b>Время:</b> ${Number.isNaN(d.getTime()) ? escapeHtml(data.time) : d.toLocaleString('ru-RU')}<br>`;
+    } catch(_) { html += `<b>Время:</b> ${escapeHtml(data.time)}<br>`; }
+  } else {
+    html += `<b>Время:</b> нет данных в треке<br>`;
   }
   if (data.speed != null && !isNaN(data.speed)) html += `<b>Скорость:</b> ${(data.speed * 3.6).toFixed(1)} км/ч<br>`;
   if (data.course != null && !isNaN(data.course)) html += `<b>Курс:</b> ${data.course.toFixed(1)}°<br>`;
@@ -5867,13 +6207,14 @@ function createTrackMarker(track, idx) {
   m.on('click', function(e) {
     L.DomEvent.stop(e);
     if (!isTrackEditActive(track)) {
-      showTrackPointHoverTooltip(track, m._trackIdx);
+      showTrackPointPopup(track, m._trackIdx, m.getLatLng());
       return;
     }
     if (currentTrackEdit?.track?.id === track.id) {
       currentTrackEdit.selectedPointIdx = m._trackIdx;
       syncTrackMarkers(track);
       updateTrackBuildPanel(track);
+      showTrackPointPopup(track, m._trackIdx, m.getLatLng());
       showToast(`Выбрана точка трека #${m._trackIdx + 1}`);
     }
   });
@@ -5995,6 +6336,43 @@ function closeTrackPointHoverTooltip() {
   trackHoverTooltipTarget = null;
 }
 
+function closeTransientMapModals() {
+  [
+    'modal-layers',
+    'modal-offline',
+    'modal-download-settings',
+    'modal-live-share',
+    'modal-live-share-inbox'
+  ].forEach(id => {
+    const overlay = document.getElementById(id);
+    if (overlay?.classList.contains('open')) closeModal(id);
+  });
+}
+
+function showTrackPointPopup(track, idx, latlng = null) {
+  if (!track?.points?.[idx]) return;
+  closeTransientMapModals();
+  if (!trackPointPopup) {
+    trackPointPopup = L.popup({
+      autoClose: false,
+      closeOnClick: false,
+      closeButton: true,
+      offset: [0, -8],
+      className: 'track-point-popup'
+    });
+  }
+  trackPointPopup
+    .setLatLng(latlng || track.points[idx])
+    .setContent(formatTrackPointTooltip(track, idx))
+    .addTo(map);
+}
+
+function closeTrackPointPopup() {
+  if (trackPointPopup && map.hasLayer(trackPointPopup)) {
+    map.removeLayer(trackPointPopup);
+  }
+}
+
 function bindTrackPolyline(track) {
   if (!track?.polyline || track.polyline._trackBound) return;
   track.polyline._trackBound = true;
@@ -6012,7 +6390,7 @@ function bindTrackPolyline(track) {
     }
     const hit = findNearestTrackPointHit(track, e.latlng);
     if (hit) {
-      showTrackPointHoverTooltip(track, hit.idx);
+      showTrackPointPopup(track, hit.idx, hit.point);
       return;
     }
     selectTrackById(track.id);
@@ -6486,7 +6864,16 @@ function saveTracksGPX() {
 }
 
 function dateToOziSerial(date) {
-  return date.getTime() / 86400000 + 25569;
+  const localMillis = Date.UTC(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    date.getHours(),
+    date.getMinutes(),
+    date.getSeconds(),
+    date.getMilliseconds()
+  );
+  return localMillis / 86400000 + 25569;
 }
 
 function pad2(value) {
@@ -8537,7 +8924,7 @@ function stopTileDownload() {
 // ОФЛАЙН КАРТЫ — СКАНИРОВАНИЕ И ОТОБРАЖЕНИЕ
 // ─────────────────────────────────────────────
 
-let offlineMaps = {};       // { pathKey: { name, _path, layer, active, info } }
+var offlineMaps = {};       // { pathKey: { name, _path, layer, active, info } }
 const OFFLINE_MAP_REGISTRY_KEY = 'tnd-offline-map-sources';
 const OFFLINE_MAP_EXTENSIONS = ['sqlitedb', 'mbtiles', 'rmap', 'db', 'sqlite'];
 const OFFLINE_EMPTY_TILE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
@@ -8929,12 +9316,14 @@ async function scanOfflineMaps() {
       if (entry.layer && map.hasLayer(entry.layer)) map.removeLayer(entry.layer);
       if (entry.db) entry.db.close();
     });
+    updateOnlineBaseForOfflineState();
 
     offlineMaps = nextMaps;
 
     if (sources.length === 0) {
       emptyEl.style.display = 'block';
       updateOfflineLayersList();
+      updateOnlineBaseForOfflineState();
       return;
     }
     emptyEl.style.display = 'none';
@@ -8993,6 +9382,7 @@ async function scanOfflineMaps() {
       listEl.appendChild(card);
     }
     updateOfflineLayersList();
+    updateOnlineBaseForOfflineState();
   } catch (e) {
     console.warn('scanOfflineMaps error:', e);
     document.getElementById('offline-maps-empty').style.display = 'block';
@@ -9021,6 +9411,7 @@ function deactivateOfflineMap(key) {
   entry.active = false;
   updateOfflineMapCardState(key);
   updateOfflineLayersList();
+  updateOnlineBaseForOfflineState();
   return true;
 }
 
@@ -9057,10 +9448,17 @@ async function toggleOfflineMap(fname, btn) {
 
   // Activate — inspect SQLite once, then request tiles from Rust one by one
   entry._loading = true;
+  entry._cancelActivation = false;
   if (btn) btn.disabled = true;
   try {
     showToast('Загрузка карты...');
     const info = await tauriInvoke('inspect_offline_map', { path: entry._path });
+    if (entry._cancelActivation) {
+      entry.active = false;
+      updateOfflineMapCardState(fname);
+      updateOfflineLayersList();
+      return;
+    }
     entry.info = info;
     const minZ = Math.min(info.minZoom, info.maxZoom);
     const maxZ = Math.max(info.minZoom, info.maxZoom);
@@ -9121,6 +9519,8 @@ async function toggleOfflineMap(fname, btn) {
       maxZoom: 22,
       minNativeZoom: minZ,
       maxNativeZoom: maxZ,
+      pane: 'offlineTiles',
+      opacity: entry.opacity ?? 1,
       tms: false,
       errorTileUrl: ''
     });
@@ -9130,6 +9530,7 @@ async function toggleOfflineMap(fname, btn) {
     entry.active = true;
 
     updateOfflineMapCardState(fname);
+    updateOnlineBaseForOfflineState();
     showToast(`✅ Карта ${entry.name || getFileNameFromPath(entry._path)} подключена (z${minZ}-${maxZ})`);
     fitOfflineMapBounds(info.bounds, maxZ);
     updateOfflineLayersList();
@@ -9138,6 +9539,7 @@ async function toggleOfflineMap(fname, btn) {
     showToast('Ошибка загрузки карты: ' + e.message);
   } finally {
     entry._loading = false;
+    entry._cancelActivation = false;
     if (btn) btn.disabled = false;
   }
 }
@@ -9157,6 +9559,7 @@ async function deleteOfflineMap(fname) {
     if (entry.db) entry.db.close();
     delete offlineMaps[fname];
   }
+  updateOnlineBaseForOfflineState();
 
   if (entry.external) {
     removeOfflineMapRegistryPath(entry._path);
@@ -9207,6 +9610,7 @@ function updateOfflineLayersList() {
           entry.layer.addTo(map);
           entry.active = true;
           updateOfflineMapCardState(fname);
+          updateOnlineBaseForOfflineState();
         } else {
           cb.disabled = true;
           await toggleOfflineMap(fname);
@@ -9282,10 +9686,10 @@ function tauriInvoke(command, args = {}) {
   return invoke(command, args);
 }
 
-let appDisplayVersion = '0.9.16';
+let appDisplayVersion = '0.9.18';
 
 function getCurrentAppVersion() {
-  return normalizeVersion(appDisplayVersion || document.getElementById('about-version')?.textContent || '0.9.16');
+  return normalizeVersion(appDisplayVersion || document.getElementById('about-version')?.textContent || '0.9.18');
 }
 
 function setDisplayedAppVersion(version) {
@@ -9337,10 +9741,12 @@ async function relaunchAppAfterUpdate() {
 // ─────────────────────────────────────────────
 // СОХРАНЕНИЕ / ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ
 // ─────────────────────────────────────────────
-function collectState() {
+function collectState(options = {}) {
+  const includeGpxContent = options.gpxContent !== false;
   const state = {
     version: APP_STATE_VERSION,
     savedAt: getIsoNow(),
+    localStorageCompact: options.localStorageCompact === true,
     map: {
       center: { lat: map.getCenter().lat, lng: map.getCenter().lng },
       zoom: map.getZoom(),
@@ -9422,16 +9828,23 @@ function collectState() {
     },
     gpxFiles: importedGpxFiles.map(g => {
       ensureImportedGpxMeta(g, { touch: false });
-      return {
+      const item = {
         id: g.id,
         name: g.name,
-        content: g.content,
         importedAt: g.importedAt,
         createdAt: g.createdAt || null,
         updatedAt: g.updatedAt || null,
         source: g.source || 'desktop',
         syncedAt: g.syncedAt || null
       };
+      if (includeGpxContent) {
+        item.content = g.content;
+      } else {
+        item.content = '';
+        item.contentOmitted = typeof g.content === 'string' && g.content.length > 0;
+        item.contentBytes = typeof g.content === 'string' ? g.content.length : 0;
+      }
+      return item;
     }),
     loadedSourceFiles: loadedSourceFiles.map(file => ({
       id: file.id,
@@ -9453,9 +9866,77 @@ function collectState() {
   return state;
 }
 
+function stateHasUserData(state) {
+  if (!state) return false;
+  return Boolean(
+    (Array.isArray(state.waypoints) && state.waypoints.length > 0) ||
+    (Array.isArray(state.tracks) && state.tracks.length > 0) ||
+    (Array.isArray(state.routes) && state.routes.length > 0) ||
+    (Array.isArray(state.gpxFiles) && state.gpxFiles.length > 0) ||
+    (Array.isArray(state.loadedSourceFiles) && state.loadedSourceFiles.length > 0)
+  );
+}
+
+function makeMinimalLocalState(state) {
+  return {
+    version: APP_STATE_VERSION,
+    savedAt: state?.savedAt || getIsoNow(),
+    localStorageCompact: true,
+    localStorageMinimal: true,
+    map: state?.map || null,
+    settings: state?.settings || null,
+    loadedSourceFiles: Array.isArray(state?.loadedSourceFiles)
+      ? state.loadedSourceFiles.map(file => ({
+          id: file.id,
+          key: file.key,
+          name: file.name,
+          path: file.path || null,
+          format: file.format,
+          importedAt: file.importedAt || null,
+          updatedAt: file.updatedAt || null,
+          source: file.source || 'desktop',
+          entityCounts: file.entityCounts || {},
+          entityIds: normalizeSourceEntityIds(file.entityIds)
+        }))
+      : []
+  };
+}
+
+function hasGpxContent(file) {
+  return typeof file?.content === 'string' && file.content.length > 0;
+}
+
+function rehydrateCompactState(localState, fileState) {
+  if (!localState?.localStorageCompact || !Array.isArray(localState.gpxFiles) || !Array.isArray(fileState?.gpxFiles)) {
+    return localState;
+  }
+  const byId = new Map();
+  const byName = new Map();
+  fileState.gpxFiles.forEach(file => {
+    if (!hasGpxContent(file)) return;
+    if (file.id != null) byId.set(String(file.id), file);
+    if (file.name) byName.set(String(file.name), file);
+  });
+  let restored = false;
+  const gpxFiles = localState.gpxFiles.map(file => {
+    if (hasGpxContent(file)) return file;
+    const source = (file.id != null ? byId.get(String(file.id)) : null) || (file.name ? byName.get(String(file.name)) : null);
+    if (!source) return file;
+    restored = true;
+    return {
+      ...file,
+      content: source.content,
+      contentOmitted: false,
+      contentBytes: source.content.length
+    };
+  });
+  return restored ? { ...localState, gpxFiles, localStorageCompact: false } : localState;
+}
+
 let stateFileSaveTimer = null;
 let stateFileSaveInFlight = false;
 let statePersistenceReady = false;
+let startupStateHadUserData = false;
 
 function scheduleStateFileSave(delay = 8000) {
   if (!window.__TAURI__ || !appDataPath || !statePersistenceReady) return;
@@ -9467,7 +9948,27 @@ function scheduleStateFileSave(delay = 8000) {
 
 function saveState(options = {}) {
   try {
-    localStorage.setItem('tnd-state', JSON.stringify(collectState()));
+    const localState = collectState({ gpxContent: false, localStorageCompact: true });
+    const hasData = stateHasUserData(localState);
+    try {
+      localStorage.setItem('tnd-state', JSON.stringify(localState));
+    } catch (firstError) {
+      try {
+        localStorage.removeItem('tnd-state');
+        localStorage.setItem('tnd-state', JSON.stringify(localState));
+      } catch (secondError) {
+        try {
+          localStorage.setItem('tnd-state', JSON.stringify(makeMinimalLocalState(localState)));
+        } catch (thirdError) {
+          console.warn('Compact local state save failed:', thirdError);
+        }
+      }
+      console.warn('Save compact state retried after:', firstError);
+    }
+    try {
+      if (hasData) localStorage.setItem('tnd-session-present', localState.savedAt);
+      else localStorage.removeItem('tnd-session-present');
+    } catch {}
     if (options.file !== false) scheduleStateFileSave(options.fileDelay);
   } catch (e) { console.warn('Save state failed:', e); }
 }
@@ -9478,7 +9979,8 @@ function readLocalState() {
   if (!raw) return null;
   try {
     const state = JSON.parse(raw);
-    return state && state.version === APP_STATE_VERSION ? state : null;
+    if (!state || state.version !== APP_STATE_VERSION || state.localStorageMinimal) return null;
+    return state;
   } catch {
     return null;
   }
@@ -9735,7 +10237,7 @@ function applyState(state) {
     state.waypoints.forEach(wp => {
       const latlng = L.latLng(wp.lat, wp.lng);
       wpCounter = Math.max(wpCounter, (wp.num || 0) + 1);
-      const marker = L.marker(latlng, { draggable: !objectsLocked, icon: makeDivIcon(wp) });
+      const marker = L.marker(latlng, makeWaypointMarkerOptions(wp));
       marker.wpData = {
         id: wp.id || null,
         name: wp.name, desc: wp.desc || '', icon: wp.icon || '⬤',
@@ -9880,6 +10382,7 @@ function applyState(state) {
   } else {
     loadedSourceFiles = [];
   }
+  normalizeLegacyPltTrackTimes();
   renderLoadedSourceFiles();
   updateWptTable();
   updateTrackList();
@@ -9901,7 +10404,10 @@ function applyState(state) {
 function restoreState() {
   const state = readLocalState();
   if (!state) return;
-  try { applyState(state); } catch (e) { console.warn('Restore state failed:', e); }
+  try {
+    applyState(state);
+    startupStateHadUserData = stateHasUserData(state);
+  } catch (e) { console.warn('Restore state failed:', e); }
 }
 
 // ─────────────────────────────────────────────
@@ -10969,19 +11475,22 @@ async function loadStateFromFile() {
   try {
     const { readTextFile, exists } = window.__TAURI__.fs;
     const path = appDataPath + '/session.json';
-    const localState = readLocalState();
+    const localStateRaw = readLocalState();
     let fileState = null;
     if (await exists(path)) {
       const raw = await readTextFile(path);
       const parsed = JSON.parse(raw);
       if (parsed && parsed.version === APP_STATE_VERSION) fileState = parsed;
     }
-    const state = stateSavedAtMs(localState) > stateSavedAtMs(fileState) ? localState : fileState;
+    const localState = rehydrateCompactState(localStateRaw, fileState);
+    const useLocalState = stateSavedAtMs(localState) > stateSavedAtMs(fileState);
+    const state = useLocalState ? localState : fileState;
     if (state) {
       applyState(state);
+      startupStateHadUserData = stateHasUserData(state);
       saveState({ file: false });
-      console.log(state === localState ? 'State restored from localStorage' : 'State restored from file');
-      if (state === localState) scheduleStateFileSave(500);
+      console.log(useLocalState ? 'State restored from localStorage' : 'State restored from file');
+      if (useLocalState) scheduleStateFileSave(500);
       return true;
     }
   } catch (e) {
@@ -11020,6 +11529,7 @@ async function recoverPersistedGpxIfNeeded() {
   await loadDir('routes', () => routes.length === 0, loadGPXRoutes);
 
   if (recovered > 0) {
+    startupStateHadUserData = true;
     updateWptTable();
     updateTrackList();
     updateRouteList();
@@ -11302,6 +11812,7 @@ function renderCustomLayers() {
 function setCustomLayer(id, el) {
   const layer = customLayers.find(l => l.id === id);
   if (!layer) return;
+  deactivateActiveOfflineMapsForOnlineBase();
   const tileLayer = L.tileLayer(layer.url, {
     maxZoom: layer.maxZoom,
     tms: layer.tms,
@@ -11314,8 +11825,7 @@ function setCustomLayer(id, el) {
   currentBaseLayer = tileLayer;
   currentBaseLayerName = 'custom:' + layer.name;
   tileLayer.addTo(map);
-  document.getElementById('current-layer-name').textContent = '🗺 ' + layer.name;
-  document.getElementById('sb-layer').textContent = layer.name;
+  updateBaseLayerStatusText();
   document.querySelectorAll('.base-layer').forEach(d => d.classList.remove('active'));
   if (el) el.classList.add('active');
   closeModal('modal-layers');
@@ -11512,9 +12022,11 @@ document.addEventListener('keydown', e => {
 // ─── Onboarding при первом запуске ───
 function shouldShowOnboarding() {
   if (localStorage.getItem('tnd-onboarding-done')) return false;
+  if (startupStateHadUserData || localStorage.getItem('tnd-session-present')) return false;
   if (waypoints.length || tracks.length || routes.length || importedGpxFiles.length || loadedSourceFiles.length) return false;
   const existingKeys = [
     'tnd-state',
+    'tnd-session-present',
     'tnd-map-view',
     'tnd-sync-email',
     'tnd-license',
@@ -11561,13 +12073,16 @@ function showOnboarding() {
 
 // ─── Кэш карт — UI обновление ───
 async function updateCacheUI() {
+  await TileCache.open();
   document.getElementById('setting-cache-enabled').checked = TileCache._enabled;
   const maxGB = Math.round(TileCache._maxBytes / (1024 * 1024 * 1024));
   document.getElementById('setting-cache-max-size').value = maxGB;
   document.getElementById('cache-max-val').textContent = maxGB + ' ГБ';
   document.getElementById('setting-cache-prefetch').checked = TileCache._prefetch;
 
-  await TileCache._calcSize();
+  if (!TileCache._statsLoaded || TileCache._statsDirty) {
+    await TileCache._calcSize();
+  }
   document.getElementById('cache-current-size').textContent = TileCache.formatSize(TileCache._totalSize);
   document.getElementById('cache-tile-count').textContent = TileCache._tileCount.toLocaleString('ru') + ' тайлов';
   const pct = TileCache._maxBytes > 0 ? Math.min(100, Math.round(TileCache._totalSize / TileCache._maxBytes * 100)) : 0;
@@ -12372,7 +12887,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.16</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.18</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:var(--text-muted)">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
