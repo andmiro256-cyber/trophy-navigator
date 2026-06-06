@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🧭 Trophy Navigator Desktop v0.9.18</title>
+  <title>🧭 Trophy Navigator Desktop v0.9.19</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -390,6 +390,7 @@
   .wpt-table tr:hover td { background: var(--row-hover); cursor: pointer; }
   .wpt-table tr.selected td { background: var(--bg-sunken); }
   .wpt-icon { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: middle; }
+  .leaflet-waypointMarkers-pane { overflow: visible !important; }
   .tnd-wp-marker { overflow: visible !important; }
   .tnd-wp-marker .tnd-wp-dot {
     position: relative; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff;
@@ -1291,7 +1292,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span id="app-version-label" style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.18</span>
+  <span id="app-version-label" style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.19</span>
 </div>
 
 <div id="ruler-panel">
@@ -2404,6 +2405,13 @@ map.getPane('offlineTiles').style.zIndex = 210;
 map.getPane('offlineTiles').style.pointerEvents = 'none';
 map.createPane('overlayTiles');
 map.getPane('overlayTiles').style.zIndex = 350;
+// WP отдельно от canvas/overlay слоёв: при zoom-in трековые точки не должны перекрывать значки.
+map.createPane('waypointRadius');
+map.getPane('waypointRadius').style.zIndex = 430;
+map.getPane('waypointRadius').style.pointerEvents = 'none';
+map.createPane('waypointMarkers');
+map.getPane('waypointMarkers').style.zIndex = 640;
+map.getPane('waypointMarkers').style.overflow = 'visible';
 // Слои карты управляются через baseLayers (см. ниже функцию setLayer)
 
 // Плашка бренда убрана — версия отображается в заголовке окна
@@ -3309,6 +3317,7 @@ function makeWaypointMarkerOptions(data) {
   return {
     draggable: !objectsLocked,
     icon: makeDivIcon(data),
+    pane: 'waypointMarkers',
     zIndexOffset: 1200,
     riseOnHover: true,
     riseOffset: 500
@@ -3330,7 +3339,10 @@ function updateWaypointCircle(marker) {
       weight: 1,
       opacity: 0.75,
       fillColor: rFill,
-      fillOpacity: rOpacity
+      fillOpacity: rOpacity,
+      pane: 'waypointRadius',
+      interactive: false,
+      bubblingMouseEvents: false
     }).addTo(map);
   }
 }
@@ -9686,10 +9698,10 @@ function tauriInvoke(command, args = {}) {
   return invoke(command, args);
 }
 
-let appDisplayVersion = '0.9.18';
+let appDisplayVersion = '0.9.19';
 
 function getCurrentAppVersion() {
-  return normalizeVersion(appDisplayVersion || document.getElementById('about-version')?.textContent || '0.9.18');
+  return normalizeVersion(appDisplayVersion || document.getElementById('about-version')?.textContent || '0.9.19');
 }
 
 function setDisplayedAppVersion(version) {
@@ -12887,7 +12899,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.18</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.19</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:var(--text-muted)">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
