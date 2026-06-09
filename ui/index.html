@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🧭 Trophy Navigator Desktop v0.9.19</title>
+  <title>🧭 Trophy Navigator Desktop v0.9.20</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -519,6 +519,8 @@
   .ctrl-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; color: var(--text-secondary); }
   .ctrl-row input[type=range] { flex: 1; accent-color: #4a8adf; }
   .clear-data-list { max-height: 260px; overflow: auto; background: var(--bg-sunken); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 8px; margin: 10px 0 12px; text-align: left; }
+  .clear-quick-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0 10px; }
+  .clear-quick-actions .btn-secondary { padding: 6px 8px; font-size: 11px; color: #ffb0b0; border-color: rgba(224,112,112,0.45); }
   .clear-data-row { display: flex; align-items: center; gap: 8px; padding: 7px 6px; border-bottom: 1px solid var(--row-border); cursor: pointer; }
   .clear-data-row:last-child { border-bottom: none; }
   .clear-data-row:hover { background: var(--row-hover); border-radius: 5px; }
@@ -1292,7 +1294,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span id="app-version-label" style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.19</span>
+  <span id="app-version-label" style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.20</span>
 </div>
 
 <div id="ruler-panel">
@@ -2108,6 +2110,11 @@
     <div class="modal-body" style="text-align:center;padding:18px">
       <div style="font-size:13px;color:var(--text-primary);margin-bottom:8px">Выберите, что убрать с карты</div>
       <div id="clear-confirm-info" style="font-size:12px;color:var(--text-secondary);margin-bottom:8px"></div>
+      <div class="clear-quick-actions">
+        <button id="clear-quick-waypoints" class="btn-secondary" onclick="clearDataCategoryConfirmed('waypoints')">Точки</button>
+        <button id="clear-quick-tracks" class="btn-secondary" onclick="clearDataCategoryConfirmed('tracks')">Треки</button>
+        <button id="clear-quick-routes" class="btn-secondary" onclick="clearDataCategoryConfirmed('routes')">Маршруты</button>
+      </div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
         <button class="btn-secondary" style="padding:4px 10px;font-size:11px" onclick="setClearDataSelection(true)">Все</button>
         <button class="btn-secondary" style="padding:4px 10px;font-size:11px" onclick="setClearDataSelection(false)">Снять</button>
@@ -9698,10 +9705,10 @@ function tauriInvoke(command, args = {}) {
   return invoke(command, args);
 }
 
-let appDisplayVersion = '0.9.19';
+let appDisplayVersion = '0.9.20';
 
 function getCurrentAppVersion() {
-  return normalizeVersion(appDisplayVersion || document.getElementById('about-version')?.textContent || '0.9.19');
+  return normalizeVersion(appDisplayVersion || document.getElementById('about-version')?.textContent || '0.9.20');
 }
 
 function setDisplayedAppVersion(version) {
@@ -10113,10 +10120,31 @@ function getClearDataItems() {
   return items;
 }
 
+function updateClearConfirmInfo() {
+  const info = document.getElementById('clear-confirm-info');
+  if (!info) return;
+  info.innerHTML =
+    `Точек: <b>${waypoints.length}</b> · Треков: <b>${tracks.length}</b> · Маршрутов: <b>${routes.length}</b> · GPX: <b>${importedGpxFiles.length}</b>`;
+}
+
+function updateClearQuickButtons() {
+  [
+    ['clear-quick-waypoints', 'Точки', waypoints.length],
+    ['clear-quick-tracks', 'Треки', tracks.length],
+    ['clear-quick-routes', 'Маршруты', routes.length]
+  ].forEach(([id, label, count]) => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.disabled = count === 0;
+    btn.textContent = `${label} (${count})`;
+  });
+}
+
 function renderClearDataList() {
   const listEl = document.getElementById('clear-data-list');
   if (!listEl) return;
   const items = getClearDataItems();
+  updateClearQuickButtons();
   if (items.length === 0) {
     listEl.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px">Нет данных для удаления</div>';
     updateClearDeleteButton();
@@ -10130,6 +10158,11 @@ function renderClearDataList() {
     </div>
   </label>`).join('');
   updateClearDeleteButton();
+}
+
+function refreshClearDataModal() {
+  updateClearConfirmInfo();
+  renderClearDataList();
 }
 
 function setClearDataSelection(checked) {
@@ -10151,10 +10184,68 @@ function showClearConfirm() {
   const rteCount = routes.length;
   const total = wpCount + trkCount + rteCount + importedGpxFiles.length + loadedSourceFiles.length;
   if (total === 0) { showToast('Карта уже пуста'); return; }
-  document.getElementById('clear-confirm-info').innerHTML =
-    `Точек: <b>${wpCount}</b> · Треков: <b>${trkCount}</b> · Маршрутов: <b>${rteCount}</b> · GPX: <b>${importedGpxFiles.length}</b>`;
-  renderClearDataList();
+  refreshClearDataModal();
   openModal('modal-clear-confirm');
+}
+
+async function clearDataCategoryConfirmed(category) {
+  let removed = 0;
+  let label = '';
+  let count = 0;
+
+  if (category === 'waypoints') {
+    label = 'Точки';
+    count = waypoints.length;
+  } else if (category === 'tracks') {
+    label = 'Треки';
+    count = tracks.length;
+  } else if (category === 'routes') {
+    label = 'Маршруты';
+    count = routes.length;
+  } else {
+    return;
+  }
+
+  if (count === 0) {
+    showToast(`${label}: нечего удалять`);
+    refreshClearDataModal();
+    return;
+  }
+
+  const ok = await tndConfirmDanger(`Удалить все ${label.toLowerCase()} (${count})?\n\nЭто действие нельзя отменить.`, `Удалить ${label.toLowerCase()}`);
+  if (!ok) return;
+
+  if (category === 'waypoints') {
+    removed = removeWaypointList([...waypoints]);
+    if (waypointSets.length === 0) createWaypointSet('Основной');
+    if (!activeSetId || !waypointSets.some(set => set.id === activeSetId)) activeSetId = waypointSets[0]?.id || null;
+  } else if (category === 'tracks') {
+    label = 'Треки';
+    [...tracks].forEach(track => {
+      if (deleteTrackObject(track, { silent: true })) removed++;
+    });
+  } else if (category === 'routes') {
+    label = 'Маршруты';
+    [...routes].forEach(route => {
+      if (removeRouteObject(route)) removed++;
+    });
+  }
+
+  if (removed === 0) {
+    showToast(`${label}: нечего удалять`);
+    refreshClearDataModal();
+    return;
+  }
+
+  pruneLoadedSourceFiles();
+  updateSetSelector();
+  updateWptTable();
+  updateTrackList();
+  updateRouteList();
+  renderLoadedSourceFiles();
+  saveState();
+  refreshClearDataModal();
+  showToast(`🗑 ${label} удалены: ${removed}`);
 }
 
 function clearAllDataConfirmed() {
@@ -12899,7 +12990,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.19</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.20</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:var(--text-muted)">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
