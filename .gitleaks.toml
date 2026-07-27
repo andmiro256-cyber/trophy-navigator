@@ -1,0 +1,18 @@
+title = "Trophy Navigator Desktop gitleaks policy"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "hardcoded-runtime-auth"
+description = "Hardcoded runtime authentication material"
+regex = '''(?i)(?:ADMIN_PASS\s*=\s*['"][^'"\n]{4,}['"]|(?:TRACCAR_AUTH|MAIL_AUTH)\s*=[^\n]*(?:btoa|Buffer\.from)\s*\(\s*['"][^'"\n]+['"])'''
+keywords = ["admin_pass", "traccar_auth", "mail_auth"]
+
+[[allowlists]]
+description = "Thunderforest client key is intentionally shipped in the desktop client"
+condition = "AND"
+regexTarget = "line"
+regexes = ['''tile\.thunderforest\.com/[^'"\s]+\?(?:apikey|key)=[A-Za-z0-9_-]+''']
+paths = ['''^ui/index\.html$''']
+targetRules = ["generic-api-key"]
