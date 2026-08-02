@@ -4495,7 +4495,7 @@ dependencies = [
 
 [[package]]
 name = "trophy-navigator-desktop"
-version = "0.9.20"
+version = "0.9.21"
 dependencies = [
  "rusqlite",
  "serde",

@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🧭 Trophy Navigator Desktop v0.9.20</title>
+  <title>🧭 Trophy Navigator Desktop v0.9.21</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -1294,7 +1294,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span id="app-version-label" style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.20</span>
+  <span id="app-version-label" style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.21</span>
 </div>
 
 <div id="ruler-panel">
@@ -5005,106 +5005,362 @@ function openFileHtmlFallback(accept, callback) {
   input.click();
 }
 
-function downloadText(filename, mimeType, text) {
-  // Tauri v2: save dialog + writeTextFile
-  if (window.__TAURI__) {
+let exportSaveInFlight = false;
+let exportLogQueue = Promise.resolve();
+let exportLogDisabled = false;
+const EXPORT_LOG_MAX_CHARS = 1000000;
+const EXPORT_LOG_TIMEOUT_MS = 1500;
+
+class ExportValidationError extends Error {
+  constructor(message, issueCount) {
+    super(message);
+    this.name = 'ExportValidationError';
+    this.issueCount = issueCount;
+  }
+}
+
+function exportErrorMessage(error, fallback = 'Неизвестная ошибка') {
+  if (typeof error === 'string' && error.trim()) return error;
+  if (error && typeof error.message === 'string' && error.message.trim()) return error.message;
+  return fallback;
+}
+
+function exportLogErrorName(error) {
+  if (error && typeof error.name === 'string' && error.name) return error.name;
+  return 'Error';
+}
+
+function exportLogErrorCode(error) {
+  if (error instanceof ExportValidationError) return 'validation_failed';
+  const message = exportErrorMessage(error).toLowerCase();
+  if (message.includes('denied') || message.includes('permission')) return 'permission_denied';
+  if (message.includes('not found') || message.includes('not_found')) return 'not_found';
+  if (message.includes('timeout') || message.includes('таймаут') || message.includes('превысила')) return 'timeout';
+  if (message.includes('native api')) return 'native_api_unavailable';
+  if (message.includes('проверка записанного файла')) return 'verification_failed';
+  return 'native_error';
+}
+
+function exportLogType(extension) {
+  return ({ gpx: 'gpx', wpt: 'wpt', plt: 'plt', rte: 'rte', html: 'html' })[extension] || 'text';
+}
+
+async function joinExportPath(base, name, allowStringFallback = false) {
+  const join = window.__TAURI__?.path?.join;
+  if (typeof join === 'function') {
     try {
-      const { save } = window.__TAURI__.dialog;
-      const { writeTextFile } = window.__TAURI__.fs;
-      const ext = filename.split('.').pop().toLowerCase();
-      const filterName = { gpx: 'GPX files', wpt: 'Waypoint files', plt: 'Track files', rte: 'Route files' }[ext] || 'Files';
-      save({
-        defaultPath: lastSaveDir ? lastSaveDir + '/' + filename : filename,
-        filters: [{ name: filterName, extensions: [ext] }]
-      }).then(path => {
-        if (!path) return;
-        const p = typeof path === 'object' && path.path ? path.path : String(path);
-        const dir = p.replace(/[\\/][^\\/]+$/, '');
-        if (dir) { lastSaveDir = dir; localStorage.setItem('tnd-last-save-dir', dir); }
-        return writeTextFile(p, text).then(() => {
-          const fname = p.split(/[\\/]/).pop();
-          showToast(`✓ Сохранено: ${fname}`);
-        });
-      }).catch(err => {
-        console.warn('Tauri save dialog error:', err);
-        downloadTextFallback(filename, mimeType, text);
-      });
-      return;
-    } catch (e) {
-      console.warn('Tauri save API not available:', e);
+      return await join(base, name);
+    } catch (error) {
+      console.warn('Tauri path.join failed:', exportErrorMessage(error));
     }
   }
-  downloadTextFallback(filename, mimeType, text);
+  if (!allowStringFallback) return name;
+  const separator = base.includes('\\') && !base.includes('/') ? '\\' : '/';
+  return base.replace(/[\\/]$/, '') + separator + name;
+}
+
+function appendExportLog(phase, details = {}) {
+  if (!window.__TAURI__ || !appDataPath || exportLogDisabled) return Promise.resolve();
+  const fs = window.__TAURI__.fs || {};
+  if (typeof fs.writeTextFile !== 'function' || typeof fs.readTextFile !== 'function' || typeof fs.exists !== 'function') {
+    return Promise.resolve();
+  }
+  const entry = JSON.stringify({ timestamp: new Date().toISOString(), phase, ...details }) + '\n';
+  const writeEntry = async () => {
+    const logPath = await joinExportPath(appDataPath, 'export.log', true);
+    let current = '';
+    try {
+      if (await fs.exists(logPath)) current = await fs.readTextFile(logPath);
+    } catch (error) {
+      console.warn('Export log read failed:', exportErrorMessage(error));
+    }
+    if (current.length + entry.length > EXPORT_LOG_MAX_CHARS) {
+      current = current.slice(-750000);
+      const firstNewline = current.indexOf('\n');
+      if (firstNewline >= 0) current = current.slice(firstNewline + 1);
+    }
+    await fs.writeTextFile(logPath, current + entry);
+  };
+  exportLogQueue = exportLogQueue.catch(() => {}).then(async () => {
+    const writePromise = writeEntry();
+    try {
+      await Promise.race([
+        writePromise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Таймаут записи export.log')), EXPORT_LOG_TIMEOUT_MS))
+      ]);
+    } catch (error) {
+      exportLogDisabled = true;
+      console.warn('Export log disabled:', exportErrorMessage(error));
+    }
+  });
+  return exportLogQueue;
+}
+
+function clearLastSaveDir() {
+  lastSaveDir = undefined;
+  localStorage.removeItem('tnd-last-save-dir');
+}
+
+async function getExportDefaultPath(filename) {
+  if (!lastSaveDir) return filename;
+  const exists = window.__TAURI__?.fs?.exists;
+  if (typeof exists !== 'function') return filename;
+  try {
+    const available = await Promise.race([
+      exists(lastSaveDir),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Проверка папки превысила 2 секунды')), 2000))
+    ]);
+    if (!available) {
+      await appendExportLog('path_reset', { reason: 'saved_directory_missing', hadSavedDirectory: true });
+      clearLastSaveDir();
+      return filename;
+    }
+    return await joinExportPath(lastSaveDir, filename);
+  } catch (error) {
+    await appendExportLog('path_reset', {
+      reason: 'saved_directory_check_failed',
+      errorName: exportLogErrorName(error),
+      errorCode: exportLogErrorCode(error),
+      hadSavedDirectory: true
+    });
+    clearLastSaveDir();
+    return filename;
+  }
+}
+
+async function getExportDirectory(path) {
+  const dirname = window.__TAURI__?.path?.dirname;
+  if (typeof dirname === 'function') {
+    try { return await dirname(path); } catch {}
+  }
+  return path.replace(/[\\/][^\\/]+$/, '');
+}
+
+async function getExportFileName(path) {
+  const basename = window.__TAURI__?.path?.basename;
+  if (typeof basename === 'function') {
+    try { return await basename(path); } catch {}
+  }
+  return path.split(/[\\/]/).pop();
+}
+
+async function downloadText(filename, mimeType, textOrBuilder) {
+  if (exportSaveInFlight) {
+    showToast('⚠ Сохранение уже выполняется');
+    return;
+  }
+  exportSaveInFlight = true;
+  let phase = 'validate';
+  let selectedPath = null;
+  let selectedFileName = null;
+  let charCount = null;
+  const extension = filename.split('.').pop().toLowerCase();
+  const exportType = exportLogType(extension);
+  try {
+    await appendExportLog('validate', { exportType, extension });
+    const text = typeof textOrBuilder === 'function' ? textOrBuilder() : textOrBuilder;
+    if (typeof text !== 'string') throw new Error('Генератор экспорта не вернул текст');
+    charCount = text.length;
+
+    if (!window.__TAURI__) {
+      downloadTextFallback(filename, mimeType, text);
+      return;
+    }
+
+    const save = window.__TAURI__.dialog?.save;
+    const fs = window.__TAURI__.fs || {};
+    if (typeof save !== 'function' || typeof fs.writeTextFile !== 'function' || typeof fs.readTextFile !== 'function') {
+      throw new Error('Native API сохранения недоступен');
+    }
+
+    const filterName = {
+      gpx: 'GPX files',
+      wpt: 'Waypoint files',
+      plt: 'Track files',
+      rte: 'Route files',
+      html: 'HTML reports'
+    }[extension] || 'Files';
+    const hadSavedDirectory = !!lastSaveDir;
+    const defaultPath = await getExportDefaultPath(filename);
+    phase = 'dialog_pending';
+    await appendExportLog(phase, { exportType, extension, chars: charCount, hadSavedDirectory });
+    const path = await save({
+      defaultPath,
+      filters: [{ name: filterName, extensions: [extension] }]
+    });
+    if (!path) {
+      await appendExportLog('cancel', { exportType, extension, chars: charCount });
+      showToast('Сохранение отменено');
+      return;
+    }
+
+    selectedPath = typeof path === 'object' && path.path ? path.path : String(path);
+    if (!selectedPath) throw new Error('Диалог сохранения вернул пустой путь');
+    selectedFileName = await getExportFileName(selectedPath);
+    phase = 'write';
+    await appendExportLog(phase, { exportType, extension, chars: charCount });
+    await fs.writeTextFile(selectedPath, text);
+
+    phase = 'verify';
+    const savedText = await fs.readTextFile(selectedPath);
+    if (savedText !== text) {
+      throw new Error(`Проверка записанного файла не пройдена: ожидалось ${text.length} символов, прочитано ${savedText.length}`);
+    }
+
+    const dir = await getExportDirectory(selectedPath);
+    if (dir) {
+      lastSaveDir = dir;
+      localStorage.setItem('tnd-last-save-dir', dir);
+    }
+    await appendExportLog('success', { exportType, extension, chars: charCount });
+    showToast(`✓ Сохранено и проверено: ${selectedFileName}`);
+  } catch (error) {
+    const message = exportErrorMessage(error);
+    console.warn(`Export failed at ${phase}:`, error);
+    appendExportLog('error', {
+      step: phase,
+      exportType,
+      extension,
+      chars: charCount,
+      errorName: exportLogErrorName(error),
+      errorCode: exportLogErrorCode(error)
+    });
+    showToast(`Ошибка сохранения: ${message}`, 'error');
+  } finally {
+    exportSaveInFlight = false;
+  }
 }
 
 function downloadTextFallback(filename, mimeType, text) {
+  const blob = new Blob([text], { type: `${mimeType};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = `data:${mimeType};charset=utf-8,` + encodeURIComponent(text);
+  a.href = url;
   a.download = filename;
+  document.body.appendChild(a);
   a.click();
-  showToast(`✓ Сохранено: ${filename}`);
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast(`Скачивание начато: ${filename}`);
+}
+
+function exportEntityName(value, fallback) {
+  const name = String(value || '').trim();
+  return name || fallback;
+}
+
+function collectExportPointIssues(issues, entityLabel, point, pointNumber, data = null) {
+  if (!point || typeof point !== 'object') {
+    issues.push(`${entityLabel}, точка ${pointNumber}: данные отсутствуют`);
+    return;
+  }
+  if (!Number.isFinite(point.lat)) issues.push(`${entityLabel}, точка ${pointNumber}: широта`);
+  if (!Number.isFinite(point.lng)) issues.push(`${entityLabel}, точка ${pointNumber}: долгота`);
+  if (data?.ele != null && !Number.isFinite(data.ele)) {
+    issues.push(`${entityLabel}, точка ${pointNumber}: высота`);
+  }
+}
+
+function validateExportCoordinates({ waypoints: exportWaypoints = [], tracks: exportTracks = [], routes: exportRoutes = [] }, options = {}) {
+  const issues = [];
+  exportWaypoints.forEach((marker, index) => {
+    const data = marker?.wpData;
+    const label = `Точка «${exportEntityName(data?.name, `№${index + 1}`)}»`;
+    collectExportPointIssues(issues, label, data, index + 1);
+  });
+  exportTracks.forEach((track, trackIndex) => {
+    const label = `Трек «${exportEntityName(track?.name, `№${trackIndex + 1}`)}»`;
+    if (!Array.isArray(track?.points)) {
+      issues.push(`${label}: список точек отсутствует`);
+      return;
+    }
+    track.points.forEach((point, pointIndex) => {
+      collectExportPointIssues(issues, label, point, pointIndex + 1, track.pointsData?.[pointIndex]);
+    });
+  });
+  exportRoutes.forEach((route, routeIndex) => {
+    const label = `Маршрут «${exportEntityName(route?.name, `№${routeIndex + 1}`)}»`;
+    if (!Array.isArray(route?.points)) {
+      issues.push(`${label}: список точек отсутствует`);
+      return;
+    }
+    route.points.forEach((point, pointIndex) => {
+      collectExportPointIssues(issues, label, point, pointIndex + 1);
+    });
+  });
+  if (issues.length === 0) return;
+  const visibleIssues = issues.slice(0, 4).join('; ');
+  const remaining = issues.length > 4 ? `; ещё ${issues.length - 4}` : '';
+  const hint = options.selectionHint ? '. Исправьте данные или снимите проблемный объект в окне экспорта' : '';
+  throw new ExportValidationError(`Некорректные данные: ${visibleIssues}${remaining}${hint}`, issues.length);
 }
 
 function saveWaypointsWPT() {
   const activeSet = getActiveSet();
   const list = activeSet ? activeSet.waypoints : waypoints;
   if (list.length === 0) { showToast('Нет точек для сохранения'); return; }
-  const rows = [
-    'OziExplorer Waypoint File Version 1.1',
-    'WGS 84',
-    'Reserved 2',
-    'Reserved 3'
-  ];
-  list.forEach(m => {
-    const d = m.wpData;
-    rows.push([
-      d.num,
-      csvField(d.name),
-      d.lat.toFixed(6),
-      d.lng.toFixed(6),
-      1,
-      1,
-      0,
-      0,
-      hexToOziColor(d.color || '#df7a4a'),
-      csvField(d.desc || ''),
-      0,
-      0,
-      '',
-      Math.max(0, d.radius || 0),
-      -777,
-      '',
-      '',
-      '',
-      '',
-      '',
-      ''
-    ].join(','));
-  });
   const fname = (activeSet ? activeSet.name : 'waypoints').replace(/[^a-zA-Zа-яА-Я0-9_-]/g, '_') + '.wpt';
-  downloadText(fname, 'text/plain', rows.join('\r\n'));
+  downloadText(fname, 'text/plain', () => {
+    validateExportCoordinates({ waypoints: list });
+    const rows = [
+      'OziExplorer Waypoint File Version 1.1',
+      'WGS 84',
+      'Reserved 2',
+      'Reserved 3'
+    ];
+    list.forEach(m => {
+      const d = m.wpData;
+      rows.push([
+        d.num,
+        csvField(d.name),
+        d.lat.toFixed(6),
+        d.lng.toFixed(6),
+        1,
+        1,
+        0,
+        0,
+        hexToOziColor(d.color || '#df7a4a'),
+        csvField(d.desc || ''),
+        0,
+        0,
+        '',
+        Math.max(0, d.radius || 0),
+        -777,
+        '',
+        '',
+        '',
+        '',
+        '',
+        ''
+      ].join(','));
+    });
+    return rows.join('\r\n');
+  });
 }
 
 function saveWaypointsGPX() {
   const activeSet = getActiveSet();
   const list = activeSet ? activeSet.waypoints : waypoints;
   if (list.length === 0) { showToast('Нет точек для сохранения'); return; }
-  let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">\n';
-  list.forEach(m => {
-    const d = m.wpData;
-    gpx += `  <wpt lat="${d.lat.toFixed(6)}" lon="${d.lng.toFixed(6)}">\n`;
-    gpx += `    <name>${escapeXml(d.name)}</name>\n`;
-    if (d.desc) gpx += `    <desc>${escapeXml(d.desc)}</desc>\n`;
-    gpx += `    <sym>${escapeXml(d.icon || '⬤')}</sym>\n`;
-    gpx += `    <extensions>\n`;
-    gpx += `      <tnd:color>${escapeXml(d.color || '#df7a4a')}</tnd:color>\n`;
-    gpx += `      <tnd:radius>${d.radius || 0}</tnd:radius>\n`;
-    gpx += `    </extensions>\n`;
-    gpx += `  </wpt>\n`;
-  });
-  gpx += '</gpx>';
   const fname = (activeSet ? activeSet.name : 'waypoints').replace(/[^a-zA-Zа-яА-Я0-9_-]/g, '_') + '.gpx';
-  downloadText(fname, 'application/gpx+xml', gpx);
+  downloadText(fname, 'application/gpx+xml', () => {
+    validateExportCoordinates({ waypoints: list });
+    let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">\n';
+    list.forEach(m => {
+      const d = m.wpData;
+      gpx += `  <wpt lat="${d.lat.toFixed(6)}" lon="${d.lng.toFixed(6)}">\n`;
+      gpx += `    <name>${escapeXml(d.name)}</name>\n`;
+      if (d.desc) gpx += `    <desc>${escapeXml(d.desc)}</desc>\n`;
+      gpx += `    <sym>${escapeXml(d.icon || '⬤')}</sym>\n`;
+      gpx += `    <extensions>\n`;
+      gpx += `      <tnd:color>${escapeXml(d.color || '#df7a4a')}</tnd:color>\n`;
+      gpx += `      <tnd:radius>${d.radius || 0}</tnd:radius>\n`;
+      gpx += `    </extensions>\n`;
+      gpx += `  </wpt>\n`;
+    });
+    gpx += '</gpx>';
+    return gpx;
+  });
 }
 
 function showSaveGPXDialog() {
@@ -5133,7 +5389,7 @@ function showSaveGPXDialog() {
     tracks.forEach(t => {
       html += `<label style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;color:var(--text-primary);cursor:pointer">
         <input type="checkbox" class="save-gpx-trk-cb" data-track-id="${t.id}" checked style="accent-color:#4a8adf">
-        <span style="color:${t.color};font-size:10px">●</span> ${escapeHtml(t.name)} <span style="color:var(--text-muted)">(${t.points.length} точек)</span>
+        <span style="color:${t.color};font-size:10px">●</span> ${escapeHtml(t.name)} <span style="color:var(--text-muted)">(${Array.isArray(t.points) ? t.points.length : 0} точек)</span>
       </label>`;
     });
   }
@@ -5144,13 +5400,28 @@ function showSaveGPXDialog() {
     routes.forEach(r => {
       html += `<label style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;color:var(--text-primary);cursor:pointer">
         <input type="checkbox" class="save-gpx-rte-cb" data-route-id="${r.id}" checked style="accent-color:#4a8adf">
-        <span style="color:${r.color};font-size:10px">●</span> ${escapeHtml(r.name)} <span style="color:var(--text-muted)">(${r.points.length} КП)</span>
+        <span style="color:${r.color};font-size:10px">●</span> ${escapeHtml(r.name)} <span style="color:var(--text-muted)">(${Array.isArray(r.points) ? r.points.length : 0} КП)</span>
       </label>`;
     });
   }
 
+  html += '<div id="save-gpx-summary" style="margin-top:10px;padding:7px 9px;border:1px solid var(--border-normal);border-radius:6px;background:var(--bg-sunken);font-size:12px;color:var(--text-secondary)"></div>';
   el.innerHTML = html;
+  el.querySelectorAll('.save-gpx-set-cb,.save-gpx-trk-cb,.save-gpx-rte-cb').forEach(cb => {
+    cb.addEventListener('change', updateSaveGPXSummary);
+  });
+  updateSaveGPXSummary();
   openModal('modal-save-gpx');
+}
+
+function updateSaveGPXSummary() {
+  const summary = document.getElementById('save-gpx-summary');
+  if (!summary) return;
+  const selectedSetIds = new Set([...document.querySelectorAll('.save-gpx-set-cb:checked')].map(cb => parseInt(cb.dataset.setId)));
+  const waypointCount = waypoints.filter(marker => selectedSetIds.has(marker._setId)).length;
+  const trackCount = document.querySelectorAll('.save-gpx-trk-cb:checked').length;
+  const routeCount = document.querySelectorAll('.save-gpx-rte-cb:checked').length;
+  summary.textContent = `Будет записано: ${waypointCount} точек, ${trackCount} треков, ${routeCount} маршрутов`;
 }
 
 function saveSelectedGPX() {
@@ -5220,8 +5491,13 @@ function buildGPXWithData(selWaypoints, selTracks, selRoutes) {
 }
 
 function saveGPXWithData(selWaypoints, selTracks, selRoutes) {
-  const gpx = buildGPXWithData(selWaypoints, selTracks, selRoutes);
-  downloadText('tnd-export.gpx', 'application/gpx+xml', gpx);
+  downloadText('tnd-export.gpx', 'application/gpx+xml', () => {
+    validateExportCoordinates(
+      { waypoints: selWaypoints, tracks: selTracks, routes: selRoutes },
+      { selectionHint: true }
+    );
+    return buildGPXWithData(selWaypoints, selTracks, selRoutes);
+  });
 }
 
 // Маппинг Garmin/OziExplorer символов → эмодзи
@@ -6864,22 +7140,25 @@ function updateTrackList() {
 }
 function saveTracksGPX() {
   if (tracks.length === 0) { showToast('Нет треков для сохранения'); return; }
-  let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">';
-  tracks.forEach(t => {
-    gpx += `<trk><name>${escapeXml(t.name)}</name><extensions><tnd:color>${escapeXml(t.color || '#4a8adf')}</tnd:color><tnd:width>${Number(t.width) || 3}</tnd:width><tnd:pointSize>${Number(t.pointSize ?? 3)}</tnd:pointSize></extensions><trkseg>`;
-    t.points.forEach((p, i) => {
-      gpx += `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
-      const d = t.pointsData?.[i];
-      if (d) {
-        if (d.ele != null && !isNaN(d.ele)) gpx += `<ele>${d.ele.toFixed(1)}</ele>`;
-        if (d.time) gpx += `<time>${d.time}</time>`;
-      }
-      gpx += `</trkpt>`;
+  downloadText('tracks.gpx', 'application/gpx+xml', () => {
+    validateExportCoordinates({ tracks });
+    let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">';
+    tracks.forEach(t => {
+      gpx += `<trk><name>${escapeXml(t.name)}</name><extensions><tnd:color>${escapeXml(t.color || '#4a8adf')}</tnd:color><tnd:width>${Number(t.width) || 3}</tnd:width><tnd:pointSize>${Number(t.pointSize ?? 3)}</tnd:pointSize></extensions><trkseg>`;
+      t.points.forEach((p, i) => {
+        gpx += `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
+        const d = t.pointsData?.[i];
+        if (d) {
+          if (d.ele != null && !isNaN(d.ele)) gpx += `<ele>${d.ele.toFixed(1)}</ele>`;
+          if (d.time) gpx += `<time>${d.time}</time>`;
+        }
+        gpx += `</trkpt>`;
+      });
+      gpx += '</trkseg></trk>';
     });
-    gpx += '</trkseg></trk>';
+    gpx += '</gpx>';
+    return gpx;
   });
-  gpx += '</gpx>';
-  downloadText('tracks.gpx', 'application/gpx+xml', gpx);
 }
 
 function dateToOziSerial(date) {
@@ -6928,31 +7207,34 @@ function buildOziTrackPointRow(point, data = {}, breakFlag = 0) {
 
 function saveTracksPLT() {
   if (tracks.length === 0) { showToast('Нет треков для сохранения'); return; }
-  const exportTracks = tracks.map(track => ({
-    track,
-    points: track.points.map((point, index) => ({
-      point: parseTrackLatLng(point?.lat, point?.lng),
-      data: track.pointsData?.[index] || {}
-    })).filter(item => item.point)
-  })).filter(item => item.points.length >= 2);
-  if (exportTracks.length === 0) { showToast('Нет корректных треков для сохранения'); return; }
-  const totalPoints = exportTracks.reduce((sum, item) => sum + item.points.length, 0);
-  const firstTrack = exportTracks[0].track;
-  const exportName = exportTracks.length === 1 ? firstTrack.name : `${firstTrack.name || 'Треки'} + ${exportTracks.length - 1}`;
-  const rows = [
-    'OziExplorer Track Point File Version 2.1',
-    'WGS 84',
-    'Altitude is in Feet',
-    'Reserved 3',
-    `0,2,${hexToOziColor(firstTrack.color)},${csvField(exportName)},1,0,2,8421376`,
-    String(totalPoints)
-  ];
-  exportTracks.forEach((item, trackIndex) => {
-    item.points.forEach((entry, pointIndex) => {
-      rows.push(buildOziTrackPointRow(entry.point, entry.data, trackIndex > 0 && pointIndex === 0));
+  downloadText('tracks.plt', 'text/plain', () => {
+    validateExportCoordinates({ tracks });
+    const exportTracks = tracks.map(track => ({
+      track,
+      points: track.points.map((point, index) => ({
+        point: parseTrackLatLng(point?.lat, point?.lng),
+        data: track.pointsData?.[index] || {}
+      })).filter(item => item.point)
+    })).filter(item => item.points.length >= 2);
+    if (exportTracks.length === 0) throw new Error('Нет корректных треков для сохранения');
+    const totalPoints = exportTracks.reduce((sum, item) => sum + item.points.length, 0);
+    const firstTrack = exportTracks[0].track;
+    const exportName = exportTracks.length === 1 ? firstTrack.name : `${firstTrack.name || 'Треки'} + ${exportTracks.length - 1}`;
+    const rows = [
+      'OziExplorer Track Point File Version 2.1',
+      'WGS 84',
+      'Altitude is in Feet',
+      'Reserved 3',
+      `0,2,${hexToOziColor(firstTrack.color)},${csvField(exportName)},1,0,2,8421376`,
+      String(totalPoints)
+    ];
+    exportTracks.forEach((item, trackIndex) => {
+      item.points.forEach((entry, pointIndex) => {
+        rows.push(buildOziTrackPointRow(entry.point, entry.data, trackIndex > 0 && pointIndex === 0));
+      });
     });
+    return rows.join('\r\n');
   });
-  downloadText('tracks.plt', 'text/plain', rows.join('\r\n'));
 }
 function loadGPXTracks(text, fname, options = {}) {
   const doc = new DOMParser().parseFromString(normalizeText(text), 'application/xml');
@@ -7734,39 +8016,45 @@ function updateRouteList() {
 }
 function saveRoutesGPX() {
   if (routes.length === 0) { showToast('Нет маршрутов для сохранения'); return; }
-  let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">';
-  routes.forEach(r => {
-    gpx += `<rte><name>${escapeXml(r.name)}</name><extensions><tnd:color>${escapeXml(r.color || '#4a8adf')}</tnd:color><tnd:width>${Number(r.width) || 3}</tnd:width><tnd:dashArray>${escapeXml(r.dashArray || '')}</tnd:dashArray></extensions>`;
-    r.points.forEach((p, i) => {
-      const radius = Number(r.pointRadii?.[i]) || 0;
-      const waypointId = r.pointWaypointIds?.[i] ? escapeXml(r.pointWaypointIds[i]) : '';
-      gpx += `<rtept lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}"><name>${escapeXml(r.labels?.[i] || `КП${i+1}`)}</name>`;
-      if (radius > 0 || waypointId) {
-        gpx += '<extensions>';
-        if (radius > 0) gpx += `<tnd:radius>${radius}</tnd:radius>`;
-        if (waypointId) gpx += `<tnd:waypointId>${waypointId}</tnd:waypointId>`;
-        gpx += '</extensions>';
-      }
-      gpx += '</rtept>';
+  downloadText('routes.gpx', 'application/gpx+xml', () => {
+    validateExportCoordinates({ routes });
+    let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">';
+    routes.forEach(r => {
+      gpx += `<rte><name>${escapeXml(r.name)}</name><extensions><tnd:color>${escapeXml(r.color || '#4a8adf')}</tnd:color><tnd:width>${Number(r.width) || 3}</tnd:width><tnd:dashArray>${escapeXml(r.dashArray || '')}</tnd:dashArray></extensions>`;
+      r.points.forEach((p, i) => {
+        const radius = Number(r.pointRadii?.[i]) || 0;
+        const waypointId = r.pointWaypointIds?.[i] ? escapeXml(r.pointWaypointIds[i]) : '';
+        gpx += `<rtept lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}"><name>${escapeXml(r.labels?.[i] || `КП${i+1}`)}</name>`;
+        if (radius > 0 || waypointId) {
+          gpx += '<extensions>';
+          if (radius > 0) gpx += `<tnd:radius>${radius}</tnd:radius>`;
+          if (waypointId) gpx += `<tnd:waypointId>${waypointId}</tnd:waypointId>`;
+          gpx += '</extensions>';
+        }
+        gpx += '</rtept>';
+      });
+      gpx += '</rte>';
     });
-    gpx += '</rte>';
+    gpx += '</gpx>';
+    return gpx;
   });
-  gpx += '</gpx>';
-  downloadText('routes.gpx', 'application/gpx+xml', gpx);
 }
 function saveRoutesRTE() {
   if (routes.length === 0) { showToast('Нет маршрутов для сохранения'); return; }
-  const rows = [
-    'OziExplorer Route File Version 1.0',
-    'WGS 84',
-    'Reserved 1',
-    'Reserved 2'
-  ];
-  routes.forEach((r, idx) => {
-    rows.push(`R,${idx},${csvField(r.name)},,${hexToOziColor(r.color)}`);
-    r.points.forEach((p, i) => rows.push(`W,${idx},${i + 1},${i + 1},${csvField(r.labels?.[i] || `КП${i+1}`)},${p.lat.toFixed(6)},${p.lng.toFixed(6)}`));
+  downloadText('routes.rte', 'text/plain', () => {
+    validateExportCoordinates({ routes });
+    const rows = [
+      'OziExplorer Route File Version 1.0',
+      'WGS 84',
+      'Reserved 1',
+      'Reserved 2'
+    ];
+    routes.forEach((r, idx) => {
+      rows.push(`R,${idx},${csvField(r.name)},,${hexToOziColor(r.color)}`);
+      r.points.forEach((p, i) => rows.push(`W,${idx},${i + 1},${i + 1},${csvField(r.labels?.[i] || `КП${i+1}`)},${p.lat.toFixed(6)},${p.lng.toFixed(6)}`));
+    });
+    return rows.join('\r\n');
   });
-  downloadText('routes.rte', 'text/plain', rows.join('\r\n'));
 }
 function loadGPXRoutes(text, fname, options = {}) {
   const doc = new DOMParser().parseFromString(normalizeText(text), 'application/xml');
@@ -9705,10 +9993,10 @@ function tauriInvoke(command, args = {}) {
   return invoke(command, args);
 }
 
-let appDisplayVersion = '0.9.20';
+let appDisplayVersion = '0.9.21';
 
 function getCurrentAppVersion() {
-  return normalizeVersion(appDisplayVersion || document.getElementById('about-version')?.textContent || '0.9.20');
+  return normalizeVersion(appDisplayVersion || document.getElementById('about-version')?.textContent || '0.9.21');
 }
 
 function setDisplayedAppVersion(version) {
@@ -12965,7 +13253,6 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
 <p style="color:#666;font-size:11px;margin-top:20px">Trophy Navigator Desktop · ${new Date().toLocaleDateString('ru-RU')}</p>
 </body></html>`;
   downloadText(`report_${track.name.replace(/[^a-zA-ZёЁа-яА-Я0-9]/g, '_')}.html`, 'text/html', html);
-  showToast('✓ Отчёт сохранён');
 }
 
 </script>
@@ -12990,7 +13277,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.20</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.21</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:var(--text-muted)">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
