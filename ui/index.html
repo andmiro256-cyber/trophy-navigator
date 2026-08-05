@@ -5006,10 +5006,15 @@ function openFileHtmlFallback(accept, callback) {
 }
 
 let exportSaveInFlight = false;
+let exportSaveActiveOperation = null;
+let exportSaveOperationCounter = 0;
 let exportLogQueue = Promise.resolve();
 let exportLogDisabled = false;
 const EXPORT_LOG_MAX_CHARS = 1000000;
 const EXPORT_LOG_TIMEOUT_MS = 1500;
+const EXPORT_DIALOG_TIMEOUT_MS = 30000;
+const EXPORT_DIALOG_HARD_TIMEOUT_MS = 90000;
+const EXPORT_DIALOG_WATCHDOG_POLL_MS = 250;
 
 class ExportValidationError extends Error {
   constructor(message, issueCount) {
@@ -5051,7 +5056,7 @@ async function joinExportPath(base, name, allowStringFallback = false) {
     try {
       return await join(base, name);
     } catch (error) {
-      console.warn('Tauri path.join failed:', exportErrorMessage(error));
+      console.warn('Tauri path.join failed:', exportLogErrorName(error), exportLogErrorCode(error));
     }
   }
   if (!allowStringFallback) return name;
@@ -5072,7 +5077,7 @@ function appendExportLog(phase, details = {}) {
     try {
       if (await fs.exists(logPath)) current = await fs.readTextFile(logPath);
     } catch (error) {
-      console.warn('Export log read failed:', exportErrorMessage(error));
+      console.warn('Export log read failed:', exportLogErrorName(error), exportLogErrorCode(error));
     }
     if (current.length + entry.length > EXPORT_LOG_MAX_CHARS) {
       current = current.slice(-750000);
@@ -5090,7 +5095,7 @@ function appendExportLog(phase, details = {}) {
       ]);
     } catch (error) {
       exportLogDisabled = true;
-      console.warn('Export log disabled:', exportErrorMessage(error));
+      console.warn('Export log disabled:', exportLogErrorName(error), exportLogErrorCode(error));
     }
   });
   return exportLogQueue;
@@ -5144,12 +5149,136 @@ async function getExportFileName(path) {
   return path.split(/[\\/]/).pop();
 }
 
+function isExportHostFocused() {
+  return typeof document === 'undefined' || typeof document.hasFocus !== 'function' || document.hasFocus();
+}
+
+function waitForExportDialog(dialogPromise, options = {}) {
+  const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : EXPORT_DIALOG_TIMEOUT_MS;
+  const hardTimeoutMs = Number.isFinite(options.hardTimeoutMs) ? options.hardTimeoutMs : EXPORT_DIALOG_HARD_TIMEOUT_MS;
+  const pollMs = Number.isFinite(options.pollMs) ? options.pollMs : EXPORT_DIALOG_WATCHDOG_POLL_MS;
+  const isHostFocused = typeof options.isHostFocused === 'function' ? options.isHostFocused : isExportHostFocused;
+  let watchdogId;
+  let focusedElapsedMs = 0;
+  const startedAt = Date.now();
+  let lastCheckAt = Date.now();
+  const outcomePromise = Promise.resolve(dialogPromise).then(
+    path => ({ status: 'resolved', path }),
+    error => ({ status: 'rejected', error })
+  );
+  const timeoutPromise = new Promise(resolve => {
+    const check = () => {
+      const now = Date.now();
+      if (isHostFocused()) focusedElapsedMs += now - lastCheckAt;
+      lastCheckAt = now;
+      const wallElapsedMs = now - startedAt;
+      if (focusedElapsedMs >= timeoutMs || wallElapsedMs >= hardTimeoutMs) {
+        resolve({
+          status: 'timeout',
+          reason: focusedElapsedMs >= timeoutMs ? 'focused_deadline' : 'hard_deadline'
+        });
+        return;
+      }
+      watchdogId = setTimeout(check, Math.max(1, Math.min(
+        pollMs,
+        timeoutMs - focusedElapsedMs,
+        hardTimeoutMs - wallElapsedMs
+      )));
+    };
+    watchdogId = setTimeout(check, Math.max(1, Math.min(pollMs, timeoutMs, hardTimeoutMs)));
+  });
+  return Promise.race([outcomePromise, timeoutPromise]).then(outcome => {
+    clearTimeout(watchdogId);
+    return { outcome, outcomePromise };
+  });
+}
+
+function makeEmergencyExportFilename(extension, operationId, now = new Date()) {
+  const safeExtension = /^[a-z0-9]{1,8}$/i.test(extension) ? extension.toLowerCase() : 'txt';
+  const timestamp = now.toISOString().replace(/[-:]/g, '').replace('T', '-').replace('Z', '').replace('.', '-');
+  return `export-${safeExtension}-${timestamp}-${operationId}.${safeExtension}`;
+}
+
+async function saveEmergencyExport(text, extension, operationId) {
+  const fs = window.__TAURI__?.fs || {};
+  if (typeof fs.writeTextFile !== 'function' || typeof fs.readTextFile !== 'function' || typeof fs.mkdir !== 'function') {
+    throw new Error('Native API аварийного сохранения недоступен');
+  }
+  if (!appDataPath) await initWorkingDirectory();
+  if (!appDataPath) throw new Error('Папка Documents/TrophyNavigator недоступна');
+
+  const backupDir = await joinExportPath(appDataPath, 'backup', true);
+  if (typeof fs.exists !== 'function' || !await fs.exists(backupDir)) {
+    await fs.mkdir(backupDir, { recursive: true });
+  }
+  const backupFileName = makeEmergencyExportFilename(extension, operationId);
+  const backupPath = await joinExportPath(backupDir, backupFileName, true);
+  await fs.writeTextFile(backupPath, text);
+  const savedText = await fs.readTextFile(backupPath);
+  if (savedText !== text) {
+    throw new Error(`Проверка аварийной копии не пройдена: ожидалось ${text.length} символов, прочитано ${savedText.length}`);
+  }
+  return { path: backupPath, fileName: backupFileName };
+}
+
+async function handleLateExportDialogOutcome(outcomePromise, context) {
+  const lateOutcome = await outcomePromise;
+  const { operation, text, extension, exportType, charCount } = context;
+  if (exportSaveOperationCounter !== operation.id) {
+    await appendExportLog('dialog_late_result', {
+      exportType,
+      extension,
+      result: 'ignored_newer_operation'
+    });
+    return;
+  }
+  if (lateOutcome.status === 'rejected') {
+    await appendExportLog('dialog_late_result', { exportType, extension, result: 'rejected' });
+    return;
+  }
+
+  const rawPath = lateOutcome.path;
+  if (!rawPath) {
+    await appendExportLog('dialog_late_result', { exportType, extension, result: 'cancel' });
+    return;
+  }
+  const selectedPath = typeof rawPath === 'object' && rawPath.path ? rawPath.path : String(rawPath);
+  if (!selectedPath) return;
+
+  const fs = window.__TAURI__?.fs || {};
+  try {
+    await fs.writeTextFile(selectedPath, text);
+    const savedText = await fs.readTextFile(selectedPath);
+    if (savedText !== text) throw new Error('Проверка записанного файла не пройдена');
+    const dir = await getExportDirectory(selectedPath);
+    if (dir) {
+      lastSaveDir = dir;
+      localStorage.setItem('tnd-last-save-dir', dir);
+    }
+    const selectedFileName = await getExportFileName(selectedPath);
+    await appendExportLog('dialog_late_success', { exportType, extension, chars: charCount });
+    showToast(`✓ Поздно выбранный файл сохранён и проверен: ${selectedFileName}`);
+  } catch (error) {
+    await appendExportLog('error', {
+      step: 'dialog_late_write',
+      exportType,
+      extension,
+      chars: charCount,
+      errorName: exportLogErrorName(error),
+      errorCode: exportLogErrorCode(error)
+    });
+    showToast('Ошибка сохранения поздно выбранного файла', 'error');
+  }
+}
+
 async function downloadText(filename, mimeType, textOrBuilder) {
   if (exportSaveInFlight) {
     showToast('⚠ Сохранение уже выполняется');
     return;
   }
+  const operation = { id: ++exportSaveOperationCounter };
   exportSaveInFlight = true;
+  exportSaveActiveOperation = operation;
   let phase = 'validate';
   let selectedPath = null;
   let selectedFileName = null;
@@ -5184,10 +5313,39 @@ async function downloadText(filename, mimeType, textOrBuilder) {
     const defaultPath = await getExportDefaultPath(filename);
     phase = 'dialog_pending';
     await appendExportLog(phase, { exportType, extension, chars: charCount, hadSavedDirectory });
-    const path = await save({
+    const nativeDialogPromise = Promise.resolve().then(() => save({
       defaultPath,
       filters: [{ name: filterName, extensions: [extension] }]
-    });
+    }));
+    const { outcome: dialogOutcome, outcomePromise } = await waitForExportDialog(nativeDialogPromise);
+    if (dialogOutcome.status === 'timeout') {
+      phase = 'dialog_timeout';
+      await appendExportLog(phase, {
+        exportType,
+        extension,
+        chars: charCount,
+        reason: dialogOutcome.reason
+      });
+      void handleLateExportDialogOutcome(outcomePromise, {
+        operation,
+        text,
+        extension,
+        exportType,
+        charCount
+      });
+
+      phase = 'backup';
+      const backup = await saveEmergencyExport(text, extension, operation.id);
+      await appendExportLog('backup_success', { exportType, extension, chars: charCount });
+      showToast(`✓ Аварийная копия сохранена: ${backup.fileName}`);
+      void tndConfirm(
+        `Окно выбора файла не ответило. Данные автоматически сохранены и проверены:\n\n${backup.path}\n\nЕсли окно появится позже, можно выбрать файл: он тоже будет сохранён, пока вы не начали новый экспорт.`,
+        'Файл сохранён автоматически'
+      );
+      return;
+    }
+    if (dialogOutcome.status === 'rejected') throw dialogOutcome.error;
+    const path = dialogOutcome.path;
     if (!path) {
       await appendExportLog('cancel', { exportType, extension, chars: charCount });
       showToast('Сохранение отменено');
@@ -5216,7 +5374,7 @@ async function downloadText(filename, mimeType, textOrBuilder) {
     showToast(`✓ Сохранено и проверено: ${selectedFileName}`);
   } catch (error) {
     const message = exportErrorMessage(error);
-    console.warn(`Export failed at ${phase}:`, error);
+    console.warn(`Export failed at ${phase}:`, exportLogErrorName(error), exportLogErrorCode(error));
     appendExportLog('error', {
       step: phase,
       exportType,
@@ -5227,7 +5385,10 @@ async function downloadText(filename, mimeType, textOrBuilder) {
     });
     showToast(`Ошибка сохранения: ${message}`, 'error');
   } finally {
-    exportSaveInFlight = false;
+    if (exportSaveActiveOperation === operation) {
+      exportSaveActiveOperation = null;
+      exportSaveInFlight = false;
+    }
   }
 }
 
@@ -6793,6 +6954,7 @@ function finishTrackDraw() {
   if (!currentTrackDraw) return;
   if (currentTrackDraw.points.length < 2) { showToast('⚠ Нужно минимум 2 точки'); return; }
   const t = currentTrackDraw;
+  t.isNew = false;
   touchTrack(t);
   currentTrackDraw = null;
   currentTrackSnapshot = null;
@@ -6802,6 +6964,8 @@ function finishTrackDraw() {
   document.getElementById('track-build-panel').style.display = 'none';
   selectedTrackId = t.id;
   updateTrackList();
+  updateSyncCounts();
+  saveState();
   openModal('modal-tracks');
   showToast('✓ Трек сохранён: ' + t.name + ' · ' + trackLen(t).toFixed(1) + ' км');
 }
@@ -11359,9 +11523,27 @@ function updateLicenseCard() {
 function updateSyncCounts() {
   const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
   el('sync-wpt-count', waypoints.length);
-  el('sync-trk-count', tracks.length);
+  el('sync-trk-count', tracks.filter(track => !track.isNew).length);
   el('sync-rte-count', routes.length);
   el('sync-gpx-count', importedGpxFiles.length);
+}
+
+function formatSyncPushCounts(pushed, checks) {
+  if (!pushed || typeof pushed !== 'object') return '';
+  const types = [
+    ['waypoints', 'точки'],
+    ['tracks', 'треки'],
+    ['routes', 'маршруты'],
+    ['gpx', 'GPX']
+  ];
+  return types
+    .filter(([type]) => checks[type])
+    .map(([type, label]) => {
+      const count = Number(pushed[type]?.count);
+      return Number.isInteger(count) && count >= 0 ? `${label}: ${count}` : null;
+    })
+    .filter(Boolean)
+    .join(', ');
 }
 
 async function checkSyncServerInfo() {
@@ -11422,7 +11604,14 @@ async function syncPush() {
       updateSyncStatus('Подключено', true);
       document.getElementById('sync-last-time').textContent = new Date().toLocaleString('ru-RU');
       localStorage.setItem('tnd-sync-last', new Date().toISOString());
-      showToast('Данные отправлены на trophynav.ru');
+      const acceptedCounts = formatSyncPushCounts(data.pushed, checks);
+      if (acceptedCounts) {
+        const serverInfo = document.getElementById('sync-server-info');
+        if (serverInfo) serverInfo.textContent = `Принято сервером: ${acceptedCounts}`;
+        showToast(`✓ Сервер принял: ${acceptedCounts}`);
+      } else {
+        showToast('✓ Данные отправлены на trophynav.ru');
+      }
     } else {
       updateSyncStatus('Ошибка: ' + (data.error || ''), false);
       showToast('Ошибка отправки');
