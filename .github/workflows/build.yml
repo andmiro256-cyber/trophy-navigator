@@ -39,7 +39,7 @@ jobs:
             src-tauri/target/release/bundle/msi/*.msi.sig
 
   build-linux:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -58,6 +58,58 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         run: cargo tauri build
         working-directory: src-tauri
+      - name: Rebuild AppImage without bundled Wayland
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        run: |
+          set -euo pipefail
+
+          # Bundler кладёт в AppImage собственные libwayland-* из образа сборки.
+          # На системах со свежей Mesa системный libEGL не находит в них нужных
+          # символов, не создаёт EGL display (EGL_BAD_PARAMETER) и пользователь
+          # видит белое окно. Системный Wayland подходит всегда, поэтому bundled
+          # копии вырезаются, а AppImage переупаковывается и переподписывается.
+          BUNDLE_DIR="src-tauri/target/release/bundle/appimage"
+          APPIMAGE="$(find "$BUNDLE_DIR" -maxdepth 1 -type f -name '*.AppImage' -print -quit)"
+          if [ -z "$APPIMAGE" ]; then
+            echo "::error::AppImage not found in $BUNDLE_DIR"
+            exit 1
+          fi
+          APPIMAGE="$(realpath "$APPIMAGE")"
+
+          WORK_DIR="$(mktemp -d)"
+          cp "$APPIMAGE" "$WORK_DIR/app.AppImage"
+          chmod +x "$WORK_DIR/app.AppImage"
+          (cd "$WORK_DIR" && ./app.AppImage --appimage-extract >/dev/null)
+
+          rm -f "$WORK_DIR"/squashfs-root/usr/lib/libwayland-*.so*
+
+          curl -sSfL -o "$WORK_DIR/appimagetool" \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x "$WORK_DIR/appimagetool"
+          ARCH=x86_64 "$WORK_DIR/appimagetool" --appimage-extract-and-run \
+            "$WORK_DIR/squashfs-root" "$WORK_DIR/repacked.AppImage"
+
+          rm -rf "$WORK_DIR/squashfs-root"
+          (cd "$WORK_DIR" && ./repacked.AppImage --appimage-extract >/dev/null)
+          if ls "$WORK_DIR"/squashfs-root/usr/lib/libwayland-*.so* >/dev/null 2>&1; then
+            echo "::error::bundled Wayland libraries are still present after repacking"
+            exit 1
+          fi
+
+          mv "$WORK_DIR/repacked.AppImage" "$APPIMAGE"
+          chmod +x "$APPIMAGE"
+          rm -rf "$WORK_DIR"
+
+          # Прежняя подпись относится к исходному файлу; без переподписи updater
+          # отвергнет обновление у всех пользователей Linux.
+          rm -f "$APPIMAGE.sig"
+          cargo tauri signer sign "$APPIMAGE"
+          if [ ! -s "$APPIMAGE.sig" ]; then
+            echo "::error::updater signature for the repacked AppImage was not created"
+            exit 1
+          fi
       - name: Upload AppImage
         uses: actions/upload-artifact@v4
         with:
@@ -65,6 +117,11 @@ jobs:
           path: |
             src-tauri/target/release/bundle/appimage/*.AppImage
             src-tauri/target/release/bundle/appimage/*.AppImage.sig
+      - name: Upload deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: TrophyNavigator-Linux-deb
+          path: src-tauri/target/release/bundle/deb/*.deb
 
   build-macos:
     name: build-macos-${{ matrix.arch }}
@@ -166,6 +223,7 @@ jobs:
           }
 
           APPIMAGE_SRC=$(find artifacts/TrophyNavigator-Linux -maxdepth 1 -type f -name '*.AppImage' | head -n 1)
+          DEB_SRC=$(find artifacts/TrophyNavigator-Linux-deb -maxdepth 1 -type f -name '*.deb' 2>/dev/null | head -n 1)
           NSIS_SRC=$(find artifacts/TrophyNavigator-Windows -maxdepth 1 -type f -name '*.exe' | head -n 1)
           MSI_SRC=$(find artifacts/TrophyNavigator-Windows-msi -maxdepth 1 -type f -name '*.msi' | head -n 1)
           MACOS_ARM64_DMG_SRC=$(find artifacts/TrophyNavigator-macOS-arm64 -type f -name '*.dmg' | head -n 1)
@@ -182,6 +240,12 @@ jobs:
 
           if [ -n "$MSI_SRC" ]; then
             copy_release_asset "$MSI_SRC" >/dev/null
+          fi
+
+          if [ -n "$DEB_SRC" ]; then
+            copy_release_asset "$DEB_SRC" >/dev/null
+          else
+            echo "::warning::deb package was not found, publishing without it"
           fi
 
           if [ -n "$MACOS_ARM64_DMG_SRC" ]; then
@@ -261,7 +325,8 @@ jobs:
 
             ### Скачать
             - **Windows**: `Trophy.Navigator.Desktop_*_x64-setup.exe` или `Trophy.Navigator.Desktop_*_x64_en-US.msi`
-            - **Linux**: `Trophy.Navigator.Desktop_*_amd64.AppImage`
+            - **Linux (AppImage)**: `Trophy.Navigator.Desktop_*_amd64.AppImage` — обновляется автоматически из приложения
+            - **Linux (Ubuntu/Debian)**: `Trophy.Navigator.Desktop_*_amd64.deb` — ставится системно, обновляется вручную
             - **macOS Apple Silicon**: `Trophy.Navigator.Desktop_*_aarch64.dmg`
             - **macOS Intel**: `Trophy.Navigator.Desktop_*_x64.dmg`
 
@@ -271,6 +336,7 @@ jobs:
             release-assets/*.exe
             release-assets/*.msi
             release-assets/*.AppImage
+            release-assets/*.deb
             release-assets/*.dmg
             release-assets/*.app.tar.gz
             release-assets/*.app.tar.gz.sig
