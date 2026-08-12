@@ -49,7 +49,7 @@ jobs:
       - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf squashfs-tools
       - name: Install tauri-cli
         run: cargo install tauri-cli --version "^2"
       - name: Build
@@ -58,10 +58,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         run: cargo tauri build
         working-directory: src-tauri
-      - name: Rebuild AppImage without bundled Wayland
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+      - name: Repack AppImage without bundled Wayland
         run: |
           set -euo pipefail
 
@@ -69,7 +66,11 @@ jobs:
           # На системах со свежей Mesa системный libEGL не находит в них нужных
           # символов, не создаёт EGL display (EGL_BAD_PARAMETER) и пользователь
           # видит белое окно. Системный Wayland подходит всегда, поэтому bundled
-          # копии вырезаются, а AppImage переупаковывается и переподписывается.
+          # копии вырезаются, а AppImage переупаковывается.
+          #
+          # Переупаковка идёт штатным mksquashfs из репозитория дистрибутива, а
+          # runtime берётся из самого артефакта, поэтому в цепочку сборки не
+          # попадает посторонний бинарник. Секретов в этом шаге нет.
           BUNDLE_DIR="src-tauri/target/release/bundle/appimage"
           APPIMAGE="$(find "$BUNDLE_DIR" -maxdepth 1 -type f -name '*.AppImage' -print -quit)"
           if [ -z "$APPIMAGE" ]; then
@@ -81,15 +82,24 @@ jobs:
           WORK_DIR="$(mktemp -d)"
           cp "$APPIMAGE" "$WORK_DIR/app.AppImage"
           chmod +x "$WORK_DIR/app.AppImage"
-          (cd "$WORK_DIR" && ./app.AppImage --appimage-extract >/dev/null)
 
+          OFFSET="$("$WORK_DIR/app.AppImage" --appimage-offset)"
+          SQUASHFS_INFO="$(unsquashfs -o "$OFFSET" -s "$WORK_DIR/app.AppImage")"
+          COMPRESSION="$(printf '%s\n' "$SQUASHFS_INFO" | awk '/^Compression/ {print $2; exit}')"
+          BLOCK_SIZE="$(printf '%s\n' "$SQUASHFS_INFO" | awk '/^Block size/ {print $3; exit}')"
+          if [ -z "$OFFSET" ] || [ -z "$COMPRESSION" ] || [ -z "$BLOCK_SIZE" ]; then
+            echo "::error::failed to read AppImage runtime offset or squashfs parameters"
+            exit 1
+          fi
+
+          (cd "$WORK_DIR" && ./app.AppImage --appimage-extract >/dev/null)
           rm -f "$WORK_DIR"/squashfs-root/usr/lib/libwayland-*.so*
 
-          curl -sSfL -o "$WORK_DIR/appimagetool" \
-            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
-          chmod +x "$WORK_DIR/appimagetool"
-          ARCH=x86_64 "$WORK_DIR/appimagetool" --appimage-extract-and-run \
-            "$WORK_DIR/squashfs-root" "$WORK_DIR/repacked.AppImage"
+          head -c "$OFFSET" "$WORK_DIR/app.AppImage" > "$WORK_DIR/runtime.bin"
+          mksquashfs "$WORK_DIR/squashfs-root" "$WORK_DIR/fs.squashfs" \
+            -comp "$COMPRESSION" -b "$BLOCK_SIZE" -root-owned -noappend -no-progress -quiet
+          cat "$WORK_DIR/runtime.bin" "$WORK_DIR/fs.squashfs" > "$WORK_DIR/repacked.AppImage"
+          chmod +x "$WORK_DIR/repacked.AppImage"
 
           rm -rf "$WORK_DIR/squashfs-root"
           (cd "$WORK_DIR" && ./repacked.AppImage --appimage-extract >/dev/null)
@@ -101,6 +111,23 @@ jobs:
           mv "$WORK_DIR/repacked.AppImage" "$APPIMAGE"
           chmod +x "$APPIMAGE"
           rm -rf "$WORK_DIR"
+      - name: Sign repacked AppImage
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        run: |
+          set -euo pipefail
+
+          # Отдельный шаг: ключ подписи обновлений появляется в окружении только
+          # для самой команды подписи и не соседствует с распаковкой,
+          # переупаковкой и любым сторонним кодом.
+          BUNDLE_DIR="src-tauri/target/release/bundle/appimage"
+          APPIMAGE="$(find "$BUNDLE_DIR" -maxdepth 1 -type f -name '*.AppImage' -print -quit)"
+          if [ -z "$APPIMAGE" ]; then
+            echo "::error::AppImage not found in $BUNDLE_DIR"
+            exit 1
+          fi
+          APPIMAGE="$(realpath "$APPIMAGE")"
 
           # Прежняя подпись относится к исходному файлу; без переподписи updater
           # отвергнет обновление у всех пользователей Linux.
