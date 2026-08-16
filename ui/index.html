@@ -390,6 +390,18 @@
   .wpt-table tr:hover td { background: var(--row-hover); cursor: pointer; }
   .wpt-table tr.selected td { background: var(--bg-sunken); }
   .wpt-icon { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: middle; }
+  /* Крупный чекбокс выбора: почти во всю высоту строки, чтобы удобно попадать мышью.
+     Вся первая ячейка работает как зона клика. */
+  .wpt-table td.wpt-cb-cell { padding: 0; width: 46px; text-align: center; position: relative; }
+  .wpt-table td.wpt-cb-cell label { position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center; cursor: pointer; margin: 0; }
+  .wpt-table td.wpt-cb-cell label:hover,
+  .wpt-table td.wpt-pick-cell label:hover { background: var(--row-hover); }
+  /* Колонка с цветной меткой тоже переключает выбор — расширяет зону попадания */
+  .wpt-table td.wpt-pick-cell { padding: 0; width: 30px; position: relative; }
+  .wpt-table td.wpt-pick-cell label { position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center; cursor: pointer; margin: 0; }
+  .wpt-cb { width: 26px; height: 26px; cursor: pointer; margin: 0; flex: none; }
   .leaflet-waypointMarkers-pane { overflow: visible !important; }
   .tnd-wp-marker { overflow: visible !important; }
   .tnd-wp-marker .tnd-wp-dot {
@@ -1380,7 +1392,7 @@
       </div>
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
         <label style="font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:4px;cursor:pointer">
-          <input type="checkbox" id="wpt-select-all" style="accent-color:#4a8adf" onchange="selectAllWaypoints(this)"> Все
+          <input type="checkbox" id="wpt-select-all" class="wpt-cb" style="accent-color:#4a8adf" onchange="selectAllWaypoints(this)"> Все
         </label>
         <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="toggleBulkEditPanel()">✏ Редактировать</button>
         <button class="btn-secondary" style="padding:3px 8px;font-size:11px;color:#e07070;border-color:#6a2a2a" onclick="deleteSelectedWaypoints()">🗑 Удалить выбранные</button>
@@ -3484,8 +3496,8 @@ function updateWptTable() {
     const syncBadge = d.syncedAt ? `<span title="Синхр. с ${d.source === 'android' ? 'Android' : 'desktop'} · ${new Date(d.syncedAt).toLocaleString('ru-RU')}" style="font-size:10px;opacity:0.7;margin-left:2px">☁</span>` : '';
     const srcHint = d.source && d.source !== 'desktop' ? `<span style="font-size:9px;color:var(--text-muted);margin-left:3px">${d.source}</span>` : '';
     return `<tr oncontextmenu="showCtxMenuTable(event,${idx})" onclick="map.panTo([${d.lat},${d.lng}])">
-      <td onclick="event.stopPropagation()"><input type="checkbox" class="wpt-cb" data-idx="${idx}" style="accent-color:#4a8adf"></td>
-      <td><span class="wpt-icon" style="background:${d.color}"></span></td>
+      <td class="wpt-cb-cell" onclick="event.stopPropagation()"><label for="wpt-cb-${idx}"><input type="checkbox" id="wpt-cb-${idx}" class="wpt-cb" data-idx="${idx}" style="accent-color:#4a8adf"></label></td>
+      <td class="wpt-pick-cell" onclick="event.stopPropagation()"><label for="wpt-cb-${idx}"><span class="wpt-icon" style="background:${d.color}"></span></label></td>
       <td style="color:var(--text-muted)">${d.num}</td>
       <td style="font-weight:500">${d.name}${syncBadge}${srcHint}</td>
       <td style="font-family:monospace;font-size:11px">${formatDm(d.lat, 'N', 'S')} ${formatDm(d.lng, 'E', 'W')}</td>
