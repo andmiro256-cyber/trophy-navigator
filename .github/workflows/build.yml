@@ -190,7 +190,10 @@ jobs:
   release:
     needs: [build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'release:'))
+    if: startsWith(github.ref, 'refs/tags/v')
+    concurrency:
+      group: trophy-desktop-release-${{ github.ref }}
+      cancel-in-progress: false
     permissions:
       contents: write
     env:
@@ -198,8 +201,6 @@ jobs:
       UPDATES_DEPLOY_USER: ${{ secrets.UPDATES_DEPLOY_USER }}
       UPDATES_DEPLOY_SSH_KEY: ${{ secrets.UPDATES_DEPLOY_SSH_KEY }}
       UPDATES_DEPLOY_KNOWN_HOSTS: ${{ secrets.UPDATES_DEPLOY_KNOWN_HOSTS }}
-      LEGACY_DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-      LEGACY_DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
       UPDATES_DEPLOY_PORT: ${{ vars.UPDATES_DEPLOY_PORT }}
       UPDATES_DEPLOY_PATH: ${{ vars.UPDATES_DEPLOY_PATH }}
       UPDATES_BETA_DEPLOY_PATH: ${{ vars.UPDATES_BETA_DEPLOY_PATH }}
@@ -211,10 +212,12 @@ jobs:
       - name: Get version
         id: version
         run: |
-          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/v}"
-          else
-            VERSION="$(python3 -c "import json; print(json.load(open('src-tauri/tauri.conf.json', encoding='utf-8'))['version'])")"
+          set -euo pipefail
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          CONFIG_VERSION="$(python3 -c "import json; print(json.load(open('src-tauri/tauri.conf.json', encoding='utf-8'))['version'])")"
+          if [ "$VERSION" != "$CONFIG_VERSION" ]; then
+            echo "::error::Tag version $VERSION does not match tauri.conf.json $CONFIG_VERSION"
+            exit 1
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
@@ -311,7 +314,7 @@ jobs:
           cat > "$MANIFEST_FILE" << EOF
           {
             "version": "$VERSION",
-            "notes": "Исправлено зависание сохранения файлов в Windows: если системное окно «Сохранить как» не отвечает, приложение автоматически создаёт и проверяет резервную копию в Documents/TrophyNavigator/backup и освобождает сохранение для следующей попытки. Поздно появившееся окно обрабатывается безопасно; новые нарисованные треки сразу попадают в состояние и синхронизацию.",
+            "notes": "Восстановлены онлайн-карты, Wikimapia, лицензии, синхронизация и Live после переноса сервера на Alpha-KM. Бесплатные OpenStreetMap/OpenTopoMap снова находятся в бесплатном разделе, а специальные слои Яндекс и Bing не пропадают после загрузки каталога.",
             "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "platforms": {
               "linux-x86_64": {
@@ -344,11 +347,10 @@ jobs:
             ## Trophy Navigator Desktop v${{ steps.version.outputs.version }}
 
             ### Исправлено
-            - Системное окно «Сохранить как» больше не может навсегда заблокировать экспорт в Windows.
-            - При зависании диалога автоматически создаётся и проверяется резервная копия в `Documents/TrophyNavigator/backup`.
-            - Поздно появившееся окно безопасно сохраняет файл и не перезаписывает результат новой операции.
-            - Новый нарисованный трек сразу сохраняется в состоянии приложения и попадает в синхронизацию.
-            - После отправки в облако показываются фактически принятые сервером количества точек, треков, маршрутов и GPX, включая нули.
+            - Все API и тайловые прокси Desktop переведены со старого DE2 на `https://trophynav.ru` (Alpha-KM).
+            - Восстановлены каталожные карты, Wikimapia, лицензии, облачная синхронизация и Live-мониторинг.
+            - OpenStreetMap и OpenTopoMap снова отображаются как бесплатные карты.
+            - Специальные слои Яндекс и Bing больше не исчезают после загрузки серверного каталога.
 
             ### Скачать
             - **Windows**: `Trophy.Navigator.Desktop_*_x64-setup.exe` или `Trophy.Navigator.Desktop_*_x64_en-US.msi`
@@ -368,42 +370,82 @@ jobs:
             release-assets/*.app.tar.gz
             release-assets/*.app.tar.gz.sig
             ${{ steps.channel.outputs.manifest_file }}
-      - name: Publish updater manifest to server
+      - name: Publish updater assets and manifest to Alpha-KM
         env:
           MANIFEST_FILE: ${{ steps.channel.outputs.manifest_file }}
           RELEASE_DEPLOY_PATH: ${{ steps.channel.outputs.deploy_path }}
+          APPIMAGE_FILE: release-assets/${{ steps.assets.outputs.appimage_asset_name }}
+          NSIS_FILE: release-assets/${{ steps.assets.outputs.nsis_asset_name }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
 
           DEPLOY_PORT="${UPDATES_DEPLOY_PORT:-22}"
-          DEPLOY_HOST="${UPDATES_DEPLOY_HOST:-${LEGACY_DEPLOY_HOST:-}}"
-          DEPLOY_USER="${UPDATES_DEPLOY_USER:-root}"
-          DEPLOY_SSH_KEY="${UPDATES_DEPLOY_SSH_KEY:-${LEGACY_DEPLOY_SSH_KEY:-}}"
+          DEPLOY_HOST="${UPDATES_DEPLOY_HOST:-}"
+          DEPLOY_USER="${UPDATES_DEPLOY_USER:-}"
+          DEPLOY_SSH_KEY="${UPDATES_DEPLOY_SSH_KEY:-}"
           DEPLOY_PATH="${RELEASE_DEPLOY_PATH}"
+          PUBLIC_RELEASE_DIR="/var/www/trophy-site/releases"
+          PUBLIC_APPIMAGE_PATH="${PUBLIC_RELEASE_DIR}/trophy-navigator-desktop_${RELEASE_VERSION}_amd64.AppImage"
+          PUBLIC_NSIS_PATH="${PUBLIC_RELEASE_DIR}/trophy-navigator-desktop_${RELEASE_VERSION}_x64-setup.exe"
 
-          if [ -z "${DEPLOY_HOST}" ] || [ -z "${DEPLOY_SSH_KEY}" ]; then
-            echo "::error::Missing release deploy settings. Set UPDATES_DEPLOY_HOST/UPDATES_DEPLOY_SSH_KEY or reuse DEPLOY_HOST/DEPLOY_SSH_KEY from racenav."
+          if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_USER" ] || [ -z "$DEPLOY_SSH_KEY" ] || [ -z "${UPDATES_DEPLOY_KNOWN_HOSTS:-}" ]; then
+            echo "::error::Missing dedicated UPDATES_DEPLOY_* settings. Legacy deploy fallback is forbidden."
             exit 1
           fi
 
-          if [ ! -s "$MANIFEST_FILE" ]; then
-            echo "::error::$MANIFEST_FILE was not generated."
+          if [ "$DEPLOY_HOST" != "104.171.128.204" ] || [ "$DEPLOY_USER" != "tnd-deploy" ] || [ "$DEPLOY_PORT" != "22" ]; then
+            echo "::error::Updater deploy must target tnd-deploy@104.171.128.204:22, got ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PORT}."
+            exit 1
+          fi
+
+          case "$DEPLOY_PATH" in
+            /var/www/updates/latest-desktop.json|/var/www/updates/latest-desktop-beta.json) ;;
+            *) echo "::error::Unexpected updater manifest path: $DEPLOY_PATH"; exit 1 ;;
+          esac
+
+          if [ ! -s "$MANIFEST_FILE" ] || [ ! -s "$APPIMAGE_FILE" ] || [ ! -s "$NSIS_FILE" ]; then
+            echo "::error::Release manifest or public updater assets are missing."
             exit 1
           fi
 
           install -m 700 -d ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          if [ -n "${UPDATES_DEPLOY_KNOWN_HOSTS:-}" ]; then
-            printf '%s\n' "$UPDATES_DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          else
-            ssh-keyscan -p "$DEPLOY_PORT" "$DEPLOY_HOST" > ~/.ssh/known_hosts
-          fi
+          printf '%s\n' "$UPDATES_DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
           DEPLOY_DIR="$(dirname "$DEPLOY_PATH")"
-          TMP_PATH="${DEPLOY_PATH}.tmp-${GITHUB_RUN_ID}"
+          MANIFEST_TMP="${DEPLOY_PATH}.tmp-${GITHUB_RUN_ID}"
+          APPIMAGE_TMP="${PUBLIC_APPIMAGE_PATH}.tmp-${GITHUB_RUN_ID}"
+          NSIS_TMP="${PUBLIC_NSIS_PATH}.tmp-${GITHUB_RUN_ID}"
+          REMOTE="${DEPLOY_USER}@${DEPLOY_HOST}"
 
-          scp -P "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$MANIFEST_FILE" "${DEPLOY_USER}@${DEPLOY_HOST}:${TMP_PATH}"
-          ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "install -d -m 755 '${DEPLOY_DIR}' && install -m 644 '${TMP_PATH}' '${DEPLOY_PATH}' && rm -f '${TMP_PATH}'"
+          cleanup_remote() {
+            ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$REMOTE" \
+              "rm -f '${MANIFEST_TMP}' '${APPIMAGE_TMP}' '${NSIS_TMP}'" || true
+          }
+          trap cleanup_remote EXIT
+
+          ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$REMOTE" \
+            "test '${DEPLOY_DIR}' = '/var/www/updates' && test -w '${DEPLOY_DIR}' && test -w '${PUBLIC_RELEASE_DIR}'"
+
+          scp -P "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$MANIFEST_FILE" "$REMOTE:$MANIFEST_TMP"
+          scp -P "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$APPIMAGE_FILE" "$REMOTE:$APPIMAGE_TMP"
+          scp -P "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$NSIS_FILE" "$REMOTE:$NSIS_TMP"
+
+          APPIMAGE_SHA="$(sha256sum "$APPIMAGE_FILE" | awk '{print $1}')"
+          NSIS_SHA="$(sha256sum "$NSIS_FILE" | awk '{print $1}')"
+          ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$REMOTE" \
+            "printf '%s  %s\n' '${APPIMAGE_SHA}' '${APPIMAGE_TMP}' '${NSIS_SHA}' '${NSIS_TMP}' | sha256sum -c - >/dev/null && install -m 644 '${APPIMAGE_TMP}' '${PUBLIC_APPIMAGE_PATH}' && install -m 644 '${NSIS_TMP}' '${PUBLIC_NSIS_PATH}'"
+
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --head \
+            "https://trophynav.ru/releases/trophy-navigator-desktop_${RELEASE_VERSION}_amd64.AppImage" >/dev/null
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --head \
+            "https://trophynav.ru/releases/trophy-navigator-desktop_${RELEASE_VERSION}_x64-setup.exe" >/dev/null
+
+          # Manifest публикуется последним: updater никогда не увидит URL ещё не выложенных файлов.
+          ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$REMOTE" \
+            "install -m 644 '${MANIFEST_TMP}' '${DEPLOY_PATH}'"
+          trap - EXIT
+          cleanup_remote

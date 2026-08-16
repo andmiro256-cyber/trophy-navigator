@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🧭 Trophy Navigator Desktop v0.9.22</title>
+  <title>🧭 Trophy Navigator Desktop v0.9.23</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <script src="leaflet.js"></script>
@@ -1294,7 +1294,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span id="app-version-label" style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.22</span>
+  <span id="app-version-label" style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.23</span>
 </div>
 
 <div id="ruler-panel">
@@ -2333,6 +2333,7 @@
 <div id="toast"></div>
 
 <script>
+const API_BASE = 'https://trophynav.ru';
 const TND_SQL_JS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js';
 const TND_SQL_WASM_BASE = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/';
 const TND_CHART_JS_URL = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js';
@@ -4543,7 +4544,8 @@ function deactivateActiveOfflineMapsForOnlineBase() {
 }
 
 // Free layer keys (not premium)
-const FREE_LAYER_KEYS = new Set(['osm', 'topo', 'cyclosm', 'osm_hot']);
+const FREE_LAYER_KEYS = new Set(['osm_standard', 'opentopomap', 'cyclosm', 'osm_hot']);
+const SPECIAL_PREMIUM_LAYER_NAMES = ['Яндекс Схема', 'Яндекс Гибрид', 'Спутник Bing', 'Гибрид Bing'];
 
 function getLayerEmoji(label) {
   if (/Спутник|Гибрид/i.test(label)) return '\u{1F6F0}';
@@ -4675,7 +4677,12 @@ function buildLayerUI() {
   // --- Premium base layers ---
   const premiumContainer = document.getElementById('catalog-base-layers');
   if (premiumContainer) {
-    const premiumLayers = tileCatalog.base.filter(e => !FREE_LAYER_KEYS.has(e.key) && !hidden.includes(e.key));
+    const catalogPremiumLayers = tileCatalog.base.filter(e => !FREE_LAYER_KEYS.has(e.key) && !hidden.includes(e.key));
+    const catalogLabels = new Set(tileCatalog.base.map(e => e.label));
+    const specialPremiumLayers = SPECIAL_PREMIUM_LAYER_NAMES
+      .filter(label => !catalogLabels.has(label))
+      .map(label => ({ key: null, label }));
+    const premiumLayers = [...specialPremiumLayers, ...catalogPremiumLayers];
     if (premiumLayers.length > 0) {
       premiumContainer.innerHTML = '';
       premiumLayers.forEach(e => {
@@ -4684,9 +4691,9 @@ function buildLayerUI() {
         div.dataset.layer = e.label;
         div.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
         div.innerHTML = `<span onclick="setLayerPremium('${e.label.replace(/'/g,"\\'")}', this.parentElement)"
-          style="flex:1;cursor:pointer">${getLayerEmoji(e.label)} ${e.label}</span>
+          style="flex:1;cursor:pointer">${getLayerEmoji(e.label)} ${e.label}</span>` + (e.key ? `
           <span onclick="event.stopPropagation();toggleLayerHidden('${e.key}')" title="Скрыть"
-          style="color:var(--text-muted);font-size:10px;cursor:pointer;padding:0 4px">✕</span>`;
+          style="color:var(--text-muted);font-size:10px;cursor:pointer;padding:0 4px">✕</span>` : '');
         premiumContainer.appendChild(div);
       });
     }
@@ -4742,15 +4749,14 @@ function buildLayerUI() {
 
 function normalizeCatalog(data) {
   // Нормализация: id→key, name→label, добавление proxy URL
-  const SERVER = 'http://87.120.84.254:9222';
   const norm = e => ({
     key: e.key || e.id, label: e.label || e.name,
-    url: e.proxy ? SERVER + e.proxy : e.url,
+    url: e.proxy ? API_BASE + e.proxy : e.url,
     subdomains: e.subdomains || '', tms: e.url_type === 'tms' || !!e.tms,
     minZoom: Number(e.minZoom ?? e.minzoom ?? 0) || 0,
     maxZoom: Number(e.maxZoom ?? e.maxzoom ?? 18) || 18,
     opacity: e.opacity,
-    proxy: e.proxy ? SERVER + e.proxy : null
+    proxy: e.proxy ? API_BASE + e.proxy : null
   });
   if (data.base) data.base = data.base.map(norm);
   if (data.overlays) data.overlays = data.overlays.map(norm);
@@ -4791,7 +4797,7 @@ function getCatalogEntryByLabel(label, includeOverlays = true) {
 }
 
 function loadTileCatalog() {
-  return fetch('https://trophynav.ru/api/tiles-catalog.json')
+  return fetch(`${API_BASE}/api/tiles-catalog.json`)
     .then(resp => {
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       return resp.json();
@@ -4810,7 +4816,7 @@ loadTileCatalog();
 
 function refreshTileCatalog() {
   showToast('Обновление каталога...');
-  fetch('https://trophynav.ru/api/tiles-catalog.json', { cache: 'no-store' })
+  fetch(`${API_BASE}/api/tiles-catalog.json`, { cache: 'no-store' })
     .then(resp => {
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       return resp.json();
@@ -4892,7 +4898,7 @@ function setLayer(name, el) {
 // Wikimapia: через прокси на сервере (ресайз 531→256, кэш)
 const WikimapiaLayer = CachedTileLayer.extend({
   getTileUrl: function(coords) {
-    return 'http://87.120.84.254:9222/tiles/wikimapia_hybrid/' + coords.z + '/' + coords.x + '/' + coords.y;
+    return `${API_BASE}/tiles/wikimapia_hybrid/` + coords.z + '/' + coords.x + '/' + coords.y;
   }
 });
 
@@ -8904,7 +8910,7 @@ function getTileUrl(layerName, x, y, z) {
     case 'Windy рельеф':   return `https://tiles.windy.com/tiles/v8.1/darkmap/${z}/${x}/${y}.png`;
     case 'Горнолыжные трассы': return `https://tiles.opensnowmap.org/pistes/${z}/${x}/${y}.png`;
     case 'Лыжные трассы':  return `https://tiles.opensnowmap.org/piste/${z}/${x}/${y}.png`;
-    case 'Wikimapia':      return `http://87.120.84.254:9222/tiles/wikimapia_hybrid/${z}/${x}/${y}`;
+    case 'Wikimapia':      return `${API_BASE}/tiles/wikimapia_hybrid/${z}/${x}/${y}`;
     case 'Bing дороги':    { const q = bingQuadKey(x, y, z); return `https://ecn.t0.tiles.virtualearth.net/tiles/r${q}?g=14000&mkt=ru-RU&shading=hill`; }
     default: return null;
   }
@@ -10157,10 +10163,10 @@ function tauriInvoke(command, args = {}) {
   return invoke(command, args);
 }
 
-let appDisplayVersion = '0.9.22';
+let appDisplayVersion = '0.9.23';
 
 function getCurrentAppVersion() {
-  return normalizeVersion(appDisplayVersion || document.getElementById('about-version')?.textContent || '0.9.22');
+  return normalizeVersion(appDisplayVersion || document.getElementById('about-version')?.textContent || '0.9.23');
 }
 
 function setDisplayedAppVersion(version) {
@@ -12129,9 +12135,8 @@ setInterval(saveStateToFile, 60000);
 //  MACHINE ID + TRIAL / ЛИЦЕНЗИРОВАНИЕ
 // ═══════════════════════════════════════════
 
-const SYNC_SERVER = 'https://trophynav.ru';
-const LICENSE_SERVER = 'http://87.120.84.254:9222';
-const LICENSE_API_BASES = Array.from(new Set([SYNC_SERVER, LICENSE_SERVER]));
+const SYNC_SERVER = API_BASE;
+const LICENSE_API_BASES = [API_BASE];
 const TRIAL_DAYS = 14;
 
 async function fetchLicenseApi(path, options = {}) {
@@ -13466,7 +13471,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.22</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.23</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
           <span style="color:var(--text-muted)">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
@@ -14093,7 +14098,7 @@ function saveOsrmRouteAsTrack(id) {
 // ═══ LIVE MONITORING ══════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════
 
-const LIVE_API_BASE = 'http://87.120.84.254:9222';
+const LIVE_API_BASE = API_BASE;
 const LIVE_API = `${LIVE_API_BASE}/api/live2/devices`;
 const LIVE_FAVORITES_API = `${LIVE_API_BASE}/api/live2/favorites`;
 const LIVE_MESSAGES_API = `${LIVE_API_BASE}/api/live2/messages`;

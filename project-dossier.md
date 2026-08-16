@@ -2,22 +2,22 @@
 
 ## Status
 Active — экосистема из двух приложений-компаньонов (как Mac + iPhone):
-- **Android** v2.9.7 — полевая навигация, GPS, треки, live мониторинг, оффлайн карты
-- **Desktop** v0.9.3 — планирование, роутинг, анализ, офлайн карты, кэш, темы, sync/licensing, track edit, multi-route
+- **Android** v2.9.21 stable / v2.9.101-beta — полевая навигация, GPS, треки, live мониторинг, оффлайн карты
+- **Desktop** v0.9.22 public; v0.9.23 подготовлен к QA — планирование, роутинг, анализ, офлайн карты, кэш, темы, sync/licensing, track edit, multi-route
 
 ## Description
 Trophy Navigator — экосистема навигации для трофи-рейдов.
 - **Android:** com.andreykoff.racenav, /home/andre22/Projects/racenav-android/, github.com/andmiro256-cyber/racenav-android
 - **Desktop (TND):** Tauri 2 + Leaflet, /home/andre22/Projects/trophy-navigator/, github.com/andmiro256-cyber/trophy-navigator
-- Сервер: root@87.120.84.254 (DE2), SSH: ssh -i ~/.ssh/id_de2 root@trophynav.ru
-- Админка: http://87.120.84.254:9222/admin/ (admin/***REMOVED***)
-- Сайт: trophynav.ru (nginx, /opt/trophy-desktop/)
+- Продуктовый сервер: Alpha-KM `104.171.128.204` (РФ), SSH: `ssh alphakm-ru`
+- Админка: https://trophynav.ru/sync/admin/ (значение Basic Auth — в каноническом vault доступов)
+- Сайт: trophynav.ru (nginx, `/var/www/trophy-site/` на Alpha-KM)
 
 ## Current State
-- Last session: 2026-04-19
-- **Android: v2.9.7** deployed
-- **Desktop: v0.9.3** deployed — GitHub Release (`.exe`, `.msi`, `.AppImage`) + desktop updater manifest on production
-- GitHub Actions CI: Windows + Linux автосборка, GitHub Release, desktop updater manifest deploy to DE2 через repo secrets
+- Last session: 2026-08-16
+- **Android: v2.9.21 stable / v2.9.101-beta** deployed
+- **Desktop: v0.9.22** deployed; v0.9.23 собран и подписан локально, ожидает GO Тома перед тегом
+- GitHub Actions CI: Windows + Linux + macOS автосборка, tag-only GitHub Release, public updater assets + manifest deploy на Alpha-KM через отдельного пользователя `tnd-deploy` и repo secrets
 - Desktop monitoring/live API parity сильно подтянут: production `favorites`, `status`, `messages`, `group-share` работают через `trophynav.ru/api/live2/*`
 - Desktop получил рабочий `SAS/Ozi .rte` import/export после регресса в последнем обновлении
 - VPN: relay 158.160.243.222 (белые списки), Premium28/Premium Max подписки
@@ -26,7 +26,7 @@ Trophy Navigator — экосистема навигации для трофи-�
 
 ## Architecture Notes — Desktop
 - Tauri 2 (Rust) + Leaflet (UI), ~/Documents/TrophyNavigator/ (waypoints/tracks/routes/maps/gpx/backup)
-- Лицензия: триал 20 дней, machine ID (HW-xxx), GET /api/desktop/license/{machineId}
+- Лицензия: триал 14 дней, machine ID (HW-xxx), GET /api/desktop/license/{machineId}
 - Email привязка: POST /api/email/register → sync key автогенерация
 - Каталог карт: загружается с сервера, normalizeCatalog() для обоих форматов (id/name и key/label)
 - Пользователь может скрывать карты (localStorage tnd-hidden-layers)
@@ -38,15 +38,15 @@ Trophy Navigator — экосистема навигации для трофи-�
 - **Security:** HWID generated via FNV-1a hash of system IDs (Registry/machine-id).
 
 - Signing key: ~/.tauri/tnd-signing.key (env TAURI_SIGNING_PRIVATE_KEY, PASSWORD="")
-- Build: `TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/tnd-signing.key)" TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" cargo tauri build --bundles appimage`
+- Build: `cd src-tauri && TAURI_SIGNING_PRIVATE_KEY="$(< ~/.tauri/tnd-signing.key)" TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" cargo tauri build`
 - AppImage WM_CLASS: trophy-navigator-desktop
 - Плагины Tauri: updater, dialog, fs, process, opener
 
-## Architecture Notes — Server (tnd-sync)
-- Node.js Express, /opt/tnd-sync/server.js, порт 9222
-- Данные: /opt/tnd-sync/data/ (state per API key, desktop-devices.json, email-registry.json)
-- Каталог: /opt/trophy-desktop/api/tiles-catalog.json + /opt/tnd-sync/data/tile_catalog.json
-- parse_zmp.py: парсит AnyGIS ZMP → tile_catalog.json (cron воскресенье 03:00)
+## Architecture Notes — Server (Alpha-KM)
+- Node.js Express, сервис `tnd-tiles`, `/opt/tnd-tiles/server.js`, loopback-порт 9222; live вынесен в `tnd-live` на loopback-порт 8080
+- Данные: `/opt/tnd-tiles/data/` (state per API key, desktop-devices.json, email-registry.json)
+- Каталог: `/opt/tnd-tiles/data/tile_catalog.json`; публичный Desktop API — `/api/tiles-catalog.json`
+- `parse_zmp.py`: парсит AnyGIS ZMP → `tile_catalog.json`
 - API: /api/state, /api/email/register, /api/email/info/:email, /api/desktop/trial, /api/desktop/license, /api/tiles-catalog.json
 - Monitoring API: `/api/live2/favorites`, `/api/live2/status`, `/api/live2/messages/inbox`, `/api/live2/messages/direct`, `/api/live2/messages/group`, `/api/live2/group-share*`
 - Updater channels разведены: Android stable/beta = `/var/www/updates/latest.json` и `/var/www/updates/latest-beta.json`, Desktop stable/beta = `/var/www/updates/latest-desktop.json` и `/var/www/updates/latest-desktop-beta.json`
@@ -60,7 +60,7 @@ Trophy Navigator — экосистема навигации для трофи-�
 
 
 ## Architecture Notes — Mail Server (DE2)
-- Postfix + Dovecot + Roundcube, webmail https://trophynav.ru/mail/
+- Postfix + Dovecot остались на DE2; MX — `mail.trophynav.ru`
 
 ## Team
 - Opus (я) — главный, ноутбук
@@ -99,7 +99,7 @@ Trophy Navigator — экосистема навигации для трофи-�
 - [2026-04-11] Android companion sync выровнен с текущим TND сервером: `POST /api/email/register`, `GET /api/sync/pull`, `POST /api/sync/push`, синхронизируются точки, треки и маршруты
 - [2026-04-11] Версионный план Android: следующий stable `2.9.6 / 375`, локальная dev/beta линия `2.9.74 / 375`
 - [2026-04-17] Desktop updater больше не делит `latest.json` с Android: desktop endpoint `/api/updates/latest.json` читает только `latest-desktop*.json`, Android сохраняет старые `latest*.json`
-- [2026-04-17] GitHub Actions для desktop использует repo secrets `UPDATES_DEPLOY_*` и vars `UPDATES_DEPLOY_*` для выкладки updater manifest на DE2
+- [2026-08-16] GitHub Actions для desktop использует repo secrets `UPDATES_DEPLOY_*` и vars `UPDATES_DEPLOY_*` для tag-only выкладки updater assets + manifest на Alpha-KM непривилегированным пользователем `tnd-deploy`; legacy root fallback запрещён fail-closed guard-ом
 
 ## Next Steps (приоритет)
 1. **Архив гонок** — публикация Race Report на сервер (trophynav.ru/races/{slug})
@@ -109,6 +109,7 @@ Trophy Navigator — экосистема навигации для трофи-�
 5. **Личная статистика сезона** — агрегация треков по email
 6. **Подготовка сервера** — async writes, rate-limit, SQLite
 ## Session History
+- [2026-08-16] Desktop v0.9.23 подготовлен после переезда Trophy на Alpha-KM: убраны пять обращений к мёртвому DE2, единый API base переведён на `https://trophynav.ru`, восстановлены каталог/Wikimapia/лицензии/sync/live, исправлены free-ключи и сохранение четырёх специальных Яндекс/Bing слоёв. GitHub Actions deploy переключён на Alpha-KM через `tnd-deploy`; локальные проверки и подписанная сборка зелёные, тег ждёт QA sign-off Тома.
 - [2026-04-18/19] Desktop parity + production monitoring stabilized: закрыт регресс `Ozi/SAS .rte` import/export в desktop, подтянут основной Android-like monitoring на desktop (статусы, direct/group messages, inbox, attachments, group-share, richer share presets, thread badges, import вложений из истории), серверный `sync-server` выровнен по live API-контрактам. На проде найден ложный дефект: файл `/opt/tnd-sync/server.js` уже содержал новые `live2` route-ы, но `pm2 tnd-sync` продолжал отвечать как старая версия. Проверка отдельным запуском на `:9325` подтвердила корректность кода; после `pm2 delete/start/save` production `9222` и внешний `https://trophynav.ru/api/live2/*` начали отдавать рабочие `favorites/status/messages/group-share`. Публичный smoke через временные email подтвердил direct/group messaging, inbox, share delivery, download и ack.
 - [2026-04-17] Desktop auto-update fixed end-to-end: выпущен GitHub Release `v0.9.3` с Windows NSIS, Windows MSI, Linux AppImage и updater manifest. На проде найден конфликт каналов: `trophynav.ru/api/updates/latest.json` и `/updates/latest.json` оба указывали на Android `latest.json`. Исправлено: production `tnd-sync` на DE2 патчен на отдельные desktop manifest paths `/var/www/updates/latest-desktop.json` и `/var/www/updates/latest-desktop-beta.json`, `pm2 tnd-sync` перезапущен, публичная проверка `api/updates/latest.json` теперь возвращает desktop `0.9.3`, при этом Android stable/beta не сломаны. Для будущих релизов в GitHub repo настроены secrets `UPDATES_DEPLOY_HOST`, `UPDATES_DEPLOY_SSH_KEY`, `UPDATES_DEPLOY_USER` и vars `UPDATES_DEPLOY_PATH`, `UPDATES_BETA_DEPLOY_PATH`, `UPDATES_DEPLOY_PORT`; выделен отдельный deploy key `trophy_nav_actions_ed25519` на DE2.
 - [2026-04-17] Android release/infra cleanup: DE2 возвращён к нормальной схеме `nginx :80/:443 + tnd-sync :9222`, `apache2` отключён, из `nginx/sites-enabled` убраны backup-конфиги, beta deploy в GitHub Actions переписан на реальный путь `/var/www/updates` с `DEPLOY_HOST` + `DEPLOY_SSH_KEY`, первый run `24554419238` прошёл успешно. Публичная проверка: `https://trophynav.ru/api/update/beta` -> `2.9.78 / 379`, `https://trophynav.ru/updates/racenav-beta.apk` -> `200 OK`.
