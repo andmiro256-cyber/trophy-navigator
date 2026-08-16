@@ -770,7 +770,10 @@
   /* ─── Search input default width ─── */
   #search-input { width: 100%; min-width: 0; }
 
-  @media (max-width: 1400px) {
+  /* Полноразмерному тулбару нужно ~1725px. Ниже этой ширины он не помещается
+     и появляется горизонтальный ползунок, поэтому компактный режим включается
+     заранее, а не с 1400px. */
+  @media (max-width: 1730px) {
     #toolbar { height: 52px; padding: 4px 8px; gap: 2px; }
     .tb-btn { padding: 4px 8px; font-size: 12px; height: 34px; }
     .tb-tag { width: 30px; height: 30px; font-size: 14px; }
@@ -815,8 +818,8 @@
   }
   .live-expand-btn:hover { color: var(--text-primary); }
 
-  /* ─── АДАПТИВ: 1280x720 ─── */
-  @media (max-width: 1280px) {
+  /* ─── АДАПТИВ: предыдущему уровню нужно ~1445px ─── */
+  @media (max-width: 1450px) {
     #toolbar { height: 48px; padding: 4px 8px; gap: 2px; }
     .tb-btn { padding: 4px 8px; font-size: 12px; height: 32px; }
     .tb-tag { width: 28px; height: 28px; font-size: 14px; }
@@ -837,7 +840,7 @@
   }
 
   /* ─── АДАПТИВ: 1024x768 ─── */
-  @media (max-width: 1024px) {
+  @media (max-width: 1210px) {
     #toolbar { height: 42px; padding: 3px 6px; gap: 2px; }
     .tb-btn { padding: 3px 6px; font-size: 11px; height: 28px; }
     .tb-tag { width: 26px; height: 26px; font-size: 13px; }
