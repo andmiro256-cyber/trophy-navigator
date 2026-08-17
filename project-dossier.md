@@ -3,7 +3,7 @@
 ## Status
 Active — экосистема из двух приложений-компаньонов (как Mac + iPhone):
 - **Android** v2.9.21 stable / v2.9.101-beta — полевая навигация, GPS, треки, live мониторинг, оффлайн карты
-- **Desktop** v0.9.22 public; v0.9.23 подготовлен к QA — планирование, роутинг, анализ, офлайн карты, кэш, темы, sync/licensing, track edit, multi-route
+- **Desktop** v0.9.23 public — планирование, роутинг, анализ, офлайн карты, кэш, темы, sync/licensing, track edit, multi-route
 
 ## Description
 Trophy Navigator — экосистема навигации для трофи-рейдов.
@@ -14,9 +14,9 @@ Trophy Navigator — экосистема навигации для трофи-�
 - Сайт: trophynav.ru (nginx, `/var/www/trophy-site/` на Alpha-KM)
 
 ## Current State
-- Last session: 2026-08-16
+- Last session: 2026-08-17
 - **Android: v2.9.21 stable / v2.9.101-beta** deployed
-- **Desktop: v0.9.22** deployed; v0.9.23 собран и подписан локально, ожидает GO Тома перед тегом
+- **Desktop: v0.9.23** deployed; GitHub Release, updater manifest, Windows/Linux public assets and site links verified
 - GitHub Actions CI: Windows + Linux + macOS автосборка, tag-only GitHub Release, public updater assets + manifest deploy на Alpha-KM через отдельного пользователя `tnd-deploy` и repo secrets
 - Desktop monitoring/live API parity сильно подтянут: production `favorites`, `status`, `messages`, `group-share` работают через `trophynav.ru/api/live2/*`
 - Desktop получил рабочий `SAS/Ozi .rte` import/export после регресса в последнем обновлении
@@ -109,6 +109,7 @@ Trophy Navigator — экосистема навигации для трофи-�
 5. **Личная статистика сезона** — агрегация треков по email
 6. **Подготовка сервера** — async writes, rate-limit, SQLite
 ## Session History
+- [2026-08-17] Desktop v0.9.23 опубликован полностью: tag CI зелёный, main release-job штатно skipped, updater и публичные Windows/Linux артефакты проверены по HTTP/SHA-256, витрина Alpha-KM синхронизирована commit `a0a4e63` после GO Тома `DEV-1203`. Правки UI Максима пока отсутствуют в общем Git; для трёхстороннего слияния подготовлен отдельный план `PLAN-maxim-ui-sync-2026-08-17.md`.
 - [2026-08-16] Desktop v0.9.23 подготовлен после переезда Trophy на Alpha-KM: убраны пять обращений к мёртвому DE2, единый API base переведён на `https://trophynav.ru`, восстановлены каталог/Wikimapia/лицензии/sync/live, исправлены free-ключи и сохранение четырёх специальных Яндекс/Bing слоёв. GitHub Actions deploy переключён на Alpha-KM через `tnd-deploy`; локальные проверки и подписанная сборка зелёные, тег ждёт QA sign-off Тома.
 - [2026-04-18/19] Desktop parity + production monitoring stabilized: закрыт регресс `Ozi/SAS .rte` import/export в desktop, подтянут основной Android-like monitoring на desktop (статусы, direct/group messages, inbox, attachments, group-share, richer share presets, thread badges, import вложений из истории), серверный `sync-server` выровнен по live API-контрактам. На проде найден ложный дефект: файл `/opt/tnd-sync/server.js` уже содержал новые `live2` route-ы, но `pm2 tnd-sync` продолжал отвечать как старая версия. Проверка отдельным запуском на `:9325` подтвердила корректность кода; после `pm2 delete/start/save` production `9222` и внешний `https://trophynav.ru/api/live2/*` начали отдавать рабочие `favorites/status/messages/group-share`. Публичный smoke через временные email подтвердил direct/group messaging, inbox, share delivery, download и ack.
 - [2026-04-17] Desktop auto-update fixed end-to-end: выпущен GitHub Release `v0.9.3` с Windows NSIS, Windows MSI, Linux AppImage и updater manifest. На проде найден конфликт каналов: `trophynav.ru/api/updates/latest.json` и `/updates/latest.json` оба указывали на Android `latest.json`. Исправлено: production `tnd-sync` на DE2 патчен на отдельные desktop manifest paths `/var/www/updates/latest-desktop.json` и `/var/www/updates/latest-desktop-beta.json`, `pm2 tnd-sync` перезапущен, публичная проверка `api/updates/latest.json` теперь возвращает desktop `0.9.3`, при этом Android stable/beta не сломаны. Для будущих релизов в GitHub repo настроены secrets `UPDATES_DEPLOY_HOST`, `UPDATES_DEPLOY_SSH_KEY`, `UPDATES_DEPLOY_USER` и vars `UPDATES_DEPLOY_PATH`, `UPDATES_BETA_DEPLOY_PATH`, `UPDATES_DEPLOY_PORT`; выделен отдельный deploy key `trophy_nav_actions_ed25519` на DE2.

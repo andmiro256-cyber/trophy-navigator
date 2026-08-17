@@ -2,7 +2,7 @@
 
 **Дата:** 2026-08-16, 21:37 MSK
 **Автор:** Opus (Claude Opus 5, ноутбук Andre)
-**Статус:** утверждён Andre 2026-08-16 в 21:43 MSK; реализация v0.9.23 подготовлена Тимом, ожидает обязательный QA sign-off Тома перед тегом и публикацией.
+**Статус:** выполнен. Andre утвердил план 2026-08-16 в 21:43 MSK; `v0.9.23` опубликован 2026-08-16, обязательные CI/public/site smoke и финальный QA Тома завершены 2026-08-17.
 
 **Корректировка по QA Тома, 22:53 MSK:** первый раунд `DEV-1201` дал NO-GO по релизному workflow. До повторного sign-off release переведён в tag-only режим с concurrency, legacy root/DE2 fallback удалён, добавлены fail-closed allowlist Alpha-KM + `tnd-deploy` + путей и автоматическая выкладка AppImage/NSIS перед manifest с SHA-256/public HEAD smoke. Ручная раскладка остаётся только аварийным fallback до публикации manifest.
 
