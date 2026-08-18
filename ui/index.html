@@ -402,6 +402,9 @@
   .wpt-table td.wpt-pick-cell label { position: absolute; inset: 0; display: flex;
     align-items: center; justify-content: center; cursor: pointer; margin: 0; }
   .wpt-cb { width: 26px; height: 26px; cursor: pointer; margin: 0; flex: none; }
+  /* Курсор подсказывает, что трек здесь можно схватить и потянуть */
+  .leaflet-container.track-grabbable { cursor: pointer !important; }
+  .leaflet-container.track-grabbing { cursor: grabbing !important; }
   .leaflet-waypointMarkers-pane { overflow: visible !important; }
   .tnd-wp-marker { overflow: visible !important; }
   .tnd-wp-marker .tnd-wp-dot {
@@ -6392,6 +6395,9 @@ const TRACK_MARKER_DETAIL_ZOOM = 17;
 const TRACK_MARKER_GLOBAL_FULL_RENDER_LIMIT = 1200;
 const TRACK_MARKER_BOUNDS_PAD = 0.25;
 const TRACK_POINT_HIT_RADIUS_PX = 12;
+const TRACK_RESHAPE_DRAG_THRESHOLD_PX = 4;
+const TRACK_GRAB_RADIUS_PX = 8;
+const TRACK_HOVER_THROTTLE_MS = 40;
 let trackHoverTooltip = null;
 let trackHoverTooltipTarget = null;
 let trackPointPopup = null;
@@ -6422,6 +6428,14 @@ function isTrackEditActive(track) {
 function canEditTrackGeometry(track) {
   if (!track || objectsLocked) return false;
   return isTrackDrawActive(track) || isTrackEditActive(track);
+}
+
+// Правка формы трека мышью доступна и без режима редактирования — пока объекты
+// не заперты замком. Замок остаётся единственной защитой от случайной правки.
+function canReshapeTrack(track) {
+  if (!track || objectsLocked) return false;
+  if (isTrackDrawActive(track) || isTrackEditActive(track)) return true;
+  return track.visible !== false;
 }
 
 function isLargeTrack(track) {
@@ -6620,6 +6634,41 @@ function formatTrackPointTooltip(track, idx) {
   return html;
 }
 
+// Тянет точку трека за мышью. Работает по индексу, а не по маркеру: у длинных
+// треков маркеры отрисованы не всегда, а тащить точку нужно в любом случае.
+function beginTrackPointDrag(track, idx, options = {}) {
+  if (!track?.points?.[idx]) return;
+  closeTrackPointHoverTooltip();
+  const undoSnapshot = options.undoSnapshot || snapshotTrackGeometry(track);
+  let moved = !!options.alreadyMoved;
+  const onMove = ev => {
+    const latlng = map.mouseEventToLatLng(ev.originalEvent || ev);
+    const marker = getTrackMarker(track, idx);
+    if (marker) marker.setLatLng(latlng);
+    track.points[idx] = latlng;
+    if (track.polyline) track.polyline.setLatLngs(track.points);
+    moved = true;
+  };
+  const onUp = () => {
+    map.off('mousemove', onMove);
+    map.off('mouseup', onUp);
+    map.dragging.enable();
+    map.getContainer()?.classList.remove('track-grabbing');
+    if (moved) {
+      pushUndo({ type: 'trackGeometry', track, snapshot: undoSnapshot });
+      touchTrack(track);
+      updateTrackBuildPanel(track);
+    }
+    syncTrackMarkers(track);
+  };
+  map.dragging.disable();
+  map.getContainer()?.classList.add('track-grabbing');
+  map.on('mousemove', onMove);
+  map.on('mouseup', onUp);
+  // Точка, рождённая перетаскиванием, должна сразу оказаться под курсором
+  if (options.initialEvent) onMove(options.initialEvent);
+}
+
 function createTrackMarker(track, idx) {
   const isSelected = currentTrackEdit?.track?.id === track.id && currentTrackEdit?.selectedPointIdx === idx;
   const r = canEditTrackGeometry(track) ? Math.max(track.pointSize ?? 3, 5) : (track.pointSize ?? 3);
@@ -6644,37 +6693,14 @@ function createTrackMarker(track, idx) {
   m.on('mouseout', closeTrackPointHoverTooltip);
   // Перетаскивание левой кнопкой
   m.on('mousedown', function(e) {
-    if (!canEditTrackGeometry(track)) return;
+    if (!canReshapeTrack(track)) return;
     if (e.originalEvent?.button !== 0) return; // только ЛКМ
     L.DomEvent.stop(e);
     if (isTrackEditActive(track)) {
       currentTrackEdit.selectedPointIdx = m._trackIdx;
       updateTrackBuildPanel(track);
     }
-    closeTrackPointHoverTooltip();
-    const undoSnapshot = snapshotTrackGeometry(track);
-    let moved = false;
-    const onMove = ev => {
-      const latlng = map.mouseEventToLatLng(ev.originalEvent || ev);
-      m.setLatLng(latlng);
-      track.points[m._trackIdx] = latlng;
-      if (track.polyline) track.polyline.setLatLngs(track.points);
-      moved = true;
-    };
-    const onUp = () => {
-      map.off('mousemove', onMove);
-      map.off('mouseup', onUp);
-      map.dragging.enable();
-      if (moved) {
-        pushUndo({ type: 'trackGeometry', track, snapshot: undoSnapshot });
-        touchTrack(track);
-        updateTrackBuildPanel(track);
-      }
-      if (isTrackEditActive(track)) syncTrackMarkers(track);
-    };
-    map.dragging.disable();
-    map.on('mousemove', onMove);
-    map.on('mouseup', onUp);
+    beginTrackPointDrag(track, m._trackIdx);
   });
   // ПКМ — контекстное меню
   m.on('contextmenu', function(e) {
@@ -6768,6 +6794,73 @@ function scheduleTrackMarkerRefresh() {
 
 map.on('zoomend moveend', scheduleTrackMarkerRefresh);
 
+// Захват трека мышью. Работает в режиме навигации и в режиме правки трека:
+// подвёл курсор к линии — она подсвечивается курсором-ладонью, потянул —
+// в этой точке трек ломается и следует за мышью. Замок 🔒 всё это отключает.
+function trackGestureAllowed() {
+  return currentMode === 'hand' || currentMode === 'trackedit';
+}
+
+let trackHoverCheckedAt = 0;
+map.on('mousemove', e => {
+  if (!trackGestureAllowed()) { setTrackGrabCursor(false); return; }
+  const now = Date.now();
+  if (now - trackHoverCheckedAt < TRACK_HOVER_THROTTLE_MS) return;
+  trackHoverCheckedAt = now;
+  const hit = findTrackNearPoint(e.latlng);
+  setTrackGrabCursor(hit && canReshapeTrack(hit.track));
+});
+
+// Слушаем на этапе перехвата: иначе Leaflet успевает начать перетаскивание карты
+// и наш жест уже не остановить — dragging.disable() на запущенный drag не влияет.
+map.getContainer().addEventListener('mousedown', onTrackGrabMouseDown, true);
+
+function onTrackGrabMouseDown(nativeEvent) {
+  if (nativeEvent.button !== 0 || !trackGestureAllowed()) return;
+  if (nativeEvent.target?.closest?.('.leaflet-control, .leaflet-popup, .modal, .ctx-menu')) return;
+  const latlng = map.mouseEventToLatLng(nativeEvent);
+  const hit = findTrackNearPoint(latlng);
+  if (!hit || !canReshapeTrack(hit.track)) return;
+  const track = hit.track;
+  nativeEvent.preventDefault();
+  nativeEvent.stopPropagation();
+
+  // Курсор у готовой вершины — тянем её саму, новую точку не плодим
+  const vertex = findNearestTrackPointHit(track, latlng);
+  if (vertex) {
+    if (isTrackEditActive(track)) {
+      currentTrackEdit.selectedPointIdx = vertex.idx;
+      updateTrackBuildPanel(track);
+    }
+    beginTrackPointDrag(track, vertex.idx);
+    return;
+  }
+
+  // Иначе ждём движения: точка рождается только когда курсор реально поехал,
+  // чтобы обычный клик по треку по-прежнему открывал список.
+  const startPoint = map.mouseEventToContainerPoint(nativeEvent);
+  const startLatLng = latlng;
+  let handedOver = false;
+  const cleanup = () => {
+    map.off('mousemove', onMove);
+    map.off('mouseup', onUp);
+    if (!handedOver) map.dragging.enable();
+  };
+  const onMove = ev => {
+    const moveEvent = ev.originalEvent || ev;
+    if (map.mouseEventToContainerPoint(moveEvent).distanceTo(startPoint) < TRACK_RESHAPE_DRAG_THRESHOLD_PX) return;
+    handedOver = true;
+    cleanup();
+    const undoSnapshot = snapshotTrackGeometry(track);
+    const insertIndex = insertTrackPointIntoSegment(track, startLatLng, { skipUndo: true });
+    beginTrackPointDrag(track, insertIndex, { undoSnapshot, alreadyMoved: true, initialEvent: ev });
+  };
+  const onUp = () => cleanup();
+  map.dragging.disable();
+  map.on('mousemove', onMove);
+  map.on('mouseup', onUp);
+}
+
 function findNearestTrackPointHit(track, latlng, maxPx = TRACK_POINT_HIT_RADIUS_PX) {
   if (!track || track.visible === false || !track.points?.length) return null;
   if (!shouldShowTrackMarkers(track)) return null;
@@ -6781,6 +6874,38 @@ function findNearestTrackPointHit(track, latlng, maxPx = TRACK_POINT_HIT_RADIUS_
     if (!best || dist < best.dist) best = { idx, point, dist };
   });
   return best;
+}
+
+// Линии треков рисуются на своём canvas, а поверх него лежит ещё один canvas
+// Leaflet — он перехватывает мышь целым прямоугольником, поэтому события до самой
+// линии не доходят. Ищем трек под курсором сами, на уровне карты.
+function findTrackNearPoint(latlng, maxPx = TRACK_GRAB_RADIUS_PX) {
+  if (!latlng || !map) return null;
+  const target = map.latLngToLayerPoint(latlng);
+  const viewBounds = map.getBounds().pad(0.1);
+  let best = null;
+  for (const track of tracks) {
+    if (!track || track.visible === false || !track.points || track.points.length < 2) continue;
+    const trackBounds = track.polyline?.getBounds?.();
+    if (trackBounds?.isValid?.() && !trackBounds.pad(0.05).contains(latlng)) continue;
+    const points = track.points;
+    for (let i = 0; i < points.length - 1; i++) {
+      const from = points[i];
+      const to = points[i + 1];
+      if (!viewBounds.contains(from) && !viewBounds.contains(to)) continue;
+      const dist = L.LineUtil.pointToSegmentDistance(
+        target, map.latLngToLayerPoint(from), map.latLngToLayerPoint(to)
+      );
+      if (dist <= maxPx && (!best || dist < best.dist)) best = { track, dist, segmentIndex: i };
+    }
+  }
+  return best;
+}
+
+function setTrackGrabCursor(active) {
+  const container = map?.getContainer();
+  if (!container) return;
+  container.classList.toggle('track-grabbable', !!active);
 }
 
 function showTrackPointHoverTooltip(track, idx) {
@@ -7090,19 +7215,28 @@ function getTrackSegmentInsertIndex(track, latlng) {
   return bestIndex;
 }
 
-function insertTrackPointAtSegment(track, latlng) {
-  if (!isTrackEditActive(track)) {
-    showToast('Включите режим редактирования трека');
-    return;
-  }
+// Вставляет точку в ближайший сегмент и возвращает её индекс.
+// undo пишется здесь, если вызывающий не взял снимок на себя.
+function insertTrackPointIntoSegment(track, latlng, options = {}) {
   const insertIndex = getTrackSegmentInsertIndex(track, latlng);
-  pushUndo({ type: 'trackGeometry', track, snapshot: snapshotTrackGeometry(track) });
+  if (!options.skipUndo) {
+    pushUndo({ type: 'trackGeometry', track, snapshot: snapshotTrackGeometry(track) });
+  }
   track.points.splice(insertIndex, 0, latlng);
   if (!track.pointsData) track.pointsData = [];
   track.pointsData.splice(insertIndex, 0, {});
   if (track.polyline) track.polyline.setLatLngs(track.points);
-  syncTrackMarkers(track);
   if (currentTrackEdit?.track?.id === track.id) currentTrackEdit.selectedPointIdx = insertIndex;
+  syncTrackMarkers(track);
+  return insertIndex;
+}
+
+function insertTrackPointAtSegment(track, latlng) {
+  if (!canReshapeTrack(track)) {
+    showToast(objectsLocked ? '🔒 Объекты заблокированы' : 'Трек скрыт — включите его отображение');
+    return;
+  }
+  insertTrackPointIntoSegment(track, latlng);
   touchTrack(track);
   updateTrackBuildPanel(track);
   showToast('Точка вставлена в трек');
