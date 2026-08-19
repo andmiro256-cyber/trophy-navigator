@@ -427,16 +427,18 @@ fn download_offline_map_blocking<R: Runtime>(
             batch_pending = 0;
         }
 
-        if done % 10 == 0 || done == total_tasks {
+        if done.is_multiple_of(10) || done == total_tasks {
             emit_offline_download_progress(
                 &app,
-                done,
-                total_tasks,
-                saved,
-                errors,
-                bytes_total,
-                false,
-                false,
+                OfflineDownloadProgress {
+                    done,
+                    total: total_tasks,
+                    saved,
+                    errors,
+                    bytes: bytes_total,
+                    finished: false,
+                    aborted: false,
+                },
             );
         }
     }
@@ -451,13 +453,15 @@ fn download_offline_map_blocking<R: Runtime>(
 
     emit_offline_download_progress(
         &app,
-        done,
-        total_tasks,
-        saved,
-        errors,
-        bytes_total,
-        true,
-        aborted,
+        OfflineDownloadProgress {
+            done,
+            total: total_tasks,
+            saved,
+            errors,
+            bytes: bytes_total,
+            finished: true,
+            aborted,
+        },
     );
 
     Ok(OfflineDownloadResult {
@@ -559,26 +563,9 @@ fn stored_download_zoom(format: &str, z: i32) -> i32 {
 
 fn emit_offline_download_progress<R: Runtime>(
     app: &AppHandle<R>,
-    done: u64,
-    total: u64,
-    saved: u64,
-    errors: u64,
-    bytes: u64,
-    finished: bool,
-    aborted: bool,
+    progress: OfflineDownloadProgress,
 ) {
-    let _ = app.emit(
-        "offline-download-progress",
-        OfflineDownloadProgress {
-            done,
-            total,
-            saved,
-            errors,
-            bytes,
-            finished,
-            aborted,
-        },
-    );
+    let _ = app.emit("offline-download-progress", progress);
 }
 
 fn build_download_tile_url(
@@ -877,7 +864,7 @@ fn offline_table_columns(conn: &Connection, table: &str) -> Result<HashSet<Strin
 
 fn detect_mbtiles_source(conn: &Connection) -> Result<OfflineTileSource, String> {
     let metadata_scheme = metadata_value(conn, "scheme").unwrap_or_default();
-    let mbtiles_tms = metadata_scheme.to_ascii_lowercase() != "xyz";
+    let mbtiles_tms = !metadata_scheme.eq_ignore_ascii_case("xyz");
     let metadata_format = metadata_value(conn, "format").unwrap_or_default();
     let mut mime = match metadata_format.to_ascii_lowercase().as_str() {
         value if value.contains("jpg") || value.contains("jpeg") => "image/jpeg".to_string(),

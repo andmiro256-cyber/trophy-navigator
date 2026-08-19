@@ -1172,7 +1172,7 @@
 
   <!-- Режимы навигации -->
   <div class="tb-group" style="background:rgba(15,52,96,0.4);border:1px solid #1a3a6a;border-radius:6px;padding:2px 4px;gap:2px">
-    <button class="tb-btn active" id="btn-hand" onclick="setMode('hand')" title="Навигация (H)" style="font-size:14px">🧭</button>
+    <button class="tb-btn active" id="btn-hand" onclick="requestHandMode()" title="Навигация (H)" style="font-size:14px">🧭</button>
     <button class="tb-btn" id="btn-ruler" onclick="toggleMode('ruler')" title="Линейка (M)" style="font-size:14px">📐</button>
     <button class="tb-btn" id="btn-routing" onclick="openModal('modal-routing')" title="Маршрут по дорогам" style="font-size:14px">🛣</button>
   </div>
@@ -3115,9 +3115,23 @@ function xmlTextByLocalNames(root, localNames = [], options = {}) {
   return '';
 }
 
-function xmlExtensionText(root, localNames = []) {
+function xmlExtensionNode(root, localNames = []) {
   const ext = xmlDirectChildByLocalName(root, 'extensions') || xmlDescendantsByLocalName(root, 'extensions')[0];
-  return xmlTextByLocalNames(ext, localNames);
+  const names = Array.isArray(localNames) ? localNames : [localNames];
+  for (const name of names) {
+    const node = xmlDescendantsByLocalName(ext, name)[0];
+    if (node) return node;
+  }
+  return null;
+}
+
+function xmlExtensionText(root, localNames = []) {
+  return xmlExtensionNode(root, localNames)?.textContent?.trim() || '';
+}
+
+function routeDashArrayFromGpx(root) {
+  const node = xmlExtensionNode(root, 'dashArray');
+  return node ? String(node.textContent || '').trim() : '8 4';
 }
 
 function parsePositiveNumber(value, fallback = 0) {
@@ -3772,8 +3786,34 @@ function setMode(mode) {
   if (mode !== 'hand') showToast('Режим: ' + modeNames[mode]);
 }
 function toggleMode(mode) {
+  if (focusActiveGeometrySession()) return;
   if (currentMode === mode) { setMode('hand'); showToast('Навигация'); }
   else setMode(mode);
+}
+
+function getActiveGeometrySession() {
+  if (currentTrackEdit) return { mode: 'trackedit', modal: 'modal-tracks', label: 'редактирование трека' };
+  if (currentTrackDraw) return { mode: 'track', modal: 'modal-tracks', label: currentTrackDraw.isNew ? 'рисование трека' : 'продолжение трека' };
+  if (currentRouteDraw) {
+    const editing = currentRouteSession?.mode === 'edit';
+    return { mode: editing ? 'routeedit' : 'route', modal: 'modal-routes', label: editing ? 'редактирование маршрута' : 'создание маршрута' };
+  }
+  return null;
+}
+
+function focusActiveGeometrySession() {
+  const active = getActiveGeometrySession();
+  if (!active) return false;
+  setMode(active.mode);
+  openModal(active.modal);
+  showToast(`Сначала завершите или отмените ${active.label}`);
+  return true;
+}
+
+function requestHandMode() {
+  if (focusActiveGeometrySession()) return;
+  setMode('hand');
+  showToast('Навигация');
 }
 
 // ─── БЛОКИРОВКА ПЕРЕМЕЩЕНИЯ ОБЪЕКТОВ ───
@@ -3816,8 +3856,7 @@ document.addEventListener('keydown', e => {
     case ' ':
     case 'h': case 'H':
       e.preventDefault();
-      setMode('hand');
-      showToast('Навигация');
+      requestHandMode();
       break;
     case 'w': case 'W':
       if (!e.ctrlKey) toggleMode('waypoint');
@@ -3880,7 +3919,10 @@ map.on('dblclick', e => {
     finishTrackDraw();
   }
   else if (currentMode === 'trackedit') finishTrackEdit();
-  else if (currentMode === 'route' || currentMode === 'routeedit') finishRouteDraw();
+  else if (currentMode === 'route' || currentMode === 'routeedit') {
+    removeDuplicateRouteDoubleClickPoint();
+    finishRouteDraw();
+  }
 });
 
 // ─────────────────────────────────────────────
@@ -6666,6 +6708,7 @@ function deleteTrackObject(track, options = {}) {
   pruneLoadedSourceFiles();
   updateTrackList();
   if (!options.silent) {
+    undoStack.length = 0;
     saveState();
     showToast('Трек удалён');
   }
@@ -7128,11 +7171,8 @@ function createTrackFromPoints(points, name, options = {}) {
 }
 
 function startNewTrack() {
-  if (currentTrackDraw || currentTrackEdit) {
-    openModal('modal-tracks');
-    showToast('Сначала завершите текущее редактирование трека');
-    return;
-  }
+  if (focusActiveGeometrySession()) return;
+  ensureWorkObjectsVisibleForEditing();
   currentTrackSnapshot = null;
   currentTrackUndoToken = {};
   currentTrackDraw = {
@@ -7164,6 +7204,7 @@ function startNewTrack() {
 }
 function addTrackPoint(latlng) {
   if (!currentTrackDraw) return;
+  ensureWorkObjectsVisibleForEditing();
   currentTrackDraw.points.push(latlng);
   if (!currentTrackDraw.pointsData) currentTrackDraw.pointsData = [];
   currentTrackDraw.pointsData.push({});
@@ -7244,6 +7285,7 @@ function cancelTrackDraw() {
   setMode('hand');
   document.getElementById('track-build-panel').style.display = 'none';
   updateTrackList();
+  saveState();
   showToast('Рисование трека отменено');
 }
 function renameTrack(id, newName) {
@@ -7375,10 +7417,8 @@ function insertTrackPointAtSegment(track, latlng) {
 function startTrackEdit() {
   const track = tracks.find(item => item.id === selectedTrackId);
   if (!track) return;
-  if (currentTrackDraw || currentTrackEdit) {
-    showToast('Сначала завершите текущее редактирование трека');
-    return;
-  }
+  if (focusActiveGeometrySession()) return;
+  ensureWorkObjectsVisibleForEditing();
   if (track.visible === false) {
     track.visible = true;
     if (track.polyline && !map.hasLayer(track.polyline)) track.polyline.addTo(map);
@@ -7415,6 +7455,8 @@ function finishTrackEdit() {
   document.getElementById('track-build-panel').style.display = 'none';
   syncTrackMarkers(track);
   updateTrackList();
+  updateSyncCounts();
+  saveState();
   openModal('modal-tracks');
   showToast('✓ Изменения трека сохранены');
 }
@@ -7430,6 +7472,7 @@ function cancelTrackEdit() {
   setMode('hand');
   document.getElementById('track-build-panel').style.display = 'none';
   updateTrackList();
+  saveState();
   openModal('modal-tracks');
   showToast('Редактирование трека отменено');
 }
@@ -7550,10 +7593,8 @@ function reverseSelectedTrack() {
 function continueSelectedTrack() {
   const t = tracks.find(track => track.id === selectedTrackId);
   if (!t) return;
-  if (currentTrackDraw || currentTrackEdit) {
-    showToast('Сначала завершите текущее редактирование трека');
-    return;
-  }
+  if (focusActiveGeometrySession()) return;
+  ensureWorkObjectsVisibleForEditing();
   currentTrackSnapshot = snapshotTrackFullState(t);
   currentTrackUndoToken = {};
   currentTrackDraw = t;
@@ -8081,6 +8122,8 @@ function updateCurrentRouteBuildStyle() {
 }
 
 function startNewRoute() {
+  if (focusActiveGeometrySession()) return;
+  ensureWorkObjectsVisibleForEditing();
   currentRouteDraw = {
     id: routeIdCounter,
     name: 'Маршрут ' + routeIdCounter,
@@ -8096,7 +8139,8 @@ function startNewRoute() {
     createdAt: getIsoNow(),
     updatedAt: getIsoNow(),
     source: 'desktop',
-    syncedAt: null
+    syncedAt: null,
+    isNew: true
   };
   currentRouteSession = { mode: 'create' };
   routeIdCounter++;
@@ -8115,10 +8159,8 @@ function startRouteEdit(routeId = selectedRouteId) {
     showToast('Сначала выберите маршрут');
     return;
   }
-  if (currentRouteDraw && currentRouteDraw !== route) {
-    showToast('Сначала завершите текущее редактирование маршрута');
-    return;
-  }
+  if (focusActiveGeometrySession()) return;
+  ensureWorkObjectsVisibleForEditing();
   currentRouteDraw = route;
   selectedRouteId = route.id;
   currentRouteSession = { mode: 'edit', snapshot: cloneRouteState(route) };
@@ -8133,6 +8175,7 @@ function startRouteEdit(routeId = selectedRouteId) {
 
 function addRoutePoint(latlng, label, options = {}) {
   if (!currentRouteDraw) return;
+  ensureWorkObjectsVisibleForEditing();
   const num = currentRouteDraw.points.length + 1;
   currentRouteDraw.points.push(latlng);
   currentRouteDraw.labels.push(label || `КП${num}`);
@@ -8191,6 +8234,17 @@ function removeRouteBuildPoint(index) {
   updateRouteBuildPanelState();
   updateRouteBuildList();
 }
+
+function removeDuplicateRouteDoubleClickPoint() {
+  const route = currentRouteDraw;
+  if (!route || route.points.length < 2) return false;
+  const previous = map.latLngToContainerPoint(route.points[route.points.length - 2]);
+  const last = map.latLngToContainerPoint(route.points[route.points.length - 1]);
+  if (previous.distanceTo(last) > 6) return false;
+  removeRouteBuildPoint(route.points.length - 1);
+  return true;
+}
+
 function finishRouteDraw() {
   if (!currentRouteDraw) return;
   if (currentRouteDraw.points.length < 2) { showToast('⚠ Нужно минимум 2 КП'); return; }
@@ -8209,12 +8263,15 @@ function finishRouteDraw() {
   }
   setMode('hand');
   const r = currentRouteDraw;
+  r.isNew = false;
   currentRouteDraw = null;
   currentRouteSession = null;
   updateRouteBuildPanelState();
   selectedRouteId = r.id;
   updateRouteList();
   selectRouteById(r.id);
+  updateSyncCounts();
+  saveState();
   openModal('modal-routes');
   showToast((isEdit ? '✓ Маршрут обновлён: ' : '✓ Маршрут: ') + r.name + ' · ' + routeLen(r).toFixed(1) + ' км · ' + r.points.length + ' КП');
 }
@@ -8232,6 +8289,7 @@ function cancelRouteDraw() {
   setMode('hand');
   updateRouteBuildPanelState();
   updateRouteList();
+  saveState();
   openModal('modal-routes');
   showToast(isEdit ? 'Редактирование маршрута отменено' : 'Создание маршрута отменено');
 }
@@ -8244,6 +8302,7 @@ function deleteRoute(id) {
   const r = routes.find(r => r.id === id);
   if (!r) return;
   removeRouteObject(r);
+  undoStack.length = 0;
   updateRouteList();
   saveState();
   showToast('Маршрут удалён');
@@ -8599,7 +8658,7 @@ function loadGPXRoutes(text, fname, options = {}) {
     const pointWaypointIds = [];
     const routeColor = xmlExtensionText(rte, ['color', 'displaycolor']) || null;
     const routeWidth = parseInt(xmlExtensionText(rte, 'width'), 10) || 3;
-    const routeDashArray = xmlExtensionText(rte, 'dashArray');
+    const routeDashArray = routeDashArrayFromGpx(rte);
     xmlDescendantsByLocalName(rte, 'rtept').forEach((pt, i) => {
       const lat = parseFloat(pt.getAttribute('lat')), lon = parseFloat(pt.getAttribute('lon'));
       if (isNaN(lat) || isNaN(lon)) return;
@@ -8616,7 +8675,7 @@ function loadGPXRoutes(text, fname, options = {}) {
     const route = createRouteFromPoints(points, name, labels, {
       color: routeColor || undefined,
       width: routeWidth,
-      dashArray: routeDashArray || '8 4',
+      dashArray: routeDashArray,
       pointRadii,
       pointWaypointIds
     });
@@ -8873,6 +8932,7 @@ function tile2lng(x, z) { return x / Math.pow(2, z) * 360 - 180; }
 
 // ─── Polygon Area Picker ───
 function startAreaSelect() {
+  if (focusActiveGeometrySession()) return;
   if (dlPolygonMode) return;
   dlPolygonMode = true;
   dlPolygonPoints = [];
@@ -10627,7 +10687,7 @@ function collectState(options = {}) {
         syncedAt: t.syncedAt || null
       };
     }),
-    routes: routes.map(r => {
+    routes: routes.filter(r => !r.isNew && r.points?.length >= 2).map(r => {
       ensureRouteMeta(r, { touch: false });
       return {
         id: r.id,
@@ -10847,6 +10907,19 @@ function resetWorkObjectsVisibilityState() {
   updateWorkObjectsVisibilityButton();
 }
 
+function isCurrentTemporaryMapLayer(layer) {
+  return !!(
+    layer && (
+      rulerLines.includes(layer) ||
+      rulerMarkers.includes(layer) ||
+      searchMarker === layer ||
+      dlSelectRect === layer ||
+      dlPolygonShape === layer ||
+      dlPolygonMarkers.includes(layer)
+    )
+  );
+}
+
 function hideAllWorkObjects() {
   if (workObjectsVisibilitySnapshot) return;
   const temporaryLayers = [
@@ -10921,7 +10994,7 @@ function showAllWorkObjects() {
     if (item.markersVisible && item.route.markersLayer) item.route.markersLayer.addTo(map);
   });
   snapshot.temporaryLayers.forEach(item => {
-    if (item.visible && item.layer) item.layer.addTo(map);
+    if (item.visible && isCurrentTemporaryMapLayer(item.layer)) item.layer.addTo(map);
   });
   updateWorkObjectsVisibilityButton();
   showToast('Рабочие объекты снова показаны');
@@ -10963,6 +11036,7 @@ function clearTemporaryMapObjects() {
 }
 
 function clearCurrentData() {
+  undoStack.length = 0;
   resetWorkObjectsVisibilityState();
   // Remove all waypoints from map
   waypoints.forEach(m => { if (m.wpCircle) map.removeLayer(m.wpCircle); m.remove(); });
@@ -11230,6 +11304,7 @@ async function clearDataCategoryConfirmed(category) {
     return;
   }
 
+  undoStack.length = 0;
   pruneLoadedSourceFiles();
   updateSetSelector();
   updateWptTable();
@@ -11313,6 +11388,7 @@ function clearSelectedDataConfirmed() {
     waypointSets.push({ id: waypointSetIdCounter++, name: 'Основной', visible: true, waypoints: [] });
     activeSetId = waypointSets[0].id;
   }
+  undoStack.length = 0;
   pruneLoadedSourceFiles();
   refreshOsrmRouteUI();
   resetWorkObjectsVisibilityState();
@@ -11434,9 +11510,9 @@ function applyState(state) {
     const setVal = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
     setVal('setting-default-radius', s.defaultRadius);
     setVal('setting-color-wpt', s.colorWpt);
-    setVal('setting-track-color-mode', s.trackColorMode || 'fixed');
+    setVal('setting-track-color-mode', s.trackColorMode || 'palette');
     setVal('setting-color-track', s.colorTrack);
-    setVal('setting-route-color-mode', s.routeColorMode || 'fixed');
+    setVal('setting-route-color-mode', s.routeColorMode || 'palette');
     setVal('setting-color-route', s.colorRoute);
     updateColorModeUI('track');
     updateColorModeUI('route');
@@ -11551,6 +11627,7 @@ function updateRulerPanel() {
 }
 
 function startRulerFrom(latlng) {
+  if (focusActiveGeometrySession()) return;
   clearRuler();
   setMode('ruler');
   addRulerPoint(latlng);
@@ -14282,6 +14359,7 @@ let routeToLatLng = null;
 let routePickMode = null;
 
 function startRoutePick(point) {
+  if (focusActiveGeometrySession()) return;
   routePickMode = point;
   document.getElementById('route-pick-a').classList.toggle('picking', point === 'A');
   document.getElementById('route-pick-b').classList.toggle('picking', point === 'B');
