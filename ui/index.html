@@ -102,6 +102,8 @@
   [data-theme="light"] .tb-btn { background: #e8ecf0; border-color: #b0b8c4; color: #2a3548; }
   [data-theme="light"] .tb-btn:hover { background: #d0d8e4; border-color: #3a78c4; color: #1a2030; }
   [data-theme="light"] .tb-btn.active { background: #d0e0f5; border-color: #3a78c4; color: #2a5a9a; }
+  [data-theme="light"] .tb-tag { background: #dceafb; border-color: #4b75a5; color: #174f8f; }
+  [data-theme="light"] .tb-tag:hover { background: #c7dcf5; border-color: #245f9f; color: #103f74; }
   [data-theme="light"] .tb-btn.settings-btn { background: #e0f0e0; border-color: #8aba8a; color: #2a6a2a; }
   [data-theme="light"] .tb-btn.list-btn { background: #f0f0e0; border-color: #baba80; color: #5a5a2a; }
   [data-theme="light"] .tb-label { color: #6a7a8a; }
@@ -120,8 +122,9 @@
   [data-theme="light"] .prop-field input,
   [data-theme="light"] .prop-field select,
   [data-theme="light"] .prop-field textarea { background: #f0f2f5; border-color: #b0b8c4; color: #1a2030; }
-  [data-theme="light"] .btn-primary { background: #3a78c4; border-color: #2a68b4; color: #fff; }
+  [data-theme="light"] .btn-primary { background: #2f6fb8; border-color: #245a98; color: #fff; }
   [data-theme="light"] .btn-secondary { background: #e8ecf0; border-color: #b0b8c4; color: #3a5068; }
+  [data-theme="light"] .danger-btn { color: #a61b1b; border-color: #b56b6b; }
   [data-theme="light"] #ctx-menu,
   [data-theme="light"] #ctx-menu-map,
   [data-theme="light"] #ctx-menu-track { background: var(--modal-bg); border-color: var(--border-subtle); box-shadow: var(--panel-shadow); }
@@ -187,7 +190,9 @@
     white-space: nowrap;
     display: flex; align-items: center; gap: 5px;
     transition: all 0.15s;
-    height: 38px;
+    min-width: 40px;
+    height: 40px;
+    justify-content: center;
     flex-shrink: 0;
   }
   .tb-btn:hover { background: var(--bg-hover); border-color: var(--border-bright); color: var(--text-on-solid); }
@@ -223,12 +228,19 @@
     flex-shrink: 0;
   }
   .tb-group-label {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    font-family: inherit;
     font-size: 18px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--text-link);
     font-weight: 700;
     line-height: 1;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
     cursor: pointer;
     padding: 4px 6px;
     border-radius: 6px;
@@ -245,8 +257,8 @@
     border: 1px solid #2a5a9a;
     border-radius: 6px;
     color: #7ec8ff;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     cursor: pointer;
     font-size: 16px;
     display: flex;
@@ -271,6 +283,31 @@
     padding: 2px 6px;
     gap: 4px;
   }
+  .toolbar-search-box:focus-within { border-color: var(--border-bright); box-shadow: 0 0 0 2px var(--bg-selected-soft); }
+  .search-clear-btn {
+    appearance: none; background: transparent; border: 0; border-radius: 4px;
+    color: var(--text-muted); cursor: pointer; font-size: 14px;
+    width: 28px; height: 28px; flex: 0 0 28px;
+    align-items: center; justify-content: center;
+  }
+  .search-clear-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .danger-btn { color: #ff9a9a; border-color: rgba(255,154,154,0.55); }
+
+  #toolbar-more-menu {
+    position: fixed; z-index: 4090; min-width: 210px; padding: 6px;
+    background: var(--modal-bg); border: 1px solid var(--border-normal); border-radius: 8px;
+    box-shadow: var(--panel-shadow);
+  }
+  #toolbar-more-menu[hidden] { display: none; }
+  .toolbar-more-item {
+    appearance: none; width: 100%; min-height: 36px; padding: 7px 10px;
+    display: flex; align-items: center; gap: 8px; border: 0; border-radius: 5px;
+    background: transparent; color: var(--text-primary); cursor: pointer;
+    font: 12px/1.2 'Segoe UI', sans-serif; text-align: left;
+  }
+  .toolbar-more-item:hover { background: var(--row-hover); }
+  .toolbar-more-item.active { background: var(--bg-selected-soft); color: var(--text-link); }
+  #btn-more-tools { display: none; }
 
   /* ─── КАРТА ─── */
   #map { flex: 1; position: relative; z-index: 1; min-height: 0; }
@@ -354,8 +391,9 @@
     flex-shrink: 0;
   }
   .modal-close {
+    appearance: none; background: transparent; border: 0;
     cursor: pointer; color: var(--text-secondary); font-size: 16px; line-height: 1;
-    width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
     border-radius: 4px; flex-shrink: 0;
   }
   .modal-close:hover { background: var(--bg-hover); color: var(--text-primary); }
@@ -440,7 +478,7 @@
 
   /* ─── НАСТРОЙКИ ─── */
   .settings-tabs { display: flex; gap: 2px; margin-bottom: 12px; }
-  .tab-btn { background: var(--bg-interactive); border: 1px solid var(--border-normal); border-radius: 4px 4px 0 0; padding: 5px 12px; cursor: pointer; font-size: 12px; color: var(--text-secondary); }
+  .tab-btn { appearance:none; min-height:34px; background: var(--bg-interactive); border: 1px solid var(--border-normal); border-radius: 4px 4px 0 0; padding: 6px 12px; cursor: pointer; font: 12px 'Segoe UI', sans-serif; color: var(--text-secondary); }
   .tab-btn.active { background: var(--bg-sunken); color: var(--text-primary); border-bottom-color: var(--border-subtle); }
   .tab-content { display: none; }
   .tab-content.active { display: block; }
@@ -503,7 +541,7 @@
   }
   .prop-field input:focus, .prop-field textarea:focus { outline: none; border-color: #4a8adf; }
   .icon-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-top: 4px; }
-  .icon-cell { width: 28px; height: 28px; border: 1px solid var(--border-normal); border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+  .icon-cell { width: 32px; height: 32px; border: 1px solid var(--border-normal); border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; }
   .icon-cell:hover { background: var(--row-hover); border-color: var(--border-bright); }
   .icon-cell.selected { background: var(--bg-sunken); border-color: #4a8adf; box-shadow: 0 0 0 2px rgba(74,138,223,0.3); }
   .prop-coords { display: flex; gap: 6px; }
@@ -515,9 +553,9 @@
   }
   .external-map-btn:hover { background: var(--row-hover); color: var(--text-primary); border-color: var(--border-bright); }
   .btn-row { display: flex; gap: 6px; margin-top: 12px; justify-content: flex-end; }
-  .btn-primary { background: var(--accent-blue); border: 1px solid var(--border-bright); color: var(--text-on-solid); border-radius: 5px; padding: 6px 14px; cursor: pointer; font-size: 12px; }
+  .btn-primary { min-height:34px; background: #2f6fb8; border: 1px solid var(--border-bright); color: var(--text-on-solid); border-radius: 5px; padding: 7px 14px; cursor: pointer; font-size: 12px; }
   .btn-primary:hover { filter: brightness(1.08); }
-  .btn-secondary { background: var(--bg-interactive); border: 1px solid var(--border-normal); color: var(--text-secondary); border-radius: 5px; padding: 6px 14px; cursor: pointer; font-size: 12px; }
+  .btn-secondary { min-height:34px; background: var(--bg-interactive); border: 1px solid var(--border-normal); color: var(--text-secondary); border-radius: 5px; padding: 7px 14px; cursor: pointer; font-size: 12px; }
   .btn-secondary:hover { background: var(--row-hover); color: var(--text-primary); }
   .btn-primary:disabled, .btn-secondary:disabled { opacity: 0.45; cursor: default; filter: none; }
 
@@ -625,6 +663,14 @@
   [data-theme="light"] .modal select,
   [data-theme="light"] .modal textarea {
     color-scheme: light;
+  }
+
+  :where(button, input, select, textarea, [role="button"]):focus-visible {
+    outline: 3px solid #80c7ff !important;
+    outline-offset: 2px;
+  }
+  [data-theme="light"] :where(button, input, select, textarea, [role="button"]):focus-visible {
+    outline-color: #175b9e !important;
   }
 
   /* ─── LEAFLET POPUP — тёмная тема ─── */
@@ -790,8 +836,8 @@
      заранее, а не с 1400px. */
   @media (max-width: 1730px) {
     #toolbar { height: 52px; padding: 4px 8px; gap: 2px; }
-    .tb-btn { padding: 4px 8px; font-size: 12px; height: 34px; }
-    .tb-tag { width: 30px; height: 30px; font-size: 14px; }
+    .tb-btn { min-width: 36px; padding: 4px 8px; font-size: 12px; height: 36px; }
+    .tb-tag { width: 36px; height: 36px; font-size: 14px; }
     .tb-sep { height: 32px; margin: 0 4px; }
     .tb-group { gap: 4px; padding: 0 2px; }
     .tb-group-label { font-size: 16px; padding: 3px 4px; }
@@ -836,11 +882,11 @@
   /* ─── АДАПТИВ: предыдущему уровню нужно ~1445px ─── */
   @media (max-width: 1450px) {
     #toolbar { height: 48px; padding: 4px 8px; gap: 2px; }
-    .tb-btn { padding: 4px 8px; font-size: 12px; height: 32px; }
-    .tb-tag { width: 28px; height: 28px; font-size: 14px; }
-    .tb-sep { height: 30px; margin: 0 4px; }
+    .tb-btn { min-width: 34px; padding: 4px 7px; font-size: 12px; height: 34px; }
+    .tb-tag { width: 34px; height: 34px; font-size: 14px; }
+    .tb-sep { height: 30px; margin: 0 2px; }
     .tb-group { gap: 4px; padding: 0 2px; }
-    .tb-group-label { font-size: 15px; padding: 3px 4px; }
+    .tb-group-label { min-height: 34px; font-size: 15px; padding: 3px 4px; }
     #btn-map-layer { min-width: 140px; font-size: 11px; }
     #btn-map-layer .layer-name { max-width: 110px; }
     .toolbar-search { flex-basis: 150px; min-width: 120px; }
@@ -856,23 +902,20 @@
 
   /* ─── АДАПТИВ: 1024x768 ─── */
   @media (max-width: 1210px) {
-    #toolbar { height: 42px; padding: 3px 6px; gap: 2px; }
-    .tb-btn { padding: 3px 6px; font-size: 11px; height: 28px; }
-    .tb-tag { width: 26px; height: 26px; font-size: 13px; }
-    .tb-sep { height: 26px; margin: 0 3px; }
+    #toolbar { height: 44px; padding: 3px 6px; gap: 2px; }
+    .tb-btn { min-width: 34px; padding: 3px 6px; font-size: 11px; height: 34px; }
+    .tb-tag { width: 34px; height: 34px; font-size: 13px; }
+    .tb-sep { height: 28px; margin: 0 2px; }
     .tb-group { gap: 3px; padding: 0 1px; }
     .tb-group-label { font-size: 13px; padding: 2px 3px; }
     #btn-map-layer { min-width: 120px; font-size: 10px; }
     #btn-map-layer .layer-name { max-width: 90px; }
     .toolbar-search { flex-basis: 120px; min-width: 100px; }
     #search-input { font-size: 11px; }
-    .tb-btn.sync-btn { display: none; }
-    .offline-btn .tb-text,
-    .server-btn .tb-text,
-    .settings-main-btn .tb-text,
-    #btn-live .tb-text {
-      display: none;
-    }
+    .desktop-overflow-tool,
+    .tools-sep { display: none !important; }
+    #btn-more-tools { display: flex; }
+    .settings-main-btn .tb-text { display: none; }
     #statusbar { height: 20px; font-size: 9px; padding: 2px 8px; gap: 10px; }
     #live-sidebar { width: 200px; top: 46px; right: 8px; }
     .modal { max-height: 70vh; min-width: 280px; }
@@ -884,13 +927,11 @@
 
   /* ─── Совсем маленькие экраны (<950px) ─── */
   @media (max-width: 950px) {
-    #btn-ruler { display: none; }
-    #btn-routing { display: none; }
     .tb-group-label { font-size: 12px !important; }
-    .tb-btn { padding: 2px 5px; font-size: 10px; height: 26px; }
-    .tb-tag { width: 24px; height: 24px; font-size: 12px; }
+    .tb-btn { min-width: 34px; padding: 2px 5px; font-size: 10px; height: 34px; }
+    .tb-tag { width: 34px; height: 34px; font-size: 12px; }
     .toolbar-search { flex-basis: 100px; min-width: 84px; }
-    #btn-map-layer { min-width: 100px; }
+    #btn-map-layer { min-width: 110px; }
   }
 
   /* ─── Запрет горизонтального скролла страницы ─── */
@@ -919,16 +960,24 @@
     box-shadow: 0 4px 20px rgba(0,0,0,0.4);
   }
   #live-sidebar.open { opacity: 1; transform: scale(1); pointer-events: auto; }
-  #live-sidebar .live-devices-scroll { max-height: calc(70vh - 40px); overflow-y: auto; }
+  #live-sidebar .live-devices-scroll { max-height: calc(70vh - 72px); overflow-y: auto; }
   #live-sidebar .live-header {
     padding: 8px 12px; font-size: 12px; font-weight: 600; color: var(--text);
     border-bottom: 1px solid rgba(42, 74, 122, 0.4); display: flex; align-items: center; gap: 6px;
-    cursor: grab; user-select: none;
+    flex-wrap: wrap; cursor: grab; user-select: none;
   }
   #live-sidebar .live-header:active { cursor: grabbing; }
   #live-sidebar .live-header .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #4CAF50; }
   #live-sidebar .live-header .live-dot.error { background: #F44336; }
   #live-sidebar .live-header .live-dot.off { background: #666; }
+  #live-sidebar .live-header-actions { width: 100%; display: flex; justify-content: flex-end; gap: 1px; }
+  #live-sidebar .live-header-action {
+    appearance: none; position: relative; width: 28px; height: 28px; padding: 0; flex: 0 0 28px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; border: 0; border-radius: 5px;
+    color: var(--text-muted); cursor: pointer; font-size: 14px;
+  }
+  #live-sidebar .live-header-action:hover { background: var(--bg-hover); color: var(--text-primary); }
   .live-device {
     padding: 8px 14px; border-bottom: 1px solid var(--border); cursor: pointer;
     display: flex; align-items: center; gap: 10px; transition: background 0.15s;
@@ -1145,7 +1194,7 @@
 
   <!-- ТОЧКИ -->
   <div class="tb-group primary">
-    <span class="tb-group-label" onclick="openModal('modal-wpts')" title="Список точек">Точки</span>
+    <button type="button" class="tb-group-label" onclick="openModal('modal-wpts')" title="Список точек">Точки</button>
     <button class="tb-tag" id="btn-wpt" onclick="toggleMode('waypoint')" title="Добавить точку кликом на карту">+</button>
   </div>
 
@@ -1153,7 +1202,7 @@
 
   <!-- ТРЕКИ -->
   <div class="tb-group primary">
-    <span class="tb-group-label" onclick="openModal('modal-tracks')" title="Список треков">Треки</span>
+    <button type="button" class="tb-group-label" onclick="openModal('modal-tracks')" title="Список треков">Треки</button>
     <button class="tb-tag" id="btn-trk" onclick="startNewTrack()" title="Рисовать трек (ESC — отмена)">〜</button>
   </div>
 
@@ -1161,7 +1210,7 @@
 
   <!-- МАРШРУТЫ -->
   <div class="tb-group primary">
-    <span class="tb-group-label" onclick="openModal('modal-routes')" title="Список маршрутов по контрольным точкам">Маршруты КП</span>
+    <button type="button" class="tb-group-label" onclick="openModal('modal-routes')" title="Список маршрутов по контрольным точкам">Маршруты КП</button>
     <button class="tb-tag" id="btn-rte" onclick="startNewRoute()" title="Создать маршрут по контрольным точкам">⚑</button>
   </div>
 
@@ -1173,24 +1222,24 @@
   <!-- Режимы навигации -->
   <div class="tb-group" style="background:rgba(15,52,96,0.4);border:1px solid #1a3a6a;border-radius:6px;padding:2px 4px;gap:2px">
     <button class="tb-btn active" id="btn-hand" onclick="requestHandMode()" title="Навигация (H)" style="font-size:14px">🧭</button>
-    <button class="tb-btn" id="btn-ruler" onclick="toggleMode('ruler')" title="Линейка (M)" style="font-size:14px">📐</button>
-    <button class="tb-btn" id="btn-routing" onclick="openModal('modal-routing')" title="Маршрут по дорогам" style="font-size:14px">🛣</button>
+    <button class="tb-btn desktop-overflow-tool" id="btn-ruler" onclick="toggleMode('ruler')" title="Линейка (M)" style="font-size:14px">📐</button>
+    <button class="tb-btn desktop-overflow-tool" id="btn-routing" onclick="openModal('modal-routing')" title="Маршрут по дорогам" style="font-size:14px">🛣</button>
   </div>
 
-  <div class="tb-sep"></div>
+  <div class="tb-sep tools-sep"></div>
 
   <!-- Инструменты -->
-  <button class="tb-btn offline-btn" onclick="openModal('modal-offline');scanOfflineMaps()" title="Офлайн карты — скачать и загрузить (D)"><span class="tb-icon">⬇</span><span class="tb-text">Офлайн карты</span></button>
+  <button class="tb-btn offline-btn desktop-overflow-tool" onclick="openModal('modal-offline');scanOfflineMaps()" title="Офлайн карты — скачать и загрузить (D)"><span class="tb-icon">⬇</span><span class="tb-text">Офлайн карты</span></button>
 
-  <div class="tb-sep"></div>
+  <div class="tb-sep tools-sep"></div>
 
   <!-- Синхронизация -->
-  <button class="tb-btn sync-btn" onclick="openSyncModal()" title="Облачная синхронизация">☁ Синхр.</button>
+  <button class="tb-btn sync-btn desktop-overflow-tool" onclick="openSyncModal()" title="Облачная синхронизация">☁ Синхр.</button>
 
-  <div class="tb-sep"></div>
+  <div class="tb-sep tools-sep"></div>
 
   <!-- Live мониторинг -->
-  <button class="tb-btn" id="btn-live" onclick="toggleLive()" title="Мониторинг участников"><span class="tb-icon">📡</span><span class="tb-text">Live</span></button>
+  <button class="tb-btn desktop-overflow-tool" id="btn-live" onclick="toggleLive()" title="Мониторинг участников"><span class="tb-icon">📡</span><span class="tb-text">Live</span></button>
 
   <!-- Правая часть тулбара -->
   <div class="toolbar-spacer"></div>
@@ -1202,20 +1251,31 @@
       <input type="text" id="search-input" placeholder="Поиск..."
         autocomplete="off" spellcheck="false"
         style="background:transparent;border:none;color:var(--text-primary);font-size:12px;outline:none;padding:4px 0">
-      <span id="search-clear" onclick="clearSearch()" style="color:var(--text-muted);cursor:pointer;font-size:14px;display:none">✕</span>
+      <button type="button" id="search-clear" class="search-clear-btn" onclick="clearSearch()" aria-label="Очистить поиск" title="Очистить поиск" style="display:none">✕</button>
     </div>
     <div class="search-results" id="search-results" style="position:absolute;top:100%;right:0;width:340px;margin-top:2px"></div>
   </div>
 
-  <button class="tb-btn settings-btn server-btn" onclick="showToast('Сервер — в разработке')" title="Подключение к серверу"><span class="tb-icon">☁</span><span class="tb-text">Сервер</span></button>
+  <button class="tb-btn settings-btn server-btn desktop-overflow-tool" onclick="showToast('Сервер — в разработке')" title="Подключение к серверу"><span class="tb-icon">☁</span><span class="tb-text">Сервер</span></button>
   <button class="tb-btn" id="btn-toggle-work-objects" onclick="toggleAllWorkObjectsVisible()" title="Скрыть все рабочие объекты с карты">👁</button>
-  <button class="tb-btn" onclick="showClearConfirm()" title="Очистить рабочие данные с карты" style="color:#e07070">🗑</button>
+  <button class="tb-btn danger-btn" onclick="showClearConfirm()" title="Очистить рабочие данные с карты">🗑</button>
   <button class="tb-btn settings-btn settings-main-btn" onclick="openModal('modal-settings')" title="Настройки программы"><span class="tb-icon">⚙</span><span class="tb-text">Настройки</span></button>
-  <button class="tb-btn" onclick="openModal('modal-about')" title="О программе" style="font-size:16px">💡</button>
+  <button class="tb-btn desktop-overflow-tool" onclick="openModal('modal-about')" title="О программе" style="font-size:16px">💡</button>
+  <button class="tb-btn" id="btn-more-tools" type="button" onclick="toggleToolbarMore(event)" aria-haspopup="menu" aria-expanded="false" title="Дополнительные инструменты">⋯</button>
   <div class="tb-sep"></div>
   <button class="tb-btn" id="btn-map-layer" onclick="openModal('modal-layers')" title="Выбор карты и слоёв">
     <span class="tb-icon">🗺</span> <span class="layer-name" id="current-layer-name">OpenStreetMap</span> ▾
   </button>
+</div>
+
+<div id="toolbar-more-menu" role="menu" aria-label="Дополнительные инструменты" hidden>
+  <button type="button" class="toolbar-more-item" role="menuitem" data-mode="ruler" onclick="closeToolbarMore();toggleMode('ruler')">📐 Линейка <span style="margin-left:auto;color:var(--text-muted)">M</span></button>
+  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openModal('modal-routing')">🛣 Маршрут по дорогам</button>
+  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openModal('modal-offline');scanOfflineMaps()">⬇ Офлайн-карты</button>
+  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openSyncModal()">☁ Облачная синхронизация</button>
+  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();toggleLive()">📡 Мониторинг участников</button>
+  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();showToast('Сервер — в разработке')">☁ Подключение к серверу</button>
+  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openModal('modal-about')">💡 О программе</button>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -1267,7 +1327,7 @@
   <div class="modal" id="modal-race-report-win" style="top:120px;left:50%;transform:translateX(-50%);width:380px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-race-report-win')">
       Race Report
-      <span class="modal-close" onclick="closeModal('modal-race-report')">✕</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-race-report')" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body" style="padding:14px">
       <div style="margin-bottom:10px">
@@ -1379,7 +1439,7 @@
   <div class="modal" id="modal-wpts-win" style="top:60px;left:20px;width:460px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-wpts-win')">
       📍 Список точек (Waypoints)
-      <span class="modal-close" onclick="closeModal('modal-wpts')">✕</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-wpts')" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body">
       <!-- Панель наборов точек -->
@@ -1455,7 +1515,7 @@
   <div class="modal" id="modal-wpt-props-win" style="top:80px;left:500px;width:340px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-wpt-props-win')">
       ✏️ Свойства точки
-      <span class="modal-close" onclick="closeModal('modal-wpt-props')">✕</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-wpt-props')" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body">
       <div class="prop-field">
@@ -1562,7 +1622,7 @@
   <div class="modal" id="modal-tracks-win" style="top:60px;left:500px;width:460px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-tracks-win')">
       〜 Треки
-      <span class="modal-close" onclick="closeModal('modal-tracks')">✕</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-tracks')" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body">
       <!-- Панель рисования трека -->
@@ -1654,7 +1714,7 @@
   <div class="modal" id="modal-routes-win" style="top:60px;left:830px;width:460px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-routes-win')">
       ⚑ Маршруты по КП
-      <span class="modal-close" onclick="closeModal('modal-routes')">✕</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-routes')" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body">
       <!-- Панель создания маршрута -->
@@ -1738,7 +1798,7 @@
   <div class="modal" id="modal-files-win" style="top:60px;left:120px;width:340px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-files-win')">
       <span>📁 Файлы</span>
-      <span class="modal-close" onclick="closeModal('modal-files')">✕</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-files')" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body">
       <div class="save-section">
@@ -1783,13 +1843,13 @@
   <div class="modal" id="modal-settings-win" style="top:60px;left:200px;width:380px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-settings-win')">
       ⚙ Настройки
-      <span class="modal-close" onclick="closeModal('modal-settings')">✕</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-settings')" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body">
-      <div class="settings-tabs">
-        <div class="tab-btn active" onclick="switchTab(this,'tab-display')">Отображение</div>
-        <div class="tab-btn" onclick="switchTab(this,'tab-colors')">Цвета</div>
-        <div class="tab-btn" onclick="switchTab(this,'tab-cache');updateCacheUI()">Кэш карт</div>
+      <div class="settings-tabs" role="tablist" aria-label="Разделы настроек">
+        <button type="button" role="tab" aria-selected="true" aria-controls="tab-display" class="tab-btn active" onclick="switchTab(this,'tab-display')">Отображение</button>
+        <button type="button" role="tab" aria-selected="false" aria-controls="tab-colors" class="tab-btn" onclick="switchTab(this,'tab-colors')">Цвета</button>
+        <button type="button" role="tab" aria-selected="false" aria-controls="tab-cache" class="tab-btn" onclick="switchTab(this,'tab-cache');updateCacheUI()">Кэш карт</button>
       </div>
       <div class="tab-content active" id="tab-display">
         <div class="setting-row">
@@ -1977,13 +2037,13 @@
   <div class="modal" id="modal-offline-win" style="top:60px;left:300px;width:420px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-offline-win')">
       📦 Офлайн карты
-      <span class="modal-close" onclick="closeModal('modal-offline')">✕</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-offline')" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body">
-      <div class="settings-tabs">
-        <div class="tab-btn active" onclick="switchTab(this,'tab-offline-list')">Мои карты</div>
-        <div class="tab-btn" onclick="switchTab(this,'tab-offline-download')">Скачать</div>
-        <div class="tab-btn" onclick="switchTab(this,'tab-offline-load')">Загрузить файл</div>
+      <div class="settings-tabs" role="tablist" aria-label="Разделы офлайн-карт">
+        <button type="button" role="tab" aria-selected="true" aria-controls="tab-offline-list" class="tab-btn active" onclick="switchTab(this,'tab-offline-list')">Мои карты</button>
+        <button type="button" role="tab" aria-selected="false" aria-controls="tab-offline-download" class="tab-btn" onclick="switchTab(this,'tab-offline-download')">Скачать</button>
+        <button type="button" role="tab" aria-selected="false" aria-controls="tab-offline-load" class="tab-btn" onclick="switchTab(this,'tab-offline-load')">Загрузить файл</button>
       </div>
 
       <!-- ВКЛАДКА: МОИ КАРТЫ -->
@@ -2038,7 +2098,7 @@
   <div class="modal" id="modal-download-settings-win" style="top:60px;left:250px;width:440px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-download-settings-win')">
       ⬇ Скачивание тайлов
-      <span class="modal-close" onclick="cancelDownloadSettings()">✕</span>
+      <button type="button" class="modal-close" onclick="cancelDownloadSettings()" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body">
       <!-- Координаты области -->
@@ -2148,7 +2208,7 @@
   <div class="modal" style="top:18%;left:50%;transform:translateX(-50%);width:430px">
     <div class="modal-header" style="background:#6a2a2a">
       🗑 Удалить данные
-      <span class="modal-close" onclick="closeModal('modal-clear-confirm')">✕</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-clear-confirm')" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body" style="text-align:center;padding:18px">
       <div style="font-size:13px;color:var(--text-primary);margin-bottom:8px">Выберите, что убрать с карты</div>
@@ -2181,7 +2241,7 @@
   <div class="modal" style="top:30%;left:50%;transform:translateX(-50%);width:360px;z-index:6000">
     <div class="modal-header" id="modal-dialog-header">
       <span id="modal-dialog-title">Подтверждение</span>
-      <span class="modal-close" onclick="dialogCancel()">✕</span>
+      <button type="button" class="modal-close" onclick="dialogCancel()" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body" style="padding:16px">
       <div id="modal-dialog-message" style="font-size:13px;color:#e0e0e0;margin-bottom:12px;white-space:pre-wrap"></div>
@@ -2203,7 +2263,7 @@
   <div class="modal" id="modal-sync-win" style="top:60px;left:350px;width:380px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-sync-win')">
       ☁ Облачная синхронизация
-      <span class="modal-close" onclick="closeModal('modal-sync')">✕</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-sync')" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body">
       <!-- Статус подключения -->
@@ -2282,7 +2342,7 @@
       <span style="display:flex;align-items:center;gap:6px">
         <span style="font-size:14px;color:var(--text-secondary);cursor:pointer;padding:2px 4px" onclick="event.stopPropagation();showHiddenLayersManager()" title="Показать скрытые карты">👁</span>
         <span style="font-size:14px;color:var(--text-secondary);cursor:pointer;padding:2px 4px" onclick="event.stopPropagation();refreshTileCatalog()" title="Обновить каталог с сервера">🔄</span>
-        <span class="modal-close" onclick="closeModal('modal-layers')">✕</span>
+        <button type="button" class="modal-close" onclick="closeModal('modal-layers')" aria-label="Закрыть">✕</button>
       </span>
     </div>
     <div class="modal-body">
@@ -3761,6 +3821,51 @@ const modeNames = {
 };
 const btnMap = { hand:'btn-hand', waypoint:'btn-wpt', track:'btn-trk', trackedit:'btn-trk', route:'btn-rte', routeedit:'btn-rte', ruler:'btn-ruler' };
 
+function closeToolbarMore() {
+  const menu = document.getElementById('toolbar-more-menu');
+  const button = document.getElementById('btn-more-tools');
+  if (menu) menu.hidden = true;
+  if (button) button.setAttribute('aria-expanded', 'false');
+}
+
+function toggleToolbarMore(event) {
+  event?.stopPropagation?.();
+  const menu = document.getElementById('toolbar-more-menu');
+  const button = document.getElementById('btn-more-tools');
+  if (!menu || !button) return;
+  const willOpen = menu.hidden;
+  closeToolbarMore();
+  if (!willOpen) return;
+  const rect = button.getBoundingClientRect();
+  menu.style.top = `${Math.round(rect.bottom + 6)}px`;
+  menu.style.right = `${Math.max(6, Math.round(window.innerWidth - rect.right))}px`;
+  menu.hidden = false;
+  button.setAttribute('aria-expanded', 'true');
+  menu.querySelector('[role="menuitem"]')?.focus();
+}
+
+document.addEventListener('click', event => {
+  if (!event.target.closest?.('#toolbar-more-menu, #btn-more-tools')) closeToolbarMore();
+});
+document.addEventListener('keydown', event => {
+  const item = event.target.closest?.('#toolbar-more-menu [role="menuitem"]');
+  if (!item || !['ArrowDown', 'ArrowUp', 'Home', 'End', 'Escape'].includes(event.key)) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  if (event.key === 'Escape') {
+    closeToolbarMore();
+    document.getElementById('btn-more-tools')?.focus();
+    return;
+  }
+  const items = [...item.closest('#toolbar-more-menu').querySelectorAll('[role="menuitem"]')];
+  const current = items.indexOf(item);
+  const next = event.key === 'Home' ? 0
+    : event.key === 'End' ? items.length - 1
+      : (current + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+  items[next].focus();
+});
+window.addEventListener('resize', closeToolbarMore);
+
 function setMode(mode) {
   if (currentMode === 'ruler' && mode !== 'ruler') clearRuler();
   if (['waypoint', 'track', 'trackedit', 'route', 'routeedit', 'ruler'].includes(mode)) {
@@ -3780,6 +3885,9 @@ function setMode(mode) {
     if (groupLabel) groupLabel.classList.add('mode-active');
     if (groupTag) groupTag.classList.add('mode-active');
   }
+  document.querySelectorAll('#toolbar-more-menu [data-mode]').forEach(item => {
+    item.classList.toggle('active', item.dataset.mode === mode);
+  });
   document.getElementById('sb-mode').textContent = modeNames[mode] || mode;
   map.getContainer().style.cursor = mode === 'hand' ? '' : 'crosshair';
   updateRulerPanel();
@@ -3844,6 +3952,7 @@ document.addEventListener('keydown', e => {
   }
   switch(e.key) {
     case 'Escape':
+      closeToolbarMore();
       if (currentTrackEdit) cancelTrackEdit();
       else if (currentTrackDraw) cancelTrackDraw();
       else if (currentRouteDraw) cancelRouteDraw();
@@ -6371,6 +6480,7 @@ function initLinuxClickFallback() {
 }
 
 let modalZCounter = 4100;
+const modalReturnFocus = new WeakMap();
 function bringModalToFront(idOrOverlay) {
   const overlay = typeof idOrOverlay === 'string'
     ? document.getElementById(idOrOverlay)
@@ -6390,6 +6500,10 @@ document.addEventListener('mousedown', e => {
 function openModal(id) {
   const overlay = document.getElementById(id);
   if (!overlay) return;
+  if (!overlay.classList.contains('open')) {
+    const active = document.activeElement;
+    if (active && active !== document.body) modalReturnFocus.set(overlay, active);
+  }
   overlay.classList.add('open');
   bringModalToFront(overlay);
   if (id === 'modal-wpts') updateWptTable();
@@ -6414,10 +6528,12 @@ function openModal(id) {
     updateOfflineLayersList();
     if (window.__TAURI__ && appDataPath) scanOfflineMaps();
   }
+  requestAnimationFrame(() => overlay.querySelector('.modal-close, button, input, select, textarea')?.focus({ preventScroll: true }));
 }
 function closeModal(id) {
   const overlay = document.getElementById(id);
   if (!overlay) return;
+  const returnFocus = modalReturnFocus.get(overlay);
   if (id === 'modal-tracks') revertTrackPropsPreview();
   if (id === 'modal-routes') revertRoutePropsPreview();
   overlay.classList.remove('open', 'active');
@@ -6426,14 +6542,23 @@ function closeModal(id) {
     openOverlays.sort((a, b) => (Number(a.style.zIndex) || 0) - (Number(b.style.zIndex) || 0));
     openOverlays[openOverlays.length - 1].classList.add('active');
   }
+  modalReturnFocus.delete(overlay);
+  if (returnFocus?.isConnected) requestAnimationFrame(() => returnFocus.focus({ preventScroll: true }));
 }
 function closeAllModals() {
   revertTrackPropsPreview();
   revertRoutePropsPreview();
-  document.querySelectorAll('.modal-overlay.open').forEach(el => el.classList.remove('open', 'active'));
+  const activeOverlay = document.querySelector('.modal-overlay.active');
+  const returnFocus = activeOverlay ? modalReturnFocus.get(activeOverlay) : null;
+  document.querySelectorAll('.modal-overlay.open').forEach(el => {
+    el.classList.remove('open', 'active');
+    modalReturnFocus.delete(el);
+  });
+  if (returnFocus?.isConnected) requestAnimationFrame(() => returnFocus.focus({ preventScroll: true }));
 }
 
 function startDrag(e, winId) {
+  if (e.target.closest?.('button, input, select, textarea, [role="button"]')) return;
   const el = document.getElementById(winId);
   if (!el) return;
   bringModalToFront(el);
@@ -6457,11 +6582,28 @@ function startDrag(e, winId) {
 // ВКЛАДКИ НАСТРОЕК
 // ─────────────────────────────────────────────
 function switchTab(btn, tabId) {
-  btn.closest('.modal-body').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.closest('.modal-body').querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-selected', 'false');
+  });
   btn.closest('.modal-body').querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
   document.getElementById(tabId).classList.add('active');
 }
+
+document.addEventListener('keydown', event => {
+  const tab = event.target.closest?.('.settings-tabs [role="tab"]');
+  if (!tab || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+  const tabs = [...tab.closest('.settings-tabs').querySelectorAll('[role="tab"]')];
+  const current = tabs.indexOf(tab);
+  const next = event.key === 'Home' ? 0
+    : event.key === 'End' ? tabs.length - 1
+      : (current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+  event.preventDefault();
+  tabs[next].focus();
+  tabs[next].click();
+});
 
 // ─────────────────────────────────────────────
 // ТРЕКИ
@@ -14085,7 +14227,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
   <div class="modal" id="modal-about-win" style="top:40px;left:50%;transform:translateX(-50%);width:520px;resize:both;overflow:auto;min-width:380px;min-height:300px;z-index:5000">
     <div class="modal-header" onmousedown="startDrag(event,'modal-about-win')">
       <span>🏆 Trophy Navigator Desktop</span>
-      <span class="modal-close" onclick="closeModal('modal-about')">✕</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-about')" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body" style="padding:16px;overflow-y:auto;max-height:calc(100vh - 120px)">
       <!-- Шапка -->
@@ -14197,7 +14339,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
   <div class="modal" style="top:15%;left:50%;transform:translateX(-50%);width:380px">
     <div class="modal-header">
       💾 Сохранить в GPX
-      <span class="modal-close" onclick="closeModal('modal-save-gpx')">✕</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-save-gpx')" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body" style="max-height:60vh;overflow-y:auto">
       <div style="font-size:12px;color:var(--text-primary);margin-bottom:8px">Выберите данные для сохранения:</div>
@@ -14217,7 +14359,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
   <div class="modal" id="modal-routing-win" style="top:80px;right:20px;left:auto;width:380px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-routing-win')">
       🛣 Маршрут по дорогам
-      <span class="modal-close" onclick="closeModal('modal-routing')">✕</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-routing')" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body">
       <div class="route-endpoint">
@@ -16491,13 +16633,13 @@ liveLoadCache();
   <div class="live-header">
     <div class="live-dot off" id="live-status-dot"></div>
     <span id="live-header-text">Участники</span>
-    <div style="margin-left:auto;display:flex;gap:6px">
-      <button onclick="openLiveMessagesModal()" title="Сообщения" style="position:relative;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">💬<span id="live-messages-badge" style="display:none;position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:#e07070;color:#fff;font-size:10px;align-items:center;justify-content:center"></span></button>
-      <button onclick="openLiveGroupsManager()" title="Группы" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">👥</button>
-      <button onclick="toggleLiveMyTrails()" title="Хвост моих устройств" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">🧵</button>
-      <button onclick="liveShowAll()" title="Показать всех" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">🎯</button>
-      <button onclick="toggleSidebarCollapse('live-sidebar')" title="Свернуть" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">◀</button>
-      <button onclick="toggleLive()" title="Закрыть" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px">✕</button>
+    <div class="live-header-actions">
+      <button class="live-header-action" onclick="openLiveMessagesModal()" title="Сообщения">💬<span id="live-messages-badge" style="display:none;position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:#e07070;color:#fff;font-size:10px;align-items:center;justify-content:center"></span></button>
+      <button class="live-header-action" onclick="openLiveGroupsManager()" title="Группы">👥</button>
+      <button class="live-header-action" onclick="toggleLiveMyTrails()" title="Хвост моих устройств">🧵</button>
+      <button class="live-header-action" onclick="liveShowAll()" title="Показать всех">🎯</button>
+      <button class="live-header-action" onclick="toggleSidebarCollapse('live-sidebar')" title="Свернуть">◀</button>
+      <button class="live-header-action" onclick="toggleLive()" title="Закрыть">✕</button>
     </div>
   </div>
   <div style="padding:8px 10px 0">
@@ -16518,7 +16660,7 @@ liveLoadCache();
   <div class="modal" id="modal-live-messages-win" style="top:80px;left:50%;transform:translateX(-50%);width:540px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-live-messages-win')">
       💬 Сообщения мониторинга
-      <span class="modal-close" onclick="closeModal('modal-live-messages')">✕</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-live-messages')" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body">
       <div class="prop-field">
@@ -16547,7 +16689,7 @@ liveLoadCache();
   <div class="modal" id="modal-live-groups-win" style="top:70px;left:50%;transform:translateX(-50%);width:620px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-live-groups-win')">
       👥 Группы мониторинга
-      <span class="modal-close" onclick="closeModal('modal-live-groups')">✕</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-live-groups')" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body" style="display:flex;gap:14px">
       <div style="flex:1;min-width:0">
@@ -16586,7 +16728,7 @@ liveLoadCache();
   <div class="modal" id="modal-live-share-win" style="top:90px;left:50%;transform:translateX(-50%);width:460px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-live-share-win')">
       📄 Отправка GPX
-      <span class="modal-close" onclick="closeModal('modal-live-share')">✕</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-live-share')" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body">
       <div class="prop-field">
@@ -16626,7 +16768,7 @@ liveLoadCache();
   <div class="modal" id="modal-live-share-inbox-win" style="top:30%;left:50%;transform:translateX(-50%);width:380px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-live-share-inbox-win')">
       <span id="live-share-inbox-title">📥 GPX-пакет</span>
-      <span class="modal-close" onclick="liveDeclineIncomingShare()">✕</span>
+      <button type="button" class="modal-close" onclick="liveDeclineIncomingShare()" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body">
       <div id="live-share-inbox-body" style="font-size:13px;color:var(--text-primary);white-space:pre-wrap;margin-bottom:8px"></div>
