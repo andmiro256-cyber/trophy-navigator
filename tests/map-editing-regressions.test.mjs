@@ -76,6 +76,7 @@ test('stale temporary layers are not considered current', () => {
     rulerLines: [],
     rulerMarkers: [],
     searchMarker: currentSearch,
+    getOsrmDraftTemporaryLayer: () => null,
     dlSelectRect: null,
     dlPolygonShape: null,
     dlPolygonMarkers: []

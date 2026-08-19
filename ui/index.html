@@ -1154,7 +1154,7 @@
   .route-endpoint .ep-marker.ep-b { background:var(--bg-danger);border:2px solid var(--accent-red);color:var(--accent-red); }
   .route-endpoint input { flex:1;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:6px 8px;font-size:12px; }
   .route-endpoint input:focus { outline:none;border-color:#4a8adf; }
-  .route-endpoint .ep-pick { background:var(--bg-interactive);border:1px solid var(--border-normal);color:var(--text-secondary);border-radius:4px;padding:4px 8px;cursor:pointer;font-size:14px;flex-shrink:0; }
+  .route-endpoint .ep-pick { width:40px;height:36px;background:var(--bg-interactive);border:1px solid var(--border-normal);color:var(--text-secondary);border-radius:4px;padding:0;cursor:pointer;font-size:14px;flex-shrink:0; }
   .route-endpoint .ep-pick:hover { background:var(--row-hover);color:var(--text-primary); }
   .route-endpoint .ep-pick.picking { background:var(--bg-selected);border-color:var(--border-bright);color:var(--text-link); }
   .routing-info { background:var(--bg-sunken);border-radius:6px;padding:12px;display:none;margin-top:8px; }
@@ -1163,7 +1163,7 @@
   .routing-info-row:last-child { border-bottom:none; }
   .routing-info-label { color:var(--text-muted);font-size:12px; }
   .routing-info-value { color:var(--text-primary);font-size:14px;font-weight:600; }
-  .routing-swap { background:none;border:1px solid var(--border-normal);color:var(--text-secondary);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:16px; }
+  .routing-swap { min-width:40px;height:36px;background:none;border:1px solid var(--border-normal);color:var(--text-secondary);border-radius:4px;padding:0 8px;cursor:pointer;font-size:16px; }
   .routing-swap:hover { background:var(--row-hover);color:var(--text-primary); }
   .routing-list { display:flex; flex-direction:column; gap:6px; margin-top:8px; max-height:220px; overflow-y:auto; }
   .routing-route-item { background:var(--bg-interactive); border:1px solid var(--border-normal); border-radius:6px; padding:8px; }
@@ -1176,6 +1176,42 @@
   .routing-route-btn:hover { background:var(--row-hover); color:var(--text-primary); }
   .routing-route-btn.danger { color:#e07070; border-color:#6a2a2a; }
   .routing-route-empty { color:var(--text-muted); font-size:11px; text-align:center; padding:14px 10px; border:1px dashed var(--border-normal); border-radius:6px; }
+  #route-pick-hint {
+    position: fixed; top: 58px; left: 50%; transform: translateX(-50%); z-index: 4050;
+    display: none; align-items: center; gap: 8px; padding: 8px 12px;
+    background: rgba(10,22,40,0.94); border: 1px solid #80c7ff; border-radius: 8px;
+    color: #fff; font-size: 12px; font-weight: 600; box-shadow: var(--panel-shadow);
+    pointer-events: none; backdrop-filter: blur(6px);
+  }
+  #route-pick-hint.open { display: flex; }
+  #route-pick-hint .route-pick-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; }
+  #route-pick-hint.point-a .route-pick-dot { background: #168a42; }
+  #route-pick-hint.point-b .route-pick-dot { background: #c43d3d; }
+  #route-pick-hint kbd { color:#cbd8e8; font:10px monospace; border:1px solid #63758d; border-radius:3px; padding:1px 4px; }
+  [data-theme="light"] #route-pick-hint { background: rgba(255,255,255,0.96); color:#152238; border-color:#175b9e; }
+  [data-theme="light"] #route-pick-hint kbd { color:#45566d; border-color:#8796aa; }
+  .leaflet-container.osrm-route-picking { cursor: crosshair !important; }
+  .osrm-endpoint-icon { background: transparent !important; border: 0 !important; overflow: visible !important; }
+  .osrm-endpoint-marker {
+    display: flex; align-items: center; width: max-content; min-width: 82px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.55));
+  }
+  .osrm-endpoint-pin {
+    position: relative; z-index: 2; width: 30px; height: 30px; border-radius: 50% 50% 50% 4px;
+    transform: rotate(-45deg); display: flex; align-items: center; justify-content: center;
+    border: 3px solid #fff; color: #fff; font-size: 11px; font-weight: 800;
+  }
+  .osrm-endpoint-pin > span { transform: rotate(45deg); }
+  .osrm-endpoint-caption {
+    margin-left: -4px; padding: 5px 8px 5px 10px; border-radius: 0 6px 6px 0;
+    color: #fff; font-size: 10px; line-height: 1; font-weight: 800; letter-spacing: 0.4px;
+    border: 1px solid rgba(255,255,255,0.8); border-left: 0;
+  }
+  .osrm-endpoint-marker.point-a .osrm-endpoint-pin,
+  .osrm-endpoint-marker.point-a .osrm-endpoint-caption { background: #168a42; }
+  .osrm-endpoint-marker.point-b .osrm-endpoint-pin,
+  .osrm-endpoint-marker.point-b .osrm-endpoint-caption { background: #c43d3d; }
+  .osrm-endpoint-marker.draft .osrm-endpoint-caption { border-style: dashed; }
 </style>
 </head>
 <body>
@@ -1276,6 +1312,12 @@
   <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();toggleLive()">📡 Мониторинг участников</button>
   <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();showToast('Сервер — в разработке')">☁ Подключение к серверу</button>
   <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openModal('modal-about')">💡 О программе</button>
+</div>
+
+<div id="route-pick-hint" role="status" aria-live="polite">
+  <span class="route-pick-dot"></span>
+  <span id="route-pick-hint-text">Выберите точку на карте</span>
+  <kbd>Esc</kbd>
 </div>
 
 <!-- ═══════════════════════════════════════════
@@ -3953,7 +3995,8 @@ document.addEventListener('keydown', e => {
   switch(e.key) {
     case 'Escape':
       closeToolbarMore();
-      if (currentTrackEdit) cancelTrackEdit();
+      if (typeof routePickMode !== 'undefined' && routePickMode) cancelRoutePick(true);
+      else if (currentTrackEdit) cancelTrackEdit();
       else if (currentTrackDraw) cancelTrackDraw();
       else if (currentRouteDraw) cancelRouteDraw();
       else {
@@ -6533,6 +6576,7 @@ function openModal(id) {
 function closeModal(id) {
   const overlay = document.getElementById(id);
   if (!overlay) return;
+  if (id === 'modal-routing' && typeof cancelRoutePick === 'function') cancelRoutePick();
   const returnFocus = modalReturnFocus.get(overlay);
   if (id === 'modal-tracks') revertTrackPropsPreview();
   if (id === 'modal-routes') revertRoutePropsPreview();
@@ -6548,6 +6592,7 @@ function closeModal(id) {
 function closeAllModals() {
   revertTrackPropsPreview();
   revertRoutePropsPreview();
+  if (typeof cancelRoutePick === 'function') cancelRoutePick();
   const activeOverlay = document.querySelector('.modal-overlay.active');
   const returnFocus = activeOverlay ? modalReturnFocus.get(activeOverlay) : null;
   document.querySelectorAll('.modal-overlay.open').forEach(el => {
@@ -11055,6 +11100,7 @@ function isCurrentTemporaryMapLayer(layer) {
       rulerLines.includes(layer) ||
       rulerMarkers.includes(layer) ||
       searchMarker === layer ||
+      getOsrmDraftTemporaryLayer() === layer ||
       dlSelectRect === layer ||
       dlPolygonShape === layer ||
       dlPolygonMarkers.includes(layer)
@@ -11068,6 +11114,7 @@ function hideAllWorkObjects() {
     ...rulerLines,
     ...rulerMarkers,
     searchMarker,
+    getOsrmDraftTemporaryLayer(),
     dlSelectRect,
     dlPolygonShape,
     ...dlPolygonMarkers
@@ -11155,6 +11202,7 @@ function getTemporaryMapObjectSummary() {
   const labels = [];
   if (rulerPoints.length > 0) labels.push(`линейка: ${rulerPoints.length} точек`);
   if (searchMarker) labels.push('результат поиска');
+  if (getOsrmDraftTemporaryLayer()) labels.push('черновик маршрута по дорогам');
   if (dlSelectRect || dlPolygonShape || dlPolygonMarkers.length > 0 || dlPolygonMode) labels.push('область загрузки');
   return { count: labels.length, labels };
 }
@@ -11163,6 +11211,7 @@ function clearTemporaryMapObjects() {
   const before = getTemporaryMapObjectSummary().count;
   clearRuler();
   clearSearch();
+  if (getOsrmDraftTemporaryLayer()) resetOsrmEndpointDraft();
   if (dlPolygonMode) cancelAreaSelect();
   else {
     dlPolygonMarkers.forEach(marker => map.removeLayer(marker));
@@ -14365,15 +14414,15 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <div class="route-endpoint">
         <div class="ep-marker ep-a">A</div>
         <input type="text" id="route-from-input" placeholder="Откуда (адрес или клик)">
-        <button class="ep-pick" id="route-pick-a" onclick="startRoutePick('A')" title="Выбрать на карте">📍</button>
+        <button type="button" class="ep-pick" id="route-pick-a" onclick="startRoutePick('A')" title="Выбрать старт на карте" aria-label="Выбрать старт на карте">📍</button>
       </div>
       <div style="display:flex;justify-content:center">
-        <button class="routing-swap" onclick="swapRouteEndpoints()" title="Поменять местами">⇅</button>
+        <button type="button" class="routing-swap" onclick="swapRouteEndpoints()" title="Поменять старт и финиш местами" aria-label="Поменять старт и финиш местами">⇅</button>
       </div>
       <div class="route-endpoint">
         <div class="ep-marker ep-b">B</div>
         <input type="text" id="route-to-input" placeholder="Куда (адрес или клик)">
-        <button class="ep-pick" id="route-pick-b" onclick="startRoutePick('B')" title="Выбрать на карте">📍</button>
+        <button type="button" class="ep-pick" id="route-pick-b" onclick="startRoutePick('B')" title="Выбрать финиш на карте" aria-label="Выбрать финиш на карте">📍</button>
       </div>
       <div class="btn-row" style="margin-top:8px">
         <button class="btn-primary" onclick="calculateOsrmRoute()">🛣 Построить</button>
@@ -14499,44 +14548,140 @@ const osrmState = {
 let routeFromLatLng = null;
 let routeToLatLng = null;
 let routePickMode = null;
+let osrmDraftLayer = null;
+let osrmDraftSuppressed = false;
+
+function makeOsrmEndpointIcon(point, draft = false) {
+  const isStart = point === 'A';
+  return L.divIcon({
+    className: 'osrm-endpoint-icon',
+    html: `<div class="osrm-endpoint-marker point-${point.toLowerCase()}${draft ? ' draft' : ''}">
+      <span class="osrm-endpoint-pin"><span>${point}</span></span>
+      <span class="osrm-endpoint-caption">${isStart ? 'СТАРТ' : 'ФИНИШ'}</span>
+    </div>`,
+    iconSize: [88, 34],
+    iconAnchor: [15, 30]
+  });
+}
+
+function ensureOsrmDraftLayer() {
+  if (!osrmDraftLayer) osrmDraftLayer = L.layerGroup();
+  return osrmDraftLayer;
+}
+
+function getOsrmDraftTemporaryLayer() {
+  return !osrmDraftSuppressed && (routeFromLatLng || routeToLatLng) ? osrmDraftLayer : null;
+}
+
+function syncOsrmDraftEndpoints() {
+  const layer = ensureOsrmDraftLayer();
+  layer.clearLayers();
+  if (osrmDraftSuppressed || (!routeFromLatLng && !routeToLatLng)) {
+    if (map.hasLayer(layer)) map.removeLayer(layer);
+    osrmState.items.forEach(route => syncOsrmRouteLayer(route));
+    return;
+  }
+  if (routeFromLatLng && routeToLatLng) {
+    layer.addLayer(L.polyline([routeFromLatLng, routeToLatLng], {
+      color: '#6f829a', weight: 2, opacity: 0.8, dashArray: '5 7', interactive: false
+    }));
+  }
+  if (routeFromLatLng) {
+    layer.addLayer(L.marker(routeFromLatLng, { icon: makeOsrmEndpointIcon('A', true), zIndexOffset: 1200, interactive: false }));
+  }
+  if (routeToLatLng) {
+    layer.addLayer(L.marker(routeToLatLng, { icon: makeOsrmEndpointIcon('B', true), zIndexOffset: 1210, interactive: false }));
+  }
+  if (!workObjectsVisibilitySnapshot && !map.hasLayer(layer)) layer.addTo(map);
+  osrmState.items.forEach(route => syncOsrmRouteLayer(route));
+}
+
+function updateOsrmPickUI() {
+  document.getElementById('route-pick-a')?.classList.toggle('picking', routePickMode === 'A');
+  document.getElementById('route-pick-b')?.classList.toggle('picking', routePickMode === 'B');
+  const hint = document.getElementById('route-pick-hint');
+  if (hint) {
+    hint.classList.toggle('open', !!routePickMode);
+    hint.classList.toggle('point-a', routePickMode === 'A');
+    hint.classList.toggle('point-b', routePickMode === 'B');
+  }
+  const hintText = document.getElementById('route-pick-hint-text');
+  if (hintText && routePickMode) hintText.textContent = routePickMode === 'A'
+    ? 'Выберите СТАРТ на карте'
+    : 'Выберите ФИНИШ на карте';
+  map.getContainer().classList.toggle('osrm-route-picking', !!routePickMode);
+}
+
+function cancelRoutePick(showMessage = false) {
+  if (!routePickMode) return false;
+  routePickMode = null;
+  updateOsrmPickUI();
+  if (showMessage) showToast('Выбор точки маршрута отменён');
+  return true;
+}
+
+function setOsrmEndpoint(point, latlng, label = '') {
+  const ll = L.latLng(latlng.lat, latlng.lng);
+  const input = document.getElementById(point === 'A' ? 'route-from-input' : 'route-to-input');
+  if (point === 'A') routeFromLatLng = ll;
+  else routeToLatLng = ll;
+  if (input) input.value = label || `${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}`;
+  osrmDraftSuppressed = false;
+  syncOsrmDraftEndpoints();
+}
+
+function resetOsrmEndpointDraft() {
+  routeFromLatLng = null;
+  routeToLatLng = null;
+  osrmDraftSuppressed = false;
+  cancelRoutePick();
+  const fromInput = document.getElementById('route-from-input');
+  const toInput = document.getElementById('route-to-input');
+  if (fromInput) fromInput.value = '';
+  if (toInput) toInput.value = '';
+  syncOsrmDraftEndpoints();
+}
 
 function startRoutePick(point) {
   if (focusActiveGeometrySession()) return;
+  ensureWorkObjectsVisibleForEditing();
+  if (currentMode !== 'hand') setMode('hand');
   routePickMode = point;
-  document.getElementById('route-pick-a').classList.toggle('picking', point === 'A');
-  document.getElementById('route-pick-b').classList.toggle('picking', point === 'B');
-  showToast('Кликните на карте — точка ' + point);
+  osrmDraftSuppressed = false;
+  syncOsrmDraftEndpoints();
+  updateOsrmPickUI();
+  showToast(point === 'A' ? 'Укажите старт маршрута' : 'Укажите финиш маршрута');
 }
 
 map.on('click', function(e) {
   if (!routePickMode) return;
-  if (routePickMode === 'A') {
-    routeFromLatLng = e.latlng;
-    document.getElementById('route-from-input').value = e.latlng.lat.toFixed(5) + ', ' + e.latlng.lng.toFixed(5);
+  const pickedPoint = routePickMode;
+  setOsrmEndpoint(pickedPoint, e.latlng);
+  if (pickedPoint === 'A' && !routeToLatLng) {
+    routePickMode = 'B';
+    updateOsrmPickUI();
+    showToast('Старт выбран. Теперь укажите финиш');
   } else {
-    routeToLatLng = e.latlng;
-    document.getElementById('route-to-input').value = e.latlng.lat.toFixed(5) + ', ' + e.latlng.lng.toFixed(5);
+    routePickMode = null;
+    updateOsrmPickUI();
+    showToast(pickedPoint === 'A' ? 'Старт маршрута обновлён' : 'Старт и финиш выбраны');
   }
-  document.getElementById('route-pick-a').classList.remove('picking');
-  document.getElementById('route-pick-b').classList.remove('picking');
-  routePickMode = null;
 });
 
 function swapRouteEndpoints() {
   const tmp = routeFromLatLng; routeFromLatLng = routeToLatLng; routeToLatLng = tmp;
   const a = document.getElementById('route-from-input'), b = document.getElementById('route-to-input');
   const tv = a.value; a.value = b.value; b.value = tv;
-  if (routeFromLatLng && routeToLatLng) showToast('Точки маршрута обменены');
+  osrmDraftSuppressed = false;
+  syncOsrmDraftEndpoints();
+  if (routeFromLatLng || routeToLatLng) showToast('Старт и финиш обменены');
 }
 
 async function resolveEndpoint(inputId, currentLatLng) {
   const val = document.getElementById(inputId).value.trim();
-  // Если есть сохранённые координаты — проверяем что текст не изменился вручную
-  if (currentLatLng) {
-    const expected = currentLatLng.lat.toFixed(5) + ', ' + currentLatLng.lng.toFixed(5);
-    if (val.includes(expected)) return currentLatLng;
-    // Текст изменён — сбросить и геокодировать заново
-  }
+  // Ручное редактирование поля отдельно сбрасывает сохранённую координату.
+  // Поэтому координата клика/поиска здесь всегда точнее повторного геокодирования подписи.
+  if (currentLatLng) return currentLatLng;
   if (!val) return null;
   const m = val.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
   if (m) return L.latLng(parseFloat(m[1]), parseFloat(m[2]));
@@ -14553,6 +14698,19 @@ async function resolveEndpoint(inputId, currentLatLng) {
   return null;
 }
 
+document.getElementById('route-from-input')?.addEventListener('input', () => {
+  routeFromLatLng = null;
+  osrmDraftSuppressed = false;
+  cancelRoutePick();
+  syncOsrmDraftEndpoints();
+});
+document.getElementById('route-to-input')?.addEventListener('input', () => {
+  routeToLatLng = null;
+  osrmDraftSuppressed = false;
+  cancelRoutePick();
+  syncOsrmDraftEndpoints();
+});
+
 async function calculateOsrmRoute() {
   routeFromLatLng = await resolveEndpoint('route-from-input', routeFromLatLng);
   if (!routeFromLatLng) routeFromLatLng = null;
@@ -14560,6 +14718,9 @@ async function calculateOsrmRoute() {
   if (!routeToLatLng) routeToLatLng = null;
   if (!routeFromLatLng || !routeToLatLng) { showToast('Укажите обе точки маршрута'); return; }
 
+  cancelRoutePick();
+  osrmDraftSuppressed = false;
+  syncOsrmDraftEndpoints();
   showToast('Строим маршрут...');
   try {
     const resp = await fetch(`https://router.project-osrm.org/route/v1/driving/${routeFromLatLng.lng},${routeFromLatLng.lat};${routeToLatLng.lng},${routeToLatLng.lat}?overview=full&geometries=geojson&alternatives=true`);
@@ -14593,6 +14754,8 @@ async function calculateOsrmRoute() {
     osrmState.items = [...createdRoutes, ...osrmState.items];
     createdRoutes.forEach(route => ensureOsrmRouteLayers(route));
     selectOsrmRoute(createdRoutes[0].id, { fit: true });
+    osrmDraftSuppressed = true;
+    syncOsrmDraftEndpoints();
     renderOsrmRouteList();
     showToast(createdRoutes.length > 1
       ? `✓ Построено ${createdRoutes.length} вариантов маршрута`
@@ -14604,18 +14767,14 @@ async function calculateOsrmRoute() {
 }
 
 function setRoutePoint(point, lat, lon, name) {
-  const ll = L.latLng(lat, lon);
-  if (point === 'A') {
-    routeFromLatLng = ll;
-    document.getElementById('route-from-input').value = name;
-  } else {
-    routeToLatLng = ll;
-    document.getElementById('route-to-input').value = name;
-  }
+  setOsrmEndpoint(point, L.latLng(lat, lon), name);
   openModal('modal-routing');
   document.getElementById('search-results').classList.remove('has-results');
   if (routeFromLatLng && routeToLatLng) calculateOsrmRoute();
-  else showToast('Точка ' + point + ' задана: ' + name);
+  else if (point === 'A') {
+    startRoutePick('B');
+    showToast('Старт задан. Укажите финиш на карте');
+  } else showToast('Финиш задан: ' + name);
 }
 
 function osrmEndpointMatchesWaypoint(latlng, label, marker, oldName = '') {
@@ -14670,11 +14829,7 @@ function addWaypointFromSearch(lat, lon, name) {
 
 function clearOsrmRoute() {
   [...osrmState.items].forEach(removeOsrmRouteObject);
-  routeFromLatLng = null; routeToLatLng = null; routePickMode = null;
-  document.getElementById('route-from-input').value = '';
-  document.getElementById('route-to-input').value = '';
-  document.getElementById('route-pick-a').classList.remove('picking');
-  document.getElementById('route-pick-b').classList.remove('picking');
+  resetOsrmEndpointDraft();
   refreshOsrmRouteUI();
 }
 
@@ -14714,23 +14869,16 @@ function formatOsrmDuration(seconds) {
   return hours > 0 ? `${hours} ч ${mins} мин` : `${mins} мин`;
 }
 
-function makeOsrmMarkerIcon(label, color) {
-  return L.divIcon({
-    className: '',
-    html: `<div style="background:${color};width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px ${color}99;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff">${label}</div>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9]
-  });
-}
-
 function ensureOsrmRouteLayers(route) {
   if (route.routeLayer) return;
   route.outlineLayer = L.polyline(route.coords, { color: '#102844', weight: 8, opacity: 0.6, interactive: false });
   route.lineLayer = L.polyline(route.coords, { color: route.color, weight: 4, opacity: 0.9, dashArray: null, interactive: false });
   route.routeLayer = L.layerGroup([route.outlineLayer, route.lineLayer]);
   route.markersLayer = L.layerGroup([
-    L.marker(route.fromLatLng, { icon: makeOsrmMarkerIcon('A', '#4adf7a') }),
-    L.marker(route.toLatLng, { icon: makeOsrmMarkerIcon('B', '#e07070') })
+    L.marker(route.fromLatLng, { icon: makeOsrmEndpointIcon('A'), zIndexOffset: 1200 })
+      .bindTooltip(`Старт: ${escapeHtml(route.fromLabel || 'A')}`, { direction: 'top', offset: [0, -24] }),
+    L.marker(route.toLatLng, { icon: makeOsrmEndpointIcon('B'), zIndexOffset: 1210 })
+      .bindTooltip(`Финиш: ${escapeHtml(route.toLabel || 'B')}`, { direction: 'top', offset: [0, -24] })
   ]);
   syncOsrmRouteLayer(route);
 }
@@ -14751,7 +14899,7 @@ function syncOsrmRouteLayer(route) {
   });
   if (route.visible) {
     if (!map.hasLayer(route.routeLayer)) route.routeLayer.addTo(map);
-    if (isActive) {
+    if (isActive && !getOsrmDraftTemporaryLayer()) {
       if (!map.hasLayer(route.markersLayer)) route.markersLayer.addTo(map);
       route.outlineLayer.bringToFront();
       route.lineLayer.bringToFront();
@@ -14812,6 +14960,22 @@ function renderOsrmRouteList() {
   }).join('');
 }
 
+function fitOsrmRouteOnMap(route) {
+  const mapRect = map.getContainer().getBoundingClientRect();
+  const routingOverlay = document.getElementById('modal-routing');
+  const routingPanel = document.getElementById('modal-routing-win');
+  const panelRect = routingOverlay?.classList.contains('open') && routingPanel
+    ? routingPanel.getBoundingClientRect()
+    : null;
+  const rightOcclusion = panelRect && panelRect.left >= mapRect.left + mapRect.width / 2
+    ? Math.max(0, mapRect.right - panelRect.left) + 24
+    : 40;
+  map.fitBounds(L.latLngBounds(route.coords).pad(0.05), {
+    paddingTopLeft: [40, 40],
+    paddingBottomRight: [rightOcclusion, 40]
+  });
+}
+
 function selectOsrmRoute(id, options = {}) {
   const route = osrmState.items.find(item => item.id === id);
   if (!route) return;
@@ -14820,7 +14984,7 @@ function selectOsrmRoute(id, options = {}) {
   updateRoutingInfo();
   renderOsrmRouteList();
   if (options.fit !== false) {
-    map.fitBounds(L.latLngBounds(route.coords).pad(0.1));
+    fitOsrmRouteOnMap(route);
   }
 }
 
@@ -14849,6 +15013,10 @@ function deleteOsrmRoute(id) {
   const route = osrmState.items.find(item => item.id === id);
   if (!route) return;
   removeOsrmRouteObject(route);
+  if (osrmState.items.length === 0 && (routeFromLatLng || routeToLatLng)) {
+    osrmDraftSuppressed = false;
+    syncOsrmDraftEndpoints();
+  }
   refreshOsrmRouteUI();
 }
 
