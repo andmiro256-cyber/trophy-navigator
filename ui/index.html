@@ -10747,6 +10747,7 @@ function updateOfflineLayersList() {
 let updateCheckBusy = false;
 let pendingUpdateRid = null;
 let pendingUpdateVersion = null;
+let pendingManualUpdateUrl = null;
 
 function normalizeVersion(value) {
   return String(value || '').trim().replace(/^v/i, '').split(/\s+/)[0];
@@ -12650,6 +12651,12 @@ function setInstallUpdateButton(version) {
   btn.onclick = () => installPendingUpdate();
 }
 
+function setManualUpdateButton(url) {
+  const btn = getUpdateButton();
+  btn.textContent = '🌐 Скачать обновление вручную';
+  btn.onclick = () => openExternalUrl(url);
+}
+
 function compareVersions(a, b) {
   const left = normalizeVersion(a).split('-')[0].split('.').map(part => parseInt(part, 10) || 0);
   const right = normalizeVersion(b).split('-')[0].split('.').map(part => parseInt(part, 10) || 0);
@@ -12677,6 +12684,7 @@ async function fallbackCheckForUpdates(silent = false) {
   const status = getUpdateStatus();
   pendingUpdateRid = null;
   pendingUpdateVersion = null;
+  pendingManualUpdateUrl = null;
   resetUpdateButton();
   btn.disabled = true;
   btn.textContent = '⏳ Проверяем...';
@@ -12780,6 +12788,7 @@ async function checkForUpdates(silent = false) {
   const status = getUpdateStatus();
   pendingUpdateRid = null;
   pendingUpdateVersion = null;
+  pendingManualUpdateUrl = null;
   btn.disabled = true;
   btn.textContent = '⏳ Проверяем...';
   status.style.color = '#5a7aaa';
@@ -12804,8 +12813,15 @@ async function checkForUpdates(silent = false) {
     const notes = update.body ? `. ${update.body}` : '';
 
     status.style.color = '#dfdf4a';
-    status.textContent = `⬆ Доступна версия ${pendingUpdateVersion}${published ? ` от ${published}` : ''}${notes}`;
-    setInstallUpdateButton(pendingUpdateVersion);
+    if (!update.canAutoInstall || !pendingUpdateRid) {
+      pendingUpdateRid = null;
+      pendingManualUpdateUrl = update.manualDownloadUrl || 'https://trophynav.ru/desktop.html#download';
+      status.textContent = `⬆ Доступна версия ${pendingUpdateVersion}${published ? ` от ${published}` : ''}${notes} Автоустановка недоступна для этой Linux-установки — скачайте пакет вручную.`;
+      setManualUpdateButton(pendingManualUpdateUrl);
+    } else {
+      status.textContent = `⬆ Доступна версия ${pendingUpdateVersion}${published ? ` от ${published}` : ''}${notes}`;
+      setInstallUpdateButton(pendingUpdateVersion);
+    }
   } catch(e) {
     status.style.color = '#df7a4a';
     status.textContent = '✗ ' + getErrorMessage(e, 'Ошибка проверки обновлений');
@@ -12815,6 +12831,8 @@ async function checkForUpdates(silent = false) {
     btn.disabled = false;
     if (pendingUpdateRid) {
       setInstallUpdateButton(pendingUpdateVersion || 'обновление');
+    } else if (pendingManualUpdateUrl) {
+      setManualUpdateButton(pendingManualUpdateUrl);
     } else {
       resetUpdateButton();
     }
@@ -13598,6 +13616,15 @@ function waitForFirstPaint() {
       if (update && update.version) {
         const ver = normalizeVersion(update.version);
         const notes = update.body || 'Улучшения и исправления';
+        if (!update.canAutoInstall || !update.rid) {
+          const manualUrl = update.manualDownloadUrl || 'https://trophynav.ru/desktop.html#download';
+          const openDownload = await tndConfirm(
+            `Доступна новая версия ${ver}!\n\n${notes}\n\nДля этой Linux-установки требуется ручное обновление. Открыть страницу загрузки?`
+          );
+          if (openDownload) await openExternalUrl(manualUrl);
+          else localStorage.setItem('tnd-update-dismissed', new Date().toISOString());
+          return;
+        }
         const doUpdate = await tndConfirm(
           `Доступна новая версия ${ver}!\n\n${notes}\n\nОбновить сейчас?`
         );

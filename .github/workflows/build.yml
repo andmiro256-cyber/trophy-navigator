@@ -95,6 +95,17 @@ jobs:
           (cd "$WORK_DIR" && ./app.AppImage --appimage-extract >/dev/null)
           rm -f "$WORK_DIR"/squashfs-root/usr/lib/libwayland-*.so*
 
+          GTK_HOOK="$WORK_DIR/squashfs-root/apprun-hooks/linuxdeploy-plugin-gtk.sh"
+          if [ ! -f "$GTK_HOOK" ]; then
+            echo "::error::linuxdeploy GTK AppRun hook not found"
+            exit 1
+          fi
+          sed -i 's/^export GDK_BACKEND=x11/export GDK_BACKEND="${GDK_BACKEND:-wayland}"/' "$GTK_HOOK"
+          if ! grep -Fq 'export GDK_BACKEND="${GDK_BACKEND:-wayland}"' "$GTK_HOOK"; then
+            echo "::error::failed to make Wayland the default GDK backend"
+            exit 1
+          fi
+
           head -c "$OFFSET" "$WORK_DIR/app.AppImage" > "$WORK_DIR/runtime.bin"
           mksquashfs "$WORK_DIR/squashfs-root" "$WORK_DIR/fs.squashfs" \
             -comp "$COMPRESSION" -b "$BLOCK_SIZE" -root-owned -noappend -no-progress -quiet
@@ -105,6 +116,15 @@ jobs:
           (cd "$WORK_DIR" && ./repacked.AppImage --appimage-extract >/dev/null)
           if ls "$WORK_DIR"/squashfs-root/usr/lib/libwayland-*.so* >/dev/null 2>&1; then
             echo "::error::bundled Wayland libraries are still present after repacking"
+            exit 1
+          fi
+          if grep -Rq '^export GDK_BACKEND=x11' "$WORK_DIR"/squashfs-root/apprun-hooks/*.sh; then
+            echo "::error::AppImage still forces GDK_BACKEND=x11"
+            exit 1
+          fi
+          if ! grep -Fq 'export GDK_BACKEND="${GDK_BACKEND:-wayland}"' \
+            "$WORK_DIR"/squashfs-root/apprun-hooks/linuxdeploy-plugin-gtk.sh; then
+            echo "::error::repacked AppImage does not default to Wayland"
             exit 1
           fi
 

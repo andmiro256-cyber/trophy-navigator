@@ -16,22 +16,43 @@ use tauri_plugin_updater::{Update, UpdaterExt};
 const MAX_TILE_BYTES: u64 = 2 * 1024 * 1024;
 const OFFLINE_DOWNLOAD_BATCH_SIZE: u64 = 250;
 const OFFLINE_TILE_CACHE_LIMIT: usize = 4;
+const MANUAL_UPDATE_URL: &str = "https://trophynav.ru/desktop.html#download";
 static OFFLINE_DOWNLOAD_CANCELLED: AtomicBool = AtomicBool::new(false);
 static OFFLINE_TILE_CACHE: OnceLock<Mutex<OfflineTileCache>> = OnceLock::new();
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct UpdateInfo {
-    rid: u32,
+    rid: Option<u32>,
     current_version: String,
     version: String,
     date: Option<String>,
     body: Option<String>,
+    can_auto_install: bool,
+    manual_download_url: Option<&'static str>,
 }
 
 #[tauri::command]
 fn get_app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
+}
+
+#[cfg(target_os = "linux")]
+fn linux_appimage_path_is_valid(value: Option<&std::ffi::OsStr>) -> bool {
+    value.map(Path::new).is_some_and(Path::is_file)
+}
+
+fn can_auto_install_update() -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        let appimage = std::env::var_os("APPIMAGE");
+        linux_appimage_path_is_valid(appimage.as_deref())
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        true
+    }
 }
 
 #[tauri::command]
@@ -52,7 +73,8 @@ async fn check_app_update<R: Runtime>(webview: Webview<R>) -> Result<Option<Upda
     let current_version = update.current_version.clone();
     let version = update.version.clone();
     let body = update.body.clone();
-    let rid = webview.resources_table().add(update);
+    let can_auto_install = can_auto_install_update();
+    let rid = can_auto_install.then(|| webview.resources_table().add(update));
 
     let info = UpdateInfo {
         rid,
@@ -60,6 +82,8 @@ async fn check_app_update<R: Runtime>(webview: Webview<R>) -> Result<Option<Upda
         version,
         date,
         body,
+        can_auto_install,
+        manual_download_url: (!can_auto_install).then_some(MANUAL_UPDATE_URL),
     };
 
     Ok(Some(info))
@@ -74,6 +98,13 @@ struct DownloadProgress {
 
 #[tauri::command]
 async fn install_app_update<R: Runtime>(webview: Webview<R>, rid: u32) -> Result<(), String> {
+    if !can_auto_install_update() {
+        let _ = webview.resources_table().close(rid);
+        return Err(format!(
+            "Автоустановка недоступна для этой Linux-установки. Скачайте обновление вручную: {MANUAL_UPDATE_URL}"
+        ));
+    }
+
     let update = webview
         .resources_table()
         .get::<Update>(rid)
@@ -1316,6 +1347,26 @@ fn get_raw_machine_id() -> Result<String, Box<dyn std::error::Error>> {
         }
     }
     Err("Platform UUID not found".into())
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    use super::linux_appimage_path_is_valid;
+    use std::ffi::OsStr;
+
+    #[test]
+    fn linux_auto_update_rejects_missing_appimage_path() {
+        assert!(!linux_appimage_path_is_valid(None));
+        assert!(!linux_appimage_path_is_valid(Some(OsStr::new(
+            "/definitely/missing/TrophyNavigator.AppImage"
+        ))));
+    }
+
+    #[test]
+    fn linux_auto_update_accepts_an_existing_appimage_file() {
+        let executable = std::env::current_exe().expect("test executable path");
+        assert!(linux_appimage_path_is_valid(Some(executable.as_os_str())));
+    }
 }
 
 fn main() {
