@@ -314,7 +314,7 @@ jobs:
           cat > "$MANIFEST_FILE" << EOF
           {
             "version": "$VERSION",
-            "notes": "Восстановлены онлайн-карты, Wikimapia, лицензии, синхронизация и Live после переноса сервера на Alpha-KM. Бесплатные OpenStreetMap/OpenTopoMap снова находятся в бесплатном разделе, а специальные слои Яндекс и Bing не пропадают после загрузки каталога.",
+            "notes": "Окно открывается развёрнутым, тулбар помещается без горизонтальной прокрутки, выбор точек стал удобнее, а форму незаблокированного трека теперь можно менять перетаскиванием прямо на карте.",
             "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "platforms": {
               "linux-x86_64": {
@@ -346,11 +346,10 @@ jobs:
           body: |
             ## Trophy Navigator Desktop v${{ steps.version.outputs.version }}
 
-            ### Исправлено
-            - Все API и тайловые прокси Desktop переведены со старого DE2 на `https://trophynav.ru` (Alpha-KM).
-            - Восстановлены каталожные карты, Wikimapia, лицензии, облачная синхронизация и Live-мониторинг.
-            - OpenStreetMap и OpenTopoMap снова отображаются как бесплатные карты.
-            - Специальные слои Яндекс и Bing больше не исчезают после загрузки серверного каталога.
+            ### Улучшено
+            - Окно приложения открывается развёрнутым, а адаптивные пороги тулбара исключают горизонтальную прокрутку на типовых ширинах.
+            - Галочки выбора точек и их зона клика стали заметно крупнее.
+            - Незаблокированный трек можно менять прямо на карте: потянуть существующую вершину или линию, чтобы вставить и сразу переместить новую точку.
 
             ### Скачать
             - **Windows**: `Trophy.Navigator.Desktop_*_x64-setup.exe` или `Trophy.Navigator.Desktop_*_x64_en-US.msi`
@@ -376,6 +375,7 @@ jobs:
           RELEASE_DEPLOY_PATH: ${{ steps.channel.outputs.deploy_path }}
           APPIMAGE_FILE: release-assets/${{ steps.assets.outputs.appimage_asset_name }}
           NSIS_FILE: release-assets/${{ steps.assets.outputs.nsis_asset_name }}
+          DEB_FILE: release-assets/Trophy.Navigator.Desktop_${{ steps.version.outputs.version }}_amd64.deb
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
@@ -388,6 +388,7 @@ jobs:
           PUBLIC_RELEASE_DIR="/var/www/trophy-site/releases"
           PUBLIC_APPIMAGE_PATH="${PUBLIC_RELEASE_DIR}/trophy-navigator-desktop_${RELEASE_VERSION}_amd64.AppImage"
           PUBLIC_NSIS_PATH="${PUBLIC_RELEASE_DIR}/trophy-navigator-desktop_${RELEASE_VERSION}_x64-setup.exe"
+          PUBLIC_DEB_PATH="${PUBLIC_RELEASE_DIR}/trophy-navigator-desktop_${RELEASE_VERSION}_amd64.deb"
 
           if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_USER" ] || [ -z "$DEPLOY_SSH_KEY" ] || [ -z "${UPDATES_DEPLOY_KNOWN_HOSTS:-}" ]; then
             echo "::error::Missing dedicated UPDATES_DEPLOY_* settings. Legacy deploy fallback is forbidden."
@@ -404,7 +405,7 @@ jobs:
             *) echo "::error::Unexpected updater manifest path: $DEPLOY_PATH"; exit 1 ;;
           esac
 
-          if [ ! -s "$MANIFEST_FILE" ] || [ ! -s "$APPIMAGE_FILE" ] || [ ! -s "$NSIS_FILE" ]; then
+          if [ ! -s "$MANIFEST_FILE" ] || [ ! -s "$APPIMAGE_FILE" ] || [ ! -s "$NSIS_FILE" ] || [ ! -s "$DEB_FILE" ]; then
             echo "::error::Release manifest or public updater assets are missing."
             exit 1
           fi
@@ -419,11 +420,12 @@ jobs:
           MANIFEST_TMP="${DEPLOY_PATH}.tmp-${GITHUB_RUN_ID}"
           APPIMAGE_TMP="${PUBLIC_APPIMAGE_PATH}.tmp-${GITHUB_RUN_ID}"
           NSIS_TMP="${PUBLIC_NSIS_PATH}.tmp-${GITHUB_RUN_ID}"
+          DEB_TMP="${PUBLIC_DEB_PATH}.tmp-${GITHUB_RUN_ID}"
           REMOTE="${DEPLOY_USER}@${DEPLOY_HOST}"
 
           cleanup_remote() {
             ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$REMOTE" \
-              "rm -f '${MANIFEST_TMP}' '${APPIMAGE_TMP}' '${NSIS_TMP}'" || true
+              "rm -f '${MANIFEST_TMP}' '${APPIMAGE_TMP}' '${NSIS_TMP}' '${DEB_TMP}'" || true
           }
           trap cleanup_remote EXIT
 
@@ -433,16 +435,20 @@ jobs:
           scp -P "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$MANIFEST_FILE" "$REMOTE:$MANIFEST_TMP"
           scp -P "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$APPIMAGE_FILE" "$REMOTE:$APPIMAGE_TMP"
           scp -P "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$NSIS_FILE" "$REMOTE:$NSIS_TMP"
+          scp -P "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$DEB_FILE" "$REMOTE:$DEB_TMP"
 
           APPIMAGE_SHA="$(sha256sum "$APPIMAGE_FILE" | awk '{print $1}')"
           NSIS_SHA="$(sha256sum "$NSIS_FILE" | awk '{print $1}')"
+          DEB_SHA="$(sha256sum "$DEB_FILE" | awk '{print $1}')"
           ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$REMOTE" \
-            "printf '%s  %s\n' '${APPIMAGE_SHA}' '${APPIMAGE_TMP}' '${NSIS_SHA}' '${NSIS_TMP}' | sha256sum -c - >/dev/null && install -m 644 '${APPIMAGE_TMP}' '${PUBLIC_APPIMAGE_PATH}' && install -m 644 '${NSIS_TMP}' '${PUBLIC_NSIS_PATH}'"
+            "printf '%s  %s\n' '${APPIMAGE_SHA}' '${APPIMAGE_TMP}' '${NSIS_SHA}' '${NSIS_TMP}' '${DEB_SHA}' '${DEB_TMP}' | sha256sum -c - >/dev/null && install -m 644 '${APPIMAGE_TMP}' '${PUBLIC_APPIMAGE_PATH}' && install -m 644 '${NSIS_TMP}' '${PUBLIC_NSIS_PATH}' && install -m 644 '${DEB_TMP}' '${PUBLIC_DEB_PATH}'"
 
           curl --fail --silent --show-error --retry 5 --retry-delay 3 --head \
             "https://trophynav.ru/releases/trophy-navigator-desktop_${RELEASE_VERSION}_amd64.AppImage" >/dev/null
           curl --fail --silent --show-error --retry 5 --retry-delay 3 --head \
             "https://trophynav.ru/releases/trophy-navigator-desktop_${RELEASE_VERSION}_x64-setup.exe" >/dev/null
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --head \
+            "https://trophynav.ru/releases/trophy-navigator-desktop_${RELEASE_VERSION}_amd64.deb" >/dev/null
 
           # Manifest публикуется последним: updater никогда не увидит URL ещё не выложенных файлов.
           ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$REMOTE" \
