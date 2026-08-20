@@ -28,7 +28,7 @@ function makeClassList() {
   };
 }
 
-function makeRoutingContext() {
+function makeRoutingContext(options = {}) {
   const elements = new Map();
   const element = id => {
     if (!elements.has(id)) {
@@ -54,14 +54,17 @@ function makeRoutingContext() {
     layers: new Set(),
     listeners: {},
     on(type, handler) { this.listeners[type] = handler; },
-    hasLayer(layer) { return this.layers.has(layer); },
-    removeLayer(layer) { this.layers.delete(layer); },
+    hasLayer(layer) { return !!layer?.onMap; },
+    removeLayer(layer) { if (layer) layer.onMap = false; this.layers.delete(layer); },
     getContainer() { return container; }
   };
   const layer = (type, data = {}) => ({
     type,
     ...data,
-    addTo(target) { target.layers.add(this); return this; }
+    addTo(target) { this.onMap = true; target.layers.add(this); return this; },
+    bindTooltip(content, tooltipOptions) { this.tooltip = { content, options: tooltipOptions }; return this; },
+    setStyle(style) { this.style = { ...(this.style || {}), ...style }; return this; },
+    bringToFront() { this.broughtToFront = true; return this; }
   });
   const L = {
     latLng(first, second) {
@@ -78,27 +81,75 @@ function makeRoutingContext() {
         clearLayers() { this.layers = []; return this; },
         addLayer(item) { this.layers.push(item); return this; },
         getLayers() { return this.layers; },
-        addTo(target) { target.layers.add(this); return this; }
+        addTo(target) { this.onMap = true; target.layers.add(this); return this; }
       };
     }
   };
   const toasts = [];
-  const context = vm.createContext({
+  let context;
+  context = vm.createContext({
     L,
     map,
-    osrmState: { items: [] },
+    osrmState: { items: [], activeId: null, nextId: 1 },
+    routePickMode: null,
+    dlPolygonMode: false,
     workObjectsVisibilitySnapshot: null,
     currentMode: 'hand',
     document: { getElementById: id => element(id) },
+    fetch: options.fetch,
+    console,
+    escapeHtml: value => String(value),
     focusActiveGeometrySession: () => false,
+    cancelAreaSelect() { context.dlPolygonMode = false; },
     ensureWorkObjectsVisibleForEditing() {},
     setMode() {},
     syncOsrmRouteLayer() {},
+    selectOsrmRoute(id) {
+      context.osrmState.activeId = id;
+      context.osrmState.items.forEach(route => context.syncOsrmRouteLayer(route));
+    },
+    renderOsrmRouteList() {},
     showToast: message => toasts.push(message)
   });
-  vm.runInContext(sourceBetween('let routeFromLatLng = null;', 'async function calculateOsrmRoute() {'), context);
+  const endMarker = options.includeCalculation ? 'function setRoutePoint(' : 'async function calculateOsrmRoute() {';
+  vm.runInContext(sourceBetween('let routeFromLatLng = null;', endMarker), context);
+  if (options.includeCalculation) {
+    vm.runInContext(sourceBetween('function shortRouteLabel(', 'function updateRoutingInfo()'), context);
+  }
   return { context, elements, map, toasts };
 }
+
+test('changing map tool cancels pending OSRM selection before another map click', () => {
+  const calls = [];
+  let context;
+  const emptyClassList = makeClassList();
+  context = vm.createContext({
+    currentMode: 'hand',
+    routePickMode: 'A',
+    modeNames: { waypoint: 'Добавить точку' },
+    btnMap: { waypoint: 'btn-wpt' },
+    document: {
+      querySelectorAll: () => [],
+      getElementById: id => id === 'sb-mode'
+        ? { textContent: '' }
+        : { classList: emptyClassList, closest: () => null }
+    },
+    map: { getContainer: () => ({ style: {} }) },
+    cancelRoutePick() { calls.push('cancel'); context.routePickMode = null; },
+    clearRuler() {},
+    closeTransientMapModals() {},
+    updateRulerPanel() {},
+    showToast() {}
+  });
+  vm.runInContext(sourceBetween('function setMode(mode)', 'function toggleMode(mode)'), context);
+
+  context.setMode('waypoint');
+
+  assert.equal(context.routePickMode, null);
+  assert.deepEqual(calls, ['cancel']);
+  assert.match(sourceBetween('function trackGestureAllowed()', 'let trackHoverCheckedAt'), /!routePickMode/);
+  assert.match(sourceBetween('function startAreaSelect()', 'function onDlEscape'), /cancelRoutePick\(\)/);
+});
 
 test('map picking shows start immediately, advances to finish and draws a draft connector', () => {
   const { context, elements, map } = makeRoutingContext();
@@ -122,7 +173,7 @@ test('map picking shows start immediately, advances to finish and draws a draft 
 });
 
 test('swapping endpoints moves coordinates and exact selected coordinates survive labels', async () => {
-  const { context, elements } = makeRoutingContext();
+  const { context, elements, toasts } = makeRoutingContext();
   context.setOsrmEndpoint('A', { lat: 55.71, lng: 37.51 }, 'Точный старт');
   context.setOsrmEndpoint('B', { lat: 55.81, lng: 37.71 }, 'Точный финиш');
 
@@ -130,12 +181,52 @@ test('swapping endpoints moves coordinates and exact selected coordinates surviv
   const resolved = await context.resolveEndpoint('route-from-input', exact);
   assert.equal(resolved, exact);
 
+  context.osrmState.items.push({ id: 1 });
   context.swapRouteEndpoints();
   const swapped = vm.runInContext('({ from: routeFromLatLng, to: routeToLatLng })', context);
   assert.deepEqual({ ...swapped.from }, { lat: 55.81, lng: 37.71 });
   assert.deepEqual({ ...swapped.to }, { lat: 55.71, lng: 37.51 });
   assert.equal(elements.get('route-from-input').value, 'Точный финиш');
   assert.equal(elements.get('route-to-input').value, 'Точный старт');
+  assert.equal(elements.get('route-draft-status').hidden, false);
+  assert.match(toasts.at(-1), /нажмите «Построить»/);
+});
+
+test('successful OSRM build replaces the draft with exactly two active endpoint markers', async () => {
+  const { context, map } = makeRoutingContext({
+    includeCalculation: true,
+    fetch: async () => ({
+      json: async () => ({
+        code: 'Ok',
+        routes: [{
+          geometry: { coordinates: [[37.51, 55.71], [37.61, 55.76], [37.71, 55.81]] },
+          distance: 12500,
+          duration: 900
+        }]
+      })
+    })
+  });
+  context.setOsrmEndpoint('A', { lat: 55.71, lng: 37.51 }, 'Старт');
+  context.setOsrmEndpoint('B', { lat: 55.81, lng: 37.71 }, 'Финиш');
+
+  await context.calculateOsrmRoute();
+
+  const state = vm.runInContext(`({
+    count: osrmState.items.length,
+    activeId: osrmState.activeId,
+    suppressed: osrmDraftSuppressed,
+    draftLayers: osrmDraftLayer.getLayers().length,
+    draftOnMap: map.hasLayer(osrmDraftLayer),
+    markersOnMap: map.hasLayer(osrmState.items[0].markersLayer),
+    route: osrmState.items[0]
+  })`, context);
+  assert.equal(state.count, 1);
+  assert.equal(state.activeId, state.route.id);
+  assert.equal(state.suppressed, true);
+  assert.equal(state.draftLayers, 0);
+  assert.equal(state.draftOnMap, false);
+  assert.equal(state.route.markersLayer.getLayers().length, 2);
+  assert.equal(state.markersOnMap, true);
 });
 
 test('manual endpoint edits invalidate stale coordinates and cleanup removes draft layers', () => {

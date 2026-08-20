@@ -1165,6 +1165,10 @@
   .routing-info-value { color:var(--text-primary);font-size:14px;font-weight:600; }
   .routing-swap { min-width:40px;height:36px;background:none;border:1px solid var(--border-normal);color:var(--text-secondary);border-radius:4px;padding:0 8px;cursor:pointer;font-size:16px; }
   .routing-swap:hover { background:var(--row-hover);color:var(--text-primary); }
+  .routing-draft-status {
+    margin-top:8px; padding:7px 9px; border:1px solid var(--border-warning); border-radius:5px;
+    background:var(--bg-warning); color:var(--text-warning); font-size:11px; line-height:1.35;
+  }
   .routing-list { display:flex; flex-direction:column; gap:6px; margin-top:8px; max-height:220px; overflow-y:auto; }
   .routing-route-item { background:var(--bg-interactive); border:1px solid var(--border-normal); border-radius:6px; padding:8px; }
   .routing-route-item.active { background:var(--bg-selected); border-color:var(--border-bright); box-shadow: inset 0 0 0 1px var(--border-bright); }
@@ -3852,6 +3856,7 @@ function syncWaypointReferences(marker, options = {}) {
 // РЕЖИМЫ
 // ─────────────────────────────────────────────
 let currentMode = 'hand';
+let routePickMode = null;
 const modeNames = {
   hand:'Навигация',
   waypoint:'Добавить точку (клик)',
@@ -3909,6 +3914,7 @@ document.addEventListener('keydown', event => {
 window.addEventListener('resize', closeToolbarMore);
 
 function setMode(mode) {
+  if (routePickMode) cancelRoutePick();
   if (currentMode === 'ruler' && mode !== 'ruler') clearRuler();
   if (['waypoint', 'track', 'trackedit', 'route', 'routeedit', 'ruler'].includes(mode)) {
     closeTransientMapModals();
@@ -7111,7 +7117,7 @@ map.on('zoomend moveend', scheduleTrackMarkerRefresh);
 // подвёл курсор к линии — она подсвечивается курсором-ладонью, потянул —
 // в этой точке трек ломается и следует за мышью. Замок 🔒 всё это отключает.
 function trackGestureAllowed() {
-  return currentMode === 'hand' || currentMode === 'trackedit';
+  return !routePickMode && (currentMode === 'hand' || currentMode === 'trackedit');
 }
 
 let trackHoverCheckedAt = 0;
@@ -9121,6 +9127,7 @@ function tile2lng(x, z) { return x / Math.pow(2, z) * 360 - 180; }
 function startAreaSelect() {
   if (focusActiveGeometrySession()) return;
   if (dlPolygonMode) return;
+  cancelRoutePick();
   dlPolygonMode = true;
   dlPolygonPoints = [];
   dlPolygonMarkers = [];
@@ -14428,6 +14435,9 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
         <button class="btn-primary" onclick="calculateOsrmRoute()">🛣 Построить</button>
         <button class="btn-secondary" onclick="clearOsrmRoute()">Очистить</button>
       </div>
+      <div class="routing-draft-status" id="route-draft-status" role="status" aria-live="polite" hidden>
+        Черновик изменён. Линия на карте — предыдущий маршрут. Нажмите «Построить», чтобы обновить её.
+      </div>
       <div class="routing-info" id="routing-info">
         <div class="routing-info-row">
           <span class="routing-info-label">Расстояние</span>
@@ -14547,7 +14557,6 @@ const osrmState = {
 };
 let routeFromLatLng = null;
 let routeToLatLng = null;
-let routePickMode = null;
 let osrmDraftLayer = null;
 let osrmDraftSuppressed = false;
 
@@ -14573,12 +14582,19 @@ function getOsrmDraftTemporaryLayer() {
   return !osrmDraftSuppressed && (routeFromLatLng || routeToLatLng) ? osrmDraftLayer : null;
 }
 
+function updateOsrmDraftStatus() {
+  const status = document.getElementById('route-draft-status');
+  if (!status) return;
+  status.hidden = !(osrmState.items.length > 0 && !osrmDraftSuppressed && (routeFromLatLng || routeToLatLng));
+}
+
 function syncOsrmDraftEndpoints() {
   const layer = ensureOsrmDraftLayer();
   layer.clearLayers();
   if (osrmDraftSuppressed || (!routeFromLatLng && !routeToLatLng)) {
     if (map.hasLayer(layer)) map.removeLayer(layer);
     osrmState.items.forEach(route => syncOsrmRouteLayer(route));
+    updateOsrmDraftStatus();
     return;
   }
   if (routeFromLatLng && routeToLatLng) {
@@ -14594,6 +14610,7 @@ function syncOsrmDraftEndpoints() {
   }
   if (!workObjectsVisibilitySnapshot && !map.hasLayer(layer)) layer.addTo(map);
   osrmState.items.forEach(route => syncOsrmRouteLayer(route));
+  updateOsrmDraftStatus();
 }
 
 function updateOsrmPickUI() {
@@ -14643,7 +14660,8 @@ function resetOsrmEndpointDraft() {
 }
 
 function startRoutePick(point) {
-  if (focusActiveGeometrySession()) return;
+  if (focusActiveGeometrySession()) return false;
+  if (dlPolygonMode) cancelAreaSelect();
   ensureWorkObjectsVisibleForEditing();
   if (currentMode !== 'hand') setMode('hand');
   routePickMode = point;
@@ -14651,6 +14669,7 @@ function startRoutePick(point) {
   syncOsrmDraftEndpoints();
   updateOsrmPickUI();
   showToast(point === 'A' ? 'Укажите старт маршрута' : 'Укажите финиш маршрута');
+  return true;
 }
 
 map.on('click', function(e) {
@@ -14674,7 +14693,11 @@ function swapRouteEndpoints() {
   const tv = a.value; a.value = b.value; b.value = tv;
   osrmDraftSuppressed = false;
   syncOsrmDraftEndpoints();
-  if (routeFromLatLng || routeToLatLng) showToast('Старт и финиш обменены');
+  if (routeFromLatLng || routeToLatLng) {
+    showToast(osrmState.items.length > 0
+      ? 'Старт и финиш обменены — нажмите «Построить», чтобы обновить маршрут'
+      : 'Старт и финиш обменены');
+  }
 }
 
 async function resolveEndpoint(inputId, currentLatLng) {
@@ -14772,8 +14795,7 @@ function setRoutePoint(point, lat, lon, name) {
   document.getElementById('search-results').classList.remove('has-results');
   if (routeFromLatLng && routeToLatLng) calculateOsrmRoute();
   else if (point === 'A') {
-    startRoutePick('B');
-    showToast('Старт задан. Укажите финиш на карте');
+    if (startRoutePick('B')) showToast('Старт задан. Укажите финиш на карте');
   } else showToast('Финиш задан: ' + name);
 }
 
