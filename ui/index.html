@@ -2762,7 +2762,7 @@ function updateSetSelector() {
   const sel = document.getElementById('wpt-set-select');
   if (!sel) return;
   sel.innerHTML = waypointSets.map(s =>
-    `<option value="${s.id}"${s.id === activeSetId ? ' selected' : ''}>${escapeHtml(s.name)} (${s.waypoints.length})${s.visible ? '' : ' [скрыт]'}</option>`
+    `<option value="${escapeHtml(s.id)}"${s.id === activeSetId ? ' selected' : ''}>${escapeHtml(s.name)} (${s.waypoints.length})${s.visible ? '' : ' [скрыт]'}</option>`
   ).join('');
 }
 
@@ -2781,6 +2781,22 @@ async function promptNewSet() {
 
 function escapeHtml(text) {
   return String(text ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+}
+
+// Цвет из файла/сервера в style="…": только шестнадцатеричный (3/4/6/8 знаков), rgb()/rgba() из чисел или имя цвета из букв. theme-check: data
+// Всё остальное (кавычки, «;», url(…), expression) — цвет по умолчанию.
+function safeCssColor(value, fallback = '#df7a4a') {  // theme-check: data
+  const v = String(value ?? '').trim();
+  if (/^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v)) return v;
+  if (/^rgba?\(\s*\d{1,3}%?\s*,\s*\d{1,3}%?\s*,\s*\d{1,3}%?\s*(?:,\s*(?:0|1|0?\.\d+)\s*)?\)$/i.test(v)) return v;
+  if (/^[a-z]{3,20}$/i.test(v)) return v;
+  return fallback;
+}
+
+// Число из файла/сервера в разметку или в onclick: только конечное число, иначе запасное значение.
+function safeNum(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
 }
 
 function formatDm(value, pos, neg) {
@@ -3163,11 +3179,11 @@ function renderLoadedSourceFiles() {
       file.entityCounts.tracks ? `${file.entityCounts.tracks} трек` : '',
       file.entityCounts.routes ? `${file.entityCounts.routes} марш` : ''
     ].filter(Boolean).join(' · ') || 'без объектов';
-    const meta = file.path ? `${counts} · ${escapeHtml(file.path)}` : counts;
+    const meta = file.path ? `${escapeHtml(counts)} · ${escapeHtml(file.path)}` : escapeHtml(counts);
     return `<div title="${escapeHtml(file.path || file.name)}" style="padding:6px 4px;border-bottom:1px solid var(--card-stroke)">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
         <div style="font-size:12px;color:var(--text-primary);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(file.name)}</div>
-        <div style="font-size:10px;color:var(--primary-text);flex:0 0 auto">${sourceFormatLabel(file.format)}</div>
+        <div style="font-size:10px;color:var(--primary-text);flex:0 0 auto">${escapeHtml(sourceFormatLabel(file.format))}</div>
       </div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${meta}</div>
     </div>`;
@@ -3480,7 +3496,7 @@ function makeDivIcon(data) {
   const nameLabel = data.name ? escapeHtml(data.name) : '';
   return L.divIcon({
     className: 'tnd-wp-marker',
-    html: `<div class="tnd-wp-dot" style="background:${data.color}">
+    html: `<div class="tnd-wp-dot" style="background:${safeCssColor(data.color)}">
       <span>${symbol}</span>
       <span class="tnd-wp-label">${nameLabel}</span>
     </div>`,
@@ -3533,7 +3549,7 @@ function refreshWaypoint(marker, options = {}) {
 let quickRenamePopup = null;
 
 function openQuickRename(marker) {
-  const popupId = `wp-rename-${marker.wpData.num}`;
+  const popupId = `wp-rename-${safeNum(marker.wpData.num)}`;
   const value = escapeHtml(marker.wpData.name);
   if (quickRenamePopup && map.hasLayer(quickRenamePopup)) {
     map.removeLayer(quickRenamePopup);
@@ -3545,8 +3561,8 @@ function openQuickRename(marker) {
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Быстрое переименование</div>
       <input id="${popupId}" value="${value}" maxlength="16" style="width:100%;padding:5px 6px;border:1px solid var(--border-normal);border-radius:4px;background:var(--bg-sunken);color:var(--text-primary)">
       <div style="display:flex;gap:6px;margin-top:8px">
-        <button onclick="applyQuickRename(${marker.wpData.num})" style="flex:1;padding:5px 6px;border:1px solid var(--border-bright);border-radius:4px;background:var(--accent);color:var(--text-on-solid);cursor:pointer">Сохранить</button>
-        <button onclick="openWaypointPropsByNum(${marker.wpData.num})" style="flex:1;padding:5px 6px;border:1px solid var(--border-normal);border-radius:4px;background:var(--bg-interactive);color:var(--text-secondary);cursor:pointer">Свойства</button>
+        <button onclick="applyQuickRename(${safeNum(marker.wpData.num)})" style="flex:1;padding:5px 6px;border:1px solid var(--border-bright);border-radius:4px;background:var(--accent);color:var(--text-on-solid);cursor:pointer">Сохранить</button>
+        <button onclick="openWaypointPropsByNum(${safeNum(marker.wpData.num)})" style="flex:1;padding:5px 6px;border:1px solid var(--border-normal);border-radius:4px;background:var(--bg-interactive);color:var(--text-secondary);cursor:pointer">Свойства</button>
       </div>
     </div>
   `)
@@ -3646,13 +3662,13 @@ function updateWptTable() {
   tbody.innerHTML = filtered.map(m => {
     const d = m.wpData;
     const idx = waypoints.indexOf(m);
-    const syncBadge = d.syncedAt ? `<span title="Синхр. с ${d.source === 'android' ? 'Android' : 'desktop'} · ${new Date(d.syncedAt).toLocaleString('ru-RU')}" style="font-size:10px;opacity:0.7;margin-left:2px">☁</span>` : '';
-    const srcHint = d.source && d.source !== 'desktop' ? `<span style="font-size:9px;color:var(--text-muted);margin-left:3px">${d.source}</span>` : '';
-    return `<tr oncontextmenu="showCtxMenuTable(event,${idx})" onclick="map.panTo([${d.lat},${d.lng}])">
+    const syncBadge = d.syncedAt ? `<span title="Синхр. с ${d.source === 'android' ? 'Android' : 'desktop'} · ${escapeHtml(new Date(d.syncedAt).toLocaleString('ru-RU'))}" style="font-size:10px;opacity:0.7;margin-left:2px">☁</span>` : '';
+    const srcHint = d.source && d.source !== 'desktop' ? `<span style="font-size:9px;color:var(--text-muted);margin-left:3px">${escapeHtml(d.source)}</span>` : '';
+    return `<tr oncontextmenu="showCtxMenuTable(event,${idx})" onclick="map.panTo([${safeNum(d.lat)},${safeNum(d.lng)}])">
       <td class="wpt-cb-cell" onclick="event.stopPropagation()"><label for="wpt-cb-${idx}"><input type="checkbox" id="wpt-cb-${idx}" class="wpt-cb" data-idx="${idx}"></label></td>
-      <td class="wpt-pick-cell" onclick="event.stopPropagation()"><label for="wpt-cb-${idx}"><span class="wpt-icon" style="background:${d.color}"></span></label></td>
-      <td class="wpt-num">${d.num}</td>
-      <td class="wpt-name">${d.name}${syncBadge}${srcHint}</td>
+      <td class="wpt-pick-cell" onclick="event.stopPropagation()"><label for="wpt-cb-${idx}"><span class="wpt-icon" style="background:${safeCssColor(d.color)}"></span></label></td>
+      <td class="wpt-num">${escapeHtml(d.num)}</td>
+      <td class="wpt-name">${escapeHtml(d.name)}${syncBadge}${srcHint}</td>
       <td class="wpt-coords">${formatDm(d.lat, 'N', 'S')} ${formatDm(d.lng, 'E', 'W')}</td>
       <td onclick="event.stopPropagation()">
         <div class="wpt-map-actions">
@@ -3660,7 +3676,7 @@ function updateWptTable() {
           <button type="button" class="wpt-map-btn" title="Яндекс Панорама" onclick="openWaypointMapByIndex(${idx}, 'yandex-panorama')">👁</button>
         </div>
       </td>
-      <td class="wpt-radius">${d.radius}м</td>
+      <td class="wpt-radius">${escapeHtml(d.radius)}м</td>
     </tr>`;
   }).join('');
   const all = document.getElementById('wpt-select-all');
@@ -4920,9 +4936,9 @@ function buildLayerUI() {
         div.className = 'base-layer' + (e.label === currentBaseLayerName ? ' active' : '');
         div.dataset.layer = e.label;
         div.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
-        div.innerHTML = `<span onclick="setLayer('${e.label.replace(/'/g,"\\'")}', this.parentElement)"
-          style="flex:1;cursor:pointer">${getLayerEmoji(e.label)} ${e.label}</span>
-          <span onclick="event.stopPropagation();toggleLayerHidden('${e.key}')" title="Скрыть"
+        div.innerHTML = `<span onclick="setLayer(this.parentElement.dataset.layer, this.parentElement)"
+          style="flex:1;cursor:pointer">${getLayerEmoji(e.label)} ${escapeHtml(e.label)}</span>
+          <span data-layer-key="${escapeHtml(e.key)}" onclick="event.stopPropagation();toggleLayerHidden(this.dataset.layerKey)" title="Скрыть"
           style="color:var(--text-muted);font-size:10px;cursor:pointer;padding:0 4px">✕</span>`;
         freeContainer.appendChild(div);
       });
@@ -4945,9 +4961,9 @@ function buildLayerUI() {
         div.className = 'base-layer premium-layer' + (e.label === currentBaseLayerName ? ' active' : '');
         div.dataset.layer = e.label;
         div.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
-        div.innerHTML = `<span onclick="setLayerPremium('${e.label.replace(/'/g,"\\'")}', this.parentElement)"
-          style="flex:1;cursor:pointer">${getLayerEmoji(e.label)} ${e.label}</span>` + (e.key ? `
-          <span onclick="event.stopPropagation();toggleLayerHidden('${e.key}')" title="Скрыть"
+        div.innerHTML = `<span onclick="setLayerPremium(this.parentElement.dataset.layer, this.parentElement)"
+          style="flex:1;cursor:pointer">${getLayerEmoji(e.label)} ${escapeHtml(e.label)}</span>` + (e.key ? `
+          <span data-layer-key="${escapeHtml(e.key)}" onclick="event.stopPropagation();toggleLayerHidden(this.dataset.layerKey)" title="Скрыть"
           style="color:var(--text-muted);font-size:10px;cursor:pointer;padding:0 4px">✕</span>` : '');
         premiumContainer.appendChild(div);
       });
@@ -4983,10 +4999,12 @@ function buildLayerUI() {
         const isActive = activeOverlays.has(e.label);
         const div = document.createElement('div');
         div.className = 'overlay-layer';
-        div.innerHTML = '<input type="checkbox" data-overlay="' + e.label + '"' + (isActive ? ' checked' : '') + ' onchange="toggleOverlay(\'' + e.label.replace(/'/g, "\\'") + '\', this)"> ' +
-          '<span class="overlay-name">' + e.label + '</span>' +
-          '<input type="range" class="opacity-slider" min="0" max="100" value="' + defaultOpacity + '" oninput="setOverlayOpacity(\'' + e.label.replace(/'/g, "\\'") + '\', this)">' +
-          '<span class="opacity-val">' + defaultOpacity + '%</span>';
+        const overlayAttr = escapeHtml(e.label);
+        const opacityValue = safeNum(defaultOpacity, 70);
+        div.innerHTML = '<input type="checkbox" data-overlay="' + overlayAttr + '"' + (isActive ? ' checked' : '') + ' onchange="toggleOverlay(this.dataset.overlay, this)"> ' +
+          '<span class="overlay-name">' + overlayAttr + '</span>' +
+          '<input type="range" class="opacity-slider" min="0" max="100" value="' + opacityValue + '" data-overlay="' + overlayAttr + '" oninput="setOverlayOpacity(this.dataset.overlay, this)">' +
+          '<span class="opacity-val">' + opacityValue + '%</span>';
         overlayContainer.appendChild(div);
       });
     }
@@ -5799,7 +5817,7 @@ function showSaveGPXDialog() {
       const wps = waypoints.filter(m => m._setId === s.id);
       const dis = wps.length === 0 ? 'disabled' : '';
       html += `<label style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;color:var(--text-primary);cursor:pointer">
-        <input type="checkbox" class="save-gpx-set-cb" data-set-id="${s.id}" ${wps.length > 0 ? 'checked' : ''} ${dis}>
+        <input type="checkbox" class="save-gpx-set-cb" data-set-id="${escapeHtml(s.id)}" ${wps.length > 0 ? 'checked' : ''} ${dis}>
         ${escapeHtml(s.name)} <span style="color:var(--text-muted)">(${wps.length})</span>
       </label>`;
     });
@@ -5810,8 +5828,8 @@ function showSaveGPXDialog() {
     html += '<div style="font-size:11px;color:var(--text-muted);margin:8px 0 4px;text-transform:uppercase">〜 Треки</div>';
     tracks.forEach(t => {
       html += `<label style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;color:var(--text-primary);cursor:pointer">
-        <input type="checkbox" class="save-gpx-trk-cb" data-track-id="${t.id}" checked>
-        <span style="color:${t.color};font-size:10px">●</span> ${escapeHtml(t.name)} <span style="color:var(--text-muted)">(${Array.isArray(t.points) ? t.points.length : 0} точек)</span>
+        <input type="checkbox" class="save-gpx-trk-cb" data-track-id="${escapeHtml(t.id)}" checked>
+        <span style="color:${safeCssColor(t.color)};font-size:10px">●</span> ${escapeHtml(t.name)} <span style="color:var(--text-muted)">(${Array.isArray(t.points) ? t.points.length : 0} точек)</span>
       </label>`;
     });
   }
@@ -5821,8 +5839,8 @@ function showSaveGPXDialog() {
     html += '<div style="font-size:11px;color:var(--text-muted);margin:8px 0 4px;text-transform:uppercase">⚑ Маршруты</div>';
     routes.forEach(r => {
       html += `<label style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;color:var(--text-primary);cursor:pointer">
-        <input type="checkbox" class="save-gpx-rte-cb" data-route-id="${r.id}" checked>
-        <span style="color:${r.color};font-size:10px">●</span> ${escapeHtml(r.name)} <span style="color:var(--text-muted)">(${Array.isArray(r.points) ? r.points.length : 0} КП)</span>
+        <input type="checkbox" class="save-gpx-rte-cb" data-route-id="${escapeHtml(r.id)}" checked>
+        <span style="color:${safeCssColor(r.color)};font-size:10px">●</span> ${escapeHtml(r.name)} <span style="color:var(--text-muted)">(${Array.isArray(r.points) ? r.points.length : 0} КП)</span>
       </label>`;
     });
   }
@@ -6941,16 +6959,16 @@ function formatTrackPointTooltip(track, idx) {
   }
   if (data.speed != null && !isNaN(data.speed)) html += `<b>Скорость:</b> ${(data.speed * 3.6).toFixed(1)} км/ч<br>`;
   if (data.course != null && !isNaN(data.course)) html += `<b>Курс:</b> ${data.course.toFixed(1)}°<br>`;
-  if (data.sat != null) html += `<b>Спутники:</b> ${data.sat}<br>`;
+  if (data.sat != null) html += `<b>Спутники:</b> ${escapeHtml(data.sat)}<br>`;
   if (data.hdop != null) html += `<b>HDOP:</b> ${data.hdop.toFixed(1)}<br>`;
   if (data.vdop != null) html += `<b>VDOP:</b> ${data.vdop.toFixed(1)}<br>`;
   if (data.pdop != null) html += `<b>PDOP:</b> ${data.pdop.toFixed(1)}<br>`;
-  if (data.hr != null) html += `<b>Пульс:</b> ${data.hr} уд/мин<br>`;
-  if (data.cad != null) html += `<b>Каденс:</b> ${data.cad}<br>`;
+  if (data.hr != null) html += `<b>Пульс:</b> ${escapeHtml(data.hr)} уд/мин<br>`;
+  if (data.cad != null) html += `<b>Каденс:</b> ${escapeHtml(data.cad)}<br>`;
   if (data.temp != null) html += `<b>Температура:</b> ${data.temp.toFixed(1)}°C<br>`;
-  if (data.power != null) html += `<b>Мощность:</b> ${data.power} Вт<br>`;
-  if (data.name) html += `<b>Имя:</b> ${data.name}<br>`;
-  if (data.desc) html += `<b>Описание:</b> ${data.desc}<br>`;
+  if (data.power != null) html += `<b>Мощность:</b> ${escapeHtml(data.power)} Вт<br>`;
+  if (data.name) html += `<b>Имя:</b> ${escapeHtml(data.name)}<br>`;
+  if (data.desc) html += `<b>Описание:</b> ${escapeHtml(data.desc)}<br>`;
   // Distance from start
   if (idx > 0) {
     let dist = 0;
@@ -7839,8 +7857,8 @@ function updateTrackList() {
   }
   el.innerHTML = tracks.map(t => {
     const km = trackLen(t).toFixed(1), sel = t.id === selectedTrackId;
-    const syncInfo = t.syncedAt ? `<span title="Синхр. с ${t.source === 'android' ? 'Android' : 'desktop'} · ${new Date(t.syncedAt).toLocaleString('ru-RU')}" style="font-size:10px;opacity:0.7;margin-left:4px">☁</span>` : '';
-    const srcTag = t.source && t.source !== 'desktop' ? ` · <span style="font-size:10px;color:var(--text-secondary)">${t.source}</span>` : '';
+    const syncInfo = t.syncedAt ? `<span title="Синхр. с ${t.source === 'android' ? 'Android' : 'desktop'} · ${escapeHtml(new Date(t.syncedAt).toLocaleString('ru-RU'))}" style="font-size:10px;opacity:0.7;margin-left:4px">☁</span>` : '';
+    const srcTag = t.source && t.source !== 'desktop' ? ` · <span style="font-size:10px;color:var(--text-secondary)">${escapeHtml(t.source)}</span>` : '';
     const modeTag = isTrackEditActive(t)
       ? ' · <span class="meta-tag warn">редактируется</span>'
       : (isTrackDrawActive(t) ? ' · <span class="meta-tag ok">строится</span>' : '');
@@ -7850,8 +7868,8 @@ function updateTrackList() {
         ? ` · <span style="font-size:10px;color:var(--text-muted)" title="Точки появятся с z${TRACK_MARKER_DETAIL_ZOOM}">точки с z${TRACK_MARKER_DETAIL_ZOOM}</span>`
         : '');
     return `<div class="track-item${sel ? ' selected' : ''}" onclick="selectTrackById(${t.id})">
-      <input type="checkbox" class="track-play-cb" data-track-id="${t.id}" onclick="event.stopPropagation()" style="accent-color:${t.color};margin-right:4px" title="Выбрать для плеера">
-      <div class="track-color" style="background:${t.color}"></div>
+      <input type="checkbox" class="track-play-cb" data-track-id="${escapeHtml(t.id)}" onclick="event.stopPropagation()" style="accent-color:${safeCssColor(t.color)};margin-right:4px" title="Выбрать для плеера">
+      <div class="track-color" style="background:${safeCssColor(t.color)}"></div>
       <div class="track-info">
         <input class="track-name inline-name" value="${escapeHtml(t.name)}" onclick="event.stopPropagation()" onchange="renameTrack(${t.id},this.value)" style="width:100%">${syncInfo}
         <div class="track-meta">${t.points.length} точек · ${km} км${srcTag}${modeTag}${pointTag}</div>
@@ -8087,7 +8105,7 @@ function playSelectedTracks() {
     const marker = L.marker(track.points[0], {
       icon: L.divIcon({
         className: '',
-        html: `<div style="font-size:18px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));color:${track.color}">🔺</div>`,  // theme-check: data
+        html: `<div style="font-size:18px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));color:${safeCssColor(track.color)}">🔺</div>`,  // theme-check: data
         iconSize: [20, 20], iconAnchor: [10, 10]
       })
     }).addTo(map);
@@ -8759,8 +8777,8 @@ function updateRouteList() {
   }
   el.innerHTML = routes.map(r => {
     const km = routeLen(r).toFixed(1);
-    const syncInfo = r.syncedAt ? `<span title="Синхр. с ${r.source === 'android' ? 'Android' : 'desktop'} · ${new Date(r.syncedAt).toLocaleString('ru-RU')}" style="font-size:10px;opacity:0.7;margin-left:4px">☁</span>` : '';
-    const srcTag = r.source && r.source !== 'desktop' ? ` · <span style="font-size:10px;color:var(--text-secondary)">${r.source}</span>` : '';
+    const syncInfo = r.syncedAt ? `<span title="Синхр. с ${r.source === 'android' ? 'Android' : 'desktop'} · ${escapeHtml(new Date(r.syncedAt).toLocaleString('ru-RU'))}" style="font-size:10px;opacity:0.7;margin-left:4px">☁</span>` : '';
+    const srcTag = r.source && r.source !== 'desktop' ? ` · <span style="font-size:10px;color:var(--text-secondary)">${escapeHtml(r.source)}</span>` : '';
     const kpRows = r.points.map((p, i) => {
       const prev = i > 0 ? r.points[i-1] : null;
       const dist = prev ? (prev.distanceTo(p)/1000).toFixed(1) + ' км' : '—';
@@ -8769,12 +8787,12 @@ function updateRouteList() {
       const downBtn = `<button type="button" class="route-kp-btn" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},1)" title="Ниже"${i === r.points.length - 1 ? ' disabled' : ''}>↓</button>`;
       const delBtn = `<button type="button" class="route-kp-btn danger" onclick="event.stopPropagation();deleteRoutePoint(${r.id},${i})" title="Удалить">✕</button>`;
       const radius = Number(r.pointRadii?.[i]) || 0;
-      return `<div class="route-kp" draggable="true" data-route-id="${r.id}" data-kp-idx="${i}"
+      return `<div class="route-kp" draggable="true" data-route-id="${escapeHtml(r.id)}" data-kp-idx="${i}"
         ondragstart="onRouteKpDragStart(event)" ondragover="onRouteKpDragOver(event)" ondrop="onRouteKpDrop(event)"
         style="cursor:grab">
         <span style="color:var(--text-muted);font-size:10px;cursor:grab;margin-right:2px">☰</span>
         <input value="${escapeHtml(r.labels?.[i] || `КП${i+1}`)}" onchange="updateRoutePointLabel(${r.id},${i},this.value)" onclick="event.stopPropagation()"
-          style="width:78px;background:${r.color}22;border:1px solid ${r.color}44;border-radius:4px;color:var(--text-primary);padding:2px 4px;font-size:11px">
+          style="width:78px;background:${safeCssColor(r.color)}22;border:1px solid ${safeCssColor(r.color)}44;border-radius:4px;color:var(--text-primary);padding:2px 4px;font-size:11px">
         <span style="font-size:11px;color:var(--text-primary);flex:1">${p.lat.toFixed(4)}°N ${p.lng.toFixed(4)}°E</span>
         <span class="route-dist">${dist}${bear ? ' · ' + bear : ''}</span>
         <input type="number" min="0" step="1" value="${radius}" onchange="updateRoutePointRadius(${r.id},${i},this.value)" onclick="event.stopPropagation()"
@@ -8787,11 +8805,11 @@ function updateRouteList() {
     return `<div class="route-item${sel ? ' selected' : ''}">
       <div class="route-header" onclick="selectRouteById(${r.id});toggleRouteEl(this)">
         <div class="route-title">
-          <span class="route-color-dot" style="background:${r.color}"></span>
+          <span class="route-color-dot" style="background:${safeCssColor(r.color)}"></span>
           <input id="route-name-${r.id}" class="inline-name" value="${escapeHtml(r.name)}" onclick="event.stopPropagation()" onchange="renameRoute(${r.id})" style="width:130px">${syncInfo}
         </div>
         <div class="row-acts">
-          <span class="route-meta">${r.points.length} КП · ${km} км · ${(r.width || 3)}px${srcTag} <span class="route-arrow">${expanded ? '▾' : '▸'}</span></span>
+          <span class="route-meta">${r.points.length} КП · ${km} км · ${safeNum(r.width || 3, 3)}px${srcTag} <span class="route-arrow">${expanded ? '▾' : '▸'}</span></span>
           <button type="button" class="row-act" onclick="event.stopPropagation();startRouteEdit(${r.id})" title="Редактировать КП">${tnIcon('edit')}</button>
           <button type="button" class="row-act${r.visible === false ? ' off' : ''}" onclick="event.stopPropagation();toggleRouteVisible(${r.id})" title="Скрыть/показать">${tnIcon(r.visible === false ? 'eye-off' : 'eye')}</button>
           <button type="button" class="row-act" onclick="event.stopPropagation();centerRoute(${r.id})" title="Центрировать">${tnIcon('my-location')}</button>
@@ -13296,10 +13314,10 @@ function renderCustomLayers() {
     return;
   }
   el.innerHTML = customLayers.map(l => `
-    <div class="base-layer" data-layer="custom:${l.id}" onclick="setCustomLayer(${l.id}, this)" style="position:relative">
+    <div class="base-layer" data-layer="custom:${safeNum(l.id)}" onclick="setCustomLayer(${safeNum(l.id)}, this)" style="position:relative">
       🗺 ${escapeHtml(l.name)}
-      <span style="margin-left:auto;font-size:11px;color:var(--text-muted)">${l.tms ? 'TMS' : 'XYZ'} z${l.maxZoom}</span>
-      <span style="font-size:12px;color:var(--accent-red);cursor:pointer;padding:0 4px" onclick="event.stopPropagation();deleteCustomLayer(${l.id})" title="Удалить">✕</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--text-muted)">${l.tms ? 'TMS' : 'XYZ'} z${escapeHtml(l.maxZoom)}</span>
+      <span style="font-size:12px;color:var(--accent-red);cursor:pointer;padding:0 4px" onclick="event.stopPropagation();deleteCustomLayer(${safeNum(l.id)})" title="Удалить">✕</span>
     </div>
   `).join('');
 }
@@ -13593,7 +13611,7 @@ async function updateCacheUI() {
   } else {
     box.innerHTML = stats.map(s =>
       `<div style="display:flex;justify-content:space-between;padding:2px 0;color:var(--text-primary)">
-        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name}</span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(s.name)}</span>
         <span style="color:var(--text-secondary);min-width:60px;text-align:right">${TileCache.formatSize(s.size)}</span>
         <span style="color:var(--text-muted);min-width:70px;text-align:right">${s.count.toLocaleString('ru')} т.</span>
       </div>`
@@ -13739,11 +13757,11 @@ function rrOpenDialog() {
   const tracksWithTime = tracks.filter(t => t.pointsData && t.pointsData.some(d => d.time));
   selTrack.innerHTML = tracksWithTime.length === 0
     ? '<option value="">Нет треков с таймштампами</option>'
-    : tracksWithTime.map(t => `<option value="${t.id}">${escapeHtml(t.name)} (${trackLen(t).toFixed(1)} км)</option>`).join('');
+    : tracksWithTime.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)} (${trackLen(t).toFixed(1)} км)</option>`).join('');
   // Populate routes
   selRoute.innerHTML = routes.length === 0
     ? '<option value="">Нет маршрутов</option>'
-    : routes.map(r => `<option value="${r.id}">${escapeHtml(r.name)} (${r.points.length} КП)</option>`).join('');
+    : routes.map(r => `<option value="${escapeHtml(r.id)}">${escapeHtml(r.name)} (${r.points.length} КП)</option>`).join('');
   // Default radius from settings
   const defR = document.getElementById('rr-cp-radius');
   if (defR && !defR.dataset.userSet) defR.value = 30;
@@ -13992,7 +14010,7 @@ function rrRender() {
     { l: 'Макс. скорость', v: rrFmtSpeed(overall.maxSpeed) + ' км/ч' },
     { l: 'Набор ↑', v: Math.round(overall.elevGain) + ' м' },
     { l: 'Сброс ↓', v: Math.round(overall.elevLoss) + ' м' },
-    { l: 'Пропущено КП', v: missedCPs.length > 0 ? missedCPs.join(', ') : '—' },
+    { l: 'Пропущено КП', v: missedCPs.length > 0 ? escapeHtml(missedCPs.join(', ')) : '—' },
   ].map(c => `<div class="rr-card"><div class="rr-card-label">${c.l}</div><div class="rr-card-value${c.cls ? ' ' + c.cls : ''}">${c.v}</div></div>`).join('');
 
   // Segments table
@@ -14205,7 +14223,7 @@ function rrRenderTimeline() {
     const t0 = getTime(iv.fromIdx) - startMs, t1 = getTime(iv.toIdx) - startMs;
     const pct = ((t1 - t0) / totalMs * 100).toFixed(2);
     const bg = iv.type === 'stop' ? 'var(--accent-red)' : 'var(--accent-green)';
-    const label = iv.type === 'stop' ? `Стоянка ${rrFmtTime(iv.duration)}` : `${iv.segment.fromLabel}→${iv.segment.toLabel}`;
+    const label = iv.type === 'stop' ? `Стоянка ${rrFmtTime(iv.duration)}` : `${escapeHtml(iv.segment.fromLabel)}→${escapeHtml(iv.segment.toLabel)}`;
     barHtml += `<div class="rr-tl-seg" style="width:${pct}%;background:${bg}" onclick="rrZoomSegment(${iv.fromIdx},${iv.toIdx})">
       <div class="rr-tl-tip">${label}</div>
     </div>`;
@@ -14217,7 +14235,7 @@ function rrRenderTimeline() {
   rrData.hitCPs.forEach(cp => {
     const cpMs = getTime(cp.trackIdx) - startMs;
     const pct = (cpMs / totalMs * 100).toFixed(2);
-    barHtml += `<span style="position:absolute;left:${pct}%;transform:translateX(-50%)">${cp.label}</span>`;
+    barHtml += `<span style="position:absolute;left:${pct}%;transform:translateX(-50%)">${escapeHtml(cp.label)}</span>`;
   });
   barHtml += '</div>';
 
@@ -14273,7 +14291,7 @@ function rrRenderMapOverlays() {
     const label = L.marker(pt, {
       icon: L.divIcon({
         className: '',
-        html: `<div style="background:var(--widget-bg);border:1px solid var(--accent);border-radius:4px;padding:2px 6px;font-size:10px;color:var(--primary-text);white-space:nowrap;font-weight:600">${cp.label} ${timeStr}</div>`,
+        html: `<div style="background:var(--widget-bg);border:1px solid var(--accent);border-radius:4px;padding:2px 6px;font-size:10px;color:var(--primary-text);white-space:nowrap;font-weight:600">${escapeHtml(cp.label)} ${timeStr}</div>`,
         iconSize: [0, 0], iconAnchor: [-8, 12]
       })
     }).addTo(map);
@@ -14286,7 +14304,7 @@ function rrRenderMapOverlays() {
     const label = L.marker(pt, {
       icon: L.divIcon({
         className: '',
-        html: `<div style="background:var(--widget-bg);border:1px solid var(--card-stroke);border-radius:4px;padding:2px 6px;font-size:10px;color:var(--text-muted);white-space:nowrap">✕ ${cp.label}</div>`,
+        html: `<div style="background:var(--widget-bg);border:1px solid var(--card-stroke);border-radius:4px;padding:2px 6px;font-size:10px;color:var(--text-muted);white-space:nowrap">✕ ${escapeHtml(cp.label)}</div>`,
         iconSize: [0, 0], iconAnchor: [-8, 12]
       })
     }).addTo(map);
@@ -14381,7 +14399,7 @@ ${segments.map(sg => {
     const cls = sg.avgSpeed > avgSpd * 1.15 ? 'fast' : sg.avgSpeed < avgSpd * 0.85 ? 'slow' : '';
     return `<tr class="${cls}"><td>${sg.num}</td><td>${escapeHtml(sg.fromLabel)}→${escapeHtml(sg.toLabel)}</td><td>${rrFmtDist(sg.dist)} км</td><td>${rrFmtTime(sg.totalTime)}</td><td>${rrFmtSpeed(sg.avgSpeed)}</td><td>${sg.stopTime > 0 ? rrFmtTime(sg.stopTime) : '—'}</td><td>+${Math.round(sg.elevGain)}м</td><td>${sg.efficiency.toFixed(0)}%</td></tr>`;
   }).join('')}</table>
-${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')}</p>` : ''}
+${missedCPs.length > 0 ? `<p>Пропущенные КП: ${escapeHtml(missedCPs.join(', '))}</p>` : ''}
 <p style="color:#666;font-size:11px;margin-top:20px">Trophy Navigator Desktop · ${new Date().toLocaleDateString('ru-RU')}</p>
 </body></html>`;
   downloadText(`report_${track.name.replace(/[^a-zA-ZёЁа-яА-Я0-9]/g, '_')}.html`, 'text/html', html);
@@ -14625,23 +14643,30 @@ async function nominatimSearch(query) {
       return;
     }
     resultsEl.innerHTML = data.map((r, i) => {
-      const name = escapeHtml(r.display_name.split(',')[0]);
-      const rest = escapeHtml(r.display_name.split(',').slice(1, 3).join(','));
-      return `<div class="search-result-item" style="justify-content:space-between">
-        <div style="display:flex;gap:8px;flex:1;cursor:pointer" onclick="goToSearchResult(${r.lat},${r.lon},'${name.replace(/'/g,"\\'")}')">
+      // Ответ Nominatim — чужие данные: имя и координаты только в data-атрибутах (escapeHtml), обработчики читают их через searchResultArgs(this)
+      const displayName = String(r.display_name ?? '');
+      const name = escapeHtml(displayName.split(',')[0]);
+      const rest = escapeHtml(displayName.split(',').slice(1, 3).join(','));
+      return `<div class="search-result-item" style="justify-content:space-between" data-lat="${safeNum(r.lat)}" data-lon="${safeNum(r.lon)}" data-name="${name}">
+        <div style="display:flex;gap:8px;flex:1;cursor:pointer" onclick="goToSearchResult(...searchResultArgs(this))">
           <span style="color:var(--primary-text);font-size:14px">📍</span>
           <div><div class="search-result-name">${name}</div><div class="search-result-type">${rest}</div></div>
         </div>
         <div style="display:flex;gap:3px;flex-shrink:0;align-items:center">
-          <span title="Маршрут отсюда" style="cursor:pointer;font-size:11px;background:var(--bg-success);color:var(--accent-green);border-radius:3px;padding:2px 5px" onclick="event.stopPropagation();setRoutePoint('A',${r.lat},${r.lon},'${name.replace(/'/g,"\\'")}')">A</span>
-          <span title="Маршрут сюда" style="cursor:pointer;font-size:11px;background:var(--bg-danger);color:var(--accent-red);border-radius:3px;padding:2px 5px" onclick="event.stopPropagation();setRoutePoint('B',${r.lat},${r.lon},'${name.replace(/'/g,"\\'")}')">B</span>
-          <span title="Добавить точку" style="cursor:pointer;font-size:11px;background:var(--bg-selected-soft);color:var(--text-link);border-radius:3px;padding:2px 5px" onclick="event.stopPropagation();addWaypointFromSearch(${r.lat},${r.lon},'${name.replace(/'/g,"\\'")}')">+</span>
+          <span title="Маршрут отсюда" style="cursor:pointer;font-size:11px;background:var(--bg-success);color:var(--accent-green);border-radius:3px;padding:2px 5px" onclick="event.stopPropagation();setRoutePoint('A', ...searchResultArgs(this))">A</span>
+          <span title="Маршрут сюда" style="cursor:pointer;font-size:11px;background:var(--bg-danger);color:var(--accent-red);border-radius:3px;padding:2px 5px" onclick="event.stopPropagation();setRoutePoint('B', ...searchResultArgs(this))">B</span>
+          <span title="Добавить точку" style="cursor:pointer;font-size:11px;background:var(--bg-selected-soft);color:var(--text-link);border-radius:3px;padding:2px 5px" onclick="event.stopPropagation();addWaypointFromSearch(...searchResultArgs(this))">+</span>
         </div>
       </div>`;
     }).join('');
   } catch (err) {
     resultsEl.innerHTML = '<div class="status-err" style="padding:10px 12px;font-size:12px">Ошибка поиска</div>';
   }
+}
+
+function searchResultArgs(el) {
+  const data = el?.closest?.('.search-result-item')?.dataset || {};
+  return [safeNum(data.lat), safeNum(data.lon), String(data.name ?? '')];
 }
 
 function goToSearchResult(lat, lon, name) {
@@ -15081,7 +15106,7 @@ function renderOsrmRouteList() {
     return `<div class="routing-route-item${isActive ? ' active' : ''}">
       <div class="routing-route-head" onclick="selectOsrmRoute(${route.id}, { fit: true })">
         <div>
-          <div class="routing-route-name"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${route.color};margin-right:6px"></span>${escapeHtml(route.name)}</div>
+          <div class="routing-route-name"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${safeCssColor(route.color)};margin-right:6px"></span>${escapeHtml(route.name)}</div>
           <div class="routing-route-meta">${distKm} км · ${formatOsrmDuration(route.duration)} · ${speedKmh} км/ч</div>
         </div>
         <div style="font-size:11px;color:${route.visible ? 'var(--text-secondary)' : 'var(--error-text)'}">${route.visible ? 'видим' : 'скрыт'}</div>
@@ -15227,7 +15252,8 @@ const liveState = {
   lastPreviewMessageId: localStorage.getItem('tnd-live-last-preview') || null
 };
 
-function liveEsc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+// Live-данные приходят с сервера: экранируем и кавычки, чтобы значение было безопасно и в атрибуте
+function liveEsc(s) { return escapeHtml(s); }
 
 function createEmptyLiveFavoritesDocument() {
   return {
@@ -15431,7 +15457,7 @@ function renderLiveGroupSelect() {
   select.innerHTML = [
     `<option value="${LIVE_GROUP_ALL_ID}">Все участники</option>`,
     `<option value="${LIVE_GROUP_SELF_ID}">Мои устройства</option>`,
-    ...groups.map(group => `<option value="${group.id}">${liveEsc(group.name)} (${(group.members || []).length})</option>`)
+    ...groups.map(group => `<option value="${escapeHtml(group.id)}">${liveEsc(group.name)} (${(group.members || []).length})</option>`)
   ].join('');
   select.value = current === LIVE_GROUP_SELF_ID || groups.some(group => group.id === current) ? current : LIVE_GROUP_ALL_ID;
   liveState.activeGroupId = select.value;
@@ -15664,14 +15690,14 @@ function renderLiveGroupsManager() {
     ? '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">Групп пока нет</div>'
     : groups.map(group => `
       <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--card-stroke)">
-        <div style="width:10px;height:10px;border-radius:50%;background:${group.color};flex:0 0 auto"></div>
+        <div style="width:10px;height:10px;border-radius:50%;background:${safeCssColor(group.color)};flex:0 0 auto"></div>
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;color:var(--text-primary)">${liveEsc(group.name)}</div>
           <div style="font-size:10px;color:var(--text-muted)">${(group.members || []).length} участников</div>
         </div>
-        <button class="btn-secondary" style="padding:4px 8px;font-size:11px" onclick="liveHandleGroupChange('${group.id}')">Показать</button>
-        <button class="btn-secondary" style="padding:4px 8px;font-size:11px" onclick="liveStartGroupEdit('${group.id}')">Изм.</button>
-        <button class="btn-secondary btn-danger" style="padding:4px 8px;font-size:11px" onclick="liveDeleteGroup('${group.id}')">✕</button>
+        <button class="btn-secondary" style="padding:4px 8px;font-size:11px" data-group-id="${escapeHtml(group.id)}" onclick="liveHandleGroupChange(this.dataset.groupId)">Показать</button>
+        <button class="btn-secondary" style="padding:4px 8px;font-size:11px" data-group-id="${escapeHtml(group.id)}" onclick="liveStartGroupEdit(this.dataset.groupId)">Изм.</button>
+        <button class="btn-secondary btn-danger" style="padding:4px 8px;font-size:11px" data-group-id="${escapeHtml(group.id)}" onclick="liveDeleteGroup(this.dataset.groupId)">✕</button>
       </div>
     `).join('');
 
@@ -15692,9 +15718,9 @@ function renderLiveGroupsManager() {
     ? '<div style="font-size:12px;color:var(--text-muted)">Участники появятся после загрузки live-устройств</div>'
     : knownDevices.map(device => `
       <label style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:12px;color:var(--text-primary);cursor:pointer">
-        <input class="live-group-member-cb" type="checkbox" value="${device.id}" ${selectedMembers.has(device.id) ? 'checked' : ''}>
+        <input class="live-group-member-cb" type="checkbox" value="${escapeHtml(device.id)}" ${selectedMembers.has(device.id) ? 'checked' : ''}>
         <span style="flex:1">${liveEsc(device.name)}</span>
-        <span style="font-size:10px;color:var(--text-muted)">${device.online ? 'online' : device.id}</span>
+        <span style="font-size:10px;color:var(--text-muted)">${device.online ? 'online' : escapeHtml(device.id)}</span>
       </label>
     `).join('');
 
@@ -15889,7 +15915,7 @@ function renderLiveThreadSelect() {
     ? liveState.selectedThreadKey
     : (liveGetActiveGroup() ? `group:${liveGetActiveGroup().id}` : options[0]?.key || `group:${LIVE_GROUP_ALL_ID}`);
   liveState.selectedThreadKey = current;
-  select.innerHTML = options.map(option => `<option value="${option.key}">${liveEsc(option.label)}</option>`).join('');
+  select.innerHTML = options.map(option => `<option value="${escapeHtml(option.key)}">${liveEsc(option.label)}</option>`).join('');
   select.value = current;
   localStorage.setItem('tnd-live-thread', current);
 }
@@ -16396,13 +16422,13 @@ async function liveOpenShareModal() {
     showToast('Нет доступных получателей: создайте группу или подключите второе устройство');
     return;
   }
-  presetSelect.innerHTML = presets.map(preset => `<option value="${preset.id}">${liveEsc(preset.name)}</option>`).join('');
-  groupSelect.innerHTML = groups.map(group => `<option value="${group.id}">${liveEsc(group.name)} (${(group.members || []).length})</option>`).join('');
+  presetSelect.innerHTML = presets.map(preset => `<option value="${escapeHtml(preset.id)}">${liveEsc(preset.name)}</option>`).join('');
+  groupSelect.innerHTML = groups.map(group => `<option value="${escapeHtml(group.id)}">${liveEsc(group.name)} (${(group.members || []).length})</option>`).join('');
   deviceSelect.innerHTML = ownTargets.map(device => {
     const id = String(device?.deviceId || device?.uniqueId || '').trim().toUpperCase();
     const label = device.name || id;
     const meta = [device.deviceType || '', device.online ? 'online' : 'offline'].filter(Boolean).join(' · ');
-    return `<option value="${id}">${liveEsc(label)}${meta ? ` (${liveEsc(meta)})` : ''}</option>`;
+    return `<option value="${escapeHtml(id)}">${liveEsc(label)}${meta ? ` (${liveEsc(meta)})` : ''}</option>`;
   }).join('');
   if (modeSelect) {
     const groupOption = modeSelect.querySelector('option[value="group"]');
@@ -16824,7 +16850,7 @@ function liveUpdateMarker(dev, isOffline) {
 
 function liveShowPopup(dev) {
   const speed = dev.speed ? Math.round(dev.speed) + ' км/ч' : '—';
-  const battery = dev.battery != null ? dev.battery + '%' : '—';
+  const battery = dev.battery != null ? escapeHtml(dev.battery) + '%' : '—';
   const alt = dev.altitude ? Math.round(dev.altitude) + ' м' : '—';
   const time = dev.lastUpdate ? new Date(dev.lastUpdate).toLocaleTimeString('ru-RU') : '—';
   const isPro = dev.plan === 'full';
@@ -16840,8 +16866,8 @@ function liveShowPopup(dev) {
         ${status.emoji} ${liveEsc(status.label)}<br>
         🏎 ${speed} · 📡 ${alt}<br>
         🔋 ${battery} · 🕐 ${time}<br>
-        ${deviceId ? `<div style="margin-top:6px"><button onclick="liveOpenDeviceThread('${deviceId}')" class="btn-primary btn-sm">💬 Написать</button></div>` : ''}
-        <small style="color:var(--text-muted)">${dev.lat.toFixed(5)}, ${dev.lon.toFixed(5)}</small>
+        ${deviceId ? `<div style="margin-top:6px"><button data-device-id="${escapeHtml(deviceId)}" onclick="liveOpenDeviceThread(this.dataset.deviceId)" class="btn-primary btn-sm">💬 Написать</button></div>` : ''}
+        <small style="color:var(--text-muted)">${safeNum(dev.lat).toFixed(5)}, ${safeNum(dev.lon).toFixed(5)}</small>
       </div>`)
     .openOn(map);
 }
@@ -16861,19 +16887,19 @@ function liveRenderSidebar(devices, now) {
     const lastUpdate = dev.lastUpdate ? new Date(dev.lastUpdate).getTime() : 0;
     const isOffline = lastUpdate > 0 && (now - lastUpdate) > LIVE_OFFLINE_TIMEOUT;
     const speed = dev.speed ? Math.round(dev.speed) + ' км/ч' : '';
-    const battery = dev.battery != null ? '🔋' + dev.battery + '%' : '';
+    const battery = dev.battery != null ? '🔋' + escapeHtml(dev.battery) + '%' : '';
     const time = dev.lastUpdate ? new Date(dev.lastUpdate).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'}) : '';
     const isPro = dev.plan === 'full';
     const uniqueId = liveDeviceUniqueId(dev);
     const status = liveStatusInfo(dev.monitorStatusCode);
 
-    return `<div class="live-device ${isOffline ? 'offline' : ''}" onclick="liveZoomTo(${dev.lat},${dev.lon})">
+    return `<div class="live-device ${isOffline ? 'offline' : ''}" onclick="liveZoomTo(${safeNum(dev.lat)},${safeNum(dev.lon)})">
       <div class="live-dev-dot ${isOffline ? 'offline' : 'online'}"></div>
       <div class="live-dev-info">
         <div class="live-dev-name ${isPro ? 'pro' : ''}">${isPro ? '⭐ ' : ''}${liveEsc(dev.name || 'Unknown')}</div>
         <div class="live-dev-meta">${[`${status.emoji} ${liveEsc(status.label)}`, time, battery].filter(Boolean).join(' · ')}</div>
       </div>
-      ${uniqueId ? `<button onclick="event.stopPropagation();liveOpenDeviceThread('${uniqueId}')" title="Сообщение" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:14px">💬</button>` : ''}
+      ${uniqueId ? `<button data-device-id="${escapeHtml(uniqueId)}" onclick="event.stopPropagation();liveOpenDeviceThread(this.dataset.deviceId)" title="Сообщение" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:14px">💬</button>` : ''}
       ${speed ? `<div class="live-dev-speed">${speed}</div>` : ''}
     </div>`;
   }).join('');
