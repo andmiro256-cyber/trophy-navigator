@@ -389,7 +389,7 @@ async function domPinch() {
   w.L.Browser.any3d = true;
   w.__opts = zoomOpts();
   w.eval('var map = L.map("map", Object.assign({}, window.__opts)).setView([60, 30], 10, { animate: false });');
-  w.eval(pinchBlock().replace(/^const tndPinch/m, 'var tndPinch'));
+  w.eval(pinchBlock());
   const zooms = [];
   w.map.setZoomAround = (p, z) => zooms.push([Math.round(p.x), Math.round(p.y), z]);
   return { dom, w, zooms };
