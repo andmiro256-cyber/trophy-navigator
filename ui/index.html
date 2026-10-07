@@ -13,6 +13,7 @@
 <script src="trophynav-symbols.js"></script>
 <script src="trophynav-maps.js"></script>
 <script src="trophynav-3d.js"></script>
+<script src="tn-icons.js"></script>
 <style>
   /* Цвета, радиусы и шрифт — токены в theme.css (палитра Android). Здесь только var(--…). */
 
@@ -1171,59 +1172,55 @@
 
   <!-- ФАЙЛЫ -->
   <div class="tb-group primary">
-    <button class="tb-btn" onclick="openModal('modal-files')" title="Сохранить / Загрузить файлы" style="font-size:18px">📁</button>
+    <button class="tb-btn" onclick="openModal('modal-files')" title="Сохранить / Загрузить файлы" aria-label="Файлы"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-folder"/></svg></button>
   </div>
 
   <div class="tb-sep"></div>
 
   <!-- ТОЧКИ -->
   <div class="tb-group primary">
-    <button type="button" class="tb-group-label" onclick="openModal('modal-wpts')" title="Список точек">Точки</button>
-    <button class="tb-tag" id="btn-wpt" onclick="toggleMode('waypoint')" title="Добавить точку кликом на карту">+</button>
+    <button type="button" class="tb-group-label" onclick="openModal('modal-wpts')" title="Список точек"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-pin"/></svg><span class="tb-cap">Точки</span></button>
+    <button class="tb-tag" id="btn-wpt" onclick="toggleMode('waypoint')" title="Добавить точку кликом на карту" aria-label="Добавить точку"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-add-wp"/></svg></button>
   </div>
 
   <div class="tb-sep"></div>
 
   <!-- ТРЕКИ -->
   <div class="tb-group primary">
-    <button type="button" class="tb-group-label" onclick="openModal('modal-tracks')" title="Список треков">Треки</button>
-    <button class="tb-tag" id="btn-trk" onclick="startNewTrack()" title="Рисовать трек (ESC — отмена)">〜</button>
+    <button type="button" class="tb-group-label" onclick="openModal('modal-tracks')" title="Список треков"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-track"/></svg><span class="tb-cap">Треки</span></button>
+    <button class="tb-tag" id="btn-trk" onclick="startNewTrack()" title="Рисовать трек (ESC — отмена)" aria-label="Рисовать трек"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-edit"/></svg></button>
   </div>
 
   <div class="tb-sep"></div>
 
   <!-- МАРШРУТЫ -->
   <div class="tb-group primary">
-    <button type="button" class="tb-group-label" onclick="openModal('modal-routes')" title="Список маршрутов по контрольным точкам">Маршруты КП</button>
-    <button class="tb-tag" id="btn-rte" onclick="startNewRoute()" title="Создать маршрут по контрольным точкам">⚑</button>
+    <button type="button" class="tb-group-label" onclick="openModal('modal-routes')" title="Список маршрутов по WP"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-route"/></svg><span class="tb-cap">Маршруты</span></button>
+    <button class="tb-tag" id="btn-rte" onclick="startNewRoute()" title="Создать маршрут по WP" aria-label="Создать маршрут"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-flag"/></svg></button>
   </div>
 
   <div class="tb-sep"></div>
 
   <!-- Блокировка перемещения -->
-  <button class="tb-btn" id="btn-lock" onclick="toggleLock()" title="Заблокировать/разблокировать перемещение объектов (K)">🔓</button>
+  <button class="tb-btn" id="btn-lock" onclick="toggleLock()" title="Заблокировать/разблокировать перемещение объектов (K)" aria-label="Блокировка перемещения"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-lock-open"/></svg></button>
 
   <!-- Режимы навигации -->
-  <div class="tb-group" style="background:rgba(15,52,96,0.4);border:1px solid #1a3a6a;border-radius:6px;padding:2px 4px;gap:2px">
-    <button class="tb-btn active" id="btn-hand" onclick="requestHandMode()" title="Навигация (H)" style="font-size:14px">🧭</button>
-    <button class="tb-btn desktop-overflow-tool" id="btn-ruler" onclick="toggleMode('ruler')" title="Линейка (M)" style="font-size:14px">📐</button>
-    <button class="tb-btn desktop-overflow-tool" id="btn-routing" onclick="openModal('modal-routing')" title="Маршрут по дорогам" style="font-size:14px">🛣</button>
+  <div class="tb-group tb-segment">
+    <button class="tb-btn active" id="btn-hand" onclick="requestHandMode()" title="Навигация (H)" aria-label="Навигация"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-compass"/></svg></button>
+    <button class="tb-btn desktop-overflow-tool" id="btn-ruler" onclick="toggleMode('ruler')" title="Линейка (M)" aria-label="Линейка"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-ruler"/></svg></button>
+    <button class="tb-btn desktop-overflow-tool" id="btn-routing" onclick="openModal('modal-routing')" title="Маршрут по дорогам" aria-label="Маршрут по дорогам"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-road"/></svg></button>
   </div>
 
   <div class="tb-sep tools-sep"></div>
 
   <!-- Инструменты -->
-  <button class="tb-btn offline-btn desktop-overflow-tool" onclick="openModal('modal-offline');scanOfflineMaps()" title="Офлайн карты — скачать и загрузить (D)"><span class="tb-icon">⬇</span><span class="tb-text">Офлайн карты</span></button>
-
-  <div class="tb-sep tools-sep"></div>
+  <button class="tb-btn tb-captioned offline-btn desktop-overflow-tool" onclick="openModal('modal-offline');scanOfflineMaps()" title="Офлайн карты — скачать и загрузить (D)"><span class="tb-icon"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-download"/></svg></span><span class="tb-text">Офлайн карты</span></button>
 
   <!-- Синхронизация -->
-  <button class="tb-btn sync-btn desktop-overflow-tool" onclick="openSyncModal()" title="Облачная синхронизация">☁ Синхр.</button>
-
-  <div class="tb-sep tools-sep"></div>
+  <button class="tb-btn tb-captioned sync-btn desktop-overflow-tool" onclick="openSyncModal()" title="Облачная синхронизация"><span class="tb-icon"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-cloud-sync"/></svg></span><span class="tb-text">Синхр.</span></button>
 
   <!-- Live мониторинг -->
-  <button class="tb-btn desktop-overflow-tool" id="btn-live" onclick="toggleLive()" title="Мониторинг участников"><span class="tb-icon">📡</span><span class="tb-text">Live</span></button>
+  <button class="tb-btn tb-captioned desktop-overflow-tool" id="btn-live" onclick="toggleLive()" title="Мониторинг участников"><span class="tb-icon"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-signal"/></svg></span><span class="tb-text">Live</span></button>
 
   <!-- Правая часть тулбара -->
   <div class="toolbar-spacer"></div>
@@ -1231,35 +1228,34 @@
   <!-- Поиск встроенный -->
   <div class="toolbar-search">
     <div class="toolbar-search-box">
-      <span style="color:var(--text-muted);font-size:12px">🔍</span>
+      <svg class="tn-ico tn-ico-s" aria-hidden="true"><use href="#tn-i-search"/></svg>
       <input type="text" id="search-input" placeholder="Поиск..."
-        autocomplete="off" spellcheck="false"
-        style="background:transparent;border:none;color:var(--text-primary);font-size:12px;outline:none;padding:4px 0">
+        autocomplete="off" spellcheck="false">
       <button type="button" id="search-clear" class="search-clear-btn" onclick="clearSearch()" aria-label="Очистить поиск" title="Очистить поиск" style="display:none">✕</button>
     </div>
     <div class="search-results" id="search-results" style="position:absolute;top:100%;right:0;width:340px;margin-top:2px"></div>
   </div>
 
-  <button class="tb-btn settings-btn server-btn desktop-overflow-tool" onclick="showToast('Сервер — в разработке')" title="Подключение к серверу"><span class="tb-icon">☁</span><span class="tb-text">Сервер</span></button>
-  <button class="tb-btn" id="btn-toggle-work-objects" onclick="toggleAllWorkObjectsVisible()" title="Скрыть все рабочие объекты с карты">👁</button>
-  <button class="tb-btn danger-btn" onclick="showClearConfirm()" title="Очистить рабочие данные с карты">🗑</button>
-  <button class="tb-btn settings-btn settings-main-btn" onclick="openModal('modal-settings')" title="Настройки программы"><span class="tb-icon">⚙</span><span class="tb-text">Настройки</span></button>
-  <button class="tb-btn desktop-overflow-tool" onclick="openModal('modal-about')" title="О программе" style="font-size:16px">💡</button>
-  <button class="tb-btn" id="btn-more-tools" type="button" onclick="toggleToolbarMore(event)" aria-haspopup="menu" aria-expanded="false" title="Дополнительные инструменты">⋯</button>
+  <button class="tb-btn tb-captioned server-btn desktop-overflow-tool" onclick="showToast('Сервер — в разработке')" title="Подключение к серверу"><span class="tb-icon"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-server"/></svg></span><span class="tb-text">Сервер</span></button>
+  <button class="tb-btn" id="btn-toggle-work-objects" onclick="toggleAllWorkObjectsVisible()" title="Скрыть все рабочие объекты с карты" aria-label="Скрыть или показать рабочие объекты"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-eye"/></svg></button>
+  <button class="tb-btn danger-btn" onclick="showClearConfirm()" title="Очистить рабочие данные с карты" aria-label="Очистить рабочие данные"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-delete"/></svg></button>
+  <button class="tb-btn tb-captioned settings-btn settings-main-btn" onclick="openModal('modal-settings')" title="Настройки программы"><span class="tb-icon"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-settings"/></svg></span><span class="tb-text">Настройки</span></button>
+  <button class="tb-btn desktop-overflow-tool" onclick="openModal('modal-about')" title="О программе" aria-label="О программе"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-info"/></svg></button>
+  <button class="tb-btn" id="btn-more-tools" type="button" onclick="toggleToolbarMore(event)" aria-haspopup="menu" aria-expanded="false" title="Дополнительные инструменты"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-more"/></svg></button>
   <div class="tb-sep"></div>
   <button class="tb-btn" id="btn-map-layer" onclick="openModal('modal-layers')" title="Выбор карты и слоёв">
-    <span class="tb-icon">🗺</span> <span class="layer-name" id="current-layer-name">OpenStreetMap</span> ▾
+    <span class="tb-icon"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-layers"/></svg></span> <span class="layer-name" id="current-layer-name">OpenStreetMap</span> <svg class="tn-ico tn-ico-xs" aria-hidden="true"><use href="#tn-i-chevron-down"/></svg>
   </button>
 </div>
 
 <div id="toolbar-more-menu" role="menu" aria-label="Дополнительные инструменты" hidden>
-  <button type="button" class="toolbar-more-item" role="menuitem" data-mode="ruler" onclick="closeToolbarMore();toggleMode('ruler')">📐 Линейка <span style="margin-left:auto;color:var(--text-muted)">M</span></button>
-  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openModal('modal-routing')">🛣 Маршрут по дорогам</button>
-  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openModal('modal-offline');scanOfflineMaps()">⬇ Офлайн-карты</button>
-  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openSyncModal()">☁ Облачная синхронизация</button>
-  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();toggleLive()">📡 Мониторинг участников</button>
-  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();showToast('Сервер — в разработке')">☁ Подключение к серверу</button>
-  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openModal('modal-about')">💡 О программе</button>
+  <button type="button" class="toolbar-more-item" role="menuitem" data-mode="ruler" onclick="closeToolbarMore();toggleMode('ruler')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-ruler"/></svg> Линейка <span class="kbd-hint">M</span></button>
+  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openModal('modal-routing')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-road"/></svg> Маршрут по дорогам</button>
+  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openModal('modal-offline');scanOfflineMaps()"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-download"/></svg> Офлайн-карты</button>
+  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openSyncModal()"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-cloud-sync"/></svg> Облачная синхронизация</button>
+  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();toggleLive()"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-signal"/></svg> Мониторинг участников</button>
+  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();showToast('Сервер — в разработке')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-server"/></svg> Подключение к серверу</button>
+  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openModal('modal-about')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-info"/></svg> О программе</button>
 </div>
 
 <div id="route-pick-hint" role="status" aria-live="polite">
@@ -3929,11 +3925,9 @@ let objectsLocked = false;
 function toggleLock() {
   objectsLocked = !objectsLocked;
   const btn = document.getElementById('btn-lock');
-  btn.textContent = objectsLocked ? '🔒' : '🔓';
+  btn.innerHTML = tnIcon(objectsLocked ? 'lock' : 'lock-open');
   btn.classList.toggle('active', objectsLocked);
-  btn.style.background = objectsLocked ? '#6a2a2a' : '';
-  btn.style.borderColor = objectsLocked ? '#a03030' : '';
-  btn.style.color = objectsLocked ? '#ff8080' : '';
+  btn.classList.toggle('status-bad', objectsLocked);
   // Обновить draggable на всех waypoint маркерах
   waypoints.forEach(m => {
     if (m.dragging) {
@@ -11049,7 +11043,8 @@ function updateWorkObjectsVisibilityButton() {
   const btn = document.getElementById('btn-toggle-work-objects');
   if (!btn) return;
   const hidden = !!workObjectsVisibilitySnapshot;
-  btn.textContent = hidden ? '◉' : '👁';
+  btn.innerHTML = tnIcon(hidden ? 'eye-off' : 'eye');
+  btn.classList.toggle('status-warn', hidden);
   btn.title = hidden ? 'Показать рабочие объекты на карте' : 'Скрыть все рабочие объекты с карты';
   btn.classList.toggle('active', hidden);
 }
@@ -16524,6 +16519,7 @@ function toggleLive() {
   liveState.isOpen = !liveState.isOpen;
   sidebar.classList.toggle('open', liveState.isOpen);
   btn.classList.toggle('live-active', liveState.isOpen);
+  btn.classList.toggle('status-good', liveState.isOpen);
   if (liveState.isOpen) {
     // Reset position and collapsed state
     sidebar.style.left = ''; sidebar.style.top = ''; sidebar.style.right = '';
