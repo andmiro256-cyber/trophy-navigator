@@ -12779,9 +12779,15 @@ async function installPendingUpdate() {
     }
   } catch (e) {
     if (unlisten) unlisten();
-    status.style.color = '#df7a4a';
-    status.textContent = '✗ ' + getErrorMessage(e, 'Не удалось установить обновление') +
-      (pendingUpdateKind === 'deb' ? ' Если окно пароля было закрыто — проверьте обновление ещё раз.' : '');
+    const installError = getErrorMessage(e, 'Не удалось установить обновление');
+    if (installError.startsWith('Обновление отменено')) {
+      // Пользователь закрыл окно пароля: установка остановлена без запасных путей.
+      status.style.color = '#dfdf4a';
+      status.textContent = 'Обновление отменено — пакет не установлен. Чтобы повторить, нажмите «Проверить обновление».';
+    } else {
+      status.style.color = '#df7a4a';
+      status.textContent = '✗ ' + installError;
+    }
     // Rust уже закрыл updater-resource: повторная установка требует новой проверки.
     pendingUpdateRid = null;
   } finally {

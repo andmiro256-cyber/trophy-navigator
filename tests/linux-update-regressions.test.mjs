@@ -25,11 +25,15 @@ test('CI ships a signed deb with a DEB bundle marker and bundle-specific manifes
   assert.match(workflow, /grep -aq '__TAURI_BUNDLE_TYPE_VAR_APP'/);
   assert.match(workflow, /src-tauri\/target\/release\/bundle\/deb\/\*\.deb\.sig/);
 
-  for (const key of ['linux-x86_64', 'linux-x86_64-appimage', 'linux-x86_64-deb',
+  for (const key of ['linux-x86_64', 'linux-x86_64-appimage', 'linux-x86_64-deb-pkexec',
     'windows-x86_64', 'windows-x86_64-nsis', 'windows-x86_64-msi', 'darwin-aarch64', 'darwin-x86_64']) {
     assert.ok(workflow.includes(`"${key}"`), `manifest key ${key} must be generated`);
   }
-  assert.match(workflow, /"linux-x86_64-deb": deb/);
+  assert.match(workflow, /"linux-x86_64-deb-pkexec": deb/);
+  // Стандартный ключ читают DEB 0.9.22–0.9.25 с небезопасным installer-ом plugin-а (#2380).
+  assert.doesNotMatch(workflow, /"linux-x86_64-deb":/);
+  assert.match(workflow, /if "linux-x86_64-deb" in platforms:/);
+  assert.match(rust, /const DEB_UPDATE_MANIFEST_TARGET: &str = "linux-x86_64-deb-pkexec";/);
   assert.match(workflow, /deb = entry\("DEB_SIG", f"\{site\}\/trophy-navigator-desktop_\{version\}_amd64\.deb"\)/);
   assert.match(workflow, /"linux-x86_64": appimage/);
   assert.match(workflow, /updater signature \{sig_var\} is missing/);
@@ -50,7 +54,8 @@ test('Linux updater only retains an installable update for a real APPIMAGE file'
     /Some\(BundleType::AppImage\) if linux_appimage_path_is_valid\(appimage\) =>\s*\{?\s*UpdateInstallKind::LinuxAppImage/);
 
   const installCommand = rust.indexOf('async fn install_app_update');
-  const safetyGuard = rust.indexOf('if !update_install_kind().can_auto_install()', installCommand);
+  const safetyGuard = rust.indexOf('if !install_kind.can_auto_install()', installCommand);
+  assert.ok(rust.indexOf('let install_kind = update_install_kind();', installCommand) < safetyGuard);
   const resourceLookup = rust.indexOf('.get::<Update>(rid)', installCommand);
   assert.ok(installCommand >= 0 && safetyGuard > installCommand && resourceLookup > safetyGuard,
     'the safety guard must run before the updater resource is used');
@@ -67,6 +72,29 @@ test('Linux install kind comes from the bundle type baked in by tauri-bundler', 
   assert.doesNotMatch(body, /None\s*=>\s*UpdateInstallKind::(LinuxDeb|LinuxAppImage|Platform)/);
   assert.doesNotMatch(body, /BundleType::Rpm\)?\s*=>\s*UpdateInstallKind::(LinuxDeb|LinuxAppImage|Platform)/);
   assert.doesNotMatch(body, /current_exe|\/usr\/bin|starts_with/, 'install kind must not rely on path heuristics');
+});
+
+test('DEB updates are installed by our pkexec-only code, never by the plugin installer', () => {
+  const installCommand = rust.slice(rust.indexOf('async fn install_app_update'));
+  const debBranch = installCommand.indexOf('if install_kind == UpdateInstallKind::LinuxDeb');
+  const download = installCommand.indexOf('.download(on_chunk', debBranch);
+  const ownInstall = installCommand.indexOf('install_deb_update(&bytes)', download);
+  const pluginInstall = installCommand.indexOf('.download_and_install(');
+  assert.ok(debBranch >= 0 && download > debBranch && ownInstall > download && pluginInstall > ownInstall,
+    'the DEB branch must download via the plugin and return before download_and_install');
+
+  assert.match(rust, /\.target\(DEB_UPDATE_MANIFEST_TARGET\)/);
+  assert.match(rust, /Some\(126\) => Err\(DebInstallError::Cancelled\)/);
+  assert.match(rust, /Some\(127\) => Err\(DebInstallError::NotAuthorized\)/);
+  // Ни одного запасного пути повышения прав в нашем коде.
+  const production = rust.slice(0, rust.indexOf('mod tests {'));
+  assert.doesNotMatch(production, /Command::new\("(sudo|zenity|kdialog)"\)/);
+  assert.match(production, /const PKEXEC_PATH: &str = "\/usr\/bin\/pkexec";/);
+});
+
+test('cancelling the password dialog shows «Обновление отменено»', () => {
+  assert.match(rust, /const UPDATE_CANCELLED_MESSAGE: &str =\s*"Обновление отменено/);
+  assert.match(html, /installError\.startsWith\('Обновление отменено'\)[\s\S]*?Обновление отменено — пакет не установлен/);
 });
 
 test('DEB auto-update warns about the administrator password before installing', () => {

@@ -311,7 +311,7 @@ jobs:
           MACOS_X64_DMG_SRC=$(find artifacts/TrophyNavigator-macOS-x64 -type f -name '*.dmg' | head -n 1)
           MACOS_ARM64_APP_SRC=$(find artifacts/TrophyNavigator-macOS-arm64 -type f -name '*.app.tar.gz' | head -n 1)
           MACOS_X64_APP_SRC=$(find artifacts/TrophyNavigator-macOS-x64 -type f -name '*.app.tar.gz' | head -n 1)
-          # deb обязателен: с 0.9.27 он получает обновления через manifest (linux-x86_64-deb).
+          # deb обязателен: с 0.9.27 он получает обновления через manifest (linux-x86_64-deb-pkexec).
           if [ -z "$APPIMAGE_SRC" ] || [ -z "$NSIS_SRC" ] || [ -z "$DEB_SRC" ]; then
             echo "Release artifacts not found" >&2
             exit 1
@@ -359,9 +359,13 @@ jobs:
           set -euo pipefail
 
           # tauri-plugin-updater >= 2.10 ищет сначала `{os}-{arch}-{bundle}`
-          # (linux-x86_64-deb, linux-x86_64-appimage, windows-x86_64-nsis,
-          # windows-x86_64-msi, darwin-aarch64-app), затем общий `{os}-{arch}`.
+          # (linux-x86_64-appimage, windows-x86_64-nsis, windows-x86_64-msi,
+          # darwin-aarch64-app), затем общий `{os}-{arch}`.
           # Общий linux-x86_64 остаётся AppImage-ом для сборок без метки бандла.
+          # DEB >= 0.9.27 читает свой ключ linux-x86_64-deb-pkexec и ставит пакет
+          # собственным кодом (pkexec без fallback). Стандартный linux-x86_64-deb
+          # НЕ публикуется: его читают DEB 0.9.22–0.9.25, где plugin после отмены
+          # pkexec уходит в zenity/kdialog/sudo (ревью Тима #2380).
           read_sig() {
             local file
             file="$(find "$1" -maxdepth 1 -type f -name "$2" -print -quit 2>/dev/null || true)"
@@ -401,7 +405,7 @@ jobs:
           platforms = {
               "linux-x86_64": appimage,
               "linux-x86_64-appimage": appimage,
-              "linux-x86_64-deb": deb,
+              "linux-x86_64-deb-pkexec": deb,
               "windows-x86_64": nsis,
               "windows-x86_64-nsis": nsis,
               "darwin-aarch64": mac_arm,
@@ -409,6 +413,9 @@ jobs:
               "darwin-x86_64": mac_x64,
               "darwin-x86_64-app": mac_x64,
           }
+          if "linux-x86_64-deb" in platforms:
+              print("::error::linux-x86_64-deb would hand the deb to the unsafe plugin installer of DEB 0.9.22-0.9.25", file=sys.stderr)
+              sys.exit(1)
           if env.get("MSI_ASSET_NAME") and env.get("MSI_SIG", "").strip():
               platforms["windows-x86_64-msi"] = entry("MSI_SIG", f"{gh}/{env['MSI_ASSET_NAME']}")
           else:
@@ -442,7 +449,7 @@ jobs:
 
             ### Скачать
             - **Windows**: `Trophy.Navigator.Desktop_*_x64-setup.exe` или `Trophy.Navigator.Desktop_*_x64_en-US.msi`
-            - **Linux (Ubuntu/Debian, рекомендуется)**: `Trophy.Navigator.Desktop_*_amd64.deb` — ставится системно, обновляется из приложения с паролем администратора. DEB 0.9.26 один раз обновите вручную: `sudo apt install ./файл.deb`
+            - **Linux (Ubuntu/Debian, рекомендуется)**: `Trophy.Navigator.Desktop_*_amd64.deb` — ставится системно, обновляется из приложения с паролем администратора. Установки DEB 0.9.26 и старше один раз обновите вручную: `sudo apt install ./файл.deb`
             - **Linux (AppImage)**: `Trophy.Navigator.Desktop_*_amd64.AppImage` — требует FUSE 2 для штатного запуска и автообновления
             - **macOS Apple Silicon**: `Trophy.Navigator.Desktop_*_aarch64.dmg`
             - **macOS Intel**: `Trophy.Navigator.Desktop_*_x64.dmg`

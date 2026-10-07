@@ -43,8 +43,9 @@ fn get_app_version() -> String {
 /// (`tauri::utils::platform::bundle_type`), а не из эвристик по путям.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum UpdateInstallKind {
-    /// Системный пакет `.deb`: plugin ставит новый пакет через `pkexec dpkg -i`
-    /// (запрос пароля администратора), запасные пути — zenity/kdialog + sudo.
+    /// Системный пакет `.deb`: plugin только скачивает и проверяет подпись,
+    /// ставит наш код через `pkexec dpkg -i` без каких-либо запасных путей
+    /// (см. `install_deb_update`).
     LinuxDeb,
     /// Штатно смонтированный AppImage: заменяется файл из переменной `APPIMAGE`.
     LinuxAppImage,
@@ -107,9 +108,141 @@ fn update_install_kind() -> UpdateInstallKind {
     }
 }
 
+/// Ключ manifest для DEB-обновлений, которые ставит наш `install_deb_update`.
+/// Стандартный `linux-x86_64-deb` намеренно не используется: его читают
+/// DEB 0.9.22–0.9.25, где plugin после отмены pkexec уходит в zenity/kdialog
+/// и `sudo` (при sudo-кэше пакет ставится вопреки отмене, ревью Тима #2380).
+const DEB_UPDATE_MANIFEST_TARGET: &str = "linux-x86_64-deb-pkexec";
+/// Сообщение-маркер для UI: пользователь сам закрыл окно пароля.
+#[cfg(target_os = "linux")]
+const UPDATE_CANCELLED_MESSAGE: &str =
+    "Обновление отменено: окно пароля администратора закрыто, пакет не установлен.";
+
+#[cfg(target_os = "linux")]
+const PKEXEC_PATH: &str = "/usr/bin/pkexec";
+#[cfg(target_os = "linux")]
+const DPKG_PATH: &str = "/usr/bin/dpkg";
+
+#[cfg(target_os = "linux")]
+#[derive(Debug, PartialEq, Eq)]
+enum DebInstallError {
+    /// pkexec exit 126: пользователь закрыл окно аутентификации.
+    Cancelled,
+    /// pkexec exit 127: нет прав/нет polkit-агента/ошибка аутентификации.
+    NotAuthorized,
+    PkexecMissing,
+    NotADebPackage,
+    DpkgFailed(Option<i32>),
+    Io(String),
+}
+
+#[cfg(target_os = "linux")]
+impl DebInstallError {
+    fn user_message(&self) -> String {
+        match self {
+            Self::Cancelled => UPDATE_CANCELLED_MESSAGE.to_string(),
+            Self::NotAuthorized => format!(
+                "Не удалось получить права администратора, пакет не установлен. Скачайте обновление вручную: {MANUAL_UPDATE_URL}"
+            ),
+            Self::PkexecMissing => format!(
+                "В системе нет pkexec (polkit), автоустановка .deb невозможна. Скачайте обновление вручную: {MANUAL_UPDATE_URL}"
+            ),
+            Self::NotADebPackage => "Скачанный файл не является пакетом .deb, установка прервана.".to_string(),
+            Self::DpkgFailed(code) => format!(
+                "dpkg не смог установить пакет (код {}). Скачайте обновление вручную: {MANUAL_UPDATE_URL}",
+                code.map_or_else(|| "сигнал".to_string(), |c| c.to_string())
+            ),
+            Self::Io(error) => format!("Не удалось подготовить пакет обновления: {error}"),
+        }
+    }
+}
+
+/// Код возврата pkexec → результат. Отмена (126) и отказ (127) терминальны:
+/// никаких повторов, zenity/kdialog или sudo.
+#[cfg(target_os = "linux")]
+fn pkexec_outcome(code: Option<i32>) -> Result<(), DebInstallError> {
+    match code {
+        Some(0) => Ok(()),
+        Some(126) => Err(DebInstallError::Cancelled),
+        Some(127) => Err(DebInstallError::NotAuthorized),
+        other => Err(DebInstallError::DpkgFailed(other)),
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn is_deb_package(bytes: &[u8]) -> bool {
+    bytes.starts_with(b"!<arch>\n") && bytes.get(8..21) == Some(b"debian-binary".as_slice())
+}
+
+/// Ровно один запуск `pkexec <dpkg> -i <package>`; результат — только по коду pkexec.
+#[cfg(target_os = "linux")]
+fn run_pkexec_dpkg(pkexec: &Path, dpkg: &Path, package: &Path) -> Result<(), DebInstallError> {
+    if !pkexec.is_file() {
+        return Err(DebInstallError::PkexecMissing);
+    }
+    let status = std::process::Command::new(pkexec)
+        .arg(dpkg)
+        .arg("-i")
+        .arg(package)
+        .status()
+        .map_err(|e| DebInstallError::Io(e.to_string()))?;
+    pkexec_outcome(status.code())
+}
+
+#[cfg(target_os = "linux")]
+fn install_deb_update_with(
+    bytes: &[u8],
+    pkexec: &Path,
+    dpkg: &Path,
+) -> Result<(), DebInstallError> {
+    use std::io::Write;
+    use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
+
+    if !is_deb_package(bytes) {
+        return Err(DebInstallError::NotADebPackage);
+    }
+    let nanos = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or_default();
+    // Новый каталог 0700 (create, не create_all): заранее подложенный путь не подойдёт.
+    let dir = std::env::temp_dir().join(format!("tnd-update-{}-{nanos}", std::process::id()));
+    fs::DirBuilder::new()
+        .mode(0o700)
+        .create(&dir)
+        .map_err(|e| DebInstallError::Io(e.to_string()))?;
+    let package = dir.join("trophy-navigator-desktop.deb");
+    let result = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(&package)
+        .and_then(|mut file| file.write_all(bytes).and_then(|_| file.sync_all()))
+        .map_err(|e| DebInstallError::Io(e.to_string()))
+        .and_then(|_| run_pkexec_dpkg(pkexec, dpkg, &package));
+    let _ = fs::remove_dir_all(&dir);
+    result
+}
+
+/// Установка уже скачанного и проверенного по подписи `.deb`.
+#[cfg(target_os = "linux")]
+fn install_deb_update(bytes: &[u8]) -> Result<(), String> {
+    install_deb_update_with(bytes, Path::new(PKEXEC_PATH), Path::new(DPKG_PATH))
+        .map_err(|e| e.user_message())
+}
+
 #[tauri::command]
 async fn check_app_update<R: Runtime>(webview: Webview<R>) -> Result<Option<UpdateInfo>, String> {
-    let updater = webview.updater().map_err(|e| e.to_string())?;
+    let install_kind = update_install_kind();
+    let updater = if install_kind == UpdateInstallKind::LinuxDeb {
+        webview
+            .updater_builder()
+            .target(DEB_UPDATE_MANIFEST_TARGET)
+            .build()
+    } else {
+        webview.updater()
+    }
+    .map_err(|e| e.to_string())?;
     let update = updater.check().await.map_err(|e| e.to_string())?;
 
     let Some(update) = update else {
@@ -125,7 +258,6 @@ async fn check_app_update<R: Runtime>(webview: Webview<R>) -> Result<Option<Upda
     let current_version = update.current_version.clone();
     let version = update.version.clone();
     let body = update.body.clone();
-    let install_kind = update_install_kind();
     let can_auto_install = install_kind.can_auto_install();
     let rid = can_auto_install.then(|| webview.resources_table().add(update));
 
@@ -152,7 +284,8 @@ struct DownloadProgress {
 
 #[tauri::command]
 async fn install_app_update<R: Runtime>(webview: Webview<R>, rid: u32) -> Result<(), String> {
-    if !update_install_kind().can_auto_install() {
+    let install_kind = update_install_kind();
+    if !install_kind.can_auto_install() {
         let _ = webview.resources_table().close(rid);
         return Err(format!(
             "Автоустановка недоступна для этой установки. Скачайте обновление вручную: {MANUAL_UPDATE_URL}"
@@ -167,14 +300,25 @@ async fn install_app_update<R: Runtime>(webview: Webview<R>, rid: u32) -> Result
     let _ = webview.resources_table().close(rid);
 
     let webview_clone = webview.clone();
+    let on_chunk = move |downloaded: usize, total: Option<u64>| {
+        let _ = webview_clone.emit("update-progress", DownloadProgress { downloaded, total });
+    };
+
+    #[cfg(target_os = "linux")]
+    if install_kind == UpdateInstallKind::LinuxDeb {
+        // Plugin только скачивает и проверяет minisign-подпись; его install_deb
+        // не используется: после отмены pkexec он уходит в zenity/kdialog/sudo.
+        let bytes = update
+            .download(on_chunk, || {})
+            .await
+            .map_err(|e| e.to_string())?;
+        return tauri::async_runtime::spawn_blocking(move || install_deb_update(&bytes))
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+
     update
-        .download_and_install(
-            move |downloaded: usize, total: Option<u64>| {
-                let _ =
-                    webview_clone.emit("update-progress", DownloadProgress { downloaded, total });
-            },
-            || {},
-        )
+        .download_and_install(on_chunk, || {})
         .await
         .map_err(|e| e.to_string())
 }
@@ -1405,9 +1549,143 @@ fn get_raw_machine_id() -> Result<String, Box<dyn std::error::Error>> {
 
 #[cfg(all(test, target_os = "linux"))]
 mod tests {
-    use super::{linux_appimage_path_is_valid, linux_update_install_kind, UpdateInstallKind};
+    use super::{
+        install_deb_update_with, is_deb_package, linux_appimage_path_is_valid,
+        linux_update_install_kind, pkexec_outcome, run_pkexec_dpkg, DebInstallError,
+        UpdateInstallKind, UPDATE_CANCELLED_MESSAGE,
+    };
     use std::ffi::OsStr;
+    use std::path::{Path, PathBuf};
     use tauri::utils::config::BundleType;
+
+    const FAKE_DEB: &[u8] =
+        b"!<arch>\ndebian-binary   0           0     0     100644  4         `\n2.0\n";
+
+    /// Каталог с заглушками. Вместо pkexec запускается /bin/sh, вместо dpkg —
+    /// скрипт, который пишет свой вызов в лог и выходит с заданным кодом (так
+    /// pkexec передаёт код программы и сам отдаёт 126/127). Рядом лежат
+    /// заглушки sudo/zenity/kdialog: если бы кто-то их вызвал, появился бы их лог.
+    struct StubDir(PathBuf);
+
+    impl StubDir {
+        fn new(name: &str, exit_code: i32) -> Self {
+            let dir =
+                std::env::temp_dir().join(format!("tnd-pkexec-test-{name}-{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&dir);
+            std::fs::create_dir_all(&dir).unwrap();
+            for tool in ["fake-dpkg", "sudo", "zenity", "kdialog"] {
+                let code = if tool == "fake-dpkg" { exit_code } else { 0 };
+                std::fs::write(
+                    dir.join(tool),
+                    format!(
+                        "echo \"$0 $*\" >> \"{}/{tool}.log\"\nexit {code}\n",
+                        dir.display()
+                    ),
+                )
+                .unwrap();
+            }
+            Self(dir)
+        }
+
+        fn dpkg(&self) -> PathBuf {
+            self.0.join("fake-dpkg")
+        }
+
+        fn calls(&self, tool: &str) -> usize {
+            std::fs::read_to_string(self.0.join(format!("{tool}.log")))
+                .map(|log| log.lines().count())
+                .unwrap_or(0)
+        }
+
+        fn assert_no_fallback(&self) {
+            for tool in ["sudo", "zenity", "kdialog"] {
+                assert_eq!(self.calls(tool), 0, "{tool} must never be called");
+            }
+        }
+    }
+
+    impl Drop for StubDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn pkexec_exit_codes_map_to_terminal_results() {
+        assert_eq!(pkexec_outcome(Some(0)), Ok(()));
+        assert_eq!(pkexec_outcome(Some(126)), Err(DebInstallError::Cancelled));
+        assert_eq!(
+            pkexec_outcome(Some(127)),
+            Err(DebInstallError::NotAuthorized)
+        );
+        assert_eq!(
+            pkexec_outcome(Some(1)),
+            Err(DebInstallError::DpkgFailed(Some(1)))
+        );
+        assert_eq!(pkexec_outcome(None), Err(DebInstallError::DpkgFailed(None)));
+        assert!(DebInstallError::Cancelled
+            .user_message()
+            .starts_with("Обновление отменено"));
+        assert_eq!(
+            DebInstallError::Cancelled.user_message(),
+            UPDATE_CANCELLED_MESSAGE
+        );
+    }
+
+    #[test]
+    fn cancelled_pkexec_stops_without_any_fallback() {
+        let stubs = StubDir::new("cancel", 126);
+        let result = install_deb_update_with(FAKE_DEB, Path::new("/bin/sh"), &stubs.dpkg());
+        assert_eq!(result, Err(DebInstallError::Cancelled));
+        assert_eq!(
+            stubs.calls("fake-dpkg"),
+            1,
+            "exactly one privileged attempt"
+        );
+        stubs.assert_no_fallback();
+    }
+
+    #[test]
+    fn unauthorized_pkexec_stops_without_any_fallback() {
+        let stubs = StubDir::new("noauth", 127);
+        let result = install_deb_update_with(FAKE_DEB, Path::new("/bin/sh"), &stubs.dpkg());
+        assert_eq!(result, Err(DebInstallError::NotAuthorized));
+        assert_eq!(stubs.calls("fake-dpkg"), 1);
+        stubs.assert_no_fallback();
+    }
+
+    #[test]
+    fn successful_pkexec_installs_the_package_once() {
+        let stubs = StubDir::new("ok", 0);
+        let result = install_deb_update_with(FAKE_DEB, Path::new("/bin/sh"), &stubs.dpkg());
+        assert_eq!(result, Ok(()));
+        assert_eq!(stubs.calls("fake-dpkg"), 1);
+        let log = std::fs::read_to_string(stubs.0.join("fake-dpkg.log")).unwrap();
+        assert!(log.contains(" -i "), "dpkg is called with -i: {log}");
+        assert!(log.trim_end().ends_with("trophy-navigator-desktop.deb"));
+        stubs.assert_no_fallback();
+    }
+
+    #[test]
+    fn missing_pkexec_and_non_deb_payloads_never_run_anything() {
+        let stubs = StubDir::new("guard", 0);
+        assert_eq!(
+            run_pkexec_dpkg(
+                Path::new("/definitely/missing/pkexec"),
+                &stubs.dpkg(),
+                Path::new("/tmp/x.deb")
+            ),
+            Err(DebInstallError::PkexecMissing)
+        );
+        assert_eq!(
+            install_deb_update_with(b"\x7fELF not a deb", Path::new("/bin/sh"), &stubs.dpkg()),
+            Err(DebInstallError::NotADebPackage)
+        );
+        assert_eq!(stubs.calls("fake-dpkg"), 0);
+        stubs.assert_no_fallback();
+        assert!(is_deb_package(FAKE_DEB));
+        assert!(!is_deb_package(b"!<arch>\nsomething-else"));
+    }
 
     const MISSING_APPIMAGE: &str = "/definitely/missing/TrophyNavigator.AppImage";
 
