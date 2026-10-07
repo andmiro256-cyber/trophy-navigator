@@ -320,14 +320,15 @@
     st.id = 'tnmaps-style';
     st.textContent = `
       .tnmaps-title-row { display:flex; justify-content:space-between; align-items:center; }
-      .tnmaps-link { font-size:12px; cursor:pointer; color:var(--accent-blue); background:none; border:none; padding:0; text-transform:none; letter-spacing:0; }
+      .tnmaps-link { font-size:12px; font-weight:700; cursor:pointer; color:var(--primary-text); background:none; border:none; padding:0; text-transform:none; letter-spacing:0; }
       .tnmaps-empty { font-size:11px; color:var(--text-muted); padding:4px 2px 6px; }
       .tnmaps-size { margin-left:auto; font-size:10px; color:var(--text-muted); }
-      .tnmaps-controls { background:var(--bg-sunken); border:1px solid var(--border-normal); border-radius:6px; padding:8px; margin:4px 0 6px; display:flex; flex-direction:column; gap:6px; }
+      .tnmaps-controls { background:var(--surface-variant); border:0; border-radius:var(--radius-m); padding:10px; margin:4px 0 6px; display:flex; flex-direction:column; gap:6px; }
       .tnmaps-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:11px; color:var(--text-secondary); }
       .tnmaps-row > .tnmaps-label { min-width:64px; color:var(--text-muted); }
-      .tnmaps-chip { font-size:11px; padding:3px 9px; border-radius:12px; border:1px solid var(--border-normal); background:var(--bg-interactive); color:var(--text-primary); cursor:pointer; }
-      .tnmaps-chip.active { background:var(--bg-selected); border-color:var(--border-bright); }
+      .tnmaps-chip { font-size:12px; padding:4px 12px; min-height:28px; border-radius:var(--radius-pill); border:1px solid var(--text-secondary); background:transparent; color:var(--text-primary); cursor:pointer; }
+      .tnmaps-chip:hover { background:var(--hover); }
+      .tnmaps-chip.active { background:var(--primary); border-color:var(--primary); color:var(--on-primary); }
       .tnmaps-chip:disabled { opacity:.45; cursor:default; }
       .tnmaps-row input[type=range] { flex:1; min-width:90px; }
       .tnmaps-row label { display:flex; align-items:center; gap:4px; cursor:pointer; color:var(--text-primary); }
@@ -336,24 +337,25 @@
       #modal-tnmaps .modal-body { display:flex; flex-direction:column; gap:8px; }
       .tnmaps-status { font-size:11px; color:var(--text-muted); }
       .tnmaps-status.warn { color:var(--text-warning); }
-      .tnmaps-search { width:100%; padding:6px 8px; border-radius:5px; border:1px solid var(--input-border); background:var(--input-bg); color:var(--text-primary); font-size:12px; }
+      .tnmaps-search { width:100%; padding:8px 10px; border-radius:var(--radius-s); border:1px solid var(--input-border); background:var(--input-bg); color:var(--text-primary); font-size:12px; }
       .tnmaps-list { display:flex; flex-direction:column; gap:4px; overflow-y:auto; max-height:calc(100vh - 290px); }
-      .tnmaps-group { font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); padding:6px 0 2px; }
-      .tnmaps-item { display:flex; align-items:center; gap:8px; padding:7px 8px; border:1px solid var(--row-border); border-radius:6px; background:var(--bg-elevated); }
-      .tnmaps-item.downloaded { border-color:var(--border-normal); background:var(--bg-surface); }
+      .tnmaps-group { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); padding:8px 0 2px; }
+      .tnmaps-item { display:flex; align-items:center; gap:8px; padding:8px 12px; border:0; border-radius:var(--radius-m); background:var(--surface-variant); }
+      .tnmaps-item.downloaded { background:var(--success-soft); }
       .tnmaps-item-main { flex:1; min-width:0; }
-      .tnmaps-item-name { font-size:12px; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .tnmaps-item-name { font-size:13px; font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
       .tnmaps-item-sub { font-size:10px; color:var(--text-muted); margin-top:2px; }
       .tnmaps-item-sub .ok { color:var(--accent-green); }
       .tnmaps-item-sub .upd { color:var(--accent-amber); }
       .tnmaps-item-sub .err { color:var(--accent-red); }
       .tnmaps-item-actions { display:flex; gap:4px; flex-shrink:0; }
-      .tnmaps-btn { min-height:28px; font-size:11px; padding:4px 9px; border-radius:5px; cursor:pointer; border:1px solid var(--border-normal); background:var(--bg-interactive); color:var(--text-primary); white-space:nowrap; }
-      .tnmaps-btn:hover { border-color:var(--border-bright); }
-      .tnmaps-btn.primary { background:var(--accent-blue); border-color:var(--border-bright); color:var(--text-on-solid); }
-      .tnmaps-btn.danger { color:var(--accent-red); border-color:var(--border-danger); background:var(--bg-interactive); }
-      .tnmaps-progress { height:4px; border-radius:2px; background:var(--bg-sunken); margin-top:4px; overflow:hidden; }
-      .tnmaps-progress > div { height:100%; background:var(--accent-blue); width:0; transition:width .2s; }
+      .tnmaps-btn { min-height:30px; font-size:12px; font-weight:700; padding:4px 12px; border-radius:var(--radius-pill); cursor:pointer; border:1.5px solid var(--text-secondary); background:transparent; color:var(--text-primary); white-space:nowrap; }
+      .tnmaps-btn:hover { background:var(--hover); }
+      .tnmaps-btn.primary { border-color:var(--primary); color:var(--primary-text); background:transparent; }
+      .tnmaps-btn.primary:hover { background:var(--primary-soft); }
+      .tnmaps-btn.danger { color:var(--error-text); border-color:var(--border-danger); background:transparent; }
+      .tnmaps-progress { height:4px; border-radius:var(--radius-pill); background:var(--surface-tab); margin-top:4px; overflow:hidden; }
+      .tnmaps-progress > div { height:100%; background:var(--accent); width:0; transition:width .2s; }
       .tnmaps-foot { font-size:10px; color:var(--text-muted); display:flex; justify-content:space-between; gap:8px; align-items:center; }
       .tnmaps-poi { display:flex; flex-direction:column; gap:3px; padding:4px 0; }
       .tnmaps-poi[hidden] { display:none; }

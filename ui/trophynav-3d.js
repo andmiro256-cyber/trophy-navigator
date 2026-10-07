@@ -43,23 +43,23 @@
       #tn3d-root { position:fixed; z-index:4000; background:var(--bg-base); outline:none; }
       #tn3d-root .tn3d-map { position:absolute; inset:0; }
       #tn3d-root .tn3d-panel { position:absolute; top:10px; left:10px; width:250px; display:flex; flex-direction:column; gap:8px;
-        background:var(--modal-bg); color:var(--text-primary); border:1px solid var(--border-normal); border-radius:8px;
-        box-shadow:var(--panel-shadow); padding:10px; font-size:12px; }
-      #tn3d-root .tn3d-title { display:flex; align-items:center; justify-content:space-between; gap:6px; font-weight:600; }
+        background:var(--modal-bg); color:var(--text-primary); border:1px solid var(--card-stroke); border-radius:var(--radius-l);
+        box-shadow:var(--panel-shadow); padding:12px; font-size:12px; }
+      #tn3d-root .tn3d-title { display:flex; align-items:center; justify-content:space-between; gap:6px; font-weight:700; font-size:14px; }
       #tn3d-root .tn3d-sub { font-size:11px; color:var(--text-muted); font-weight:400; }
       #tn3d-root .tn3d-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
       #tn3d-root .tn3d-row label { min-width:92px; color:var(--text-secondary); }
       #tn3d-root .tn3d-row input[type=range] { flex:1; min-width:80px; }
       #tn3d-root .tn3d-val { min-width:34px; text-align:right; color:var(--text-secondary); font-variant-numeric:tabular-nums; }
-      #tn3d-root .tn3d-btn { min-height:28px; font-size:12px; padding:4px 9px; border-radius:5px; cursor:pointer;
-        border:1px solid var(--border-normal); background:var(--bg-interactive); color:var(--text-primary); }
-      #tn3d-root .tn3d-btn:hover { border-color:var(--border-bright); }
-      #tn3d-root .tn3d-btn.primary { background:var(--accent-blue); border-color:var(--border-bright); color:var(--text-on-solid); font-weight:600; }
+      #tn3d-root .tn3d-btn { min-height:30px; font-size:12px; font-weight:700; padding:4px 12px; border-radius:var(--radius-pill); cursor:pointer;
+        border:0; background:var(--plain-btn); color:var(--text-primary); }
+      #tn3d-root .tn3d-btn:hover { background-image:linear-gradient(var(--hover), var(--hover)); }
+      #tn3d-root .tn3d-btn.primary { background:var(--primary); color:var(--on-primary); }
       #tn3d-root .tn3d-note { font-size:11px; color:var(--text-warning); }
       #tn3d-root .tn3d-hint { font-size:11px; color:var(--text-muted); line-height:1.4; }
       #tn3d-root .tn3d-hint b { color:var(--text-secondary); font-weight:600; }
       #tn3d-root .tn3d-tip { position:absolute; left:50%; bottom:28px; transform:translateX(-50%); max-width:560px;
-        background:var(--modal-bg); color:var(--text-primary); border:1px solid var(--border-bright); border-radius:8px;
+        background:var(--modal-bg); color:var(--text-primary); border:1px solid var(--card-stroke); border-left:4px solid var(--primary); border-radius:var(--radius-m);
         box-shadow:var(--panel-shadow); padding:10px 14px; font-size:13px; display:flex; gap:12px; align-items:center; }
       #tn3d-root .tn3d-tip[hidden] { display:none; }
       .tn3d-control a { font-weight:700; font-size:12px; width:30px !important; }
@@ -80,7 +80,7 @@
         lines.push({
           type: 'Feature',
           properties: {
-            color: layer.options.color || '#4adf7a',
+            color: layer.options.color || '#4adf7a',  // theme-check: data (цвет на карте)
             width: Number(layer.options.weight) || 3,
             opacity: layer.options.opacity ?? 0.9,
           },
@@ -93,7 +93,7 @@
         const name = wp?.name || layer.options.title || (typeof tip === 'string' ? tip.replace(/<[^>]*>/g, '') : '');
         points.push({
           type: 'Feature',
-          properties: { name: String(name || ''), color: wp?.color || '#df7a4a' },
+          properties: { name: String(name || ''), color: wp?.color || '#df7a4a' },  // theme-check: data (цвет на карте)
           geometry: { type: 'Point', coordinates: [ll.lng, ll.lat] },
         });
       }
@@ -109,17 +109,17 @@
       ml.addSource('tn-user-points', { type: 'geojson', data: { type: 'FeatureCollection', features: points } });
       ml.addLayer({ id: 'tn-user-lines-casing', type: 'line', source: 'tn-user-lines',
         layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#ffffff', 'line-width': ['+', ['get', 'width'], 3], 'line-opacity': 0.75 } });
+        paint: { 'line-color': '#ffffff', 'line-width': ['+', ['get', 'width'], 3], 'line-opacity': 0.75 } });  // theme-check: data (цвет на карте)
       ml.addLayer({ id: 'tn-user-lines', type: 'line', source: 'tn-user-lines',
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: { 'line-color': ['get', 'color'], 'line-width': ['+', ['get', 'width'], 1], 'line-opacity': ['get', 'opacity'] } });
       ml.addLayer({ id: 'tn-user-points', type: 'circle', source: 'tn-user-points',
-        paint: { 'circle-radius': 6, 'circle-color': ['get', 'color'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2,
+        paint: { 'circle-radius': 6, 'circle-color': ['get', 'color'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2,  // theme-check: data (цвет на карте)
           'circle-pitch-alignment': 'viewport' } });
       ml.addLayer({ id: 'tn-user-labels', type: 'symbol', source: 'tn-user-points',
         layout: { 'text-field': ['get', 'name'], 'text-font': ['Roboto Medium'], 'text-size': 13, 'text-offset': [0, 1.1],
           'text-anchor': 'top', 'text-optional': true },
-        paint: { 'text-color': '#1a2030', 'text-halo-color': '#ffffff', 'text-halo-width': 1.6 } });
+        paint: { 'text-color': '#1a2030', 'text-halo-color': '#ffffff', 'text-halo-width': 1.6 } });  // theme-check: data (цвет на карте)
     };
     if (ml.isStyleLoaded()) add(); else ml.once('load', add);
     return lines.length + points.length;

@@ -1,0 +1,206 @@
+/*
+ * Trophy Navigator Desktop — токены темы.
+ *
+ * Единственное место, где у интерфейса записаны цвета (проверяет tests/theme-tokens.test.mjs).
+ * Палитра = Android RaceNav: res/values/colors.xml (светлая, :root) и
+ * res/values-night/colors.xml (тёмная, [data-theme="dark"]). Остальной CSS и JS берут цвета
+ * только через var(--…). Цвета данных (выбранные пользователем цвета точек/треков/маршрутов,
+ * цвета статусов Live на карте) — это данные, а не тема; они живут в JS рядом с данными.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* ── Акцент — оранжевый сайта trophynav.ru (assets/tn.css), решение Andre 07.10:
+        #E8540A из Android на десктопе слишком яркий. Остальное — палитра Android (values/colors.xml) ── */
+  --primary: #C2541E;
+  --primary-variant: #A4441A;              /* нажатие / hover */
+  --on-primary: #FFFFFF;
+  --background: #E4E8EC;
+  --surface: #EFF2F5;
+  --surface-top: #DDE2E7;
+  --surface-tab: #D5DAE0;
+  --surface-variant: #E8ECF0;
+  --surface-overlay: #D8DDE3;
+  --text-primary: #111111;
+  --text-secondary: #4C5563;
+  --text-muted: #6F7782;
+  --text-hint: #8C95A3;
+  --card-stroke: rgba(0, 0, 0, 0.12);
+  --success: #2E7D32;
+  --warning: #8D6E00;
+  --error: #C62828;
+
+  /* ── Производные (MapFragment.kt: TopBarPalette, BottomBarPalette, ModalPalette) ── */
+  --bar-bg: #F7F9FC;                       /* верхняя панель, barColor 0xEAF7F9FC */
+  --tile-bg: #FFFFFF;                      /* рамки кнопок панели, topButtonFill() */
+  --tile-stroke: var(--text-primary);      /* рамка 2dp цветом текста */
+  --widget-bar-bg: rgba(236, 236, 236, 0.85);  /* нижняя полоса виджетов */
+  --widget-bg: rgba(255, 255, 255, 0.97);
+  --widget-stroke: rgba(0, 0, 0, 0.33);
+  --primary-text: #A4441A;                 /* оранжевый текст на светлом (контраст ≥ 4.5 на всех поверхностях) */
+  --primary-soft: #F4E6DC;                 /* мягкая подложка: выделенный пункт, как раздел «Экран» в настройках */
+  --primary-ring: rgba(194, 84, 30, 0.40);
+  --ripple: rgba(194, 84, 30, 0.18);       /* ripple: primary с прозрачностью */
+  --hover: rgba(0, 0, 0, 0.06);
+  --pressed: rgba(0, 0, 0, 0.10);
+  --plain-btn: #E1E6EB;                    /* «плоская» кнопка, btn_pill surface_variant */
+  --scrim: rgba(0, 0, 0, 0.45);
+  --success-soft: rgba(46, 125, 50, 0.12);
+  --warning-soft: rgba(141, 110, 0, 0.12);
+  --error-soft: rgba(198, 40, 40, 0.10);
+  --success-text: #276C2B;
+  --warning-text: #7A5F00;
+  --error-text: #B71C1C;
+  --switch-track-off: #B9C0C8;
+  --switch-thumb-off: #F5F5F5;
+  --switch-track-on: rgba(194, 84, 30, 0.45);
+  --scroll-thumb: rgba(0, 0, 0, 0.22);
+  --scroll-thumb-hover: rgba(0, 0, 0, 0.38);
+  --shadow-color: rgba(31, 41, 55, 0.18);
+  --shadow-1: 0 1px 3px rgba(31, 41, 55, 0.16);
+  --shadow-2: 0 6px 20px rgba(31, 41, 55, 0.18);
+  --shadow-3: 0 16px 40px rgba(31, 41, 55, 0.22);
+  --chart-grid: rgba(0, 0, 0, 0.10);
+  /* Статус-кнопки панели — мягкие заливки как у кнопки качества GPS (styleGpsDot), одни на обе темы */
+  --status-good-fill: #7CCB80;
+  --status-warn-fill: #FFD95A;
+  --status-bad-fill: #F07A70;
+  --status-ink: #111111;
+
+  /* ── Цвета поверх карты: одинаковые в обеих темах (карта светлая и в тёмной теме) ── */
+  --map-ink: #FFFFFF;                      /* обводка маркеров, подписи на карте */
+  --map-halo: #000000;                     /* тень подписей на карте */
+  --map-shadow: rgba(0, 0, 0, 0.5);
+  --map-point-a: #168A42;                  /* «Маршрут отсюда» */
+  --map-point-b: #C43D3D;                  /* «Маршрут сюда» */
+  --map-ruler: #FF6A00;                    /* линейка */
+  --map-pro: #FFD700;                      /* участник Pro в Live */
+  --map-offline: #666666;                  /* Live: нет связи */
+  --map-online: #4CAF50;                   /* Live: на связи */
+  --map-error: #F44336;                    /* Live: ошибка */
+  --map-ink-muted: #DDDDDD;                /* скорость участника под маркером */
+  --map-stop: #E07070;                     /* стоянка в отчёте о гонке */
+
+  /* ── Типографика, радиусы, отступы (Android: Roboto, 7dp рамки, 8–16dp карточки, «пилюли») ── */
+  --font: Roboto, "Segoe UI", system-ui, -apple-system, "Noto Sans", Ubuntu, sans-serif;
+  --font-mono: "Roboto Mono", ui-monospace, "Cascadia Mono", "DejaVu Sans Mono", monospace;
+  --fs-xs: 11px;
+  --fs-s: 12px;
+  --fs-m: 13px;
+  --fs-l: 15px;
+  --fs-xl: 18px;
+  --radius-xs: 4px;
+  --radius-s: 6px;
+  --radius-tile: 7px;
+  --radius-m: 10px;
+  --radius-l: 14px;
+  --radius-xl: 18px;
+  --radius-pill: 999px;
+  --gap-1: 4px;
+  --gap-2: 8px;
+  --gap-3: 12px;
+  --gap-4: 16px;
+  --gap-5: 24px;
+
+  /* ── Роли компонентов (старые имена сохранены: на них опираются trophynav-maps.js и trophynav-3d.js) ── */
+  --accent: var(--primary);
+  --bg-base: var(--background);
+  --bg-elevated: var(--surface);
+  --bg-surface: var(--surface-variant);
+  --bg-sunken: var(--surface-tab);
+  --bg-interactive: var(--surface-variant);
+  --bg-hover: var(--hover);
+  --bg-selected: var(--primary-soft);
+  --bg-selected-soft: var(--primary-soft);
+  --bg-danger: var(--error-soft);
+  --bg-success: var(--success-soft);
+  --bg-warning: var(--warning-soft);
+  --border-subtle: var(--card-stroke);
+  --border-normal: rgba(0, 0, 0, 0.22);
+  --border-bright: var(--primary);
+  --border: var(--border-subtle);
+  --border-danger: rgba(198, 40, 40, 0.45);
+  --border-success: rgba(46, 125, 50, 0.45);
+  --border-warning: rgba(141, 110, 0, 0.45);
+  --text: var(--text-primary);
+  --text-link: var(--primary-text);
+  --text-on-solid: var(--on-primary);
+  --text-warning: var(--warning-text);
+  --accent-green: var(--success-text);
+  --accent-amber: var(--warning-text);
+  --accent-red: var(--error-text);
+  --input-bg: var(--surface-variant);
+  --input-border: var(--card-stroke);
+  --row-border: var(--card-stroke);
+  --row-hover: var(--hover);
+  --row-zebra: transparent;
+  --modal-bg: var(--surface);
+  --modal-header-bg: var(--surface);
+  --modal-footer-bg: var(--surface);
+  --modal-shadow: var(--shadow-3);
+  --modal-active-shadow: 0 18px 48px rgba(31, 41, 55, 0.26), 0 0 0 1px var(--primary-ring);
+  --panel-shadow: var(--shadow-2);
+  --focus-ring: var(--primary-variant);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* ── Акцент — оранжевый trophynav.ru для тёмной темы; остальное — values-night/colors.xml ── */
+  --primary: #D9743F;
+  --primary-variant: #C2541E;
+  --on-primary: #FFFFFF;
+  --background: #121212;
+  --surface: #1E1E1E;
+  --surface-top: #1A1A1A;
+  --surface-tab: #111111;
+  --surface-variant: #242424;
+  --surface-overlay: #1A1A2E;
+  --text-primary: #FFFFFF;
+  --text-secondary: #CCCCCC;
+  --text-muted: #888888;
+  --text-hint: #666666;
+  --card-stroke: rgba(255, 255, 255, 0.20);
+  --success: #4CAF50;
+  --warning: #FFEB3B;
+  --error: #FF4444;
+
+  --bar-bg: #1A1A1A;
+  --tile-bg: #2B2E2C;
+  --tile-stroke: var(--text-primary);
+  --widget-bar-bg: rgba(26, 26, 26, 0.80);
+  --widget-bg: rgba(36, 36, 36, 0.90);
+  --widget-stroke: rgba(255, 255, 255, 0.27);
+  --primary-text: #E08A5C;                 /* #D9743F на плитках < 4.5 — текст чуть светлее */
+  --primary-soft: rgba(217, 116, 63, 0.14);
+  --primary-ring: rgba(217, 116, 63, 0.55);
+  --ripple: rgba(217, 116, 63, 0.22);
+  --hover: rgba(255, 255, 255, 0.07);
+  --pressed: rgba(255, 255, 255, 0.12);
+  --plain-btn: #2C2C2C;
+  --scrim: rgba(0, 0, 0, 0.60);
+  --success-soft: rgba(76, 175, 80, 0.16);
+  --warning-soft: rgba(255, 235, 59, 0.12);
+  --error-soft: rgba(255, 68, 68, 0.16);
+  --success-text: #6CCF70;
+  --warning-text: #FFEB3B;
+  --error-text: #FF6B6B;
+  --switch-track-off: #5A5A5A;
+  --switch-thumb-off: #BDBDBD;
+  --switch-track-on: rgba(217, 116, 63, 0.55);
+  --scroll-thumb: rgba(255, 255, 255, 0.22);
+  --scroll-thumb-hover: rgba(255, 255, 255, 0.38);
+  --shadow-color: rgba(0, 0, 0, 0.6);
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-2: 0 8px 28px rgba(0, 0, 0, 0.55);
+  --shadow-3: 0 16px 46px rgba(0, 0, 0, 0.65);
+  --chart-grid: rgba(255, 255, 255, 0.10);
+
+  --border-normal: rgba(255, 255, 255, 0.28);
+  --border-danger: rgba(255, 68, 68, 0.50);
+  --border-success: rgba(76, 175, 80, 0.50);
+  --border-warning: rgba(255, 235, 59, 0.45);
+  --modal-active-shadow: 0 18px 54px rgba(0, 0, 0, 0.72), 0 0 0 1px var(--primary-ring);
+  --focus-ring: var(--primary-text);
+}
