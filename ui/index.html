@@ -7144,7 +7144,7 @@ map.getContainer().addEventListener('mousedown', onTrackGrabMouseDown, true);
 
 function onTrackGrabMouseDown(nativeEvent) {
   if (nativeEvent.button !== 0 || !trackGestureAllowed()) return;
-  if (nativeEvent.target?.closest?.('.leaflet-control, .leaflet-popup, .modal, .ctx-menu')) return;
+  if (nativeEvent.target?.closest?.('.leaflet-control, .leaflet-popup, .modal, .ctx-menu, #tn-widgets, #tn-widgets-toggle')) return;
   const latlng = map.mouseEventToLatLng(nativeEvent);
   const hit = findTrackNearPoint(latlng);
   if (!hit || !canReshapeTrack(hit.track)) return;

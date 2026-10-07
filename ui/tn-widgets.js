@@ -74,8 +74,17 @@
     toggle.type = 'button';
     toggle.id = 'tn-widgets-toggle';
     toggle.addEventListener('click', e => { e.stopPropagation(); apply(!bar.hidden); });
+    // Полоса лежит внутри #map: клик, двойной клик, колесо и ПКМ по ней не должны доходить до карты
+    // (иначе в режиме WP/трека/линейки/OSRM под полосой появляется точка). Как у кнопок Leaflet —
+    // L.DomEvent.disableClickPropagation/disableScrollPropagation.
     for (const el of [bar, toggle]) {
-      ['mousedown', 'dblclick', 'wheel', 'contextmenu'].forEach(ev => el.addEventListener(ev, e => e.stopPropagation()));
+      if (window.L?.DomEvent) {
+        L.DomEvent.disableClickPropagation(el);
+        L.DomEvent.disableScrollPropagation(el);
+      } else {
+        ['mousedown', 'pointerdown', 'touchstart', 'click', 'dblclick', 'wheel'].forEach(ev => el.addEventListener(ev, e => e.stopPropagation()));
+      }
+      el.addEventListener('contextmenu', e => e.stopPropagation());
     }
     mapEl.appendChild(bar);
     mapEl.appendChild(toggle);
