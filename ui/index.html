@@ -2794,6 +2794,11 @@ function safeCssColor(value, fallback = '#df7a4a') {  // theme-check: data
 }
 
 // Число из файла/сервера в разметку или в onclick: только конечное число, иначе запасное значение.
+// Zero is a real coordinate (equator, prime meridian) — only missing or non-numeric positions count as «no position»
+function liveHasPos(v) {
+  return v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v));
+}
+
 function safeNum(value, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
@@ -15534,7 +15539,7 @@ function liveClearTrails() {
 
 function liveAppendTrail(dev) {
   const id = liveDeviceUniqueId(dev);
-  if (!id || !liveState.myTrailsEnabled || !liveIsMyDeviceId(id) || !dev.lat || !dev.lon) return;
+  if (!id || !liveState.myTrailsEnabled || !liveIsMyDeviceId(id) || !liveHasPos(dev.lat) || !liveHasPos(dev.lon)) return;
   const latlng = L.latLng(dev.lat, dev.lon);
   let entry = liveState.trails[id];
   if (!entry) {
@@ -16764,7 +16769,7 @@ function liveProcessDevices(devices) {
   const activeIds = new Set();
 
   filteredDevices.forEach(dev => {
-    if (!dev.lat || !dev.lon) return;
+    if (!liveHasPos(dev.lat) || !liveHasPos(dev.lon)) return;
     const id = liveDeviceMarkerId(dev);
     activeIds.add(id);
     const lastUpdate = dev.lastUpdate ? new Date(dev.lastUpdate).getTime() : 0;
@@ -16895,7 +16900,7 @@ function liveRenderSidebar(devices, now) {
     return (a.name || '').localeCompare(b.name || '');
   });
 
-  container.innerHTML = sorted.filter(dev => dev.lat && dev.lon).map(dev => {
+  container.innerHTML = sorted.filter(dev => liveHasPos(dev.lat) && liveHasPos(dev.lon)).map(dev => {
     const lastUpdate = dev.lastUpdate ? new Date(dev.lastUpdate).getTime() : 0;
     const isOffline = lastUpdate > 0 && (now - lastUpdate) > LIVE_OFFLINE_TIMEOUT;
     const speed = dev.speed ? Math.round(dev.speed) + ' км/ч' : '';

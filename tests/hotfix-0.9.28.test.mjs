@@ -138,6 +138,14 @@ test('#1 Live: имя, батарея и uniqueId участника с серв
     assert.deepEqual(opened, [devId.toUpperCase(), devId.toUpperCase()]);
     list.querySelector('.live-device').click();
     assert.deepEqual(zoomed, [[60, 30]]);
+
+    // review #2542: a device on the equator / prime meridian is listed; one without a position is not
+    const zero = { ...dev, name: 'Ноль', uniqueId: 'Z1', lat: 0, lon: 0 };
+    const none = { ...dev, name: 'Нет', uniqueId: 'N1', lat: null, lon: undefined };
+    w.liveRenderSidebar([zero, none], Date.now());
+    const names = [...w.document.querySelectorAll('#live-devices-list .live-device')].map(e => e.textContent);
+    assert.equal(names.length, 1);
+    assert.ok(names[0].includes('Ноль'));
   } finally { dom.window.close(); }
 });
 
