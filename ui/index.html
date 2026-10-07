@@ -3,7 +3,7 @@
 <script>(function(){var t=null;try{t=localStorage.getItem('tnd-theme')}catch(e){}document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark')})()</script>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>🧭 Trophy Navigator Desktop v0.9.28</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
@@ -2684,6 +2684,64 @@ map.on('mousemove', e => {
 });
 map.on('zoomend', () => document.getElementById('sb-zoom').textContent = formatZoomLevel(map.getZoom()));
 document.getElementById('sb-zoom').textContent = formatZoomLevel(map.getZoom());
+
+// ─── Щипок тачпада и Ctrl+колесо: страница никогда не масштабируется, щипок над картой зумит карту ───
+// Linux (WebKitGTK): событие GDK перехватывает Rust (src-tauri/src/pinch.rs) и зовёт window.tndPinch;
+// WebKit на macOS — GestureEvent; WebView2/Chromium присылают щипок как Ctrl+колесо (Leaflet зумит им сам).
+const tndPinch = { target: null, startZoom: 0, scale: 1, x: 0, y: 0, raf: 0 };
+function tndPinchTargetAt(x, y) {
+  if (window.TrophyNav3D?.isOpen?.()) return '3d';
+  const el = document.elementFromPoint(x, y);
+  if (!el || el.closest('.leaflet-control, .modal-overlay')) return null;
+  return map.getContainer().contains(el) ? 'map' : null;
+}
+function tndPinchApply() {
+  tndPinch.raf = 0;
+  const dz = Math.log2(tndPinch.scale > 0 ? tndPinch.scale : 1);
+  if (tndPinch.target === '3d') {
+    const ml = window.TrophyNav3D?._view?.ml;
+    if (!ml) return;
+    const r = ml.getContainer().getBoundingClientRect();
+    ml.easeTo({ zoom: tndPinch.startZoom + dz, around: ml.unproject([tndPinch.x - r.left, tndPinch.y - r.top]), duration: 0 });
+    return;
+  }
+  if (tndPinch.target === 'map') {
+    const r = map.getContainer().getBoundingClientRect();
+    const zoom = map._limitZoom(tndPinch.startZoom + dz);
+    if (zoom !== map.getZoom()) map.setZoomAround(L.point(tndPinch.x - r.left, tndPinch.y - r.top), zoom, { animate: false });
+  }
+}
+/** phase: 0 начало, 1 изменение, 2 конец, 3 отмена; scale — от начала жеста; x, y — клиентские координаты. */
+window.tndPinch = function (phase, scale, x, y) {
+  if (phase === 0 || !tndPinch.target) {
+    tndPinch.target = tndPinchTargetAt(x, y);
+    tndPinch.startZoom = tndPinch.target === '3d' ? (window.TrophyNav3D?._view?.ml?.getZoom() ?? 0) : map.getZoom();
+    tndPinch.x = x; tndPinch.y = y;
+  }
+  if (!tndPinch.target) return;
+  tndPinch.scale = Number(scale) || 1;
+  if (phase >= 2) {
+    if (tndPinch.raf) cancelAnimationFrame(tndPinch.raf);
+    if (phase === 2) tndPinchApply();
+    tndPinch.target = null;
+    tndPinch.raf = 0;
+    return;
+  }
+  if (!tndPinch.raf) tndPinch.raf = requestAnimationFrame(tndPinchApply);
+};
+['gesturestart', 'gesturechange', 'gestureend'].forEach((type, i) => {
+  document.addEventListener(type, e => {
+    e.preventDefault();
+    window.tndPinch(i === 0 ? 0 : i === 1 ? 1 : 2, e.scale ?? 1, e.clientX ?? 0, e.clientY ?? 0);
+  }, { passive: false });
+});
+// Ctrl+колесо (щипок в WebView2, иногда в WebKit) — масштаб страницы запрещён; над картой Leaflet/3D
+// получают это колесо как обычно и зумят карту, над полями и панелями — ничего
+document.addEventListener('wheel', e => { if (e.ctrlKey) e.preventDefault(); }, { passive: false, capture: true });
+// Ctrl + / − / 0 — тоже не масштаб страницы
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && ['+', '=', '-', '_', '0'].includes(e.key) && !e.target.closest?.('input, textarea, [contenteditable="true"]')) e.preventDefault();
+}, true);
 
 // ─────────────────────────────────────────────
 // ТОЧКИ

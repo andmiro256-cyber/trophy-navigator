@@ -24,6 +24,11 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 flate2 = "1"
 sha2 = "0.10"
 
+# Щипок тачпада: перехват GDK_TOUCHPAD_PINCH у WebKitWebView (src/pinch.rs); версии — как у wry/tauri
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.18"
+webkit2gtk = "2.0"
+
 [profile.release]
 panic = "abort"
 codegen-units = 1

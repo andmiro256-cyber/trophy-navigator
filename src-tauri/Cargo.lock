@@ -4498,6 +4498,7 @@ name = "trophy-navigator-desktop"
 version = "0.9.28"
 dependencies = [
  "flate2",
+ "gtk",
  "rusqlite",
  "serde",
  "serde_json",
@@ -4510,6 +4511,7 @@ dependencies = [
  "tauri-plugin-process",
  "tauri-plugin-updater",
  "ureq",
+ "webkit2gtk",
 ]
 
 [[package]]

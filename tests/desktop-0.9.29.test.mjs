@@ -371,3 +371,91 @@ test('renderLayerSection с той же разметкой не заменяет
     assert.equal(w.document.querySelector('[data-tnmaps-show="lo"]'), row);
   } finally { dom.window.close(); }
 });
+
+// ─── щипок тачпада: страница не масштабируется, карта зумится ───
+function pinchBlock() {
+  const start = html.indexOf('// ─── Щипок тачпада и Ctrl+колесо');
+  const kd = html.indexOf("document.addEventListener('keydown'", start);
+  const end = html.indexOf('}, true);', kd) + '}, true);'.length;
+  assert.ok(start > 0 && kd > start);
+  return html.slice(start, end);
+}
+async function domPinch() {
+  const dom = new JSDOM(`<!doctype html><body><div id="map" style="width:800px;height:600px"></div>
+    <div class="modal-overlay open" id="m"><input id="field"></div></body>`,
+  { url: 'https://review.invalid/', runScripts: 'dangerously', pretendToBeVisual: true });
+  const w = dom.window;
+  w.eval(read('../ui/leaflet.js'));
+  w.L.Browser.any3d = true;
+  w.__opts = zoomOpts();
+  w.eval('var map = L.map("map", Object.assign({}, window.__opts)).setView([60, 30], 10, { animate: false });');
+  w.eval(pinchBlock().replace(/^const tndPinch/m, 'var tndPinch'));
+  const zooms = [];
+  w.map.setZoomAround = (p, z) => zooms.push([Math.round(p.x), Math.round(p.y), z]);
+  return { dom, w, zooms };
+}
+
+test('щипок: Rust перехватывает GDK_TOUCHPAD_PINCH и зовёт tndPinch; zoomHotkeysEnabled false; viewport без масштаба', () => {
+  const rs = read('../src-tauri/src/pinch.rs');
+  assert.match(rs, /EventType::TouchpadPinch/);
+  assert.match(rs, /gtk::glib::Propagation::Stop/);
+  assert.match(rs, /window\.tndPinch && window\.tndPinch\(/);
+  assert.match(read('../src-tauri/src/main.rs'), /pinch::install\(window\)/);
+  assert.match(read('../src-tauri/tauri.conf.json'), /"zoomHotkeysEnabled": false/);
+  assert.match(html, /<meta name="viewport" content="[^"]*maximum-scale=1\.0, user-scalable=no">/);
+});
+
+test('щипок над картой зумит карту вокруг точки между пальцами; над окном — ничего', needDom, async () => {
+  const { dom, w, zooms } = await domPinch();
+  try {
+    const mapEl = w.document.getElementById('map');
+    const modal = w.document.getElementById('m');
+    w.document.elementFromPoint = (x, y) => (x < 800 ? mapEl : modal);
+    w.tndPinch(0, 1, 400, 300);
+    w.tndPinch(1, 2, 400, 300);   // развели вдвое — +1 уровень
+    w.tndPinch(2, 2, 400, 300);
+    await new Promise(r => setTimeout(r, 30));
+    assert.deepEqual(zooms.at(-1), [400, 300, 11]);
+    zooms.length = 0;
+    w.tndPinch(0, 1, 900, 300);   // над окном
+    w.tndPinch(1, 3, 900, 300);
+    w.tndPinch(2, 3, 900, 300);
+    await new Promise(r => setTimeout(r, 30));
+    assert.deepEqual(zooms, []);
+  } finally { dom.window.close(); }
+});
+
+test('GestureEvent (WebKit): preventDefault и зум карты; Ctrl+колесо: preventDefault, обычное колесо не тронуто', needDom, async () => {
+  const { dom, w, zooms } = await domPinch();
+  try {
+    const mapEl = w.document.getElementById('map');
+    w.document.elementFromPoint = () => mapEl;
+    const g = (type, scale) => {
+      const e = new w.Event(type, { bubbles: true, cancelable: true });
+      Object.assign(e, { scale, clientX: 100, clientY: 50 });
+      mapEl.dispatchEvent(e);
+      return e.defaultPrevented;
+    };
+    assert.equal(g('gesturestart', 1), true);
+    assert.equal(g('gesturechange', 0.5), true);
+    assert.equal(g('gestureend', 0.5), true);
+    await new Promise(r => setTimeout(r, 30));
+    assert.deepEqual(zooms.at(-1), [100, 50, 9]);
+    const wheel = (el, ctrlKey) => {
+      const e = new w.WheelEvent('wheel', { deltaY: -100, ctrlKey, bubbles: true, cancelable: true });
+      el.dispatchEvent(e);
+      return e.defaultPrevented;
+    };
+    const field = w.document.getElementById('field');
+    assert.equal(wheel(field, true), true, 'Ctrl+колесо над полем — страница не масштабируется');
+    assert.equal(wheel(field, false), false, 'обычное колесо над полем не тронуто');
+    const key = (k, target) => {
+      const e = new w.KeyboardEvent('keydown', { key: k, ctrlKey: true, bubbles: true, cancelable: true });
+      (target || w.document.body).dispatchEvent(e);
+      return e.defaultPrevented;
+    };
+    assert.equal(key('+'), true);
+    assert.equal(key('0'), true);
+    assert.equal(key('-', field), false, 'в поле ввода Ctrl+− не перехватывается');
+  } finally { dom.window.close(); }
+});

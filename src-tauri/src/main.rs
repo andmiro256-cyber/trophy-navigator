@@ -14,6 +14,7 @@ use tauri::{AppHandle, Emitter, Manager, Runtime, Url, Webview, WebviewUrl, Webv
 use tauri_plugin_updater::{Update, UpdaterExt};
 
 mod gpu_env;
+mod pinch;
 mod vector_maps;
 
 const MAX_TILE_BYTES: u64 = 2 * 1024 * 1024;
@@ -1803,6 +1804,11 @@ fn main() {
         )
         .setup(|app| {
             vector_maps::init(app.handle());
+            // Щипок тачпада зумит карту, а не страницу (Linux, WebKitGTK)
+            #[cfg(target_os = "linux")]
+            for window in app.webview_windows().values() {
+                pinch::install(window);
+            }
             Ok(())
         })
         .plugin(tauri_plugin_updater::Builder::new().build())
