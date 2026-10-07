@@ -22,12 +22,12 @@
     mouseStep: 0.5,                    // щелчок колеса мыши
     pinchPerPx: 1 / (100 * Math.LN2),  // Ctrl+колесо (щипок Chromium): log2(scale) = −deltaY / (100·ln 2)
     maxEventZoom: 2,                   // одно событие не дальше двух уровней (сбойный огромный deltaY)
-    ease: 0.3,                         // доля оставшегося пути за кадр 60 Гц
+    ease: 0.35,                        // доля оставшегося пути за кадр 60 Гц
     endIdleMs: 150,                    // тишина после достижения цели — конец жеста
     holdMs: 250,                       // жест тачпада держит свой тип, пока паузы короче
     ignoreSelector: '.leaflet-control, .leaflet-popup',
   };
-  const LINE_PX = 33, PAGE_PX = 300, FRAME_MS = 1000 / 60, EPS = 0.002;
+  const LINE_PX = 33, PAGE_PX = 300, FRAME_MS = 1000 / 60, EPS = 0.004;
 
   function wheelPx(e) {
     const unit = e.deltaMode === 1 ? LINE_PX : e.deltaMode === 2 ? PAGE_PX : 1;
