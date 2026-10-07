@@ -1,6 +1,6 @@
 // 0.9.29: тема TrophyNav Maps держится в памяти и передаётся явно, смена темы — setStyle diff:true с
 // индикатором, выбор карты TrophyNav Maps не закрывает «Карту и слои», тема в окне областей, ровный
-// блок под картой, крутизна без файла не отмечена, мягкий зум без потери щелчков колеса.
+// блок под картой, крутизна без файла не отмечена, мягкий зум (колесо — в 0.9.30, tests/desktop-0.9.30.test.mjs).
 // DOM-проверки — jsdom (NODE_PATH=…/node_modules); без него пропускаются.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -217,15 +217,8 @@ const zoomOpts = () => {
   assert.ok(m, 'опции зума вынесены в TND_MAP_ZOOM_OPTIONS');
   return vm.runInNewContext(`(${m[1]})`);
 };
-const wheelPatch = () => {
-  const start = html.indexOf('(function keepWheelClicksDuringZoomAnimation() {');
-  const end = html.indexOf('})();', start) + 5;
-  assert.ok(start > 0);
-  return html.slice(start, end);
-};
-
-test('п.5: опции карты — дробный зум, полуровень на кнопку, мягкое колесо; MapLibre-холст с padding 0.05', () => {
-  assert.deepEqual({ ...zoomOpts() }, { zoomSnap: 0.25, zoomDelta: 0.5, wheelPxPerZoomLevel: 120, wheelDebounceTime: 30 });
+test('п.5: опции карты — дробный зум, полуровень на кнопку; колесо — плавный зум 0.9.30; MapLibre-холст с padding 0.05', () => {
+  assert.deepEqual({ ...zoomOpts() }, { zoomSnap: 0, zoomDelta: 0.5, scrollWheelZoom: false });
   assert.match(html, /L\.map\('map', \{[^}]*\.\.\.TND_MAP_ZOOM_OPTIONS \}\)/);
   assert.match(mapsJs, /L\.maplibreGL\(\{[^}]*padding: 0\.05 \}\)/);
   // подписи зума — целые
@@ -237,208 +230,7 @@ test('п.5: опции карты — дробный зум, полуровен�
   assert.equal(formatZoomLevel(12.75), '13');
 });
 
-test('п.5: настоящий Leaflet — щелчок колеса = полуровня, щелчки во время анимации не теряются', needDom, async () => {
-  const dom = new JSDOM('<!doctype html><body><div id="map" style="width:800px;height:600px"></div></body>',
-    { url: 'https://review.invalid/', runScripts: 'dangerously', pretendToBeVisual: true });
-  const w = dom.window;
-  try {
-    w.eval(read('../ui/leaflet.js'));
-    w.eval(wheelPatch());
-    // jsdom без CSS 3D: Leaflet тогда округляет зум до целого (_limitZoom); в WebKit any3d = true
-    w.L.Browser.any3d = true;
-    w.__opts = zoomOpts();
-    w.eval('var map = L.map("map", Object.assign({}, window.__opts)).setView([60, 30], 10, { animate: false });');
-    const map = w.map;
-    const calls = [];
-    map.setZoomAround = (p, z) => calls.push(z);
-    const h = map.scrollWheelZoom;
-    h._lastMousePos = w.L.point(10, 10);
-    // WebKitGTK: deltaY 125 на щелчок, Leaflet на Linux не-Chrome делит на 2·devicePixelRatio
-    h._delta = 62.5;
-    h._performZoom();
-    assert.deepEqual(calls, [10.5], 'один щелчок — полуровень');
-    // идёт анимация: щелчки мыши (с паузами больше wheelDebounceTime) не выброшены, каждый — полуровень
-    calls.length = 0;
-    let now = 1_000_000;
-    w.Date.now = () => now;
-    map._animatingZoom = true;
-    const wheel = (deltaY) => map.getContainer().dispatchEvent(new w.WheelEvent('wheel', { deltaY, deltaMode: 0, bubbles: true, cancelable: true }));
-    wheel(-125); now += 80; wheel(-125); now += 80; wheel(-125); now += 80;
-    // щелчки, собранные до начала анимации (таймер debounce сработал уже во время неё)
-    h._delta = 62.5;
-    h._performZoom();
-    assert.deepEqual(calls, [], 'пока анимация — не применяется');
-    map._animatingZoom = false;
-    map.fire('zoomend');
-    await new Promise(r => setTimeout(r, 5));
-    assert.deepEqual(calls, [12], '4 щелчка во время анимации = +2 уровня, ни один не потерян и не сжат');
-
-    // ревью #2554: поток тачпада/щипка без пауз — одна пачка; 20 мелких событий = одно событие той же суммы
-    const zoomFor = async (events) => {
-      calls.length = 0;
-      map._animatingZoom = true;
-      for (const d of events) { wheel(d); now += 5; }
-      map._animatingZoom = false;
-      map.fire('zoomend');
-      await new Promise(r => setTimeout(r, 5));
-      now += 1000;
-      return calls[0] ?? map.getZoom();
-    };
-    const one = await zoomFor([-50]);
-    const twenty = await zoomFor(Array(20).fill(-2.5));
-    assert.equal(twenty, one, `20 мелких событий (${twenty}) = одно с той же суммой (${one})`);
-    assert.ok(one - 10 <= 0.5, 'небольшой жест тачпада — не больше полуровня');
-  } finally { dom.window.close(); }
-});
-
-test('версия 0.9.29 везде одна', () => {
-  assert.match(read('../src-tauri/tauri.conf.json'), /"version": "0\.9\.29"/);
-  assert.match(read('../src-tauri/Cargo.toml'), /^version = "0\.9\.29"$/m);
-  assert.match(read('../src-tauri/Cargo.lock'), /name = "trophy-navigator-desktop"\nversion = "0\.9\.29"/);
-  assert.match(html, /<title>🧭 Trophy Navigator Desktop v0\.9\.29<\/title>/);
-  assert.match(html, /id="app-version-label" class="app-version">Trophy Navigator · v0\.9\.29</);
-  assert.match(html, /let appDisplayVersion = '0\.9\.29';/);
-  assert.match(html, /id="about-version"[^>]*>0\.9\.29</);
-  assert.doesNotMatch(html, /0\.9\.28/);
-});
-
-// ─── главный баг с v0.9.27: клик по строке TrophyNav Maps и кнопкам темы в «Карте и слоях» терялся ───
-async function domLayersWindow() {
-  const dom = new JSDOM(`<!doctype html><body><div id="map"></div>
-    <div class="modal-overlay open" id="modal-layers"><div class="modal" id="modal-layers-win"><div id="tnmaps-layers"></div></div></div></body>`,
-  { url: 'https://review.invalid/', runScripts: 'dangerously', pretendToBeVisual: true });
-  const w = dom.window;
-  if (w.document.readyState !== 'complete') await new Promise(r => w.addEventListener('load', r));
-  w.eval(read('../ui/leaflet.js'));
-  w.eval('var map = L.map("map"); var currentBaseLayerName = "OpenStreetMap";');
-  const calls = { invoke: 0, setLayer: [] };
-  w.__TAURI_INTERNALS__ = { invoke: async cmd => {
-    if (cmd === 'tnmaps_local') { calls.invoke++; return { maps: [{ id: 'lo', size: 10 }], partial: {}, dir: '/d' }; }
-    if (cmd === 'tnmaps_catalog') return { catalog: { maps: [] } };
-    throw new Error(cmd);
-  } };
-  w.setLayer = name => calls.setLayer.push(name);
-  w.eval(read('../ui/tn-icons.js'));
-  w.eval(read('../ui/trophynav-maps-core.js'));
-  w.eval(mapsJs.replace('window.TrophyNavMaps = {', EXPORTS));
-  for (let i = 0; i < 5; i++) await tick();
-  return { dom, w, t: w.__t, calls };
-}
-// click мышью несёт detail ≥ 1; click с клавиатуры (Enter/Пробел) — detail 0
-const fire = (w, el, type, detail = type === 'click' ? 1 : 0) =>
-  el.dispatchEvent(new w.MouseEvent(type, { bubbles: true, cancelable: true, button: 0, detail }));
-// то, что делает bringModalToFront на каждый mousedown в окне
-const bringToFront = (w, overlay) => { overlay.classList.remove('active'); overlay.classList.add('active'); };
-
-test('баг v0.9.27: нажатие в окне (bringModalToFront → class active) не пересоздаёт строку; выбор TrophyNav Maps срабатывает', needDom, async () => {
-  const { dom, w, calls } = await domLayersWindow();
-  try {
-    const overlay = w.document.getElementById('modal-layers');
-    const row = w.document.querySelector('[data-tnmaps-show="lo"]');
-    assert.ok(row, 'строка ЛО есть');
-    const before = calls.invoke;
-    fire(w, row, 'pointerdown');
-    bringToFront(w, overlay);
-    for (let i = 0; i < 5; i++) await tick();   // человек держит кнопку 60–150 мс
-    assert.equal(calls.invoke, before, 'смена active не перечитывает список');
-    assert.ok(row.isConnected, 'строка под нажатой кнопкой не пересоздана');
-    fire(w, row, 'pointerup');
-    fire(w, row, 'click');
-    assert.deepEqual(calls.setLayer, ['tnmap:lo'], 'выбор выполнен один раз (pointerup, click не дублирует)');
-    // переход закрыто → открыто по-прежнему обновляет список
-    overlay.classList.remove('open');
-    await tick();
-    overlay.classList.add('open');
-    for (let i = 0; i < 5; i++) await tick();
-    assert.equal(calls.invoke, before + 1);
-  } finally { dom.window.close(); }
-});
-
-test('баг v0.9.27: даже если строку пересоздали между pointerdown и pointerup — выбор по тому же действию срабатывает', needDom, async () => {
-  const { dom, w, t, calls } = await domLayersWindow();
-  try {
-    fire(w, w.document.querySelector('[data-tnmaps-show="lo"]'), 'pointerdown');
-    w.document.getElementById('tnmaps-layers').__tnmapsHtml = '';   // заставить перерисовку
-    t.renderLayerSection();
-    fire(w, w.document.querySelector('[data-tnmaps-show="lo"]'), 'pointerup');
-    assert.deepEqual(calls.setLayer, ['tnmap:lo']);
-    // pointerdown на одной строке, pointerup на другой кнопке — ничего
-    calls.setLayer.length = 0;
-    fire(w, w.document.querySelector('[data-tnmaps-show="lo"]'), 'pointerdown');
-    fire(w, w.document.getElementById('tnmaps-layers'), 'pointerup');
-    assert.deepEqual(calls.setLayer, []);
-  } finally { dom.window.close(); }
-});
-
-test('ревью 2554 P3: нажатия с клавиатуры подряд — каждое своё действие, не считаются дублем', needDom, async () => {
-  const { dom, w, calls } = await domLayersWindow();
-  try {
-    const row = () => w.document.querySelector('[data-tnmaps-show="lo"]');
-    // мышью: pointerup выполнил, следующий click того же нажатия — дубль
-    fire(w, row(), 'pointerdown'); fire(w, row(), 'pointerup'); fire(w, row(), 'click');
-    assert.equal(calls.setLayer.length, 1);
-    // клавиатура сразу следом и ещё дважды — три самостоятельных действия
-    fire(w, row(), 'click', 0); fire(w, row(), 'click', 0); fire(w, row(), 'click', 0);
-    assert.equal(calls.setLayer.length, 4);
-  } finally { dom.window.close(); }
-});
-
-test('баг v0.9.27: кнопка темы — pointerdown, смена active, pointerup → тема применена', needDom, async () => {
-  const { dom, w, t } = await domLayersWindow();
-  try {
-    const layer = new t.TnVectorLayer('lo');
-    t.state.activeLayer = layer;
-    w.map.hasLayer = l => l === layer;
-    const themes = [];
-    layer.reloadStyle = th => themes.push(th);
-    t.renderLayerSection();
-    const btn = w.document.querySelector('#tnmaps-layers [data-tnmaps-theme="topo"]');
-    fire(w, btn, 'pointerdown');
-    bringToFront(w, w.document.getElementById('modal-layers'));
-    for (let i = 0; i < 5; i++) await tick();
-    assert.ok(btn.isConnected);
-    fire(w, btn, 'pointerup');
-    fire(w, btn, 'click');
-    assert.deepEqual(themes, ['topo']);
-    // клавиатура (только click) тоже работает
-    fire(w, w.document.querySelector('#tnmaps-layers [data-tnmaps-theme="contrast"]'), 'click');
-    assert.deepEqual(themes, ['topo', 'contrast']);
-  } finally { dom.window.close(); }
-});
-
-test('renderLayerSection с той же разметкой не заменяет узлы', needDom, async () => {
-  const { dom, w, t } = await domLayersWindow();
-  try {
-    const row = w.document.querySelector('[data-tnmaps-show="lo"]');
-    t.renderLayerSection();
-    t.renderLayerSection();
-    assert.equal(w.document.querySelector('[data-tnmaps-show="lo"]'), row);
-  } finally { dom.window.close(); }
-});
-
 // ─── щипок тачпада: страница не масштабируется, карта зумится ───
-function pinchBlock() {
-  const start = html.indexOf('// ─── Щипок тачпада и Ctrl+колесо');
-  const kd = html.indexOf("document.addEventListener('keydown'", start);
-  const end = html.indexOf('}, true);', kd) + '}, true);'.length;
-  assert.ok(start > 0 && kd > start);
-  return html.slice(start, end);
-}
-async function domPinch() {
-  const dom = new JSDOM(`<!doctype html><body><div id="map" style="width:800px;height:600px"></div>
-    <div class="modal-overlay open" id="m"><input id="field"></div></body>`,
-  { url: 'https://review.invalid/', runScripts: 'dangerously', pretendToBeVisual: true });
-  const w = dom.window;
-  w.eval(read('../ui/leaflet.js'));
-  w.L.Browser.any3d = true;
-  w.__opts = zoomOpts();
-  w.eval('var map = L.map("map", Object.assign({}, window.__opts)).setView([60, 30], 10, { animate: false });');
-  w.eval(pinchBlock());
-  const zooms = [];
-  w.map.setZoomAround = (p, z) => zooms.push([Math.round(p.x), Math.round(p.y), z]);
-  return { dom, w, zooms };
-}
-
 test('щипок: Rust перехватывает GDK_TOUCHPAD_PINCH и зовёт tndPinch; zoomHotkeysEnabled false; viewport без масштаба', () => {
   const rs = read('../src-tauri/src/pinch.rs');
   assert.match(rs, /EventType::TouchpadPinch/);
@@ -447,61 +239,6 @@ test('щипок: Rust перехватывает GDK_TOUCHPAD_PINCH и зовё
   assert.match(read('../src-tauri/src/main.rs'), /pinch::install\(window\)/);
   assert.match(read('../src-tauri/tauri.conf.json'), /"zoomHotkeysEnabled": false/);
   assert.match(html, /<meta name="viewport" content="[^"]*maximum-scale=1\.0, user-scalable=no">/);
-});
-
-test('щипок над картой зумит карту вокруг точки между пальцами; над окном — ничего', needDom, async () => {
-  const { dom, w, zooms } = await domPinch();
-  try {
-    const mapEl = w.document.getElementById('map');
-    const modal = w.document.getElementById('m');
-    w.document.elementFromPoint = (x, y) => (x < 800 ? mapEl : modal);
-    w.tndPinch(0, 1, 400, 300);
-    w.tndPinch(1, 2, 400, 300);   // развели вдвое — +1 уровень
-    w.tndPinch(2, 2, 400, 300);
-    await new Promise(r => setTimeout(r, 30));
-    assert.deepEqual(zooms.at(-1), [400, 300, 11]);
-    zooms.length = 0;
-    w.tndPinch(0, 1, 900, 300);   // над окном
-    w.tndPinch(1, 3, 900, 300);
-    w.tndPinch(2, 3, 900, 300);
-    await new Promise(r => setTimeout(r, 30));
-    assert.deepEqual(zooms, []);
-  } finally { dom.window.close(); }
-});
-
-test('GestureEvent (WebKit): preventDefault и зум карты; Ctrl+колесо: preventDefault, обычное колесо не тронуто', needDom, async () => {
-  const { dom, w, zooms } = await domPinch();
-  try {
-    const mapEl = w.document.getElementById('map');
-    w.document.elementFromPoint = () => mapEl;
-    const g = (type, scale) => {
-      const e = new w.Event(type, { bubbles: true, cancelable: true });
-      Object.assign(e, { scale, clientX: 100, clientY: 50 });
-      mapEl.dispatchEvent(e);
-      return e.defaultPrevented;
-    };
-    assert.equal(g('gesturestart', 1), true);
-    assert.equal(g('gesturechange', 0.5), true);
-    assert.equal(g('gestureend', 0.5), true);
-    await new Promise(r => setTimeout(r, 30));
-    assert.deepEqual(zooms.at(-1), [100, 50, 9]);
-    const wheel = (el, ctrlKey) => {
-      const e = new w.WheelEvent('wheel', { deltaY: -100, ctrlKey, bubbles: true, cancelable: true });
-      el.dispatchEvent(e);
-      return e.defaultPrevented;
-    };
-    const field = w.document.getElementById('field');
-    assert.equal(wheel(field, true), true, 'Ctrl+колесо над полем — страница не масштабируется');
-    assert.equal(wheel(field, false), false, 'обычное колесо над полем не тронуто');
-    const key = (k, target) => {
-      const e = new w.KeyboardEvent('keydown', { key: k, ctrlKey: true, bubbles: true, cancelable: true });
-      (target || w.document.body).dispatchEvent(e);
-      return e.defaultPrevented;
-    };
-    assert.equal(key('+'), true);
-    assert.equal(key('0'), true);
-    assert.equal(key('-', field), false, 'в поле ввода Ctrl+− не перехватывается');
-  } finally { dom.window.close(); }
 });
 
 // ─── футер «Точки», «Треки», «Маршруты»: «Сохранить ▾» и «Загрузить» в одну строку ───

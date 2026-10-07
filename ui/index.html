@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="theme.css"/>
 <script src="leaflet.js"></script>
 <script src="trophynav-maps-core.js"></script>
+<script src="smooth-zoom.js"></script>
 <script src="trophynav-symbols.js"></script>
 <script src="trophynav-maps.js"></script>
 <script src="trophynav-3d.js"></script>
@@ -2563,73 +2564,10 @@ async function ensureChartJsLoaded() {
 // Фикс для EPSG:3395 — без этого нижние тайлы пропадают
 L.CRS.EPSG3395.infinite = true;
 let currentCRS = 'EPSG3857';
-// Мягкий зум: шаг четверть уровня, кнопки и клавиши +/− — полуровень, щелчок колеса (WebKitGTK: deltaY 125,
-// Leaflet делит на 2) — тоже около полуровня. Растровые тайлы на дробном зуме масштабируются — так задумано.
-const TND_MAP_ZOOM_OPTIONS = { zoomSnap: 0.25, zoomDelta: 0.5, wheelPxPerZoomLevel: 120, wheelDebounceTime: 30 };
-// Leaflet выбрасывает щелчки колеса, пришедшие во время анимации зума (_tryAnimatedZoom ничего не делает,
-// пока _animatingZoom): 8 быстрых щелчков давали +4 уровня. Щелчки во время анимации копим — каждый своим
-// шагом, как одиночный (формула Leaflet сжимает сумму логарифмом, 2 щелчка давали полшага), — и применяем
-// одним зумом после окончания анимации.
-(function keepWheelClicksDuringZoomAnimation() {
-  const proto = L.Map.ScrollWheelZoom.prototype;
-  const onWheel = proto._onWheelScroll;
-  const perform = proto._performZoom;
-  /** Шаг одной пачки колеса — формула _performZoom Leaflet 1.9 с округлением до zoomSnap. */
-  function wheelStep(m, delta) {
-    const snap = m.options.zoomSnap || 0;
-    const d2 = Math.abs(delta) / (4 * m.options.wheelPxPerZoomLevel);
-    const d3 = 4 * Math.log(2 / (1 + Math.exp(-d2))) / Math.LN2;
-    return Math.sign(delta) * (snap ? Math.ceil(d3 / snap) * snap : d3);
-  }
-  // Как в самом Leaflet (wheelDebounceTime): события без паузы — одна пачка, считается один раз. Тачпад и щипок
-  // (Ctrl+wheel) шлют десятки мелких событий подряд; если считать каждое отдельно с округлением вверх, 20 мелких
-  // давали +5 уровней вместо +0,25 (ревью 2554). Отдельные щелчки мыши — каждый своя пачка, своим шагом.
-  function flushBatch(h) {
-    if (!h._tndBatch) return;
-    h._tndPendingZoom = (h._tndPendingZoom || 0) + wheelStep(h._map, h._tndBatch);
-    h._tndBatch = 0;
-  }
-  function addToBatch(h, delta) {
-    const now = Date.now();
-    if (h._tndBatchAt && now - h._tndBatchAt > (h._map.options.wheelDebounceTime || 40)) flushBatch(h);
-    h._tndBatch = (h._tndBatch || 0) + delta;
-    h._tndBatchAt = now;
-    if (h._tndWaitZoomEnd) return;
-    h._tndWaitZoomEnd = true;
-    h._map.once('zoomend', () => setTimeout(() => {
-      h._tndWaitZoomEnd = false;
-      flushBatch(h); h._tndBatchAt = 0;
-      const m = h._map, add = h._tndPendingZoom || 0;
-      h._tndPendingZoom = 0;
-      if (!m || !add) return;
-      const z = m.getZoom(), target = m._limitZoom(z + add);
-      if (target === z) return;
-      if (m.options.scrollWheelZoom === 'center') m.setZoom(target);
-      else m.setZoomAround(h._lastMousePos, target);
-    }, 0));
-  }
-  proto._onWheelScroll = function (e) {
-    const m = this._map;
-    if (!m._animatingZoom) return onWheel.call(this, e);
-    this._lastMousePos = m.mouseEventToContainerPoint(e);
-    const delta = L.DomEvent.getWheelDelta(e);
-    if (delta) addToBatch(this, delta);
-    L.DomEvent.stop(e);
-  };
-  proto._performZoom = function () {
-    const m = this._map;
-    if (m._animatingZoom && this._delta) {
-      // щелчки, собранные до начала чужой анимации, — тоже не терять (своей пачкой)
-      flushBatch(this);
-      this._tndPendingZoom = (this._tndPendingZoom || 0) + wheelStep(m, this._delta);
-      if (!this._tndWaitZoomEnd) addToBatch(this, 0);
-      this._delta = 0;
-      this._startTime = null;
-      return;
-    }
-    return perform.call(this);
-  };
-})();
+// Зум без снапа: колесо, тачпад и щипок ведёт плавный зум (smooth-zoom.js) — дробный уровень остаётся как есть
+// (снап 0,25 после жеста дал бы скачок, а setView/panTo с текущим зумом дёргали бы его к сетке). Кнопки и
+// клавиши +/− — полуровня. Растровые тайлы на дробном зуме масштабируются — так задумано.
+const TND_MAP_ZOOM_OPTIONS = { zoomSnap: 0, zoomDelta: 0.5, scrollWheelZoom: false };
 /** Зум для подписей: дробный уровень показываем целым. */
 const formatZoomLevel = z => String(Math.round(Number(z) || 0));
 const map = L.map('map', { zoomControl: true, attributionControl: false, maxZoom: 22, preferCanvas: true, ...TND_MAP_ZOOM_OPTIONS }).setView([55.75, 37.62], 10);
@@ -2709,8 +2647,10 @@ map.on('zoomend', () => document.getElementById('sb-zoom').textContent = formatZ
 document.getElementById('sb-zoom').textContent = formatZoomLevel(map.getZoom());
 
 // ─── Щипок тачпада и Ctrl+колесо: страница никогда не масштабируется, щипок над картой зумит карту ───
+// Колесо, два пальца и щипок WebView2/Chromium (Ctrl+колесо) — плавный зум smooth-zoom.js на контейнере карты.
 // Linux (WebKitGTK): событие GDK перехватывает Rust (src-tauri/src/pinch.rs) и зовёт window.tndPinch;
-// WebKit на macOS — GestureEvent; WebView2/Chromium присылают щипок как Ctrl+колесо (Leaflet зумит им сам).
+// WebKit на macOS — GestureEvent. Над картой оба идут в тот же плавный зум, в 3D — в MapLibre 3D-вида.
+const tndSmoothZoom = window.TndSmoothZoom ? window.TndSmoothZoom.attach(map) : (map.scrollWheelZoom.enable(), null);
 const tndPinchState = { target: null, startZoom: 0, scale: 1, x: 0, y: 0, raf: 0 };
 function tndPinchTargetAt(x, y) {
   if (window.TrophyNav3D?.isOpen?.()) return '3d';
@@ -2729,6 +2669,7 @@ function tndPinchApply() {
     return;
   }
   if (tndPinchState.target === 'map') {
+    // запасной путь, если smooth-zoom.js не загрузился
     const r = map.getContainer().getBoundingClientRect();
     const zoom = map._limitZoom(tndPinchState.startZoom + dz);
     if (zoom !== map.getZoom()) map.setZoomAround(L.point(tndPinchState.x - r.left, tndPinchState.y - r.top), zoom, { animate: false });
@@ -2736,12 +2677,20 @@ function tndPinchApply() {
 }
 /** phase: 0 начало, 1 изменение, 2 конец, 3 отмена; scale — от начала жеста; x, y — клиентские координаты. */
 window.tndPinch = function (phase, scale, x, y) {
-  if (phase === 0 || !tndPinchState.target) {
+  const fresh = phase === 0 || !tndPinchState.target;
+  if (fresh) {
     tndPinchState.target = tndPinchTargetAt(x, y);
     tndPinchState.startZoom = tndPinchState.target === '3d' ? (window.TrophyNav3D?._view?.ml?.getZoom() ?? 0) : map.getZoom();
     tndPinchState.x = x; tndPinchState.y = y;
   }
   if (!tndPinchState.target) return;
+  if (tndPinchState.target === 'map' && tndSmoothZoom) {
+    // начало жеста — всегда фаза 0 (точка карты между пальцами запоминается); конец без начала — тоже
+    tndSmoothZoom.pinch(fresh ? 0 : phase, scale, x, y);
+    if (fresh && phase >= 2) tndSmoothZoom.pinch(phase, scale, x, y);
+    if (phase >= 2) tndPinchState.target = null;
+    return;
+  }
   tndPinchState.scale = Number(scale) || 1;
   if (phase >= 2) {
     if (tndPinchState.raf) cancelAnimationFrame(tndPinchState.raf);
@@ -2758,7 +2707,7 @@ window.tndPinch = function (phase, scale, x, y) {
     window.tndPinch(i === 0 ? 0 : i === 1 ? 1 : 2, e.scale ?? 1, e.clientX ?? 0, e.clientY ?? 0);
   }, { passive: false });
 });
-// Ctrl+колесо (щипок в WebView2, иногда в WebKit) — масштаб страницы запрещён; над картой Leaflet/3D
+// Ctrl+колесо (щипок в WebView2, иногда в WebKit) — масштаб страницы запрещён; над картой плавный зум/3D
 // получают это колесо как обычно и зумят карту, над полями и панелями — ничего
 document.addEventListener('wheel', e => { if (e.ctrlKey) e.preventDefault(); }, { passive: false, capture: true });
 // Ctrl + / − / 0 — тоже не масштаб страницы
