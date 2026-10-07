@@ -534,3 +534,75 @@ test('«Загрузить» — нужный загрузчик по расши
     assert.deepEqual(Array.from(w.calls, c => c[0]), ['saveTracksPLT', 'saveTracksGPX']);
   } finally { dom.window.close(); }
 });
+
+// ─── Live: время последней точки цветом — одна функция для попапа и списка ───
+function liveFns() {
+  const start = html.indexOf('function liveShowPopup(dev) {');
+  const end = html.indexOf('function liveRenderSidebar(devices, now) {');
+  const sideEnd = html.indexOf('function liveUpdateDot(');
+  assert.ok(start > 0 && end > start && sideEnd > end);
+  const ctx = {
+    escapeHtml: s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
+    tnIcon: n => `<svg class="tn-ico"><use href="#tn-i-${n}"></use></svg>`,
+    liveDeviceUniqueId: () => '', liveStatusInfo: () => ({ emoji: '🙂', label: 'Без статуса' }),
+    safeNum: n => Number(n) || 0, liveHasPos: v => v != null && Number.isFinite(Number(v)),
+    liveGetActiveGroupId: () => 'all', LIVE_GROUP_SELF_ID: '__self__', liveZoomTo() {},
+    document: { getElementById: id => (ctx.els[id] ||= { innerHTML: '', textContent: '' }) }, els: {},
+  };
+  vm.createContext(ctx);
+  const T = html.match(/const LIVE_OFFLINE_TIMEOUT = (\d+);/)[1];
+  vm.runInContext(`const LIVE_OFFLINE_TIMEOUT = ${T}; function liveEsc(s) { return escapeHtml(s); }
+    ${html.slice(start, sideEnd)}
+    this.out = { liveAgeClass, liveTimeLabel, liveIsOnline, livePopupHtml, liveRenderSidebar, LIVE_OFFLINE_TIMEOUT, LIVE_RECENT_MS };`, ctx);
+  return { ...ctx.out, els: ctx.els };
+}
+
+test('Live: «в сети» = не старше 5 мин, жёлтое — до 1 ч, красное — дольше; одна граница везде', () => {
+  const { liveAgeClass, liveIsOnline, LIVE_OFFLINE_TIMEOUT: T, LIVE_RECENT_MS: H } = liveFns();
+  assert.equal(T, 300000);
+  assert.equal(H, 3600000);
+  const now = Date.parse('2026-10-08T12:00:00Z');
+  const at = ms => ({ lastUpdate: new Date(now - ms).toISOString() });
+  assert.equal(liveAgeClass(at(0), now), 'online');
+  assert.equal(liveAgeClass(at(T), now), 'online', 'ровно 5 мин — ещё в сети');
+  assert.equal(liveAgeClass(at(T + 1000), now), 'recent');
+  assert.equal(liveAgeClass(at(H), now), 'recent', 'ровно час — ещё жёлтое');
+  assert.equal(liveAgeClass(at(H + 1000), now), 'old');
+  assert.equal(liveAgeClass({}, now), 'none');
+  assert.equal(liveAgeClass({ lastUpdate: 'мусор' }, now), 'none');
+  assert.equal(liveIsOnline(at(T), now), true);
+  assert.equal(liveIsOnline(at(T + 1000), now), false);
+  // сортировка, приглушение маркера, счётчик и строка списка — через общую функцию
+  assert.doesNotMatch(html, /\) [<>] LIVE_OFFLINE_TIMEOUT/);
+  assert.match(html, /liveUpdateMarker\(dev, !liveIsOnline\(dev, now\)\)/);
+  assert.match(html, /const aOnline = liveIsOnline\(a, now\);/);
+  assert.match(html, /const isOffline = !liveIsOnline\(dev, now\);/);
+  assert.match(html, /devices\.filter\(d => liveIsOnline\(d, now\)\)/);
+  assert.match(html, /setIcon\(icon\)\.setOpacity\(opacity\)/, 'маркер не в сети приглушён');
+  for (const [cls, token] of [['online', 'success-text'], ['recent', 'warning-text'], ['old', 'error-text'], ['none', 'text-muted']]) {
+    assert.match(html, new RegExp(`\\.live-time\\.${cls} \\{ color: var\\(--${token}\\);`));
+  }
+});
+
+test('Live: время «21:40» сегодня / «06.10 21:40» раньше / «—»; тот же класс в попапе и списке; без 🏎📡🔋🕐; экранирование', () => {
+  const { liveTimeLabel, livePopupHtml, liveRenderSidebar, els } = liveFns();
+  const now = new Date(2026, 9, 8, 12, 0, 0).getTime();
+  assert.equal(liveTimeLabel({ lastUpdate: new Date(2026, 9, 8, 9, 5).toISOString() }, now), '09:05');
+  assert.equal(liveTimeLabel({ lastUpdate: new Date(2026, 9, 6, 21, 40).toISOString() }, now), '06.10 21:40');
+  assert.equal(liveTimeLabel({}, now), '—');
+  const dev = (ms, extra = {}) => ({ name: '<b>Вася</b>', lat: 60, lon: 30, battery: '<i>80</i>', speed: 42, altitude: 15,
+    ...(ms == null ? {} : { lastUpdate: new Date(now - ms).toISOString() }), ...extra });
+  const cases = [[60000, 'online'], [20 * 60000, 'recent'], [3 * 3600000, 'old'], [null, 'none']];
+  for (const [ms, cls] of cases) {
+    const pop = livePopupHtml(dev(ms), now);
+    assert.match(pop, new RegExp(`<span class="live-time ${cls}" title="Последняя точка">`), `попап ${cls}`);
+    liveRenderSidebar([dev(ms)], now);
+    assert.match(els['live-devices-list'].innerHTML, new RegExp(`<span class="live-time ${cls}"`), `список ${cls}`);
+  }
+  const pop = livePopupHtml(dev(60000), now);
+  assert.doesNotMatch(pop, /🏎|📡|🔋|🕐/u);
+  for (const icon of ['gauge', 'terrain', 'battery']) assert.match(pop, new RegExp(`#tn-i-${icon}`));
+  assert.match(pop, /&lt;b&gt;Вася&lt;\/b&gt;/);
+  assert.match(pop, /&lt;i&gt;80&lt;\/i&gt;%/);
+  assert.doesNotMatch(pop, /<b>Вася|<i>80/);
+});

@@ -66,6 +66,7 @@ OWN = {  # свои — штрихом 2, как ic_set_* в Android (tools/gen_
  'satellite': f'<path {S} transform="rotate(-45 12 12)" d="M9.5,9.5 h5 v5 h-5 z M2.5,10 h5 v4 h-5 z M16.5,10 h5 v4 h-5 z M7.5,12 h2 M14.5,12 h2 M10,17.5 a2.5,2.5 0 0 0 4,0"/>',
  'terrain': f'<path {S} d="M2.5,19 L8.5,8 L13,15.5 L15.5,11.5 L21.5,19 Z"/>',
  'bike': f'<path {S} d="M3,16 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0 M14,16 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0 M6.5,16 L9.5,9.5 h6 L17.5,16 M9.5,9.5 L12,16 L15.5,9.5 M8,6.5 h3"/>',
+ 'battery': f'<path {S} d="M10,3 h4 M8,5 h8 a1,1 0 0 1 1,1 v14 a1,1 0 0 1 -1,1 h-8 a1,1 0 0 1 -1,-1 v-14 a1,1 0 0 1 1,-1 z M10,15 h4 M10,18 h4"/>',
 }
 syms = [conv(n, f) for n, f in MAP.items()] + [f'<symbol id="tn-i-{n}" viewBox="0 0 24 24">{b}</symbol>' for n, b in OWN.items()]
 sprite = '<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">' + ''.join(syms) + '</svg>'

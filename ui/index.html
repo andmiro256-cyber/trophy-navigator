@@ -999,6 +999,14 @@
   }
   .live-device:hover { background: var(--bg-surface); }
   .live-device.offline { opacity: 0.4; }
+  /* Время последней точки: в сети ≤ 5 мин — зелёное, до часа — жёлтое, дольше — красное, нет — серое */
+  .live-time { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .live-time.online { color: var(--success-text); }
+  .live-time.recent { color: var(--warning-text); }
+  .live-time.old { color: var(--error-text); }
+  .live-time.none { color: var(--text-muted); font-weight: 400; }
+  .live-pop-row { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 4px 0; }
+  .live-pop-row .tn-ico.tn-ico-t { margin-right: 4px; }
   .live-device .live-dev-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
   .live-device .live-dev-dot.online { background: var(--success); }
   .live-device .live-dev-dot.offline { background: var(--text-hint); }
@@ -15440,7 +15448,8 @@ const LIVE_SELF_SHARE_API = `${LIVE_API_BASE}/api/live2/self-share`;
 const LIVE_MY_DEVICES_API = `${LIVE_API_BASE}/api/live2/my-devices`;
 const LIVE_POLL_MS = 4000;
 const LIVE_MESSAGES_POLL_MS = 5000;
-const LIVE_OFFLINE_TIMEOUT = 30000;
+// «В сети» — последняя точка не старше 5 минут (решение Andre 08.10.2026): список, маркеры, счётчик, попап
+const LIVE_OFFLINE_TIMEOUT = 300000;
 const LIVE_GROUP_ALL_ID = 'all';
 const LIVE_GROUP_SELF_ID = 'self';
 const LIVE_STATUS_OPTIONS = [
@@ -16985,10 +16994,7 @@ function liveProcessDevices(devices) {
     if (!liveHasPos(dev.lat) || !liveHasPos(dev.lon)) return;
     const id = liveDeviceMarkerId(dev);
     activeIds.add(id);
-    const lastUpdate = dev.lastUpdate ? new Date(dev.lastUpdate).getTime() : 0;
-    const isOffline = lastUpdate > 0 && (now - lastUpdate) > LIVE_OFFLINE_TIMEOUT;
-
-    liveUpdateMarker(dev, isOffline);
+    liveUpdateMarker(dev, !liveIsOnline(dev, now));
   });
   // Автоматически показать всех при первом fetch
   if (!liveState._firstFitDone && Object.keys(liveState.markers).length > 0) {
@@ -17066,11 +17072,13 @@ function liveUpdateMarker(dev, isOffline) {
 
   const icon = L.divIcon({ className: 'live-icon-wrapper', html, iconSize: [iconW, iconH], iconAnchor: [iconW / 2, diamondSize / 2 + 4] });
 
+  // Не в сети — маркер приглушён, как строка в списке
+  const opacity = isOffline ? 0.5 : 1;
   if (liveState.markers[id]) {
-    liveState.markers[id].setLatLng(latlng).setIcon(icon);
+    liveState.markers[id].setLatLng(latlng).setIcon(icon).setOpacity(opacity);
     liveState.markers[id]._liveDev = dev;
   } else {
-    const marker = L.marker(latlng, { icon, zIndexOffset: 1000 }).addTo(map);
+    const marker = L.marker(latlng, { icon, zIndexOffset: 1000, opacity }).addTo(map);
     marker._liveDev = dev;
     marker.on('click', () => liveShowPopup(marker._liveDev));
     liveState.markers[id] = marker;
@@ -17079,27 +17087,55 @@ function liveUpdateMarker(dev, isOffline) {
 }
 
 function liveShowPopup(dev) {
+  L.popup({ offset: [0, -15] })
+    .setLatLng([dev.lat, dev.lon])
+    .setContent(livePopupHtml(dev))
+    .openOn(map);
+}
+
+// Свежесть последней точки — цвет времени в попапе и в списке (одна граница с «в сети»)
+const LIVE_RECENT_MS = 3600000;
+function liveLastUpdateMs(dev) {
+  const t = dev?.lastUpdate ? new Date(dev.lastUpdate).getTime() : NaN;
+  return Number.isFinite(t) && t > 0 ? t : null;
+}
+/** 'online' — не старше LIVE_OFFLINE_TIMEOUT, 'recent' — до LIVE_RECENT_MS, 'old' — дольше, 'none' — нет точки. */
+function liveAgeClass(dev, now = Date.now()) {
+  const t = liveLastUpdateMs(dev);
+  if (t == null) return 'none';
+  const age = now - t;
+  return age <= LIVE_OFFLINE_TIMEOUT ? 'online' : age <= LIVE_RECENT_MS ? 'recent' : 'old';
+}
+function liveIsOnline(dev, now = Date.now()) { return liveAgeClass(dev, now) === 'online'; }
+/** «21:40» сегодня, иначе «07.10 21:40»; нет точки — «—». */
+function liveTimeLabel(dev, now = Date.now()) {
+  const t = liveLastUpdateMs(dev);
+  if (t == null) return '—';
+  const d = new Date(t), today = new Date(now), p2 = n => String(n).padStart(2, '0');
+  const hm = `${p2(d.getHours())}:${p2(d.getMinutes())}`;
+  const sameDay = d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+  return sameDay ? hm : `${p2(d.getDate())}.${p2(d.getMonth() + 1)} ${hm}`;
+}
+function liveTimeHtml(dev, now = Date.now()) {
+  return `<span class="live-time ${liveAgeClass(dev, now)}" title="Последняя точка">${liveTimeLabel(dev, now)}</span>`;
+}
+/** Содержимое попапа участника Live (всё из данных — экранировано). */
+function livePopupHtml(dev, now = Date.now()) {
   const speed = dev.speed ? Math.round(dev.speed) + ' км/ч' : '—';
   const battery = dev.battery != null ? escapeHtml(dev.battery) + '%' : '—';
   const alt = dev.altitude ? Math.round(dev.altitude) + ' м' : '—';
-  const time = dev.lastUpdate ? new Date(dev.lastUpdate).toLocaleTimeString('ru-RU') : '—';
   const isPro = dev.plan === 'full';
   const name = liveEsc(isPro ? `⭐ ${dev.name}` : dev.name);
   const deviceId = liveDeviceUniqueId(dev);
   const status = liveStatusInfo(dev.monitorStatusCode);
-
-  L.popup({ offset: [0, -15] })
-    .setLatLng([dev.lat, dev.lon])
-    .setContent(`
-      <div style="min-width:160px">
+  return `
+      <div class="live-popup" style="min-width:170px">
         <b style="color:${isPro ? 'var(--warning-text)' : 'var(--text-primary)'}">${name}</b><br>
-        ${status.emoji} ${liveEsc(status.label)}<br>
-        🏎 ${speed} · 📡 ${alt}<br>
-        🔋 ${battery} · 🕐 ${time}<br>
+        ${status.emoji} ${liveEsc(status.label)}
+        <div class="live-pop-row"><span title="Скорость">${tnIcon('gauge', 'tn-ico-t')}${speed}</span><span title="Высота">${tnIcon('terrain', 'tn-ico-t')}${alt}</span><span title="Заряд">${tnIcon('battery', 'tn-ico-t')}${battery}</span>${liveTimeHtml(dev, now)}</div>
         ${deviceId ? `<div style="margin-top:6px"><button data-device-id="${escapeHtml(deviceId)}" onclick="liveOpenDeviceThread(this.dataset.deviceId)" class="btn-primary btn-sm"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-chat"/></svg>Написать</button></div>` : ''}
         <small style="color:var(--text-muted)">${safeNum(dev.lat).toFixed(5)}, ${safeNum(dev.lon).toFixed(5)}</small>
-      </div>`)
-    .openOn(map);
+      </div>`;
 }
 
 function liveRenderSidebar(devices, now) {
@@ -17107,18 +17143,17 @@ function liveRenderSidebar(devices, now) {
   if (!container) return;
 
   const sorted = [...devices].sort((a, b) => {
-    const aOnline = a.lastUpdate && (now - new Date(a.lastUpdate).getTime()) < LIVE_OFFLINE_TIMEOUT;
-    const bOnline = b.lastUpdate && (now - new Date(b.lastUpdate).getTime()) < LIVE_OFFLINE_TIMEOUT;
+    const aOnline = liveIsOnline(a, now);
+    const bOnline = liveIsOnline(b, now);
     if (aOnline !== bOnline) return bOnline ? 1 : -1;
     return (a.name || '').localeCompare(b.name || '');
   });
 
   container.innerHTML = sorted.filter(dev => liveHasPos(dev.lat) && liveHasPos(dev.lon)).map(dev => {
-    const lastUpdate = dev.lastUpdate ? new Date(dev.lastUpdate).getTime() : 0;
-    const isOffline = lastUpdate > 0 && (now - lastUpdate) > LIVE_OFFLINE_TIMEOUT;
+    const isOffline = !liveIsOnline(dev, now);
     const speed = dev.speed ? Math.round(dev.speed) + ' км/ч' : '';
     const battery = dev.battery != null ? '🔋' + escapeHtml(dev.battery) + '%' : '';
-    const time = dev.lastUpdate ? new Date(dev.lastUpdate).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'}) : '';
+    const time = liveTimeHtml(dev, now);
     const isPro = dev.plan === 'full';
     const uniqueId = liveDeviceUniqueId(dev);
     const status = liveStatusInfo(dev.monitorStatusCode);
@@ -17135,7 +17170,7 @@ function liveRenderSidebar(devices, now) {
   }).join('');
 
   // Update header count
-  const onlineCount = devices.filter(d => d.lastUpdate && (now - new Date(d.lastUpdate).getTime()) < LIVE_OFFLINE_TIMEOUT).length;
+  const onlineCount = devices.filter(d => liveIsOnline(d, now)).length;
   const headerText = document.getElementById('live-header-text');
   if (headerText) {
     const prefix = liveGetActiveGroupId() === LIVE_GROUP_SELF_ID ? 'Мои устройства' : 'Участники';
