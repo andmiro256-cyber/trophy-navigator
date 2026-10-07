@@ -2558,20 +2558,50 @@ let currentCRS = 'EPSG3857';
 // Leaflet делит на 2) — тоже около полуровня. Растровые тайлы на дробном зуме масштабируются — так задумано.
 const TND_MAP_ZOOM_OPTIONS = { zoomSnap: 0.25, zoomDelta: 0.5, wheelPxPerZoomLevel: 120, wheelDebounceTime: 30 };
 // Leaflet выбрасывает щелчки колеса, пришедшие во время анимации зума (_tryAnimatedZoom ничего не делает,
-// пока _animatingZoom): 8 быстрых щелчков давали +4 уровня. Копим их и применяем после окончания анимации.
+// пока _animatingZoom): 8 быстрых щелчков давали +4 уровня. Щелчки во время анимации копим — каждый своим
+// шагом, как одиночный (формула Leaflet сжимает сумму логарифмом, 2 щелчка давали полшага), — и применяем
+// одним зумом после окончания анимации.
 (function keepWheelClicksDuringZoomAnimation() {
   const proto = L.Map.ScrollWheelZoom.prototype;
+  const onWheel = proto._onWheelScroll;
   const perform = proto._performZoom;
+  /** Шаг одиночного щелчка — та же формула, что в _performZoom Leaflet 1.9. */
+  function wheelStep(m, delta) {
+    const snap = m.options.zoomSnap || 0;
+    const d2 = Math.abs(delta) / (4 * m.options.wheelPxPerZoomLevel);
+    const d3 = 4 * Math.log(2 / (1 + Math.exp(-d2))) / Math.LN2;
+    return Math.sign(delta) * (snap ? Math.ceil(d3 / snap) * snap : d3);
+  }
+  function defer(h, levels) {
+    h._tndPendingZoom = (h._tndPendingZoom || 0) + levels;
+    if (h._tndWaitZoomEnd) return;
+    h._tndWaitZoomEnd = true;
+    h._map.once('zoomend', () => setTimeout(() => {
+      h._tndWaitZoomEnd = false;
+      const m = h._map, add = h._tndPendingZoom || 0;
+      h._tndPendingZoom = 0;
+      if (!m || !add) return;
+      const z = m.getZoom(), target = m._limitZoom(z + add);
+      if (target === z) return;
+      if (m.options.scrollWheelZoom === 'center') m.setZoom(target);
+      else m.setZoomAround(h._lastMousePos, target);
+    }, 0));
+  }
+  proto._onWheelScroll = function (e) {
+    const m = this._map;
+    if (!m._animatingZoom) return onWheel.call(this, e);
+    this._lastMousePos = m.mouseEventToContainerPoint(e);
+    const delta = L.DomEvent.getWheelDelta(e);
+    if (delta) defer(this, wheelStep(m, delta));
+    L.DomEvent.stop(e);
+  };
   proto._performZoom = function () {
     const m = this._map;
     if (m._animatingZoom && this._delta) {
-      if (!this._tndWaitZoomEnd) {
-        this._tndWaitZoomEnd = true;
-        m.once('zoomend', () => setTimeout(() => {
-          this._tndWaitZoomEnd = false;
-          if (this._delta && this._map) this._performZoom();
-        }, 0));
-      }
+      // щелчки, собранные до начала чужой анимации, — тоже не терять
+      defer(this, wheelStep(m, this._delta));
+      this._delta = 0;
+      this._startTime = null;
       return;
     }
     return perform.call(this);

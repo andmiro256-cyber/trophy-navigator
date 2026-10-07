@@ -257,21 +257,19 @@ test('п.5: настоящий Leaflet — щелчок колеса = полу�
     h._delta = 62.5;
     h._performZoom();
     assert.deepEqual(calls, [10.5], 'один щелчок — полуровень');
-    // идёт анимация — щелчок не выброшен, а отложен до zoomend
+    // идёт анимация: щелчки не выброшены, каждый — полуровень, применяются после zoomend
     calls.length = 0;
     map._animatingZoom = true;
+    const wheel = () => map.getContainer().dispatchEvent(new w.WheelEvent('wheel', { deltaY: -125, deltaMode: 0, bubbles: true, cancelable: true }));
+    wheel(); wheel(); wheel();
+    // щелчки, собранные до начала анимации (таймер debounce сработал уже во время неё)
     h._delta = 62.5;
     h._performZoom();
-    h._delta += 62.5;
-    h._performZoom();
     assert.deepEqual(calls, [], 'пока анимация — не применяется');
-    assert.equal(h._delta, 125, 'щелчки накоплены');
     map._animatingZoom = false;
     map.fire('zoomend');
     await new Promise(r => setTimeout(r, 5));
-    assert.equal(calls.length, 1);
-    assert.ok(calls[0] > 10.5, `накопленные щелчки дают больше одного шага: ${calls[0]}`);
-    assert.equal(calls[0] % 0.25, 0, 'шаг кратен zoomSnap');
+    assert.deepEqual(calls, [12], '4 щелчка во время анимации = +2 уровня, ни один не потерян и не сжат');
   } finally { dom.window.close(); }
 });
 
