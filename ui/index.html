@@ -14,6 +14,7 @@
 <script src="trophynav-maps.js"></script>
 <script src="trophynav-3d.js"></script>
 <script src="tn-icons.js"></script>
+<script src="tn-widgets.js"></script>
 <style>
   /* Цвета, радиусы и шрифт — токены в theme.css (палитра Android). Здесь только var(--…). */
 
@@ -202,9 +203,33 @@
     align-items: center;
   }
   #statusbar span { display: flex; align-items: center; gap: 4px; }
-  #statusbar .highlight { color: #a0c8e0; }
+  /* ─── Виджеты внизу карты (tn-widgets.js) — как нижняя панель Android ─── */
+  #tn-widgets {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 900;
+    display: flex; gap: 6px; padding: 5px 44px 5px 6px;
+    background: var(--widget-bar-bg); border-top: 1px solid var(--card-stroke);
+    backdrop-filter: blur(6px); cursor: default; user-select: none;
+  }
+  #tn-widgets[hidden] { display: none; }
+  .tn-widget {
+    flex: 1 1 0; min-width: 0; padding: 4px 8px; text-align: center;
+    background: var(--widget-bg); border: 1px solid var(--widget-stroke); border-radius: var(--radius-m);
+  }
+  .tn-widget.wide { flex-grow: 1.6; }
+  .tn-widget-value { font-size: 18px; font-weight: 700; line-height: 1.2; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+  .tn-widget-caption { font-size: 10.5px; line-height: 1.2; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #tn-widgets-toggle {
+    position: absolute; right: 8px; bottom: 12px; z-index: 901; width: 30px; height: 30px; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    background: var(--tile-bg); color: var(--text-primary); border: 2px solid var(--tile-stroke); border-radius: var(--radius-tile);
+  }
+  #tn-widgets-toggle:hover { background-image: linear-gradient(var(--ripple), var(--ripple)); }
+  body.tn-widgets-on .leaflet-bottom { bottom: 58px; }
+  body.tn-widgets-on #tn-widgets-toggle { bottom: 16px; }
+  #statusbar .highlight { color: var(--text-secondary); font-weight: 500; }
+  #statusbar .app-version { margin-left: auto; color: var(--text-hint); font-size: 10px; }
 
-  /* ─── МОДАЛЬНЫЕ ОКНА ─── */
+  /* ─── МОДАЛЬНЫЕ ОКНА — как диалоги Android: поверхность surface, заголовок полужирный ─── */
   .modal-overlay { display: none; position: fixed; inset: 0; z-index: 4100; pointer-events: none; }
   .modal-overlay.open { display: block; }
   .modal {
