@@ -10475,12 +10475,12 @@ async function scanOfflineMaps() {
       };
 
       // Escape filename for safe HTML insertion
-      const safeName = fname.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-      const safeKey = key.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      const safeName = escapeHtml(fname);
+      const safeKey = escapeHtml(key);
       const sourceLabel = source.external ? 'внешний файл' : 'папка приложения';
-      const metaText = existsOk ? `${sizeStr} · ${sourceLabel}` : sizeStr;
+      const metaText = escapeHtml(existsOk ? `${sizeStr} · ${sourceLabel}` : sizeStr);
 
-      const keyArg = JSON.stringify(key);
+      // Ключ (путь) — только в data-атрибуте: JSON.stringify внутри onclick="…" рвал атрибут кавычками
       const card = document.createElement('div');
       card.className = 'offline-map-card';
       card.innerHTML = `
@@ -10490,10 +10490,10 @@ async function scanOfflineMaps() {
           <div class="omc-meta">${metaText}</div>
         </div>
         <div class="omc-actions">
-          <button class="omc-btn ${isActive ? 'active' : ''}" data-offline-key="${safeKey}" ${existsOk ? '' : 'disabled'} onclick="toggleOfflineMap(${keyArg}, this)">
+          <button class="omc-btn ${isActive ? 'active' : ''}" data-offline-key="${safeKey}" ${existsOk ? '' : 'disabled'} onclick="toggleOfflineMap(this.dataset.offlineKey, this)">
             ${isActive ? '✓ Вкл' : '◯ Выкл'}
           </button>
-          <button class="omc-btn delete" onclick="deleteOfflineMap(${keyArg})">🗑</button>
+          <button class="omc-btn delete" data-offline-delete-key="${safeKey}" onclick="deleteOfflineMap(this.dataset.offlineDeleteKey)">🗑</button>
         </div>
       `;
       listEl.appendChild(card);
