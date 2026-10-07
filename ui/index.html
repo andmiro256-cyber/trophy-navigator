@@ -1327,16 +1327,16 @@
       <div style="margin-bottom:10px">
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Время старта</div>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-primary);margin-bottom:4px;cursor:pointer">
-          <input type="radio" name="rr-start-mode" value="auto" checked style="accent-color:var(--accent-blue)"> Авто (по первому КП)
+          <input type="radio" name="rr-start-mode" value="auto" checked style="accent-color:var(--accent)"> Авто (по первому КП)
         </label>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-primary);margin-bottom:4px;cursor:pointer">
-          <input type="radio" name="rr-start-mode" value="manual" style="accent-color:var(--accent-blue)"> Ручное:
+          <input type="radio" name="rr-start-mode" value="manual" style="accent-color:var(--accent)"> Ручное:
           <input id="rr-start-h" type="number" min="0" max="23" value="10" style="width:40px;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:3px;padding:2px 4px;font-size:12px;text-align:center"> :
           <input id="rr-start-m" type="number" min="0" max="59" value="0" style="width:40px;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:3px;padding:2px 4px;font-size:12px;text-align:center"> :
           <input id="rr-start-s" type="number" min="0" max="59" value="0" style="width:40px;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:3px;padding:2px 4px;font-size:12px;text-align:center">
         </label>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-primary);cursor:pointer">
-          <input type="radio" name="rr-start-mode" value="track" style="accent-color:var(--accent-blue)"> По треку (от начала до конца)
+          <input type="radio" name="rr-start-mode" value="track" style="accent-color:var(--accent)"> По треку (от начала до конца)
         </label>
       </div>
       <div style="margin-bottom:12px">
@@ -1359,7 +1359,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span id="app-version-label" style="margin-left:auto;color:var(--text-muted);font-size:10px">Trophy Navigator · v0.9.26</span>
+  <span id="app-version-label" class="app-version">Trophy Navigator · v0.9.26</span>
 </div>
 
 <div id="ruler-panel">
@@ -1435,18 +1435,18 @@
         <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="promptNewSet()" title="Новый набор">+</button>
         <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="if(activeSetId)toggleSetVisibility(activeSetId)" title="Скрыть/показать">👁</button>
         <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="if(activeSetId)renameWaypointSet(activeSetId)" title="Переименовать">✏</button>
-        <button class="btn-secondary" style="padding:3px 8px;font-size:11px;color:#e07070;border-color:#6a2a2a" onclick="if(activeSetId)deleteWaypointSet(activeSetId)" title="Удалить набор">✕</button>
+        <button class="btn-secondary btn-danger" style="padding:3px 8px;font-size:11px" onclick="if(activeSetId)deleteWaypointSet(activeSetId)" title="Удалить набор">✕</button>
       </div>
       <div style="margin-bottom:8px;display:flex;gap:6px;align-items:center">
         <input id="wpt-search" placeholder="🔍 Поиск по названию..." oninput="updateWptTable()" style="flex:1;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:4px 8px;font-size:12px">
       </div>
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
         <label style="font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:4px;cursor:pointer">
-          <input type="checkbox" id="wpt-select-all" class="wpt-cb" style="accent-color:#4a8adf" onchange="selectAllWaypoints(this)"> Все
+          <input type="checkbox" id="wpt-select-all" class="wpt-cb" onchange="selectAllWaypoints(this)"> Все
         </label>
         <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="toggleBulkEditPanel()">✏ Редактировать</button>
-        <button class="btn-secondary" style="padding:3px 8px;font-size:11px;color:#e07070;border-color:#6a2a2a" onclick="deleteSelectedWaypoints()">🗑 Удалить выбранные</button>
-        <button class="btn-secondary" style="padding:3px 8px;font-size:11px;color:#e07070;border-color:#6a2a2a" onclick="clearAllWaypoints()">🗑 Очистить</button>
+        <button class="btn-secondary btn-danger" style="padding:3px 8px;font-size:11px" onclick="deleteSelectedWaypoints()">🗑 Удалить выбранные</button>
+        <button class="btn-secondary btn-danger" style="padding:3px 8px;font-size:11px" onclick="clearAllWaypoints()">🗑 Очистить</button>
       </div>
       <!-- Панель массового редактирования -->
       <div id="bulk-edit-panel" style="display:none;background:var(--bg-interactive);border:1px solid var(--border-normal);border-radius:6px;padding:8px;margin-bottom:8px">
@@ -1459,7 +1459,7 @@
           <div style="display:flex;align-items:center;gap:4px">
             <span style="font-size:11px;color:var(--text-muted)">Цвет:</span>
             <input id="bulk-color" type="color" value="#4a8adf" style="width:28px;height:22px;border:none;background:none;cursor:pointer">
-            <label style="font-size:10px;color:var(--text-muted);display:flex;align-items:center;gap:2px"><input type="checkbox" id="bulk-color-apply" style="accent-color:#4a8adf">применить</label>
+            <label style="font-size:10px;color:var(--text-muted);display:flex;align-items:center;gap:2px"><input type="checkbox" id="bulk-color-apply">применить</label>
           </div>
           <div style="display:flex;align-items:center;gap:4px">
             <span style="font-size:11px;color:var(--text-muted)">Иконка:</span>
@@ -1622,11 +1622,11 @@
           <input type="range" id="track-build-width" min="1" max="8" value="3" oninput="updateCurrentTrackBuildStyle()" title="Толщина трека">
           <span id="track-build-width-val" style="min-width:30px;text-align:right;font-size:11px">3px</span>
         </div>
-        <div id="track-build-extra" style="font-size:11px;color:#90c890;margin-bottom:4px;display:none"></div>
+        <div id="track-build-extra" style="font-size:11px;color:var(--success-text);margin-bottom:4px;display:none"></div>
         <div class="btn-row">
-          <button id="track-build-cancel-btn" class="btn-secondary" onclick="cancelTrackDraw()" style="font-size:11px;color:#e07070;border-color:#6a2a2a">✕ Отмена</button>
+          <button id="track-build-cancel-btn" class="btn-secondary btn-danger" onclick="cancelTrackDraw()" style="font-size:11px">✕ Отмена</button>
           <button id="track-build-undo-btn" class="btn-secondary" onclick="undoLastAction()" style="font-size:11px">↩ Отменить</button>
-          <button id="track-build-delete-point-btn" class="btn-secondary" onclick="deleteSelectedTrackPoint()" style="display:none;font-size:11px;color:#e07070;border-color:#6a2a2a">🗑 Удалить точку</button>
+          <button id="track-build-delete-point-btn" class="btn-secondary btn-danger" onclick="deleteSelectedTrackPoint()" style="display:none;font-size:11px">🗑 Удалить точку</button>
           <button id="track-build-split-point-btn" class="btn-secondary" onclick="splitSelectedTrackPoint()" style="display:none;font-size:11px">✂ Разбить здесь</button>
           <button id="track-build-finish-btn" class="btn-primary" onclick="finishTrackDraw()" style="font-size:11px">✓ Готово</button>
         </div>
@@ -1654,7 +1654,7 @@
           <span id="track-point-size-val" style="min-width:48px;text-align:right;font-size:12px">3px</span>
         </div>
         <div class="btn-row">
-          <button class="btn-secondary" onclick="deleteSelectedTrack()" style="color:#e07070;border-color:#6a2a2a;font-size:11px">🗑 Удалить трек</button>
+          <button class="btn-secondary btn-danger" onclick="deleteSelectedTrack()" style="font-size:11px">🗑 Удалить трек</button>
           <button class="btn-primary" onclick="applyTrackProps()" style="font-size:11px">✓ Сохранить свойства</button>
         </div>
         <div class="btn-row" style="margin-top:4px">
@@ -1670,16 +1670,16 @@
         <div class="btn-row" style="margin-bottom:6px">
           <button class="btn-primary" onclick="playSelectedTracks()" style="font-size:11px">▶ Старт</button>
           <button class="btn-secondary" onclick="pauseTrackPlayer()" style="font-size:11px">⏸ Пауза</button>
-          <button class="btn-secondary" onclick="stopTrackPlayer()" style="font-size:11px;color:#e07070;border-color:#6a2a2a">⏹ Стоп</button>
+          <button class="btn-secondary btn-danger" onclick="stopTrackPlayer()" style="font-size:11px">⏹ Стоп</button>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:11px;color:var(--text-muted)">Скорость:</span>
-          <input type="range" id="track-speed" min="1" max="50" value="1" oninput="onTrackSpeedChange(this.value)" style="flex:1;accent-color:#4a8adf">
+          <input type="range" id="track-speed" min="1" max="50" value="1" oninput="onTrackSpeedChange(this.value)" style="flex:1">
           <span id="track-speed-val" style="font-size:12px;color:var(--text-primary);min-width:28px">1x</span>
         </div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:4px">отметьте треки чекбоксами для воспроизведения</div>
       </div>
-      <button class="btn-secondary" style="width:100%;margin-top:8px;color:var(--accent-blue);border-color:var(--accent-blue)" onclick="rrOpenDialog()">Race Report</button>
+      <button class="btn-secondary" style="width:100%;margin-top:8px;color:var(--accent);border-color:var(--accent)" onclick="rrOpenDialog()">Race Report</button>
       <button class="btn-primary" style="width:100%;margin-top:8px" onclick="startNewTrack()">+ Новый трек</button>
     </div>
     <div class="modal-footer">
@@ -1724,7 +1724,7 @@
         </div>
         <div id="route-build-kp-list" style="max-height:150px;overflow-y:auto;margin-bottom:6px"></div>
         <div class="btn-row">
-          <button class="btn-secondary" onclick="cancelRouteDraw()" style="font-size:11px;color:#e07070;border-color:#6a2a2a">✕ Отмена</button>
+          <button class="btn-secondary btn-danger" onclick="cancelRouteDraw()" style="font-size:11px">✕ Отмена</button>
           <button class="btn-primary" onclick="finishRouteDraw()" style="font-size:11px">✓ Сохранить</button>
         </div>
       </div>
@@ -1757,7 +1757,7 @@
           <button class="btn-secondary" onclick="startRouteEdit()" style="font-size:11px">✎ КП</button>
           <button class="btn-secondary" onclick="centerSelectedRoute()" style="font-size:11px">🎯 Центрировать</button>
           <button class="btn-secondary" onclick="toggleSelectedRouteVisible()" style="font-size:11px">👁 Показать/скрыть</button>
-          <button class="btn-secondary" onclick="deleteSelectedRoute()" style="font-size:11px;color:#e07070;border-color:#6a2a2a">🗑 Удалить</button>
+          <button class="btn-secondary btn-danger" onclick="deleteSelectedRoute()" style="font-size:11px">🗑 Удалить</button>
           <button class="btn-primary" onclick="applyRouteProps()" style="font-size:11px">✓ Сохранить свойства</button>
         </div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
@@ -1985,7 +1985,7 @@
             <span id="cache-tile-count">— тайлов</span>
           </div>
           <div style="background:var(--bg-base);border-radius:4px;height:8px;overflow:hidden">
-            <div id="cache-fill-bar" style="height:100%;background:var(--accent-blue);border-radius:4px;width:0%;transition:width 0.3s"></div>
+            <div id="cache-fill-bar" style="height:100%;background:var(--accent);border-radius:4px;width:0%;transition:width 0.3s"></div>
           </div>
           <div style="font-size:10px;color:var(--text-muted);margin-top:4px">
             Сессия: <span id="cache-hits">0</span> попаданий / <span id="cache-misses">0</span> промахов
@@ -2057,7 +2057,7 @@
 
       <!-- ВКЛАДКА: ЗАГРУЗИТЬ ФАЙЛ -->
       <div class="tab-content" id="tab-offline-load">
-        <div id="offline-map-dropzone" style="border:2px dashed #2a4a7a;border-radius:8px;padding:30px;text-align:center;cursor:pointer;margin-bottom:12px" onclick="importOfflineMapFile()">
+        <div id="offline-map-dropzone" style="border:2px dashed var(--border-normal);border-radius:8px;padding:30px;text-align:center;cursor:pointer;margin-bottom:12px" onclick="importOfflineMapFile()">
           <div style="font-size:32px;margin-bottom:8px">📂</div>
           <div style="color:var(--text-secondary);font-size:13px;margin-bottom:4px">Нажмите, выберите файл на диске или перетащите сюда</div>
           <div style="color:var(--text-muted);font-size:11px">.sqlitedb · .mbtiles · .rmap · .db · .sqlite</div>
@@ -2109,13 +2109,13 @@
       <!-- Зум (range sliders) + Формат -->
       <div style="display:flex;gap:8px;margin-bottom:8px">
         <div class="prop-field" style="flex:1">
-          <label>Зум от: <span id="dl-zoom-min-val" style="color:var(--accent-blue);font-weight:600">9</span></label>
-          <input type="range" id="dl-zoom-min" min="1" max="18" value="9" style="width:100%;accent-color:var(--accent-blue)"
+          <label>Зум от: <span id="dl-zoom-min-val" style="color:var(--accent);font-weight:600">9</span></label>
+          <input type="range" id="dl-zoom-min" min="1" max="18" value="9" style="width:100%;accent-color:var(--accent)"
             oninput="onDlZoomMinChange(this)">
         </div>
         <div class="prop-field" style="flex:1">
-          <label>Зум до: <span id="dl-zoom-max-val" style="color:var(--accent-blue);font-weight:600">13</span></label>
-          <input type="range" id="dl-zoom-max" min="1" max="18" value="13" style="width:100%;accent-color:var(--accent-blue)"
+          <label>Зум до: <span id="dl-zoom-max-val" style="color:var(--accent);font-weight:600">13</span></label>
+          <input type="range" id="dl-zoom-max" min="1" max="18" value="13" style="width:100%;accent-color:var(--accent)"
             oninput="onDlZoomMaxChange(this)">
         </div>
         <div class="prop-field" style="flex:0 0 80px">
@@ -2141,7 +2141,7 @@
             <div class="prop-field">
               <label>Прозрачность: <span id="dl-layer2-opacity-val">50%</span></label>
               <input type="range" id="dl-layer2-opacity" min="10" max="90" value="50" step="5"
-                style="width:100%;accent-color:#4a8adf"
+                style="width:100%"
                 oninput="document.getElementById('dl-layer2-opacity-val').textContent=this.value+'%'">
             </div>
           </div>
@@ -2159,7 +2159,7 @@
           <span id="dl-est-tiles">— тайлов</span>
           <span id="dl-est-size">— МБ</span>
         </div>
-        <div id="dl-est-warn" style="margin-top:6px;font-size:11px;color:#e0a050;display:none"></div>
+        <div id="dl-est-warn" style="margin-top:6px;font-size:11px;color:var(--warning-text);display:none"></div>
       </div>
 
       <!-- Имя файла -->
@@ -2183,7 +2183,7 @@
         <div style="background:var(--bg-sunken);border:1px solid var(--border-subtle);border-radius:6px;height:10px;overflow:hidden">
           <div id="dl-prog-bar" style="height:100%;width:0%;border-radius:6px;transition:width 0.3s"></div>
         </div>
-        <button class="btn-secondary" style="width:100%;margin-top:8px;color:#e07070;border-color:#6a2a2a;font-size:11px" onclick="stopTileDownload()">⏹ Остановить</button>
+        <button class="btn-secondary btn-danger" style="width:100%;margin-top:8px;font-size:11px" onclick="stopTileDownload()">⏹ Остановить</button>
       </div>
     </div>
   </div>
@@ -2216,7 +2216,7 @@
       <div style="display:flex;gap:8px">
         <button class="btn-secondary" style="flex:1" onclick="closeModal('modal-clear-confirm');hideAllWorkObjects()">👁 Скрыть всё</button>
         <button class="btn-secondary" style="flex:1" onclick="closeModal('modal-clear-confirm')">Отмена</button>
-        <button id="clear-delete-btn" class="btn-primary" style="flex:1;background:#8a2a2a;border-color:#a03030" onclick="clearSelectedDataConfirmed()">🗑 Удалить</button>
+        <button id="clear-delete-btn" class="btn-primary btn-danger" style="flex:1" onclick="clearSelectedDataConfirmed()">🗑 Удалить</button>
       </div>
     </div>
   </div>
@@ -2278,9 +2278,9 @@
 
       <!-- Карточка лицензии -->
       <div id="license-card" style="background:var(--bg-interactive);border:1px solid var(--border-subtle);border-radius:8px;padding:10px 14px;margin-bottom:10px;display:none">
-        <div id="license-badge" style="font-size:14px;font-weight:bold;color:#FFD700;margin-bottom:6px"></div>
-        <div id="license-line" style="font-size:12px;color:#888;margin-bottom:3px"></div>
-        <div id="server-line" style="font-size:12px;color:#888"></div>
+        <div id="license-badge" style="font-size:14px;font-weight:bold;color:var(--warning-text);margin-bottom:6px"></div>
+        <div id="license-line" style="font-size:12px;color:var(--text-muted);margin-bottom:3px"></div>
+        <div id="server-line" style="font-size:12px;color:var(--text-muted)"></div>
       </div>
 
       <input id="sync-api-key" type="hidden" value="">
@@ -2289,19 +2289,19 @@
       <div class="sync-section-title">⬆ Отправить в облако</div>
       <div style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text-primary);margin-bottom:8px">
         <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
-          <input type="checkbox" id="sync-cb-waypoints" checked style="accent-color:#4a8adf"> 📍 Точки (<span id="sync-wpt-count">0</span>)
+          <input type="checkbox" id="sync-cb-waypoints" checked> 📍 Точки (<span id="sync-wpt-count">0</span>)
         </label>
         <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
-          <input type="checkbox" id="sync-cb-tracks" checked style="accent-color:#4a8adf"> 〜 Треки (<span id="sync-trk-count">0</span>)
+          <input type="checkbox" id="sync-cb-tracks" checked> 〜 Треки (<span id="sync-trk-count">0</span>)
         </label>
         <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
-          <input type="checkbox" id="sync-cb-routes" checked style="accent-color:#4a8adf"> ⚑ Маршруты (<span id="sync-rte-count">0</span>)
+          <input type="checkbox" id="sync-cb-routes" checked> ⚑ Маршруты (<span id="sync-rte-count">0</span>)
         </label>
         <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
-          <input type="checkbox" id="sync-cb-gpx" checked style="accent-color:#4a8adf"> 📄 GPX файлы (<span id="sync-gpx-count">0</span>)
+          <input type="checkbox" id="sync-cb-gpx" checked> 📄 GPX файлы (<span id="sync-gpx-count">0</span>)
         </label>
       </div>
-      <button class="btn-primary" style="width:100%;background:var(--accent-blue);border-color:var(--border-bright)" onclick="syncPush()">⬆ Отправить в облако</button>
+      <button class="btn-primary" style="width:100%;background:var(--accent);border-color:var(--border-bright)" onclick="syncPush()">⬆ Отправить в облако</button>
 
       <!-- Загрузить из облака -->
       <div class="sync-section-title" style="margin-top:12px">⬇ Загрузить из облака</div>
@@ -2337,7 +2337,7 @@
       <!-- Пользовательские карты (всегда доступны) -->
       <div class="layer-section-title" style="display:flex;justify-content:space-between;align-items:center">
         <span>Мои карты</span>
-        <span style="font-size:12px;cursor:pointer;color:var(--accent-blue)" onclick="showAddCustomLayer()">+ Добавить</span>
+        <span style="font-size:12px;cursor:pointer;color:var(--accent)" onclick="showAddCustomLayer()">+ Добавить</span>
       </div>
       <div id="custom-layers-list"></div>
       <div id="custom-layer-form" style="display:none;background:var(--bg-sunken);border:1px solid var(--border-normal);border-radius:6px;padding:10px;margin-bottom:8px">
@@ -2499,7 +2499,7 @@ const trackCanvasRenderer = L.canvas({ padding: 0.5 });
 const trackPointCanvasRenderer = L.canvas({ padding: 0.5, tolerance: 8 });
 function createTrackPolylineLayer(points, options = {}) {
   return L.polyline(points, {
-    color: options.color || '#4adf7a',
+    color: options.color || '#4adf7a',  // theme-check: data
     weight: options.weight || options.width || 3,
     opacity: options.opacity ?? 0.85,
     dashArray: options.dashArray || null,
@@ -2554,7 +2554,7 @@ document.getElementById('sb-zoom').textContent = map.getZoom();
 // ТОЧКИ
 // ─────────────────────────────────────────────
 let waypoints = [], wpCounter = 1, activeWaypoint = null;
-const wpColors = ['#4a8adf','#df4a4a','#4adf7a','#dfdf4a','#df7a4a','#7a4adf','#4adfe0','#df4adf'];
+const wpColors = ['#4a8adf','#df4a4a','#4adf7a','#dfdf4a','#df7a4a','#7a4adf','#4adfe0','#df4adf'];  // theme-check: data
 
 // ─── UNDO стек ───
 const undoStack = [];
@@ -3114,10 +3114,10 @@ function renderLoadedSourceFiles() {
       file.entityCounts.routes ? `${file.entityCounts.routes} марш` : ''
     ].filter(Boolean).join(' · ') || 'без объектов';
     const meta = file.path ? `${counts} · ${escapeHtml(file.path)}` : counts;
-    return `<div title="${escapeHtml(file.path || file.name)}" style="padding:6px 4px;border-bottom:1px solid rgba(255,255,255,0.06)">
+    return `<div title="${escapeHtml(file.path || file.name)}" style="padding:6px 4px;border-bottom:1px solid var(--card-stroke)">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
         <div style="font-size:12px;color:var(--text-primary);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(file.name)}</div>
-        <div style="font-size:10px;color:#9fc3ff;flex:0 0 auto">${sourceFormatLabel(file.format)}</div>
+        <div style="font-size:10px;color:var(--primary-text);flex:0 0 auto">${sourceFormatLabel(file.format)}</div>
       </div>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${meta}</div>
     </div>`;
@@ -3495,7 +3495,7 @@ function openQuickRename(marker) {
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Быстрое переименование</div>
       <input id="${popupId}" value="${value}" maxlength="16" style="width:100%;padding:5px 6px;border:1px solid var(--border-normal);border-radius:4px;background:var(--bg-sunken);color:var(--text-primary)">
       <div style="display:flex;gap:6px;margin-top:8px">
-        <button onclick="applyQuickRename(${marker.wpData.num})" style="flex:1;padding:5px 6px;border:1px solid var(--border-bright);border-radius:4px;background:var(--accent-blue);color:var(--text-on-solid);cursor:pointer">Сохранить</button>
+        <button onclick="applyQuickRename(${marker.wpData.num})" style="flex:1;padding:5px 6px;border:1px solid var(--border-bright);border-radius:4px;background:var(--accent);color:var(--text-on-solid);cursor:pointer">Сохранить</button>
         <button onclick="openWaypointPropsByNum(${marker.wpData.num})" style="flex:1;padding:5px 6px;border:1px solid var(--border-normal);border-radius:4px;background:var(--bg-interactive);color:var(--text-secondary);cursor:pointer">Свойства</button>
       </div>
     </div>
@@ -3522,7 +3522,7 @@ function getDefaultRadius() {
 function addWaypoint(latlng, nameHint, extra = {}) {
   ensureWorkObjectsVisibleForEditing();
   const name = nameHint || ('wp'+wpCounter);
-  const color = document.getElementById('setting-color-wpt')?.value || '#df7a4a';
+  const color = document.getElementById('setting-color-wpt')?.value || '#df7a4a';  // theme-check: data
   const createdAt = normalizeIso(extra.createdAt || extra.importedAt, getIsoNow());
   const wpData = {
     id: extra.id || makeEntityId('wp'),
@@ -3610,7 +3610,7 @@ function updateWptTable() {
           <button type="button" class="wpt-map-btn" title="Яндекс Панорама" onclick="openWaypointMapByIndex(${idx}, 'yandex-panorama')">👁</button>
         </div>
       </td>
-      <td style="text-align:center">${d.radius}м</td>
+      <td class="wpt-radius">${d.radius}м</td>
     </tr>`;
   }).join('');
   const all = document.getElementById('wpt-select-all');
@@ -5691,7 +5691,7 @@ function saveWaypointsWPT() {
         1,
         0,
         0,
-        hexToOziColor(d.color || '#df7a4a'),
+        hexToOziColor(d.color || '#df7a4a'),  // theme-check: data
         csvField(d.desc || ''),
         0,
         0,
@@ -5725,7 +5725,7 @@ function saveWaypointsGPX() {
       if (d.desc) gpx += `    <desc>${escapeXml(d.desc)}</desc>\n`;
       gpx += `    <sym>${escapeXml(d.icon || '⬤')}</sym>\n`;
       gpx += `    <extensions>\n`;
-      gpx += `      <tnd:color>${escapeXml(d.color || '#df7a4a')}</tnd:color>\n`;
+      gpx += `      <tnd:color>${escapeXml(d.color || '#df7a4a')}</tnd:color>\n`;  // theme-check: data
       gpx += `      <tnd:radius>${d.radius || 0}</tnd:radius>\n`;
       gpx += `    </extensions>\n`;
       gpx += `  </wpt>\n`;
@@ -5749,7 +5749,7 @@ function showSaveGPXDialog() {
       const wps = waypoints.filter(m => m._setId === s.id);
       const dis = wps.length === 0 ? 'disabled' : '';
       html += `<label style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;color:var(--text-primary);cursor:pointer">
-        <input type="checkbox" class="save-gpx-set-cb" data-set-id="${s.id}" ${wps.length > 0 ? 'checked' : ''} ${dis} style="accent-color:#4a8adf">
+        <input type="checkbox" class="save-gpx-set-cb" data-set-id="${s.id}" ${wps.length > 0 ? 'checked' : ''} ${dis}>
         ${escapeHtml(s.name)} <span style="color:var(--text-muted)">(${wps.length})</span>
       </label>`;
     });
@@ -5760,7 +5760,7 @@ function showSaveGPXDialog() {
     html += '<div style="font-size:11px;color:var(--text-muted);margin:8px 0 4px;text-transform:uppercase">〜 Треки</div>';
     tracks.forEach(t => {
       html += `<label style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;color:var(--text-primary);cursor:pointer">
-        <input type="checkbox" class="save-gpx-trk-cb" data-track-id="${t.id}" checked style="accent-color:#4a8adf">
+        <input type="checkbox" class="save-gpx-trk-cb" data-track-id="${t.id}" checked>
         <span style="color:${t.color};font-size:10px">●</span> ${escapeHtml(t.name)} <span style="color:var(--text-muted)">(${Array.isArray(t.points) ? t.points.length : 0} точек)</span>
       </label>`;
     });
@@ -5771,7 +5771,7 @@ function showSaveGPXDialog() {
     html += '<div style="font-size:11px;color:var(--text-muted);margin:8px 0 4px;text-transform:uppercase">⚑ Маршруты</div>';
     routes.forEach(r => {
       html += `<label style="display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;color:var(--text-primary);cursor:pointer">
-        <input type="checkbox" class="save-gpx-rte-cb" data-route-id="${r.id}" checked style="accent-color:#4a8adf">
+        <input type="checkbox" class="save-gpx-rte-cb" data-route-id="${r.id}" checked>
         <span style="color:${r.color};font-size:10px">●</span> ${escapeHtml(r.name)} <span style="color:var(--text-muted)">(${Array.isArray(r.points) ? r.points.length : 0} КП)</span>
       </label>`;
     });
@@ -5826,11 +5826,11 @@ function buildGPXWithData(selWaypoints, selTracks, selRoutes) {
     gpx += `<name>${escapeXml(d.name)}</name>`;
     if (d.desc) gpx += `<desc>${escapeXml(d.desc)}</desc>`;
     gpx += `<sym>${escapeXml(d.icon || '⬤')}</sym>`;
-    gpx += `<extensions><tnd:color>${escapeXml(d.color || '#df7a4a')}</tnd:color><tnd:radius>${d.radius || 0}</tnd:radius></extensions>`;
+    gpx += `<extensions><tnd:color>${escapeXml(d.color || '#df7a4a')}</tnd:color><tnd:radius>${d.radius || 0}</tnd:radius></extensions>`;  // theme-check: data
     gpx += '</wpt>\n';
   });
   selTracks.forEach(t => {
-    gpx += `<trk><name>${escapeXml(t.name)}</name><extensions><tnd:color>${escapeXml(t.color || '#4a8adf')}</tnd:color><tnd:width>${Number(t.width) || 3}</tnd:width><tnd:pointSize>${Number(t.pointSize ?? 3)}</tnd:pointSize></extensions><trkseg>`;
+    gpx += `<trk><name>${escapeXml(t.name)}</name><extensions><tnd:color>${escapeXml(t.color || '#4a8adf')}</tnd:color><tnd:width>${Number(t.width) || 3}</tnd:width><tnd:pointSize>${Number(t.pointSize ?? 3)}</tnd:pointSize></extensions><trkseg>`;  // theme-check: data
     t.points.forEach((p, i) => {
       gpx += `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
       const d = t.pointsData?.[i];
@@ -5843,7 +5843,7 @@ function buildGPXWithData(selWaypoints, selTracks, selRoutes) {
     gpx += '</trkseg></trk>';
   });
   selRoutes.forEach(r => {
-    gpx += `<rte><name>${escapeXml(r.name)}</name><extensions><tnd:color>${escapeXml(r.color || '#4a8adf')}</tnd:color><tnd:width>${Number(r.width) || 3}</tnd:width><tnd:dashArray>${escapeXml(r.dashArray || '')}</tnd:dashArray></extensions>`;
+    gpx += `<rte><name>${escapeXml(r.name)}</name><extensions><tnd:color>${escapeXml(r.color || '#4a8adf')}</tnd:color><tnd:width>${Number(r.width) || 3}</tnd:width><tnd:dashArray>${escapeXml(r.dashArray || '')}</tnd:dashArray></extensions>`;  // theme-check: data
     r.points.forEach((p, i) => {
       const radius = Number(r.pointRadii?.[i]) || 0;
       const waypointId = r.pointWaypointIds?.[i] ? escapeXml(r.pointWaypointIds[i]) : '';
@@ -6514,9 +6514,9 @@ function openModal(id) {
     checkForUpdates(true);
     document.getElementById('about-platform').textContent = getReadablePlatform();
     const licEl = document.getElementById('about-license');
-    if (isLicensed()) { licEl.textContent = '✓ Активна'; licEl.style.color = '#4adf7a'; }
-    else if (getTrialDaysLeft() > 0) { licEl.textContent = `Триал: ${getTrialDaysLeft()} дн.`; licEl.style.color = '#e0a050'; }
-    else { licEl.textContent = '🔒 Нет лицензии'; licEl.style.color = '#e07070'; }
+    if (isLicensed()) { licEl.textContent = '✓ Активна'; licEl.className = 'status-ok'; }
+    else if (getTrialDaysLeft() > 0) { licEl.textContent = `Триал: ${getTrialDaysLeft()} дн.`; licEl.className = 'status-warn'; }
+    else { licEl.textContent = '🔒 Нет лицензии'; licEl.className = 'status-err'; }
   }
   if (id === 'modal-settings') {
     const themeSel = document.getElementById('setting-theme');
@@ -6618,7 +6618,7 @@ let currentTrackSnapshot = null;
 let currentTrackEdit = null;
 let currentTrackUndoToken = null;
 let selectedTrackId = null;
-const trackPalette = ['#df4a4a','#4adf7a','#4a8adf','#dfdf4a','#df7a4a','#df4adf','#4adfe0','#7a4adf'];
+const trackPalette = ['#df4a4a','#4adf7a','#4a8adf','#dfdf4a','#df7a4a','#df4adf','#4adfe0','#7a4adf'];  // theme-check: data
 let trackPropsPreviewId = null;
 const TRACK_MARKER_FULL_RENDER_LIMIT = 600;
 const TRACK_MARKER_DETAIL_ZOOM = 17;
@@ -6946,7 +6946,7 @@ function createTrackMarker(track, idx) {
   const r = canEditTrackGeometry(track) ? Math.max(track.pointSize ?? 3, 5) : (track.pointSize ?? 3);
   const m = L.circleMarker(track.points[idx], {
     radius: isSelected ? r + 2 : r,
-    color: isSelected ? '#ffffff' : track.color,
+    color: isSelected ? '#ffffff' : track.color,  // theme-check: data
     fillColor: track.color,
     fillOpacity: isSelected ? 1 : 0.7,
     weight: isSelected ? 2 : 1,
@@ -7787,8 +7787,8 @@ function updateTrackList() {
     const syncInfo = t.syncedAt ? `<span title="Синхр. с ${t.source === 'android' ? 'Android' : 'desktop'} · ${new Date(t.syncedAt).toLocaleString('ru-RU')}" style="font-size:10px;opacity:0.7;margin-left:4px">☁</span>` : '';
     const srcTag = t.source && t.source !== 'desktop' ? ` · <span style="font-size:10px;color:var(--text-secondary)">${t.source}</span>` : '';
     const modeTag = isTrackEditActive(t)
-      ? ' · <span style="font-size:10px;color:#f0c878">редактируется</span>'
-      : (isTrackDrawActive(t) ? ' · <span style="font-size:10px;color:#90c890">строится</span>' : '');
+      ? ' · <span class="meta-tag warn">редактируется</span>'
+      : (isTrackDrawActive(t) ? ' · <span class="meta-tag ok">строится</span>' : '');
     const pointTag = trackUsesViewportMarkers(t)
       ? ` · <span style="font-size:10px;color:var(--text-muted)" title="У большого трека точки показываются с z${TRACK_MARKER_DETAIL_ZOOM} только в текущем экране">точки по экрану</span>`
       : (isLargeTrack(t) && (t.pointSize ?? 3) > 0
@@ -7814,7 +7814,7 @@ function saveTracksGPX() {
     validateExportCoordinates({ tracks });
     let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">';
     tracks.forEach(t => {
-      gpx += `<trk><name>${escapeXml(t.name)}</name><extensions><tnd:color>${escapeXml(t.color || '#4a8adf')}</tnd:color><tnd:width>${Number(t.width) || 3}</tnd:width><tnd:pointSize>${Number(t.pointSize ?? 3)}</tnd:pointSize></extensions><trkseg>`;
+      gpx += `<trk><name>${escapeXml(t.name)}</name><extensions><tnd:color>${escapeXml(t.color || '#4a8adf')}</tnd:color><tnd:width>${Number(t.width) || 3}</tnd:width><tnd:pointSize>${Number(t.pointSize ?? 3)}</tnd:pointSize></extensions><trkseg>`;  // theme-check: data
       t.points.forEach((p, i) => {
         gpx += `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
         const d = t.pointsData?.[i];
@@ -8032,7 +8032,7 @@ function playSelectedTracks() {
     const marker = L.marker(track.points[0], {
       icon: L.divIcon({
         className: '',
-        html: `<div style="font-size:18px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));color:${track.color}">🔺</div>`,
+        html: `<div style="font-size:18px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));color:${track.color}">🔺</div>`,  // theme-check: data
         iconSize: [20, 20], iconAnchor: [10, 10]
       })
     }).addTo(map);
@@ -8107,7 +8107,7 @@ let selectedRouteId = null;
 let importedGpxFiles = [];
 let currentRouteDraw = null;
 let currentRouteSession = null;
-const routePalette = ['#df4a4a','#4a8adf','#dfdf4a','#4adf7a','#df7a4a','#df4adf'];
+const routePalette = ['#df4a4a','#4a8adf','#dfdf4a','#4adf7a','#df7a4a','#df4adf'];  // theme-check: data
 let routePropsPreviewId = null;
 
 function applyRouteStyle(route) {
@@ -8535,7 +8535,7 @@ function onRouteKpDragOver(e) {
   e.preventDefault();
   e.dataTransfer.dropEffect = 'move';
   const target = e.target.closest('.route-kp');
-  if (target) target.style.borderTop = '2px solid #4a8adf';
+  if (target) target.style.borderTop = '2px solid var(--primary)';
 }
 function onRouteKpDrop(e) {
   e.preventDefault();
@@ -8753,7 +8753,7 @@ function saveRoutesGPX() {
     validateExportCoordinates({ routes });
     let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">';
     routes.forEach(r => {
-      gpx += `<rte><name>${escapeXml(r.name)}</name><extensions><tnd:color>${escapeXml(r.color || '#4a8adf')}</tnd:color><tnd:width>${Number(r.width) || 3}</tnd:width><tnd:dashArray>${escapeXml(r.dashArray || '')}</tnd:dashArray></extensions>`;
+      gpx += `<rte><name>${escapeXml(r.name)}</name><extensions><tnd:color>${escapeXml(r.color || '#4a8adf')}</tnd:color><tnd:width>${Number(r.width) || 3}</tnd:width><tnd:dashArray>${escapeXml(r.dashArray || '')}</tnd:dashArray></extensions>`;  // theme-check: data
       r.points.forEach((p, i) => {
         const radius = Number(r.pointRadii?.[i]) || 0;
         const waypointId = r.pointWaypointIds?.[i] ? escapeXml(r.pointWaypointIds[i]) : '';
@@ -9109,7 +9109,7 @@ function onPolygonClick(e) {
   dlPolygonPoints.push(e.latlng);
   // Add orange marker
   const marker = L.circleMarker(e.latlng, {
-    radius: 7, color: '#e0a050', fillColor: '#e0a050', fillOpacity: 0.85,
+    radius: 7, color: '#e0a050', fillColor: '#e0a050', fillOpacity: 0.85,  // theme-check: data
     weight: 2, pane: 'markerPane'
   }).addTo(map);
   dlPolygonMarkers.push(marker);
@@ -9122,8 +9122,8 @@ function updatePolygonShape() {
   if (dlPolygonPoints.length >= 3) {
     const hull = grahamScan(dlPolygonPoints);
     dlPolygonShape = L.polygon(hull, {
-      color: '#e0a050', weight: 2, dashArray: '6,4',
-      fillColor: '#e0a050', fillOpacity: 0.15
+      color: '#e0a050', weight: 2, dashArray: '6,4',  // theme-check: data
+      fillColor: '#e0a050', fillOpacity: 0.15  // theme-check: data
     }).addTo(map);
   }
 }
@@ -9399,11 +9399,11 @@ function updateDownloadEstimate() {
   const warn = document.getElementById('dl-est-warn');
   if (sizeBytes > 500 * 1024 * 1024) {
     warn.textContent = '⚠️ Размер превышает 500 МБ! Уменьшите зум или область.';
-    warn.style.color = '#e07070';
+    warn.style.color = 'var(--error-text)';
     warn.style.display = 'block';
   } else if (downloadTiles > 50000) {
     warn.textContent = '⚠️ Много тайлов! Скачивание может занять значительное время.';
-    warn.style.color = '#e0a050';
+    warn.style.color = 'var(--warning-text)';
     warn.style.display = 'block';
   } else {
     warn.style.display = 'none';
@@ -10857,16 +10857,16 @@ function collectState(options = {}) {
     }),
     settings: {
       defaultRadius: getDefaultRadius(),
-      colorWpt: document.getElementById('setting-color-wpt')?.value || '#df7a4a',
+      colorWpt: document.getElementById('setting-color-wpt')?.value || '#df7a4a',  // theme-check: data
       trackColorMode: document.getElementById('setting-track-color-mode')?.value || 'fixed',
-      colorTrack: document.getElementById('setting-color-track')?.value || '#4adf7a',
+      colorTrack: document.getElementById('setting-color-track')?.value || '#4adf7a',  // theme-check: data
       routeColorMode: document.getElementById('setting-route-color-mode')?.value || 'fixed',
-      colorRoute: document.getElementById('setting-color-route')?.value || '#4a8adf',
-      colorRadiusFill: document.getElementById('setting-color-radius-fill')?.value || '#4a8adf',
-      colorRadiusStroke: document.getElementById('setting-color-radius-stroke')?.value || '#4a8adf',
+      colorRoute: document.getElementById('setting-color-route')?.value || '#4a8adf',  // theme-check: data
+      colorRadiusFill: document.getElementById('setting-color-radius-fill')?.value || '#4a8adf',  // theme-check: data
+      colorRadiusStroke: document.getElementById('setting-color-radius-stroke')?.value || '#4a8adf',  // theme-check: data
       radiusOpacity: parseInt(document.getElementById('setting-radius-opacity')?.value) || 15,
-      colorOsrm: document.getElementById('setting-color-osrm')?.value || '#4a8adf',
-      colorSearch: document.getElementById('setting-color-search')?.value || '#4a8adf',
+      colorOsrm: document.getElementById('setting-color-osrm')?.value || '#4a8adf',  // theme-check: data
+      colorSearch: document.getElementById('setting-color-search')?.value || '#4a8adf',  // theme-check: data
       iconSize: parseInt(document.getElementById('setting-icon-size')?.value) || 16,
       trackWidth: parseInt(document.getElementById('setting-track-width')?.value) || 3,
       liveMarkerSize: parseInt(document.getElementById('setting-live-marker-size')?.value) || 3,
@@ -11364,7 +11364,7 @@ function renderClearDataList() {
     return;
   }
   listEl.innerHTML = items.map(item => `<label class="clear-data-row">
-    <input type="checkbox" class="clear-data-cb" data-clear-key="${escapeHtml(item.key)}" checked onchange="updateClearDeleteButton()" style="accent-color:#e07070">
+    <input type="checkbox" class="clear-data-cb" data-clear-key="${escapeHtml(item.key)}" checked onchange="updateClearDeleteButton()" style="accent-color:var(--error)">
     <div style="min-width:0;flex:1">
       <div class="clear-data-title">${escapeHtml(item.title)}</div>
       <div class="clear-data-meta">${escapeHtml(item.meta)}</div>
@@ -11791,7 +11791,7 @@ function addRulerPoint(latlng, options = {}) {
   rulerPoints.push(latlng);
   const idx = rulerPoints.length;
   const marker = L.circleMarker(latlng, {
-    radius: 5, color: '#ff6a00', fillColor: '#ff6a00', fillOpacity: 0.9, weight: 2
+    radius: 5, color: '#ff6a00', fillColor: '#ff6a00', fillOpacity: 0.9, weight: 2  // theme-check: data
   }).addTo(map);
 
   if (rulerPoints.length > 1) {
@@ -11799,7 +11799,7 @@ function addRulerPoint(latlng, options = {}) {
     const segDist = prev.distanceTo(latlng);
     rulerTotalDist += segDist;
     const line = L.polyline([prev, latlng], {
-      color: '#ff6a00', weight: 2, dashArray: '6 4', opacity: 0.8
+      color: '#ff6a00', weight: 2, dashArray: '6 4', opacity: 0.8  // theme-check: data
     }).addTo(map);
     rulerLines.push(line);
 
@@ -11844,7 +11844,7 @@ function saveRulerAsTrack() {
   }
   const points = rulerPoints.map(point => L.latLng(point.lat, point.lng));
   const track = createTrackFromPoints(points, `Линейка ${trackIdCounter}`, {
-    color: '#ff6a00',
+    color: '#ff6a00',  // theme-check: data
     width: 3,
     pointSize: 3,
     source: 'ruler',
@@ -12222,10 +12222,10 @@ async function registerSyncEmail() {
       await checkLicenseOnServer();
       updateLicenseCard();
     } else {
-      statusEl.innerHTML = `<span style="color:#e07070">Ошибка: ${escapeHtml(String(data.error))}</span>`;
+      statusEl.innerHTML = `<span class="status-err">Ошибка: ${escapeHtml(String(data.error))}</span>`;
     }
   } catch (e) {
-    statusEl.innerHTML = '<span style="color:#e07070">Нет связи с trophynav.ru</span>';
+    statusEl.innerHTML = '<span class="status-err">Нет связи с trophynav.ru</span>';
   }
 }
 
@@ -12259,52 +12259,52 @@ function updateLicenseCard() {
     const daysLeft = getTrialDaysLeft();
     if (daysLeft > 0) {
       card.style.display = 'block';
-      card.style.background = '#1e1e1e';
+      card.style.background = 'var(--surface-variant)';
       badge.textContent = '\u23f3 \u041f\u0440\u043e\u0431\u043d\u044b\u0439 \u043f\u0435\u0440\u0438\u043e\u0434 \u2014 ' + daysLeft + ' \u0434\u043d.';
-      badge.style.color = '#FF9800';
+      badge.style.color = 'var(--warning-text)';
       licLine.textContent = '\ud83d\udcf1 Navigator Pro \u2014 \u043f\u0440\u043e\u0431\u043d\u044b\u0439 \u043f\u0435\u0440\u0438\u043e\u0434';
-      licLine.style.color = '#888';
+      licLine.style.color = 'var(--text-muted)';
       srvLine.textContent = '\ud83d\udce1 Server \u2014 \u043d\u0435\u0442 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0438';
-      srvLine.style.color = '#888';
+      srvLine.style.color = 'var(--text-muted)';
     } else {
       card.style.display = 'block';
-      card.style.background = '#1e1e1e';
+      card.style.background = 'var(--surface-variant)';
       badge.textContent = '\ud83d\udd12 \u041b\u0438\u0446\u0435\u043d\u0437\u0438\u044f \u043d\u0435 \u0430\u043a\u0442\u0438\u0432\u043d\u0430';
-      badge.style.color = '#FF5252';
+      badge.style.color = 'var(--error-text)';
       licLine.textContent = '\ud83d\udcf1 Navigator Pro \u2014 \u043d\u0435\u0442 \u043b\u0438\u0446\u0435\u043d\u0437\u0438\u0438';
-      licLine.style.color = '#888';
+      licLine.style.color = 'var(--text-muted)';
       srvLine.textContent = '\ud83d\udce1 Server \u2014 \u043d\u0435\u0442 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0438';
-      srvLine.style.color = '#888';
+      srvLine.style.color = 'var(--text-muted)';
     }
     return;
   }
 
   card.style.display = 'block';
   if (info.isFull) {
-    card.style.background = '#1a1a2e';
+    card.style.background = 'var(--primary-soft)';
     badge.textContent = '\u2b50 Navigator Pro';
-    badge.style.color = '#FFD700';
+    badge.style.color = 'var(--primary-text)';
   } else if (info.licenseActive) {
-    card.style.background = '#1e1e1e';
+    card.style.background = 'var(--surface-variant)';
     badge.textContent = '\ud83d\udcbb Navigator Pro';
-    badge.style.color = '#4CAF50';
+    badge.style.color = 'var(--success-text)';
   } else {
-    card.style.background = '#1e1e1e';
+    card.style.background = 'var(--surface-variant)';
     badge.textContent = '\ud83d\udd12 \u041b\u0438\u0446\u0435\u043d\u0437\u0438\u044f \u0438\u0441\u0442\u0435\u043a\u043b\u0430';
-    badge.style.color = '#FF5252';
+    badge.style.color = 'var(--error-text)';
   }
 
   const licDate = fmtDate(info.licenseUntil);
   licLine.textContent = info.licenseActive
     ? '\ud83d\udcbb Navigator Pro \u2014 \u0434\u043e ' + (licDate || '\u0430\u043a\u0442\u0438\u0432\u0438\u0440\u043e\u0432\u0430\u043d\u0430')
     : '\ud83d\udcbb Navigator Pro \u2014 \u0438\u0441\u0442\u0435\u043a\u043b\u0430';
-  licLine.style.color = info.licenseActive ? '#4CAF50' : '#888';
+  licLine.style.color = info.licenseActive ? 'var(--success-text)' : 'var(--text-muted)';
 
   const srvDate = fmtDate(info.serverUntil);
   srvLine.textContent = info.serverActive
     ? '\ud83d\udce1 Server \u2014 \u0434\u043e ' + (srvDate || '\u0430\u043a\u0442\u0438\u0432\u0435\u043d')
     : '\ud83d\udce1 Server \u2014 \u043d\u0435\u0442 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0438';
-  srvLine.style.color = info.serverActive ? '#4CAF50' : '#888';
+  srvLine.style.color = info.serverActive ? 'var(--success-text)' : 'var(--text-muted)';
 }
 
 function updateSyncCounts() {
@@ -12344,12 +12344,12 @@ async function checkSyncServerInfo() {
       headers: syncHeaders()
     });
     if (!resp.ok) {
-      document.getElementById('sync-server-info').innerHTML = '<span style="color:#e07070">Ключ не найден</span>';
+      document.getElementById('sync-server-info').innerHTML = '<span class="status-err">Ключ не найден</span>';
       return;
     }
     const payload = await resp.json();
     if (payload.error) {
-      document.getElementById('sync-server-info').innerHTML = `<span style="color:#e07070">${escapeHtml(payload.error)}</span>`;
+      document.getElementById('sync-server-info').innerHTML = `<span class="status-err">${escapeHtml(payload.error)}</span>`;
     } else {
       const state = normalizeSyncPullState(payload);
       const wpts = (state.waypoints || []).length;
@@ -12360,7 +12360,7 @@ async function checkSyncServerInfo() {
         `На сервере: ${wpts} точек, ${trks} треков, ${rtes} маршрутов${gpxs > 0 ? `, ${gpxs} GPX` : ''}`;
     }
   } catch (e) {
-    document.getElementById('sync-server-info').innerHTML = '<span style="color:#e07070">Нет связи с trophynav.ru</span>';
+    document.getElementById('sync-server-info').innerHTML = '<span class="status-err">Нет связи с trophynav.ru</span>';
   }
 }
 
@@ -12447,7 +12447,7 @@ async function saveSyncedGPXFiles(state, checks) {
       for (const t of state.tracks) {
         let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="TND-Sync" xmlns:tnd="http://trophy-nav.ru/gpx/ext">\n';
         gpx += `  <trk>\n    <name>${escXml(t.name)}</name>\n`;
-        gpx += `    <extensions>\n      <tnd:color>${escXml(t.color || '#4a8adf')}</tnd:color>\n`;
+        gpx += `    <extensions>\n      <tnd:color>${escXml(t.color || '#4a8adf')}</tnd:color>\n`;  // theme-check: data
         if (t.source) gpx += `      <tnd:source>${escXml(t.source)}</tnd:source>\n`;
         if (t.syncedAt) gpx += `      <tnd:syncedAt>${escXml(t.syncedAt)}</tnd:syncedAt>\n`;
         gpx += `    </extensions>\n    <trkseg>\n`;
@@ -12469,7 +12469,7 @@ async function saveSyncedGPXFiles(state, checks) {
       for (const r of state.routes) {
         let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="TND-Sync" xmlns:tnd="http://trophy-nav.ru/gpx/ext">\n';
         gpx += `  <rte>\n    <name>${escXml(r.name)}</name>\n`;
-        gpx += `    <extensions>\n      <tnd:color>${escXml(r.color || '#4a8adf')}</tnd:color>\n`;
+        gpx += `    <extensions>\n      <tnd:color>${escXml(r.color || '#4a8adf')}</tnd:color>\n`;  // theme-check: data
         if (r.source) gpx += `      <tnd:source>${escXml(r.source)}</tnd:source>\n`;
         if (r.syncedAt) gpx += `      <tnd:syncedAt>${escXml(r.syncedAt)}</tnd:syncedAt>\n`;
         gpx += `    </extensions>\n`;
@@ -12643,7 +12643,7 @@ async function fallbackCheckForUpdates(silent = false) {
   resetUpdateButton();
   btn.disabled = true;
   btn.textContent = '⏳ Проверяем...';
-  status.style.color = '#5a7aaa';
+  status.style.color = 'var(--text-muted)';
   status.textContent = silent ? 'Проверяем релизы GitHub...' : '';
   try {
     const r = await fetch('https://api.github.com/repos/andmiro256-cyber/trophy-navigator/releases/latest');
@@ -12654,19 +12654,19 @@ async function fallbackCheckForUpdates(silent = false) {
     const published = formatPublishedDate(data.published_at);
     const versionDiff = compareVersions(latest, current);
     if (versionDiff === 0) {
-      status.style.color = '#4adf7a';
+      status.style.color = 'var(--success-text)';
       status.textContent = '✓ У вас актуальная версия ' + current;
     } else if (versionDiff > 0) {
       const asset = pickReleaseAsset(data.assets);
       const assetHint = asset?.name ? ` (${asset.name})` : '';
-      status.style.color = '#dfdf4a';
+      status.style.color = 'var(--warning-text)';
       status.textContent = `⬆ Доступна версия ${latest}${published ? ` от ${published}` : ''}${assetHint}`;
     } else {
-      status.style.color = '#7ec8ff';
+      status.style.color = 'var(--primary-text)';
       status.textContent = `ℹ Установлена версия ${current}, она новее опубликованной ${latest}${published ? ` от ${published}` : ''}`;
     }
   } catch(e) {
-    status.style.color = '#df7a4a';
+    status.style.color = 'var(--error-text)';
     status.textContent = '✗ ' + getErrorMessage(e, 'Ошибка проверки обновлений');
   } finally {
     btn.disabled = false;
@@ -12683,10 +12683,10 @@ async function installPendingUpdate() {
   const status = getUpdateStatus();
   btn.disabled = true;
   btn.textContent = '⏳ Скачиваем...';
-  status.style.color = '#5a7aaa';
+  status.style.color = 'var(--text-muted)';
   status.innerHTML = '<div style="margin-bottom:4px">Скачиваем обновление...</div>' +
-    '<div style="background:#1a2a3a;border-radius:4px;height:8px;overflow:hidden">' +
-    '<div id="update-progress-bar" style="background:#4a8adf;height:100%;width:0%;transition:width 0.3s;border-radius:4px"></div></div>' +
+    '<div class="tn-progress">' +
+    '<div id="update-progress-bar" class="tn-progress-bar"></div></div>' +
     '<div id="update-progress-text" style="font-size:10px;margin-top:3px;color:var(--text-muted)">0%</div>';
 
   // Слушаем прогресс скачивания
@@ -12710,7 +12710,7 @@ async function installPendingUpdate() {
   try {
     await tauriInvoke('install_app_update', { rid: pendingUpdateRid });
     if (unlisten) unlisten();
-    status.style.color = '#4adf7a';
+    status.style.color = 'var(--success-text)';
     status.textContent = '✓ Обновление установлено. Перезапускаем приложение...';
     pendingUpdateRid = null;
     pendingUpdateVersion = null;
@@ -12723,7 +12723,7 @@ async function installPendingUpdate() {
     }
   } catch (e) {
     if (unlisten) unlisten();
-    status.style.color = '#df7a4a';
+    status.style.color = 'var(--error-text)';
     status.textContent = '✗ ' + getErrorMessage(e, 'Не удалось установить обновление');
   } finally {
     updateCheckBusy = false;
@@ -12746,7 +12746,7 @@ async function checkForUpdates(silent = false) {
   pendingManualUpdateUrl = null;
   btn.disabled = true;
   btn.textContent = '⏳ Проверяем...';
-  status.style.color = '#5a7aaa';
+  status.style.color = 'var(--text-muted)';
   status.textContent = silent ? 'Проверяем обновления...' : '';
   try {
     if (!isTauriRuntime()) {
@@ -12756,7 +12756,7 @@ async function checkForUpdates(silent = false) {
 
     const update = await tauriInvoke('check_app_update');
     if (!update) {
-      status.style.color = '#4adf7a';
+      status.style.color = 'var(--success-text)';
       status.textContent = '✓ У вас актуальная версия ' + getCurrentAppVersion();
       resetUpdateButton();
       return;
@@ -12767,7 +12767,7 @@ async function checkForUpdates(silent = false) {
     const published = formatPublishedDate(update.date);
     const notes = update.body ? `. ${update.body}` : '';
 
-    status.style.color = '#dfdf4a';
+    status.style.color = 'var(--warning-text)';
     if (!update.canAutoInstall || !pendingUpdateRid) {
       pendingUpdateRid = null;
       pendingManualUpdateUrl = update.manualDownloadUrl || 'https://trophynav.ru/desktop.html#download';
@@ -12778,7 +12778,7 @@ async function checkForUpdates(silent = false) {
       setInstallUpdateButton(pendingUpdateVersion);
     }
   } catch(e) {
-    status.style.color = '#df7a4a';
+    status.style.color = 'var(--error-text)';
     status.textContent = '✗ ' + getErrorMessage(e, 'Ошибка проверки обновлений');
     resetUpdateButton();
   } finally {
@@ -13120,14 +13120,13 @@ function showTrialBanner() {
   if (daysLeft > 7) return; // Больше недели — не беспокоим
   const banner = document.createElement('div');
   banner.id = 'trial-banner';
-  banner.style.cssText = `position:fixed;bottom:32px;right:12px;background:rgba(42,30,8,0.95);border:1px solid #e0a050;border-radius:8px;padding:10px 16px;font-size:12px;color:#f0c060;z-index:4000;box-shadow:0 4px 16px rgba(0,0,0,0.4);max-width:300px;`;
+  banner.style.cssText = `position:fixed;bottom:32px;right:12px;background:var(--modal-bg);border:1px solid var(--card-stroke);border-left:4px solid var(--warning);border-radius:var(--radius-m);padding:10px 26px 10px 16px;font-size:12px;color:var(--warning-text);z-index:4000;box-shadow:var(--shadow-2);max-width:300px;`;
   if (daysLeft === 0) {
-    banner.innerHTML = `⚠ Пробный период истёк.<br><span style="font-size:11px;color:#9ab8d0">Для продолжения — Navigator Pro (2000₽/год) или Full с Android (5000₽/год)</span>`;
-    banner.style.borderColor = '#e07070';
-    banner.style.background = 'rgba(42,13,13,0.95)';
-    banner.style.color = '#f08080';
+    banner.innerHTML = `⚠ Пробный период истёк.<br><span style="font-size:11px;color:var(--text-secondary)">Для продолжения — Navigator Pro (2000₽/год) или Full с Android (5000₽/год)</span>`;
+    banner.style.borderLeftColor = 'var(--error)';
+    banner.style.color = 'var(--error-text)';
   } else {
-    banner.innerHTML = `⏳ Пробный период: осталось ${daysLeft} дн.<br><span style="font-size:11px;color:#9ab8d0">Navigator Pro: 2000₽/год · Full (Android+Desktop+Server): 5000₽/год</span>`;
+    banner.innerHTML = `⏳ Пробный период: осталось ${daysLeft} дн.<br><span style="font-size:11px;color:var(--text-secondary)">Navigator Pro: 2000₽/год · Full (Android+Desktop+Server): 5000₽/год</span>`;
   }
   banner.innerHTML += `<span onclick="this.parentElement.remove()" style="position:absolute;top:4px;right:8px;cursor:pointer;color:var(--text-secondary);font-size:14px">✕</span>`;
   document.body.appendChild(banner);
@@ -13294,7 +13293,7 @@ renderCustomLayers();
 
 // ─── Drag & Drop GPX на карту ───
 const mapEl = document.getElementById('map');
-mapEl.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; mapEl.style.outline = '3px dashed var(--accent-blue)'; });
+mapEl.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; mapEl.style.outline = '3px dashed var(--accent)'; });
 mapEl.addEventListener('dragleave', () => { mapEl.style.outline = ''; });
 mapEl.addEventListener('drop', e => {
   e.preventDefault(); mapEl.style.outline = '';
@@ -13322,7 +13321,7 @@ function setupOfflineMapDropzone() {
   const zone = document.getElementById('offline-map-dropzone');
   if (!zone) return;
   const setActive = active => {
-    zone.style.borderColor = active ? 'var(--accent-blue)' : '#2a4a7a';
+    zone.style.borderColor = active ? 'var(--accent)' : 'var(--border-normal)';
     zone.style.background = active ? 'var(--bg-selected-soft)' : '';
   };
   ['dragenter', 'dragover'].forEach(type => {
@@ -13379,15 +13378,15 @@ function showShortcutsHelp() {
   ];
   const html = shortcuts.map(([key, desc]) =>
     `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-subtle)">
-      <kbd style="background:var(--bg-sunken);border:1px solid var(--border-normal);border-radius:3px;padding:1px 8px;font-size:12px;color:var(--accent-blue);font-family:monospace">${key}</kbd>
+      <kbd style="background:var(--bg-sunken);border:1px solid var(--border-normal);border-radius:3px;padding:1px 8px;font-size:12px;color:var(--accent);font-family:monospace">${key}</kbd>
       <span style="font-size:12px;color:var(--text-secondary)">${desc}</span>
     </div>`
   ).join('');
   const overlay = document.createElement('div');
   overlay.id = 'shortcuts-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:7000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:7000;display:flex;align-items:center;justify-content:center;background:var(--scrim)';
   overlay.innerHTML = `<div style="background:var(--bg-elevated);border:1px solid var(--border-normal);border-radius:12px;padding:20px;width:340px;max-height:80vh;overflow-y:auto">
-    <div style="font-size:15px;font-weight:600;color:var(--accent-blue);margin-bottom:12px;text-align:center">Горячие клавиши</div>
+    <div style="font-size:15px;font-weight:600;color:var(--accent);margin-bottom:12px;text-align:center">Горячие клавиши</div>
     ${html}
     <div style="text-align:center;margin-top:12px"><button class="btn-secondary" onclick="document.getElementById('shortcuts-overlay').remove()" style="font-size:12px">Закрыть</button></div>
   </div>`;
@@ -13432,13 +13431,13 @@ function showOnboarding() {
   if (!shouldShowOnboarding()) return;
   const overlay = document.createElement('div');
   overlay.id = 'onboarding-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:7000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6)';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:7000;display:flex;align-items:center;justify-content:center;background:var(--scrim)';
   overlay.innerHTML = `<div style="background:var(--bg-elevated);border:1px solid var(--border-bright);border-radius:16px;padding:28px;width:420px;text-align:center">
     <div style="display:flex;justify-content:flex-end;margin:-12px -12px 4px 0">
       <button onclick="dismissOnboarding()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;line-height:1">✕</button>
     </div>
     <div style="font-size:36px;margin-bottom:8px">🏆</div>
-    <div style="font-size:20px;font-weight:700;color:#7ec8ff;margin-bottom:4px">Trophy Navigator Desktop</div>
+    <div style="font-size:20px;font-weight:700;color:var(--primary-text);margin-bottom:4px">Trophy Navigator Desktop</div>
     <div style="font-size:13px;color:var(--text-secondary);margin-bottom:20px">Навигация для трофи-рейдов и экспедиций</div>
     <div style="text-align:left;font-size:13px;color:var(--text-primary);line-height:2">
       <div>📍 <b>W</b> — добавить точку на карту</div>
@@ -13499,11 +13498,16 @@ async function clearTileCache() {
 
 // ─── Тема оформления ───
 function getTheme() { return localStorage.getItem('tnd-theme') || 'dark'; }
+/** Значение токена темы (theme.css) — для того, что рисуется мимо CSS: canvas Chart.js, SVG-атрибуты Leaflet */
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 function setTheme(theme) {
+  theme = theme === 'light' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('tnd-theme', theme);
   const sel = document.getElementById('setting-theme');
   if (sel && sel.value !== theme) sel.value = theme;
+  // Графики отчёта о гонке — на canvas: перерисовать в новых цветах, если открыт
+  if (typeof rrChartSpeed !== 'undefined' && rrChartSpeed && typeof rrRenderCharts === 'function') rrRenderCharts();
 }
 
 function waitForFirstPaint() {
@@ -13913,6 +13917,11 @@ function rrRenderSegments() {
 
 // ─── Charts ───
 async function rrRenderCharts() {
+  // Цвета графиков — из темы (Chart.js рисует на canvas и var() не понимает)
+  const C = {
+    text: cssVar('--text-muted'), grid: cssVar('--chart-grid'), cpLine: cssVar('--border-normal'), cpText: cssVar('--text-secondary'),
+    ok: cssVar('--success'), bad: cssVar('--error'), mid: cssVar('--warning')
+  };
   const data = rrData;
   if (!data) return;
   try {
@@ -13953,8 +13962,8 @@ async function rrRenderCharts() {
       if (idx < distKm.length) {
         cpAnnotations['cp_' + cp.cpIdx] = {
           type: 'line', xMin: distKm[idx], xMax: distKm[idx],
-          borderColor: 'rgba(255,255,255,0.3)', borderWidth: 1, borderDash: [4, 4],
-          label: { content: cp.label, display: true, position: 'start', font: { size: 9 }, color: '#9ab8d0' }
+          borderColor: C.cpLine, borderWidth: 1, borderDash: [4, 4],
+          label: { content: cp.label, display: true, position: 'start', font: { size: 9 }, color: C.cpText }
         };
       }
     }
@@ -13968,7 +13977,7 @@ async function rrRenderCharts() {
   const ctxSpeed = document.getElementById('rr-chart-speed').getContext('2d');
   rrChartSpeed = new Chart(ctxSpeed, {
     type: 'line',
-    data: { labels: distKm, datasets: [{ label: 'Скорость (км/ч)', data: speeds, borderColor: '#4adf7a', borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3 }] },
+    data: { labels: distKm, datasets: [{ label: 'Скорость (км/ч)', data: speeds, borderColor: C.ok, borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3 }] },
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
       interaction: { mode: 'index', intersect: false },
@@ -13978,8 +13987,8 @@ async function rrRenderCharts() {
         tooltip: { callbacks: { title: items => items[0] ? items[0].label + ' км' : '', label: item => 'Скорость: ' + (item.raw?.toFixed(1) || '—') + ' км/ч' } }
       },
       scales: {
-        x: { title: { display: true, text: 'км', color: '#5a7aaa', font: { size: 10 } }, ticks: { color: '#5a7aaa', font: { size: 9 }, maxTicksLimit: 15 }, grid: { color: 'rgba(42,74,122,0.3)' } },
-        y: { title: { display: true, text: 'км/ч', color: '#5a7aaa', font: { size: 10 } }, ticks: { color: '#5a7aaa', font: { size: 9 } }, grid: { color: 'rgba(42,74,122,0.3)' } }
+        x: { title: { display: true, text: 'км', color: C.text, font: { size: 10 } }, ticks: { color: C.text, font: { size: 9 }, maxTicksLimit: 15 }, grid: { color: C.grid } },
+        y: { title: { display: true, text: 'км/ч', color: C.text, font: { size: 10 } }, ticks: { color: C.text, font: { size: 9 } }, grid: { color: C.grid } }
       },
       onHover: (e, elements) => {
         if (elements.length > 0) {
@@ -13995,7 +14004,7 @@ async function rrRenderCharts() {
     const segLabels = segments.map(s => s.fromLabel + '→' + s.toLabel);
     const segSpeeds = segments.map(s => +(s.avgSpeed * 3.6).toFixed(1));
     const avgAll = segSpeeds.reduce((a, b) => a + b, 0) / segSpeeds.length;
-    const segColors = segSpeeds.map(s => s > avgAll * 1.15 ? '#4adf7a' : s < avgAll * 0.85 ? '#e07070' : '#e0a050');
+    const segColors = segSpeeds.map(s => s > avgAll * 1.15 ? C.ok : s < avgAll * 0.85 ? C.bad : C.mid);
 
     const ctxSeg = document.getElementById('rr-chart-seg-speed').getContext('2d');
     rrChartSeg = new Chart(ctxSeg, {
@@ -14008,8 +14017,8 @@ async function rrRenderCharts() {
           tooltip: { callbacks: { label: item => item.raw + ' км/ч' } }
         },
         scales: {
-          x: { ticks: { color: '#5a7aaa', font: { size: 9 } }, grid: { display: false } },
-          y: { title: { display: true, text: 'км/ч', color: '#5a7aaa', font: { size: 10 } }, ticks: { color: '#5a7aaa', font: { size: 9 } }, grid: { color: 'rgba(42,74,122,0.3)' } }
+          x: { ticks: { color: C.text, font: { size: 9 } }, grid: { display: false } },
+          y: { title: { display: true, text: 'км/ч', color: C.text, font: { size: 10 } }, ticks: { color: C.text, font: { size: 9 } }, grid: { color: C.grid } }
         },
         onClick: (e, elements) => {
           if (elements.length > 0) {
@@ -14026,7 +14035,7 @@ async function rrRenderCharts() {
 function rrShowCursor(lat, lng) {
   if (!rrCursorMarker) {
     rrCursorMarker = L.circleMarker([lat, lng], {
-      radius: 6, color: '#fff', fillColor: '#4a8adf', fillOpacity: 1, weight: 2, pane: 'markerPane'
+      radius: 6, color: '#fff', fillColor: '#4a8adf', fillOpacity: 1, weight: 2, pane: 'markerPane'  // theme-check: data
     }).addTo(map);
   } else {
     rrCursorMarker.setLatLng([lat, lng]);
@@ -14124,14 +14133,14 @@ function rrRenderMapOverlays() {
     const r = Math.round(224 * (1 - ratio) + 74 * ratio);
     const g = Math.round(112 * (1 - ratio) + 223 * ratio);
     const b = Math.round(112 * (1 - ratio) + 122 * ratio);
-    const line = L.polyline(slice, { color: `rgb(${r},${g},${b})`, weight: 5, opacity: 0.85 }).addTo(map);
+    const line = L.polyline(slice, { color: `rgb(${r},${g},${b})`, weight: 5, opacity: 0.85 }).addTo(map);  // theme-check: data
     rrOverlays.push(line);
   }
 
   // 2. Stop markers
   overall.stops.forEach(stop => {
     const marker = L.circleMarker([stop.lat, stop.lng], {
-      radius: 8, color: '#e07070', fillColor: '#e07070', fillOpacity: 0.7, weight: 2
+      radius: 8, color: '#e07070', fillColor: '#e07070', fillOpacity: 0.7, weight: 2  // theme-check: data
     }).addTo(map).bindPopup(`<b>Стоянка</b><br>${rrFmtTime(stop.duration)}`);
     rrOverlays.push(marker);
   });
@@ -14143,7 +14152,7 @@ function rrRenderMapOverlays() {
     const label = L.marker(pt, {
       icon: L.divIcon({
         className: '',
-        html: `<div style="background:rgba(10,22,40,0.85);border:1px solid var(--accent-blue);border-radius:4px;padding:2px 6px;font-size:10px;color:#7ec8ff;white-space:nowrap;font-weight:600">${cp.label} ${timeStr}</div>`,
+        html: `<div style="background:var(--widget-bg);border:1px solid var(--accent);border-radius:4px;padding:2px 6px;font-size:10px;color:var(--primary-text);white-space:nowrap;font-weight:600">${cp.label} ${timeStr}</div>`,
         iconSize: [0, 0], iconAnchor: [-8, 12]
       })
     }).addTo(map);
@@ -14156,7 +14165,7 @@ function rrRenderMapOverlays() {
     const label = L.marker(pt, {
       icon: L.divIcon({
         className: '',
-        html: `<div style="background:rgba(90,90,90,0.7);border:1px solid #666;border-radius:4px;padding:2px 6px;font-size:10px;color:#999;white-space:nowrap">✕ ${cp.label}</div>`,
+        html: `<div style="background:var(--widget-bg);border:1px solid var(--card-stroke);border-radius:4px;padding:2px 6px;font-size:10px;color:var(--text-muted);white-space:nowrap">✕ ${cp.label}</div>`,
         iconSize: [0, 0], iconAnchor: [-8, 12]
       })
     }).addTo(map);
@@ -14225,6 +14234,7 @@ function rrInitResize() {
 }
 
 // ─── Export report as HTML ───
+// theme-check: off — экспорт отчёта: отдельный HTML-документ со своими цветами, не тема приложения
 function rrExportHTML() {
   if (!rrData) return;
   const { track, route, segments, overall, raceTimeSec, missedCPs } = rrData;
@@ -14255,6 +14265,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
 </body></html>`;
   downloadText(`report_${track.name.replace(/[^a-zA-ZёЁа-яА-Я0-9]/g, '_')}.html`, 'text/html', html);
 }
+// theme-check: on
 
 </script>
 
@@ -14271,26 +14282,26 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
       <!-- Шапка -->
       <div style="text-align:center;margin-bottom:16px">
         <div style="font-size:36px;margin-bottom:6px">🏆</div>
-        <div style="font-size:18px;font-weight:700;color:#7ec8ff">Trophy Navigator Desktop</div>
+        <div style="font-size:18px;font-weight:700;color:var(--primary-text)">Trophy Navigator Desktop</div>
         <div style="font-size:12px;color:var(--text-muted)">Навигация для трофи-рейдов и экспедиций</div>
       </div>
 
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
-        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:#e0e0e0">0.9.26</span>
+        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--card-stroke)">
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:var(--text-primary)">0.9.26</span>
         </div>
-        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Платформа</span><span style="color:#e0e0e0" id="about-platform">—</span>
+        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--card-stroke)">
+          <span style="color:var(--text-muted)">Платформа</span><span style="color:var(--text-primary)" id="about-platform">—</span>
         </div>
-        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Лицензия</span><span id="about-license" style="color:#4adf7a">—</span>
+        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--card-stroke)">
+          <span style="color:var(--text-muted)">Лицензия</span><span id="about-license" class="status-ok">—</span>
         </div>
-        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a3a6a">
-          <span style="color:var(--text-muted)">Сайт</span><span style="color:#7ec8ff">trophynav.ru</span>
+        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--card-stroke)">
+          <span style="color:var(--text-muted)">Сайт</span><span style="color:var(--primary-text)">trophynav.ru</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0">
-          <span style="color:var(--text-muted)">Почта</span><span style="color:#7ec8ff">info@trophynav.ru</span>
+          <span style="color:var(--text-muted)">Почта</span><span style="color:var(--primary-text)">info@trophynav.ru</span>
         </div>
       </div>
 
@@ -14301,7 +14312,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
 
       <!-- Описание функций -->
       <details open style="margin-bottom:8px">
-        <summary style="font-size:13px;color:#7ec8ff;cursor:pointer;padding:6px 0;font-weight:600">Возможности программы</summary>
+        <summary style="font-size:13px;color:var(--primary-text);cursor:pointer;padding:6px 0;font-weight:600">Возможности программы</summary>
         <div style="font-size:12px;color:var(--text-primary);line-height:1.8;padding:8px 0">
 
           <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:8px 0 4px">🗺 Карты</div>
@@ -14497,7 +14508,7 @@ async function nominatimSearch(query) {
       const rest = escapeHtml(r.display_name.split(',').slice(1, 3).join(','));
       return `<div class="search-result-item" style="justify-content:space-between">
         <div style="display:flex;gap:8px;flex:1;cursor:pointer" onclick="goToSearchResult(${r.lat},${r.lon},'${name.replace(/'/g,"\\'")}')">
-          <span style="color:#4a8adf;font-size:14px">📍</span>
+          <span style="color:var(--primary-text);font-size:14px">📍</span>
           <div><div class="search-result-name">${name}</div><div class="search-result-type">${rest}</div></div>
         </div>
         <div style="display:flex;gap:3px;flex-shrink:0;align-items:center">
@@ -14508,7 +14519,7 @@ async function nominatimSearch(query) {
       </div>`;
     }).join('');
   } catch (err) {
-    resultsEl.innerHTML = '<div style="padding:10px 12px;color:#e07070;font-size:12px">Ошибка поиска</div>';
+    resultsEl.innerHTML = '<div class="status-err" style="padding:10px 12px;font-size:12px">Ошибка поиска</div>';
   }
 }
 
@@ -14520,7 +14531,7 @@ function goToSearchResult(lat, lon, name) {
   searchMarker = L.marker(ll, {
     icon: L.divIcon({
       className: '',
-      html: '<div style="background:#4a8adf;width:14px;height:14px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(74,138,223,0.8)"></div>',
+      html: '<div style="background:#4a8adf;width:14px;height:14px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(74,138,223,0.8)"></div>',  // theme-check: data
       iconSize: [14,14], iconAnchor: [7,7]
     })
   }).addTo(map).bindPopup(`<b>${safeName}</b><br><span style="font-size:11px;color:var(--text-secondary)">${lat.toFixed(5)}, ${lon.toFixed(5)}</span>`).openPopup();
@@ -14531,7 +14542,7 @@ function goToSearchResult(lat, lon, name) {
 // ═══════════════════════════════════════════
 // РОУТИНГ ПО ДОРОГАМ (OSRM)
 // ═══════════════════════════════════════════
-const OSRM_ROUTE_COLORS = ['#4adf7a', '#df7a4a', '#df4adf', '#df4a4a', '#4adfe0'];
+const OSRM_ROUTE_COLORS = ['#4adf7a', '#df7a4a', '#df4adf', '#df4a4a', '#4adfe0'];  // theme-check: data
 const osrmState = {
   items: [],
   activeId: null,
@@ -14581,7 +14592,7 @@ function syncOsrmDraftEndpoints() {
   }
   if (routeFromLatLng && routeToLatLng) {
     layer.addLayer(L.polyline([routeFromLatLng, routeToLatLng], {
-      color: '#6f829a', weight: 2, opacity: 0.8, dashArray: '5 7', interactive: false
+      color: '#6f829a', weight: 2, opacity: 0.8, dashArray: '5 7', interactive: false  // theme-check: data
     }));
   }
   if (routeFromLatLng) {
@@ -14743,7 +14754,7 @@ async function calculateOsrmRoute() {
       coords: route.geometry.coordinates.map(coord => [coord[1], coord[0]]),
       distance: route.distance,
       duration: route.duration,
-      color: index === 0 ? (document.getElementById('setting-color-osrm')?.value || '#4a8adf') : OSRM_ROUTE_COLORS[(index - 1) % OSRM_ROUTE_COLORS.length],
+      color: index === 0 ? (document.getElementById('setting-color-osrm')?.value || '#4a8adf') : OSRM_ROUTE_COLORS[(index - 1) % OSRM_ROUTE_COLORS.length],  // theme-check: data
       visible: true,
       routeLayer: null,
       markersLayer: null,
@@ -14875,7 +14886,7 @@ function formatOsrmDuration(seconds) {
 
 function ensureOsrmRouteLayers(route) {
   if (route.routeLayer) return;
-  route.outlineLayer = L.polyline(route.coords, { color: '#102844', weight: 8, opacity: 0.6, interactive: false });
+  route.outlineLayer = L.polyline(route.coords, { color: '#102844', weight: 8, opacity: 0.6, interactive: false });  // theme-check: data
   route.lineLayer = L.polyline(route.coords, { color: route.color, weight: 4, opacity: 0.9, dashArray: null, interactive: false });
   route.routeLayer = L.layerGroup([route.outlineLayer, route.lineLayer]);
   route.markersLayer = L.layerGroup([
@@ -14891,7 +14902,7 @@ function syncOsrmRouteLayer(route) {
   if (!route?.routeLayer || !route.outlineLayer || !route.lineLayer) return;
   const isActive = osrmState.activeId === route.id;
   route.outlineLayer.setStyle({
-    color: '#102844',
+    color: '#102844',  // theme-check: data
     weight: isActive ? 8 : 6,
     opacity: route.visible ? (isActive ? 0.58 : 0.2) : 0
   });
@@ -14952,7 +14963,7 @@ function renderOsrmRouteList() {
           <div class="routing-route-name"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${route.color};margin-right:6px"></span>${escapeHtml(route.name)}</div>
           <div class="routing-route-meta">${distKm} км · ${formatOsrmDuration(route.duration)} · ${speedKmh} км/ч</div>
         </div>
-        <div style="font-size:11px;color:${route.visible ? 'var(--text-secondary)' : '#e07070'}">${route.visible ? 'видим' : 'скрыт'}</div>
+        <div style="font-size:11px;color:${route.visible ? 'var(--text-secondary)' : 'var(--error-text)'}">${route.visible ? 'видим' : 'скрыт'}</div>
       </div>
       <div class="routing-route-actions">
         <button class="routing-route-btn" onclick="toggleOsrmRouteVisible(${route.id})">${route.visible ? '👁 Скрыть' : '◌ Показать'}</button>
@@ -15057,12 +15068,12 @@ const LIVE_OFFLINE_TIMEOUT = 30000;
 const LIVE_GROUP_ALL_ID = 'all';
 const LIVE_GROUP_SELF_ID = 'self';
 const LIVE_STATUS_OPTIONS = [
-  { code: 'none', emoji: '🙂', label: 'Без статуса', glyph: '✴', color: '#888888' },
-  { code: 'looking_company', emoji: '🤝', label: 'Ищу компанию', glyph: '🤝', color: '#42A5F5' },
-  { code: 'take_with_me', emoji: '🚙', label: 'Возьму в компанию', glyph: '🚙', color: '#66BB6A' },
-  { code: 'tourism', emoji: '🏕️', label: 'Туризм', glyph: '🏕', color: '#FFB300' },
-  { code: 'race', emoji: '🏁', label: 'Гонка', glyph: '🏁', color: '#AB47BC' },
-  { code: 'sos', emoji: '🆘', label: 'SOS', glyph: 'SOS', color: '#E53935' }
+  { code: 'none', emoji: '🙂', label: 'Без статуса', glyph: '✴', color: '#888888' },  // theme-check: data
+  { code: 'looking_company', emoji: '🤝', label: 'Ищу компанию', glyph: '🤝', color: '#42A5F5' },  // theme-check: data
+  { code: 'take_with_me', emoji: '🚙', label: 'Возьму в компанию', glyph: '🚙', color: '#66BB6A' },  // theme-check: data
+  { code: 'tourism', emoji: '🏕️', label: 'Туризм', glyph: '🏕', color: '#FFB300' },  // theme-check: data
+  { code: 'race', emoji: '🏁', label: 'Гонка', glyph: '🏁', color: '#AB47BC' },  // theme-check: data
+  { code: 'sos', emoji: '🆘', label: 'SOS', glyph: 'SOS', color: '#E53935' }  // theme-check: data
 ];
 
 const liveState = {
@@ -15275,13 +15286,13 @@ function liveBuildOsrmTrack(route) {
   return {
     id: `osrm_${route.id}`,
     name: route.name || 'OSRM route',
-    color: route.color || '#4a8adf',
+    color: route.color || '#4a8adf',  // theme-check: data
     points: route.coords.map(([lat, lng]) => L.latLng(lat, lng))
   };
 }
 
 function liveColorPalette() {
-  return ['#FF6B00', '#4CAF50', '#F44336', '#2196F3', '#9C27B0', '#FFEB3B', '#FFFFFF'];
+  return ['#FF6B00', '#4CAF50', '#F44336', '#2196F3', '#9C27B0', '#FFEB3B', '#FFFFFF'];  // theme-check: data
 }
 
 function toggleSidebarCollapse(id) {
@@ -15484,7 +15495,7 @@ async function liveDeleteGroup(groupId) {
 async function liveSaveGroup() {
   if (!liveHasAccess()) return;
   const name = document.getElementById('live-group-name')?.value?.trim();
-  const color = document.getElementById('live-group-color')?.value?.trim().toUpperCase() || '#FF6B00';
+  const color = document.getElementById('live-group-color')?.value?.trim().toUpperCase() || '#FF6B00';  // theme-check: data
   if (!name) { showToast('Введите название группы'); return; }
 
   const selectedMembers = Array.from(document.querySelectorAll('.live-group-member-cb:checked'))
@@ -15531,7 +15542,7 @@ function renderLiveGroupsManager() {
   listEl.innerHTML = groups.length === 0
     ? '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">Групп пока нет</div>'
     : groups.map(group => `
-      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--card-stroke)">
         <div style="width:10px;height:10px;border-radius:50%;background:${group.color};flex:0 0 auto"></div>
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;color:var(--text-primary)">${liveEsc(group.name)}</div>
@@ -15539,7 +15550,7 @@ function renderLiveGroupsManager() {
         </div>
         <button class="btn-secondary" style="padding:4px 8px;font-size:11px" onclick="liveHandleGroupChange('${group.id}')">Показать</button>
         <button class="btn-secondary" style="padding:4px 8px;font-size:11px" onclick="liveStartGroupEdit('${group.id}')">Изм.</button>
-        <button class="btn-secondary" style="padding:4px 8px;font-size:11px;color:#e07070" onclick="liveDeleteGroup('${group.id}')">✕</button>
+        <button class="btn-secondary btn-danger" style="padding:4px 8px;font-size:11px" onclick="liveDeleteGroup('${group.id}')">✕</button>
       </div>
     `).join('');
 
@@ -15550,7 +15561,7 @@ function renderLiveGroupsManager() {
   const draftColor = preserveDraft ? colorEl.value : '';
   titleEl.textContent = editing ? 'Редактирование группы' : 'Новая группа';
   nameEl.value = preserveDraft ? draftName : (editing?.name || '');
-  colorEl.value = preserveDraft ? draftColor : (editing?.color || '#FF6B00');
+  colorEl.value = preserveDraft ? draftColor : (editing?.color || '#FF6B00');  // theme-check: data
   nameEl.dataset.formKey = formKey;
   colorEl.dataset.formKey = formKey;
 
@@ -15560,7 +15571,7 @@ function renderLiveGroupsManager() {
     ? '<div style="font-size:12px;color:var(--text-muted)">Участники появятся после загрузки live-устройств</div>'
     : knownDevices.map(device => `
       <label style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:12px;color:var(--text-primary);cursor:pointer">
-        <input class="live-group-member-cb" type="checkbox" value="${device.id}" ${selectedMembers.has(device.id) ? 'checked' : ''} style="accent-color:#4a8adf">
+        <input class="live-group-member-cb" type="checkbox" value="${device.id}" ${selectedMembers.has(device.id) ? 'checked' : ''}>
         <span style="flex:1">${liveEsc(device.name)}</span>
         <span style="font-size:10px;color:var(--text-muted)">${device.online ? 'online' : device.id}</span>
       </label>
@@ -15568,10 +15579,10 @@ function renderLiveGroupsManager() {
 
   const paletteEl = document.getElementById('live-group-palette');
   if (paletteEl) {
-    const selectedColor = colorEl.value || '#FF6B00';
+    const selectedColor = colorEl.value || '#FF6B00';  // theme-check: data
     paletteEl.innerHTML = liveColorPalette().map(color => `
       <button onclick="document.getElementById('live-group-color').value='${color}';renderLiveGroupsManager()" title="${color}"
-        style="width:20px;height:20px;border-radius:50%;border:${selectedColor === color ? '2px solid #fff' : '1px solid rgba(255,255,255,0.2)'};background:${color};cursor:pointer"></button>
+        style="width:20px;height:20px;border-radius:50%;border:${selectedColor === color ? '2px solid var(--text-primary)' : '1px solid var(--card-stroke)'};background:${color};cursor:pointer"></button>
     `).join('');
   }
 }
@@ -15843,7 +15854,7 @@ function liveRenderMessageHtml(message) {
       ${extraText}
       <div style="display:flex;justify-content:${message.incoming ? 'flex-start' : 'flex-end'};margin-top:8px">
         <button ${actionAttrs} onclick="liveImportAttachmentFromButton(this)" ${canImport ? '' : 'disabled'}
-          style="background:${canImport ? '#1f3f66' : 'rgba(255,255,255,0.08)'};border:1px solid ${canImport ? '#386ea8' : 'rgba(255,255,255,0.08)'};color:${canImport ? '#dce9ff' : 'rgba(255,255,255,0.45)'};border-radius:6px;padding:4px 8px;cursor:${canImport ? 'pointer' : 'default'};font-size:11px">
+          class="${canImport ? 'btn-primary' : 'btn-secondary'} btn-sm" style="cursor:${canImport ? 'pointer' : 'default'}">
           Импортировать
         </button>
       </div>`;
@@ -15851,7 +15862,7 @@ function liveRenderMessageHtml(message) {
   const footer = `${new Date(message.sentAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}${!message.incoming && message.delivery === 'failed' ? ' · ошибка' : ''}`;
   return `
     <div style="display:flex;justify-content:${message.incoming ? 'flex-start' : 'flex-end'};margin-bottom:8px">
-      <div style="max-width:82%;background:${message.incoming ? 'rgba(255,255,255,0.08)' : 'rgba(74,138,223,0.22)'};border:1px solid ${message.incoming ? 'rgba(255,255,255,0.08)' : 'rgba(74,138,223,0.5)'};border-radius:10px;padding:8px 10px">
+      <div style="max-width:82%;background:${message.incoming ? 'var(--surface-variant)' : 'var(--primary-soft)'};border:1px solid ${message.incoming ? 'var(--card-stroke)' : 'var(--primary-ring)'};border-radius:10px;padding:8px 10px">
         ${header}
         ${body}
         <div style="font-size:10px;color:var(--text-muted);margin-top:4px;text-align:right">${footer}</div>
@@ -15872,13 +15883,13 @@ function liveRenderAttachmentItemHtml(message) {
   const actionAttrs = `data-message-id="${encodeURIComponent(String(message.messageId || message.clientMessageId || ''))}"`;
   const canImport = !!(attachment.remoteId || attachment.attachmentId);
   return `
-    <div style="display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.06)">
+    <div style="display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border-bottom:1px solid var(--card-stroke)">
       <div style="min-width:0">
         <div style="font-size:12px;color:var(--text-primary);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${liveEsc(label)}</div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:3px">${liveEsc(sender)} · ${liveEsc(details)}</div>
       </div>
       <button ${actionAttrs} onclick="liveImportAttachmentFromButton(this)" ${canImport ? '' : 'disabled'}
-        style="background:${canImport ? '#1f3f66' : 'rgba(255,255,255,0.08)'};border:1px solid ${canImport ? '#386ea8' : 'rgba(255,255,255,0.08)'};color:${canImport ? '#dce9ff' : 'rgba(255,255,255,0.45)'};border-radius:6px;padding:4px 8px;cursor:${canImport ? 'pointer' : 'default'};font-size:11px;white-space:nowrap">
+        class="${canImport ? 'btn-primary' : 'btn-secondary'} btn-sm" style="cursor:${canImport ? 'pointer' : 'default'};white-space:nowrap">
         Импорт
       </button>
     </div>`;
@@ -16636,13 +16647,13 @@ function applyLiveMarkerSize(val) {
 
 function liveMarkerColor(dev) {
   const now = Date.now();
-  if (dev.status === 'online') return '#22C55E'; // green
+  if (dev.status === 'online') return '#22C55E'; // green · theme-check: data
   if (dev.lastUpdate) {
     const minAgo = (now - new Date(dev.lastUpdate).getTime()) / 60000;
-    if (minAgo <= 5) return '#FFD600';   // yellow
-    if (minAgo <= 30) return '#FF9800';  // orange
+    if (minAgo <= 5) return '#FFD600';   // yellow · theme-check: data
+    if (minAgo <= 30) return '#FF9800';  // orange · theme-check: data
   }
-  return '#888888'; // gray
+  return '#888888'; // gray · theme-check: data
 }
 
 function liveUpdateMarker(dev, isOffline) {
@@ -16704,12 +16715,12 @@ function liveShowPopup(dev) {
     .setLatLng([dev.lat, dev.lon])
     .setContent(`
       <div style="min-width:160px">
-        <b style="color:${isPro ? '#FFD700' : '#fff'}">${name}</b><br>
+        <b style="color:${isPro ? 'var(--warning-text)' : 'var(--text-primary)'}">${name}</b><br>
         ${status.emoji} ${liveEsc(status.label)}<br>
         🏎 ${speed} · 📡 ${alt}<br>
         🔋 ${battery} · 🕐 ${time}<br>
-        ${deviceId ? `<div style="margin-top:6px"><button onclick="liveOpenDeviceThread('${deviceId}')" style="background:#1f3f66;border:1px solid #386ea8;color:#dce9ff;border-radius:4px;padding:4px 8px;cursor:pointer">💬 Написать</button></div>` : ''}
-        <small style="color:#888">${dev.lat.toFixed(5)}, ${dev.lon.toFixed(5)}</small>
+        ${deviceId ? `<div style="margin-top:6px"><button onclick="liveOpenDeviceThread('${deviceId}')" class="btn-primary btn-sm">💬 Написать</button></div>` : ''}
+        <small style="color:var(--text-muted)">${dev.lat.toFixed(5)}, ${dev.lon.toFixed(5)}</small>
       </div>`)
     .openOn(map);
 }
@@ -16807,7 +16818,7 @@ liveLoadCache();
     <div class="live-dot off" id="live-status-dot"></div>
     <span id="live-header-text">Участники</span>
     <div class="live-header-actions">
-      <button class="live-header-action" onclick="openLiveMessagesModal()" title="Сообщения">💬<span id="live-messages-badge" style="display:none;position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:#e07070;color:#fff;font-size:10px;align-items:center;justify-content:center"></span></button>
+      <button class="live-header-action" onclick="openLiveMessagesModal()" title="Сообщения">💬<span id="live-messages-badge" style="display:none;position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--error);color:var(--on-primary);font-size:10px;align-items:center;justify-content:center"></span></button>
       <button class="live-header-action" onclick="openLiveGroupsManager()" title="Группы">👥</button>
       <button class="live-header-action" onclick="toggleLiveMyTrails()" title="Хвост моих устройств">🧵</button>
       <button class="live-header-action" onclick="liveShowAll()" title="Показать всех">🎯</button>
@@ -16824,8 +16835,8 @@ liveLoadCache();
   </div>
 </div>
 
-<div id="live-message-preview" style="display:none;position:fixed;right:22px;bottom:72px;z-index:5200;min-width:240px;max-width:340px;background:rgba(14,22,34,0.96);border:1px solid rgba(74,138,223,0.45);border-radius:10px;padding:10px 12px;box-shadow:0 12px 32px rgba(0,0,0,0.35);cursor:pointer;transition:opacity 0.18s">
-  <div id="live-message-preview-sender" style="font-size:11px;color:#9fc3ff;margin-bottom:4px"></div>
+<div id="live-message-preview" style="display:none;position:fixed;right:22px;bottom:72px;z-index:5200;min-width:240px;max-width:340px;background:var(--modal-bg);color:var(--text-primary);border:1px solid var(--card-stroke);border-left:4px solid var(--primary);border-radius:var(--radius-m);padding:10px 12px;box-shadow:var(--shadow-2);cursor:pointer;transition:opacity 0.18s">
+  <div id="live-message-preview-sender" style="font-size:11px;color:var(--primary-text);margin-bottom:4px"></div>
   <div id="live-message-preview-text" style="font-size:13px;color:var(--text-primary);white-space:pre-wrap"></div>
 </div>
 
@@ -16885,7 +16896,7 @@ liveLoadCache();
         </div>
         <div class="prop-field">
           <label>Участники</label>
-          <div id="live-group-members" style="max-height:220px;overflow:auto;border:1px solid var(--border-subtle);border-radius:6px;padding:8px;background:rgba(0,0,0,0.12)"></div>
+          <div id="live-group-members" style="max-height:220px;overflow:auto;border:1px solid var(--border-subtle);border-radius:6px;padding:8px;background:var(--surface-variant)"></div>
         </div>
         <div class="btn-row">
           <button class="btn-secondary" onclick="liveCancelGroupEdit()">Сброс</button>

@@ -7,8 +7,8 @@
 (function (root) {
   'use strict';
 
-  const WATER = '#1E6FD9', BUILT = '#7A4A24', HAZARD = '#F57C00', TERRAIN = '#5F6B73', SIGHT = '#7B1FA2', REST = '#2E7D32';
-  const WHITE = '#FFFFFF', BOG_LINE = '#1F5FA8', BARRIER_STRIPE = '#D84315';
+  const WATER = '#1E6FD9', BUILT = '#7A4A24', HAZARD = '#F57C00', TERRAIN = '#5F6B73', SIGHT = '#7B1FA2', REST = '#2E7D32';  // theme-check: data (цвет на карте)
+  const WHITE = '#FFFFFF', BOG_LINE = '#1F5FA8', BARRIER_STRIPE = '#D84315';  // theme-check: data (цвет на карте)
 
   /** Объекты слоя «outdoor» (class → знак). */
   const OUTDOOR = {

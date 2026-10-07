@@ -268,9 +268,9 @@
     }
     // Небо у горизонта при сильном наклоне (MapLibre 4: свойство стиля sky); цвета — данные карты, не UI
     s.sky = {
-      'sky-color': '#7fb2e6', 'sky-horizon-blend': 0.5,
-      'horizon-color': '#dde9f3', 'horizon-fog-blend': 0.6,
-      'fog-color': '#e8eef3', 'fog-ground-blend': 0.85,
+      'sky-color': '#7fb2e6', 'sky-horizon-blend': 0.5,  // theme-check: data (цвет на карте)
+      'horizon-color': '#dde9f3', 'horizon-fog-blend': 0.6,  // theme-check: data (цвет на карте)
+      'fog-color': '#e8eef3', 'fog-ground-blend': 0.85,  // theme-check: data (цвет на карте)
       'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 10, 1, 12, 0],
     };
     return s;
