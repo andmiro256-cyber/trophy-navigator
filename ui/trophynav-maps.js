@@ -379,16 +379,32 @@
       .tnmaps-link { font-size:12px; font-weight:700; cursor:pointer; color:var(--primary-text); background:none; border:none; padding:0; text-transform:none; letter-spacing:0; }
       .tnmaps-empty { font-size:11px; color:var(--text-muted); padding:4px 2px 6px; }
       .tnmaps-size { margin-left:auto; font-size:10px; color:var(--text-muted); }
-      .tnmaps-controls { background:var(--surface-variant); border:0; border-radius:var(--radius-m); padding:10px; margin:4px 0 6px; display:flex; flex-direction:column; gap:6px; }
-      .tnmaps-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:11px; color:var(--text-secondary); }
-      .tnmaps-row > .tnmaps-label { min-width:64px; color:var(--text-muted); }
-      .tnmaps-chip { font-size:12px; padding:4px 12px; min-height:28px; border-radius:var(--radius-pill); border:1px solid var(--text-secondary); background:transparent; color:var(--text-primary); cursor:pointer; }
-      .tnmaps-chip:hover { background:var(--hover); }
-      .tnmaps-chip.active { background:var(--primary); border-color:var(--primary); color:var(--on-primary); }
-      .tnmaps-chip:disabled { opacity:.45; cursor:default; }
-      .tnmaps-row input[type=range] { flex:1; min-width:90px; }
-      .tnmaps-row label { display:flex; align-items:center; gap:4px; cursor:pointer; color:var(--text-primary); }
-      .tnmaps-hint { font-size:10px; color:var(--text-muted); }
+      /* Блок под активной картой: две колонки — подпись фиксированной ширины и элементы; строки 34 px */
+      .tnmaps-controls { background:var(--surface-variant); border:0; border-radius:var(--radius-m); padding:6px 10px; margin:4px 0 6px;
+        display:grid; grid-template-columns:56px minmax(0,1fr); column-gap:8px; row-gap:2px; align-items:center; }
+      .tnmaps-label { font-size:11px; color:var(--text-muted); line-height:34px; white-space:nowrap; }
+      .tnmaps-val { min-height:34px; min-width:0; display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text-primary); }
+      .tnmaps-sub { grid-column:2; }
+      .tnmaps-seg { flex:1; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); height:28px; border:1px solid var(--text-secondary); border-radius:var(--radius-pill); overflow:hidden; }
+      .tnmaps-seg-btn { min-width:0; padding:0 4px; border:0; border-left:1px solid var(--text-secondary); background:transparent; color:var(--text-primary); font-size:12px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .tnmaps-seg-btn:first-child { border-left:0; }
+      .tnmaps-seg-btn:hover { background:var(--hover); }
+      .tnmaps-seg-btn.active { background:var(--primary); color:var(--on-primary); }
+      .tnmaps-checks { gap:10px; }
+      .tnmaps-checks label { display:flex; align-items:center; gap:4px; min-width:0; cursor:pointer; color:var(--text-primary); }
+      .tnmaps-checks label > span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .tnmaps-checks input, .tnmaps-poi input { margin:0; flex:0 0 auto; }
+      .tnmaps-checks label.off { color:var(--text-muted); cursor:default; }
+      .tnmaps-val input[type=range] { flex:1; min-width:0; margin:0; }
+      .tnmaps-pct { flex:0 0 36px; text-align:right; font-variant-numeric:tabular-nums; color:var(--text-secondary); }
+      .tnmaps-wide { flex:1; min-width:0; height:30px; display:flex; align-items:center; padding:0 10px; font-size:12px; border-radius:var(--radius-pill); border:1px solid var(--text-secondary); background:transparent; color:var(--text-primary); cursor:pointer; }
+      .tnmaps-wide:hover { background:var(--hover); }
+      .tnmaps-wide > span { flex:1; min-width:0; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .tnmaps-wide .tn-ico.tnmaps-chev { margin:0 0 0 6px; }
+      .tnmaps-hint { font-size:10px; color:var(--text-muted); padding:0 0 4px; }
+      .tnmaps-applying { font-size:11px; color:var(--primary-text); padding:0 0 4px; }
+      .tnmaps-item-theme { display:flex; align-items:center; gap:8px; margin-top:6px; max-width:280px; }
+      .tnmaps-item-theme .tnmaps-label { line-height:28px; }
       #modal-tnmaps-win { top:70px; left:calc(50% - 250px); width:500px; max-height:calc(100vh - 110px); display:flex; flex-direction:column; }
       #modal-tnmaps .modal-body { display:flex; flex-direction:column; gap:8px; }
       .tnmaps-status { font-size:11px; color:var(--text-muted); }
@@ -413,10 +429,17 @@
       .tnmaps-progress { height:4px; border-radius:var(--radius-pill); background:var(--surface-tab); margin-top:4px; overflow:hidden; }
       .tnmaps-progress > div { height:100%; background:var(--accent); width:0; transition:width .2s; }
       .tnmaps-foot { font-size:10px; color:var(--text-muted); display:flex; justify-content:space-between; gap:8px; align-items:center; }
-      .tnmaps-poi { display:flex; flex-direction:column; gap:3px; padding:4px 0; }
+      .tnmaps-poi { grid-column:2; display:flex; flex-direction:column; gap:2px; padding:0 0 4px; }
+      .tnmaps-poi label { display:flex; align-items:center; gap:6px; min-height:24px; font-size:11px; color:var(--text-primary); cursor:pointer; }
       .tnmaps-poi[hidden] { display:none; }
     `;
     document.head.appendChild(st);
+  }
+
+  /** Переключатель темы в одну строку (Обычная | Контраст | Топо) — в «Карте и слоях» и в окне областей. */
+  function themeSegHtml(theme) {
+    return `<div class="tnmaps-seg" role="group" aria-label="Тема карты">${Core.THEMES.map(t =>
+      `<button type="button" class="tnmaps-seg-btn${t.id === theme ? ' active' : ''}" data-tnmaps-theme="${t.id}" aria-pressed="${t.id === theme}">${esc(t.title)}</button>`).join('')}</div>`;
   }
 
   // ─── раздел в окне «Карта и слои» ───
@@ -438,30 +461,37 @@
       const m = localEntry(act) || {};
       const hasDem = !!m.dem, hasSlope = !!m.slope;
       const poi = Core.parsePoi(readPoi());
-      controls = `<div class="tnmaps-controls">
-        <div class="tnmaps-row"><span class="tnmaps-label">3D</span>
-          <button type="button" class="tnmaps-chip" data-tnmaps-3d>${ico('terrain', 'tn-ico-t')}Открыть 3D-вид</button>
+      const on = cond => (cond ? '' : 'disabled');
+      // Нет файла крутизны — галка не отмечена и неактивна, что бы ни было сохранено для других областей
+      const slopeOn = r.slope && hasSlope;
+      controls = `<div class="tnmaps-controls" data-tnmaps-controls>
+        <span class="tnmaps-label">Тема</span>
+        <div class="tnmaps-val">${themeSegHtml(theme)}</div>
+        ${state.applyingTheme === act ? '<div class="tnmaps-applying tnmaps-sub" role="status" data-tnmaps-applying>Применяю тему…</div>' : ''}
+        <span class="tnmaps-label">Рельеф</span>
+        <div class="tnmaps-val tnmaps-checks">
+          <label><input type="checkbox" data-tnmaps-relief="on" ${r.on ? 'checked' : ''}><span>показывать</span></label>
+          <label class="${r.on ? '' : 'off'}"><input type="checkbox" data-tnmaps-relief="contours" ${r.contours ? 'checked' : ''} ${on(r.on)}><span>горизонтали</span></label>
+          <label class="${r.on && hasSlope ? '' : 'off'}" title="${hasSlope ? '' : 'У этой области нет файла крутизны'}"><input type="checkbox" data-tnmaps-relief="slope" ${slopeOn ? 'checked' : ''} ${on(r.on && hasSlope)}><span>крутизна</span></label>
         </div>
-        <div class="tnmaps-row"><span class="tnmaps-label">Тема</span>
-          ${Core.THEMES.map(t => `<button type="button" class="tnmaps-chip${t.id === theme ? ' active' : ''}" data-tnmaps-theme="${t.id}">${t.title}</button>`).join('')}
+        <span class="tnmaps-label">Отмывка</span>
+        <div class="tnmaps-val">
+          <input type="range" min="0" max="15" step="1" value="${r.strength}" data-tnmaps-strength ${on(r.on && (hasDem || hasSlope))} aria-label="Сила отмывки">
+          <span class="tnmaps-pct">${r.strength * 10}%</span>
         </div>
-        <div class="tnmaps-row"><span class="tnmaps-label">Рельеф</span>
-          <label><input type="checkbox" data-tnmaps-relief="on" ${r.on ? 'checked' : ''}> показывать</label>
-          <label><input type="checkbox" data-tnmaps-relief="contours" ${r.contours ? 'checked' : ''} ${r.on ? '' : 'disabled'}> горизонтали</label>
-          <label title="${hasSlope ? '' : 'У этой области нет файла крутизны'}"><input type="checkbox" data-tnmaps-relief="slope" ${r.slope ? 'checked' : ''} ${r.on && hasSlope ? '' : 'disabled'}> крутизна</label>
-        </div>
-        <div class="tnmaps-row"><span class="tnmaps-label">Отмывка</span>
-          <input type="range" min="0" max="15" step="1" value="${r.strength}" data-tnmaps-strength ${r.on && (hasDem || hasSlope) ? '' : 'disabled'}>
-          <span>${r.strength * 10}%</span>
-        </div>
-        ${theme !== 'topo' ? '<div class="tnmaps-hint">Отмывка, крутизна и горизонтали рисуются в теме «Топо».</div>'
-          : hasDem || hasSlope ? '' : '<div class="tnmaps-hint">У этой области нет файлов рельефа — горизонтали только из самой карты.</div>'}
-        <div class="tnmaps-row"><span class="tnmaps-label">Значки</span>
-          <button type="button" class="tnmaps-chip" data-tnmaps-poi-toggle>Значки на карте: ${Core.poiSummary(poi)} ▾</button>
+        ${theme !== 'topo' ? '<div class="tnmaps-hint tnmaps-sub">Отмывка, крутизна и горизонтали рисуются в теме «Топо».</div>'
+          : hasDem || hasSlope ? '' : '<div class="tnmaps-hint tnmaps-sub">У этой области нет файлов рельефа — горизонтали только из самой карты.</div>'}
+        <span class="tnmaps-label">Значки</span>
+        <div class="tnmaps-val">
+          <button type="button" class="tnmaps-wide" data-tnmaps-poi-toggle>${ico('pin', 'tn-ico-t')}<span>Значки на карте: ${Core.poiSummary(poi)}</span>${ico('chevron-down', 'tn-ico-t tnmaps-chev')}</button>
         </div>
         <div class="tnmaps-poi" data-tnmaps-poi-list hidden>
-          ${Core.POI_GROUPS.map(g => `<label class="tnmaps-row"><input type="checkbox" data-tnmaps-poi="${g.id}" ${poi.has(g.id) ? 'checked' : ''}> ${esc(g.title)}</label>`).join('')}
-          <div class="tnmaps-row"><button type="button" class="tnmaps-chip" data-tnmaps-poi-all>Все / ни одного</button></div>
+          ${Core.POI_GROUPS.map(g => `<label><input type="checkbox" data-tnmaps-poi="${g.id}" ${poi.has(g.id) ? 'checked' : ''}> ${esc(g.title)}</label>`).join('')}
+          <div><button type="button" class="tnmaps-wide" data-tnmaps-poi-all><span>Все / ни одного</span></button></div>
+        </div>
+        <span class="tnmaps-label">3D</span>
+        <div class="tnmaps-val">
+          <button type="button" class="tnmaps-wide" data-tnmaps-3d>${ico('terrain', 'tn-ico-t')}<span>Открыть 3D-вид</span></button>
         </div>
       </div>`;
     }
