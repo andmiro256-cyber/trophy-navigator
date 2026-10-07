@@ -216,6 +216,9 @@
           console.warn('TrophyNav Maps:', e?.error?.message || e);
         });
         mlMap.getCanvas().addEventListener('webglcontextlost', ev => {
+          // MapLibre сам «теряет» контекст при remove() — когда карту сменили или убрали. Это не сбой:
+          // реагировать только пока этот слой на экране
+          if (token !== this._token || state.activeLayer !== this) return;
           ev.preventDefault();
           fallbackToRaster('Видеокарта сбросила векторную карту (WebGL). Показана растровая карта.');
         }, { once: true });
@@ -252,9 +255,10 @@
   }
 
   function fallbackToRaster(message) {
-    toast(message, 'warning');
     // Только если на экране всё ещё векторная карта: пользователь мог уже выбрать другую
     if (typeof window.setLayer === 'function' && isLayerName(currentLayerName())) window.setLayer(FALLBACK_LAYER);
+    // После setLayer: его тост «Карта: …» не должен затереть объяснение
+    toast(message, 'warning');
   }
 
   /** Вызывается из makeBaseLayer(). null — карту показать нельзя (останется текущая). */
@@ -348,6 +352,7 @@
       .tnmaps-progress > div { height:100%; background:var(--accent-blue); width:0; transition:width .2s; }
       .tnmaps-foot { font-size:10px; color:var(--text-muted); display:flex; justify-content:space-between; gap:8px; align-items:center; }
       .tnmaps-poi { display:flex; flex-direction:column; gap:3px; padding:4px 0; }
+      .tnmaps-poi[hidden] { display:none; }
     `;
     document.head.appendChild(st);
   }
@@ -362,7 +367,7 @@
       const name = LAYER_PREFIX + m.id;
       const extras = (m.dem ? 1 : 0) + (m.slope ? 1 : 0);
       return `<div class="base-layer${name === current ? ' active' : ''}" data-layer="${esc(name)}" data-tnmaps-show="${esc(m.id)}">
-        🧭 ${esc(regionName(m.id))}<span class="tnmaps-size">${formatSize(m.size)}${extras ? ' · рельеф' : ''}</span></div>`;
+        🧭 ${esc(regionName(m.id))}<span class="tnmaps-size">${formatSize(m.size + (m.dem?.size || 0) + (m.slope?.size || 0))}${extras ? ' · рельеф' : ''}</span></div>`;
     }).join('');
     let controls = '';
     if (act) {
@@ -384,7 +389,8 @@
           <input type="range" min="0" max="15" step="1" value="${r.strength}" data-tnmaps-strength ${r.on && (hasDem || hasSlope) ? '' : 'disabled'}>
           <span>${r.strength * 10}%</span>
         </div>
-        ${hasDem || hasSlope ? '' : '<div class="tnmaps-hint">У этой области нет файлов рельефа — горизонтали только из самой карты (тема «Топо»).</div>'}
+        ${theme !== 'topo' ? '<div class="tnmaps-hint">Отмывка, крутизна и горизонтали рисуются в теме «Топо».</div>'
+          : hasDem || hasSlope ? '' : '<div class="tnmaps-hint">У этой области нет файлов рельефа — горизонтали только из самой карты.</div>'}
         <div class="tnmaps-row"><span class="tnmaps-label">Значки</span>
           <button type="button" class="tnmaps-chip" data-tnmaps-poi-toggle>Значки на карте: ${Core.poiSummary(poi)} ▾</button>
         </div>
@@ -472,7 +478,8 @@
   }
 
   const progressPct = dl => (dl.total ? Math.min(100, Math.floor(dl.done / dl.total * 100)) : 0);
-  const progressText = (dl, total) => (dl.phase === 'verify' ? 'Проверка контрольной суммы…'
+  const progressText = (dl, total) => (dl.phase === 'start' ? 'Подключение к серверу карт…'
+    : dl.phase === 'verify' ? 'Проверка контрольной суммы…'
     : `Скачивание ${progressPct(dl)}% · ${formatSize(dl.done)} из ${formatSize(dl.total || total)}`);
 
   function itemHtml(id) {
