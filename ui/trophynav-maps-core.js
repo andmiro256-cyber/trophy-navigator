@@ -238,11 +238,93 @@
     return [...ids];
   }
 
+  // ─── 3D-вид (путь B): рельеф, здания, небо ───
+  const EXAGGERATION_MIN = 1, EXAGGERATION_MAX = 2.5, EXAGGERATION_DEFAULT = 1.5;
+  const MAX_PITCH = 85;
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const normalizeExaggeration = v => (Number.isFinite(Number(v)) && v !== '' && v !== null
+    ? clamp(Math.round(Number(v) * 10) / 10, EXAGGERATION_MIN, EXAGGERATION_MAX) : EXAGGERATION_DEFAULT);
+
+  /**
+   * Стиль 2D-карты → 3D: отдельный источник рельефа «terrain» (hillshade остаётся на «dem» — MapLibre не любит
+   * один источник для обоих), 3D-здания (Map3d.applyBuildings, on), небо. Без файла DEM — без terrain.
+   */
+  function to3dStyle(style, map, base, exaggeration) {
+    const s = clone(style);
+    applyBuildings(s.layers, true);
+    const info = map && map.dem;
+    if (info) {
+      s.sources.terrain = {
+        type: 'raster-dem',
+        tiles: [`${base}/extra/${map.id}.dem/{z}/{x}/{y}.png?v=${Number(info.modified) || 0}`],
+        tileSize: 256,
+        minzoom: Number.isFinite(info.minZoom) ? info.minZoom : 8,
+        maxzoom: Number.isFinite(info.maxZoom) ? info.maxZoom : 12,
+        encoding: 'terrarium',
+      };
+      s.terrain = { source: 'terrain', exaggeration: normalizeExaggeration(exaggeration) };
+    } else {
+      delete s.terrain;
+    }
+    // Небо у горизонта при сильном наклоне (MapLibre 4: свойство стиля sky); цвета — данные карты, не UI
+    s.sky = {
+      'sky-color': '#7fb2e6', 'sky-horizon-blend': 0.5,
+      'horizon-color': '#dde9f3', 'horizon-fog-blend': 0.6,
+      'fog-color': '#e8eef3', 'fog-ground-blend': 0.85,
+      'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 10, 1, 12, 0],
+    };
+    return s;
+  }
+
+  /**
+   * Колесо в 3D-виде. Правило (оно же в подсказке):
+   * - Ctrl + колесо (так WebView присылает щипок тачпада) — масштаб;
+   * - Shift + колесо — наклон (для обычной мыши);
+   * - тачпад двумя пальцами: вверх-вниз — наклон, влево-вправо — поворот;
+   * - колесо мыши — масштаб.
+   * Тачпад от колеса отличается так: строки/страницы (deltaMode 1/2) — всегда колесо; есть горизонтальная
+   * составляющая или мелкий/дробный шаг — тачпад. Решение держится весь жест (пауза < 250 мс), чтобы
+   * масштаб и наклон не перемешивались посреди одного движения.
+   */
+  const GESTURE_HOLD_MS = 250;
+  function looksLikeTouchpad(e) {
+    if (e.deltaMode && e.deltaMode !== 0) return false;
+    if (e.deltaX) return true;
+    const dy = Math.abs(e.deltaY || 0);
+    return dy > 0 && (dy < 30 || !Number.isInteger(e.deltaY));
+  }
+
+  function wheelGesture(e, state, now) {
+    state = state || {};
+    let kind;
+    if (e.ctrlKey) kind = 'zoom';
+    else if (e.shiftKey) kind = 'tilt';
+    else if (state.kind && now - (state.at || 0) < GESTURE_HOLD_MS && state.kind !== 'zoom-pinch') kind = state.kind;
+    else kind = looksLikeTouchpad(e) ? 'orbit' : 'zoom';
+    state.kind = e.ctrlKey ? 'zoom-pinch' : kind;
+    state.at = now;
+    const unit = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 300 : 1;
+    const dx = (e.deltaX || 0) * unit, dy = (e.deltaY || 0) * unit;
+    if (kind === 'zoom') {
+      // Щипок шлёт мелкие шаги — чувствительнее; щелчок колеса (~100) — полшага масштаба
+      const k = e.ctrlKey ? 0.01 : 0.005;
+      return { kind, dZoom: clamp(-dy * k, -1, 1), dPitch: 0, dBearing: 0 };
+    }
+    if (kind === 'tilt') {
+      // Shift в WebView часто превращает вертикальную прокрутку в горизонтальную — берём ту, что есть
+      const d = dy || dx;
+      return { kind, dZoom: 0, dPitch: clamp(d * 0.1, -10, 10), dBearing: 0 };
+    }
+    return { kind, dZoom: 0, dPitch: clamp(dy * 0.25, -10, 10), dBearing: clamp(dx * 0.25, -15, 15) };
+  }
+
   const api = {
     applyThemeLayers, THEMES, DEFAULT_THEME, normalizeTheme,
     POI_GROUPS, POI_ALL, POI_LAYERS, parsePoi, formatPoi, poiSummary, poiCondition, combineFilter, applyPoiFilter,
     DEFAULT_RELIEF, normalizeRelief, scalePaint, applyRelief, dropLayersWithoutSource, applyBuildings,
     buildStyle, requiredAppImages,
+    EXAGGERATION_MIN, EXAGGERATION_MAX, EXAGGERATION_DEFAULT, MAX_PITCH, normalizeExaggeration, to3dStyle,
+    looksLikeTouchpad, wheelGesture, GESTURE_HOLD_MS,
   };
   root.TrophyNavMapsCore = api;
   if (typeof module === 'object' && module.exports) module.exports = api;

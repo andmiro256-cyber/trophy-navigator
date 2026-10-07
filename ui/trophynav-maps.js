@@ -185,6 +185,7 @@
     onAdd(map) {
       this._map = map;
       state.activeLayer = this;
+      document.dispatchEvent(new CustomEvent('tnmaps:active', { detail: { id: this.mapId } }));
       this._build(++this._token);
     },
     onRemove(map) {
@@ -194,7 +195,10 @@
         try { map.removeLayer(this._gl); } catch (e) { console.warn('TrophyNav Maps: снятие слоя', e); }
         this._gl = null;
       }
-      if (state.activeLayer === this) state.activeLayer = null;
+      if (state.activeLayer === this) {
+        state.activeLayer = null;
+        document.dispatchEvent(new CustomEvent('tnmaps:active', { detail: { id: null } }));
+      }
       renderLayerSection();
     },
     getAttribution() { return ATTRIBUTION; },
@@ -377,6 +381,9 @@
       const hasDem = !!m.dem, hasSlope = !!m.slope;
       const poi = Core.parsePoi(readPoi());
       controls = `<div class="tnmaps-controls">
+        <div class="tnmaps-row"><span class="tnmaps-label">3D</span>
+          <button type="button" class="tnmaps-chip" data-tnmaps-3d>⛰ Открыть 3D-вид</button>
+        </div>
         <div class="tnmaps-row"><span class="tnmaps-label">Тема</span>
           ${Core.THEMES.map(t => `<button type="button" class="tnmaps-chip${t.id === theme ? ' active' : ''}" data-tnmaps-theme="${t.id}">${t.title}</button>`).join('')}
         </div>
@@ -410,6 +417,11 @@
     const t = e.target;
     const show = t.closest?.('[data-tnmaps-show]');
     if (show && e.type === 'click') { showRegion(show.dataset.tnmapsShow, show); return; }
+    if (t.closest?.('[data-tnmaps-3d]') && e.type === 'click') {
+      if (typeof window.closeModal === 'function') window.closeModal('modal-layers');
+      window.TrophyNav3D?.open();
+      return;
+    }
     const th = t.closest?.('[data-tnmaps-theme]');
     if (th && e.type === 'click') { setTheme(th.dataset.tnmapsTheme); return; }
     if (t.matches?.('[data-tnmaps-relief]') && e.type === 'change') { setRelief({ [t.dataset.tnmapsRelief]: t.checked }); return; }
@@ -676,8 +688,23 @@
     }
   }
 
+  /** Скачанная область, в которую попадает точка (для 3D с растровой карты на экране). */
+  function regionAt(lat, lng, prefer) {
+    const inside = m => {
+      if (!m || m.error) return false;
+      const b = catalogEntry(m.id)?.bounds || m.bounds;
+      return Array.isArray(b) && b.length === 4 && lng >= b[0] && lng <= b[2] && lat >= b[1] && lat <= b[3];
+    };
+    // Границы областей пересекаются — сначала та, что уже на экране
+    if (prefer && inside(localEntry(prefer))) return prefer;
+    return state.local.find(inside)?.id || null;
+  }
+
   window.TrophyNavMaps = {
     isLayerName, labelFor, makeLayer, openWindow, showRegion, renderLayerSection, hasWebGL,
+    // для 3D-вида (ui/trophynav-3d.js)
+    activeId, regionAt, regionName, localEntry, refreshLocal, ensureLibs, buildStyleFor, addTopoImage,
+    STYLE_BASE,
     _state: state,
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

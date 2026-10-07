@@ -148,3 +148,81 @@ test('new map UI has no hard-coded colours and no CDN', () => {
   assert.match(js, /TrophyNav Maps/);
   assert.doesNotMatch(js, /\bКП\b/);
 });
+
+// ─── 3D-вид (путь B) ───
+const wheel = (o) => Object.assign({ deltaX: 0, deltaY: 0, deltaMode: 0, ctrlKey: false, shiftKey: false }, o);
+
+test('3D wheel rule: pinch zooms, touchpad two fingers tilt and rotate, mouse wheel zooms, Shift+wheel tilts', () => {
+  // щипок тачпада приходит как wheel с ctrlKey
+  assert.equal(Core.wheelGesture(wheel({ deltaY: -4, ctrlKey: true }), {}, 0).kind, 'zoom');
+  assert.ok(Core.wheelGesture(wheel({ deltaY: -4, ctrlKey: true }), {}, 0).dZoom > 0);
+  // два пальца: мелкие шаги, есть горизонталь
+  const v = Core.wheelGesture(wheel({ deltaY: 6 }), {}, 0);
+  assert.equal(v.kind, 'orbit');
+  assert.ok(v.dPitch > 0);
+  assert.equal(v.dBearing, 0);
+  const h = Core.wheelGesture(wheel({ deltaX: -8, deltaY: 1 }), {}, 0);
+  assert.equal(h.kind, 'orbit');
+  assert.ok(h.dBearing < 0);
+  // колесо мыши: щелчок ±100 (пиксели) или строки
+  const m = Core.wheelGesture(wheel({ deltaY: 100 }), {}, 0);
+  assert.equal(m.kind, 'zoom');
+  assert.ok(m.dZoom < 0);
+  assert.equal(Core.wheelGesture(wheel({ deltaY: 3, deltaMode: 1 }), {}, 0).kind, 'zoom');
+  assert.equal(Core.wheelGesture(wheel({ deltaY: 53 }), {}, 0).kind, 'zoom');
+  // Shift+колесо — наклон, даже если WebView переложил прокрутку в deltaX
+  const s = Core.wheelGesture(wheel({ deltaX: 100, shiftKey: true }), {}, 0);
+  assert.equal(s.kind, 'tilt');
+  assert.ok(s.dPitch > 0);
+  assert.equal(s.dBearing, 0);
+});
+
+test('3D wheel rule keeps the decision for the whole gesture and caps steps', () => {
+  const st = {};
+  assert.equal(Core.wheelGesture(wheel({ deltaY: 4 }), st, 1000).kind, 'orbit');
+  // быстрый свайп тачпадом даёт большой шаг — внутри жеста он остаётся наклоном, не масштабом
+  const big = Core.wheelGesture(wheel({ deltaY: 120 }), st, 1100);
+  assert.equal(big.kind, 'orbit');
+  assert.ok(Math.abs(big.dPitch) <= 10);
+  // пауза — новый жест, щелчок колеса снова масштаб
+  assert.equal(Core.wheelGesture(wheel({ deltaY: 100 }), st, 1100 + Core.GESTURE_HOLD_MS + 1).kind, 'zoom');
+  // щипок не «залипает» как масштаб для следующих двух пальцев
+  const st2 = {};
+  Core.wheelGesture(wheel({ deltaY: -3, ctrlKey: true }), st2, 0);
+  assert.equal(Core.wheelGesture(wheel({ deltaY: 5 }), st2, 50).kind, 'orbit');
+});
+
+test('3D style: terrain from DEM on its own source, buildings raised, sky; no DEM — still opens', () => {
+  const base2d = Core.buildStyle({ template, map: map({ dem, slope }), base: BASE, theme: topo });
+  const s3 = Core.to3dStyle(base2d, map({ dem, slope }), BASE, 9);
+  assert.equal(s3.terrain.source, 'terrain');
+  assert.equal(s3.terrain.exaggeration, Core.EXAGGERATION_MAX);
+  assert.equal(s3.sources.terrain.encoding, 'terrarium');
+  assert.notEqual(s3.sources.terrain, s3.sources.dem);
+  assert.ok(s3.layers.some(l => l.source === 'dem' && l.type === 'hillshade'));
+  s3.layers.filter(l => l.type === 'fill-extrusion').forEach(l => {
+    assert.equal(l.layout.visibility, 'visible');
+    assert.deepEqual(l.paint['fill-extrusion-height'], ['coalesce', ['get', 'render_height'], ['get', 'height'], 6]);
+  });
+  assert.ok(s3.sky);
+  // 2D-стиль не испорчен (копия)
+  base2d.layers.filter(l => l.type === 'fill-extrusion').forEach(l => assert.equal(l.layout.visibility, 'none'));
+
+  const flat = Core.to3dStyle(Core.buildStyle({ template, map: map(), base: BASE, theme: topo }), map(), BASE);
+  assert.equal('terrain' in flat, false);
+  assert.equal('terrain' in flat.sources, false);
+  assert.equal(Core.normalizeExaggeration(undefined), Core.EXAGGERATION_DEFAULT);
+  assert.equal(Core.normalizeExaggeration('0.2'), Core.EXAGGERATION_MIN);
+});
+
+test('3D view UI: theme variables only, Esc/2D exit, hint text, index hook', () => {
+  const js = read('../ui/trophynav-3d.js');
+  const css = js.slice(js.indexOf('st.textContent = `'), js.indexOf('document.head.appendChild(st)'));
+  assert.ok(css.length > 500);
+  assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b(?!-)|rgba?\(/i);
+  assert.match(js, /Два пальца на тачпаде: вверх-вниз — наклон, влево-вправо — поворот; щипок — масштаб/);
+  assert.match(js, /e\.key === 'Escape'/);
+  assert.match(js, /scrollZoom: false/);
+  assert.doesNotMatch(js, /https?:\/\//);
+  assert.match(read('../ui/index.html'), /<script src="trophynav-3d\.js"><\/script>/);
+});
