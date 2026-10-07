@@ -41,7 +41,8 @@ test('focus treatment and persisted theme switching remain explicit', () => {
   assert.match(html, /\.toolbar-search-box:focus-within/);
   assert.match(html, /function setTheme\(theme\)[\s\S]*?localStorage\.setItem\('tnd-theme', theme\)/);
   assert.match(html, /const modalReturnFocus = new WeakMap\(\)/);
-  assert.match(html, /requestAnimationFrame\(\(\) => overlay\.querySelector\('\.modal-close, button, input, select, textarea'\)/);
+  // фокус при открытии — на «Закрыть», даже если перед ней в заголовке есть кнопки-значки
+  assert.match(html, /requestAnimationFrame\(\(\) => \(overlay\.querySelector\('\.modal-close'\) \|\| overlay\.querySelector\('button, input, select, textarea'\)\)/);
 });
 
 test('«Обзор» (hand mode) lives on the map under +/−/Z, not in the top bar', () => {

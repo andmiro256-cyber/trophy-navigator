@@ -49,6 +49,10 @@
   .ctx-item > .tn-ico { width: 18px; height: 18px; color: var(--text-secondary); }
   .ctx-item.danger > .tn-ico { color: inherit; }
   .base-layer .tn-ico-t { margin-right: 8px; }
+  .base-layer .tn-icon-btn { color: var(--text-muted); margin: -4px -4px -4px 0; }
+  .base-layer .tn-icon-btn .tn-ico { width: 16px; height: 16px; }
+  .base-layer .tn-icon-btn:hover { color: var(--primary); }
+  .base-layer .tn-icon-btn.danger:hover { color: var(--error-text); }
   .base-layer > .tn-ico-t { margin-right: -2px; }
   .tn-ico.tn-ico-xl { width: 32px; height: 32px; margin: 0 auto 8px; }
 
@@ -6629,7 +6633,8 @@ function openModal(id) {
     updateOfflineLayersList();
     if (window.__TAURI__ && appDataPath) scanOfflineMaps();
   }
-  requestAnimationFrame(() => overlay.querySelector('.modal-close, button, input, select, textarea')?.focus({ preventScroll: true }));
+  // Фокус — на «Закрыть», а не на первую кнопку в разметке: в заголовке перед ней теперь стоят кнопки-значки
+  requestAnimationFrame(() => (overlay.querySelector('.modal-close') || overlay.querySelector('button, input, select, textarea'))?.focus({ preventScroll: true }));
 }
 function closeModal(id) {
   const overlay = document.getElementById(id);
