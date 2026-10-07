@@ -13,6 +13,8 @@
   const Core = window.TrophyNavMapsCore;
   const LS_EXAG = 'tnd-tnmaps-3d-exaggeration';
   const LS_HINT = 'tnd-tnmaps-3d-hint-seen';
+  const LS_LOCK = 'tnd-3d-pitch-lock';           // '0' — наклон не зафиксирован; по умолчанию — зафиксирован
+  const LS_FIXED = 'tnd-3d-fixed-view';          // {pitch, bearing} — куда возвращает «Вернуть»
   const ENTER_PITCH = 60;
   const ROTATE_STEP = 15;
   /* global map */
@@ -29,6 +31,8 @@
     id: null,        // область
     hasDem: false,
     wheel: {},       // состояние жеста колеса
+    locked: true,    // «Зафиксировать наклон»: жесты не меняют наклон и поворот (кроме Shift)
+    fixed: null,     // {pitch, bearing} для «Вернуть»
     pending: { pitch: 0, bearing: 0 },
     raf: 0,
     onResize: null,
@@ -58,6 +62,7 @@
         border:0; background:var(--plain-btn); color:var(--text-primary); }
       #tn3d-root .tn3d-btn:hover { background-image:linear-gradient(var(--hover), var(--hover)); }
       #tn3d-root .tn3d-btn.primary { background:var(--primary); color:var(--on-primary); }
+      #tn3d-root .tn3d-btn.tn3d-lock.on { background:var(--primary-soft); color:var(--primary-text); }
       #tn3d-root .tn3d-note { font-size:11px; color:var(--text-warning); }
       #tn3d-root .tn3d-hint { font-size:11px; color:var(--text-muted); line-height:1.4; }
       #tn3d-root .tn3d-hint b { color:var(--text-secondary); font-weight:600; }
@@ -177,9 +182,11 @@
 
   function onWheel(e) {
     if (!view.ml) return;
+    // Над панелью и подсказкой — не карта; страницу всё равно не масштабировать (Ctrl+колесо = щипок)
+    if (e.target.closest?.('.tn3d-panel, .tn3d-tip, .maplibregl-popup')) { if (e.ctrlKey) e.preventDefault(); return; }
     e.preventDefault();
     e.stopPropagation();
-    const g = Core.wheelGesture(e, view.wheel, performance.now());
+    const g = Core.wheelGesture(e, view.wheel, performance.now(), { locked: view.locked });
     if (g.kind === 'zoom') {
       const rect = view.ml.getCanvas().getBoundingClientRect();
       const around = view.ml.unproject([e.clientX - rect.left, e.clientY - rect.top]);
@@ -190,6 +197,46 @@
     view.pending.pitch += g.dPitch;
     view.pending.bearing += g.dBearing;
     if (!view.raf) view.raf = requestAnimationFrame(applyPending);
+  }
+
+  // ─── «Зафиксировать наклон» ───
+  function readFixed() {
+    try {
+      const v = JSON.parse(lsGet(LS_FIXED) || 'null');
+      return v && Number.isFinite(v.pitch) && Number.isFinite(v.bearing) ? v : null;
+    } catch { return null; }
+  }
+  function rememberFixed() {
+    const ml = view.ml;
+    if (!ml) return;
+    view.fixed = { pitch: Math.round(ml.getPitch()), bearing: Math.round(ml.getBearing()) };
+    lsSet(LS_FIXED, JSON.stringify(view.fixed));
+  }
+  /** Замок: жесты и перетаскивание не меняют наклон и поворот — только ползунок и кнопки панели (и Shift+колесо). */
+  function applyLock() {
+    const ml = view.ml;
+    if (ml) {
+      const on = view.locked;
+      ['dragRotate', 'touchPitch'].forEach(h => ml[h] && (on ? ml[h].disable() : ml[h].enable()));
+      if (ml.touchZoomRotate) on ? ml.touchZoomRotate.disableRotation() : ml.touchZoomRotate.enableRotation();
+      if (ml.keyboard) on ? ml.keyboard.disableRotation() : ml.keyboard.enableRotation();
+    }
+    const btn = view.root?.querySelector?.('[data-tn3d-act=lock]');
+    if (btn && typeof btn.setAttribute === 'function') {
+      btn.setAttribute('aria-pressed', String(view.locked));
+      btn.classList.toggle('on', view.locked);
+      btn.innerHTML = `${ico(view.locked ? 'lock' : 'lock-open', 'tn-ico-t')}Зафиксировать наклон`;
+    }
+  }
+  function setLocked(on) {
+    view.locked = !!on;
+    lsSet(LS_LOCK, on ? '1' : '0');
+    if (on) rememberFixed();
+    applyLock();
+  }
+  function restoreView() {
+    const f = view.fixed || readFixed();
+    view.ml?.easeTo({ pitch: f ? f.pitch : ENTER_PITCH, bearing: f ? f.bearing : 0, duration: 400 });
   }
 
   function syncPanel() {
@@ -208,15 +255,19 @@
     const t = e.target;
     const act = t.closest?.('[data-tn3d-act]')?.dataset.tn3dAct;
     if (act && e.type === 'click') {
+      // Кнопки панели — явное действие: меняют вид и при замке, новое положение запоминается для «Вернуть»
+      const remember = () => { if (view.locked) ml?.once('moveend', rememberFixed); };
       if (act === 'close') close();
-      else if (act === 'left') ml?.easeTo({ bearing: ml.getBearing() - ROTATE_STEP, duration: 250 });
-      else if (act === 'right') ml?.easeTo({ bearing: ml.getBearing() + ROTATE_STEP, duration: 250 });
-      else if (act === 'north') ml?.easeTo({ bearing: 0, duration: 400 });
-      else if (act === 'top') ml?.easeTo({ pitch: 0, duration: 400 });
+      else if (act === 'left') { ml?.easeTo({ bearing: ml.getBearing() - ROTATE_STEP, duration: 250 }); remember(); }
+      else if (act === 'right') { ml?.easeTo({ bearing: ml.getBearing() + ROTATE_STEP, duration: 250 }); remember(); }
+      else if (act === 'north') { ml?.easeTo({ bearing: 0, duration: 400 }); remember(); }
+      else if (act === 'top') { ml?.easeTo({ pitch: 0, duration: 400 }); remember(); }
+      else if (act === 'lock') setLocked(!view.locked);
+      else if (act === 'restore') restoreView();
       else if (act === 'tip-ok') { view.root.querySelector('.tn3d-tip').hidden = true; lsSet(LS_HINT, '1'); }
       return;
     }
-    if (t.matches?.('[data-tn3d=pitch]') && e.type === 'input') ml?.jumpTo({ pitch: Number(t.value) });
+    if (t.matches?.('[data-tn3d=pitch]') && e.type === 'input') { ml?.jumpTo({ pitch: Number(t.value) }); if (view.locked) rememberFixed(); }
     if (t.matches?.('[data-tn3d=exag]') && e.type === 'input') {
       const v = Core.normalizeExaggeration(t.value);
       root().querySelector('[data-tn3d-val=exag]').textContent = `×${v.toFixed(1)}`;
@@ -234,7 +285,7 @@
     view.ml?.resize();
   }
 
-  function buildRoot(id, hasDem, exag, objects) {
+  function buildRoot(id, hasDem, exag, objects, locked = true) {
     const el = document.createElement('div');
     el.id = 'tn3d-root';
     el.tabIndex = -1;
@@ -255,15 +306,18 @@
         <div class="tn3d-row">
           <button type="button" class="tn3d-btn" data-tn3d-act="north">Север вверх</button>
           <button type="button" class="tn3d-btn" data-tn3d-act="top">Сверху</button></div>
+        <div class="tn3d-row">
+          <button type="button" class="tn3d-btn tn3d-lock${locked ? ' on' : ''}" data-tn3d-act="lock" aria-pressed="${locked}" title="Жесты и колесо только двигают и масштабируют карту; наклон и поворот — ползунком, кнопками и Shift">${ico(locked ? 'lock' : 'lock-open', 'tn-ico-t')}Зафиксировать наклон</button>
+          <button type="button" class="tn3d-btn" data-tn3d-act="restore" title="Вернуть зафиксированные наклон и поворот">${ico('undo', 'tn-ico-t')}Вернуть</button></div>
         <div class="tn3d-hint">
-          <b>Тачпад:</b> два пальца вверх-вниз — наклон, влево-вправо — поворот, щипок — масштаб.<br>
-          <b>Мышь:</b> колесо — масштаб, Shift+колесо — наклон, правая кнопка (или Ctrl) и тянуть — наклон и поворот.<br>
-          <b>Клавиши:</b> Shift+стрелки — наклон и поворот, Esc — обычная карта.<br>
+          <b>Наклон зафиксирован:</b> два пальца и колесо — масштаб, щипок — масштаб, тянуть — сдвиг, Shift+два пальца или Shift+колесо — наклон.<br>
+          <b>Не зафиксирован:</b> два пальца вверх-вниз — наклон, влево-вправо — поворот; правая кнопка (или Ctrl) и тянуть — наклон и поворот.<br>
+          <b>Клавиши:</b> Shift+стрелки — наклон и поворот (без замка), Esc — обычная карта.<br>
           Точки и треки здесь только для просмотра${objects ? '' : ' (на карте их нет)'}.
         </div>
       </div>
       <div class="tn3d-tip" ${lsGet(LS_HINT) ? 'hidden' : ''}>
-        <span>Два пальца на тачпаде: вверх-вниз — наклон, влево-вправо — поворот; щипок — масштаб</span>
+        <span>Два пальца и щипок — масштаб, наклон — ползунком или Shift+два пальца. Снимите «Зафиксировать наклон», чтобы наклонять и поворачивать жестами</span>
         <button type="button" class="tn3d-btn primary" data-tn3d-act="tip-ok">Понятно</button>
       </div>`;
     return el;
@@ -312,7 +366,9 @@
       view.id = id;
       view.hasDem = !!local?.dem;
       const objects = collectOverlay();
-      view.root = buildRoot(id, view.hasDem, exag, objects.lines.length + objects.points.length);
+      view.locked = lsGet(LS_LOCK) !== '0';
+      view.fixed = readFixed();
+      view.root = buildRoot(id, view.hasDem, exag, objects.lines.length + objects.points.length, view.locked);
       document.body.appendChild(view.root);
       placeOverMap();
       const ml = new window.maplibregl.Map({
@@ -342,7 +398,12 @@
         close();
       }, { once: true });
       addOverlay(ml);
-      ml.getCanvasContainer().addEventListener('wheel', onWheel, { passive: false });
+      applyLock();
+      // Вид при входе — тот, куда «Вернуть» возвращает, пока наклон не меняли ползунком или кнопками
+      if (!view.fixed) view.fixed = { pitch: ENTER_PITCH, bearing: 0 };
+      // Колесо и щипок (Ctrl+колесо в WebView2) — на весь оверлей, а не только на холст: над маркерами,
+      // подписями и попапами MapLibre они тоже должны масштабировать 3D-карту, а не теряться
+      view.root.addEventListener('wheel', onWheel, { passive: false });
       ['click', 'input'].forEach(t => view.root.querySelector('.tn3d-panel').addEventListener(t, onPanel));
       view.root.querySelector('.tn3d-tip').addEventListener('click', onPanel);
       // Клавиши не уходят в основное окно (там свои сочетания)
@@ -418,7 +479,7 @@
     addMapButton();
   }
 
-  window.TrophyNav3D = { open, close, isOpen: () => !!view.ml, _view: view, collectOverlay, setLive };
+  window.TrophyNav3D = { open, close, isOpen: () => !!view.ml, _view: view, collectOverlay, setLive, _lock: { setLocked, restoreView, applyLock } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 })();

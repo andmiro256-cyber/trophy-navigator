@@ -220,7 +220,7 @@ test('3D view UI: theme variables only, Esc/2D exit, hint text, index hook', () 
   const css = js.slice(js.indexOf('st.textContent = `'), js.indexOf('document.head.appendChild(st)'));
   assert.ok(css.length > 500);
   assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b(?!-)|rgba?\(/i);
-  assert.match(js, /Два пальца на тачпаде: вверх-вниз — наклон, влево-вправо — поворот; щипок — масштаб/);
+  assert.match(js, /Два пальца и щипок — масштаб, наклон — ползунком или Shift\+два пальца/);  // 0.9.29: наклон зафиксирован по умолчанию
   assert.match(js, /e\.key === 'Escape'/);
   assert.match(js, /scrollZoom: false/);
   assert.doesNotMatch(js, /https?:\/\//);

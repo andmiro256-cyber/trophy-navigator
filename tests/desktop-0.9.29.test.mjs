@@ -664,3 +664,64 @@ test('Live в 3D: setLive обновляет источник tn-live, если 
   assert.equal(data[0].features[0].properties.age, 'online');
   api._view.ml = null;
 });
+
+// ─── 3D: «Зафиксировать наклон» ───
+test('3D wheelGesture {locked}: тачпад и колесо — масштаб, Ctrl (щипок) — масштаб, Shift — наклон; без замка — orbit', () => {
+  const Core = (() => { const c = { console }; c.window = c; vm.createContext(c); vm.runInContext(read('../ui/trophynav-maps-core.js'), c); return c.TrophyNavMapsCore; })();
+  const wh = o => Object.assign({ deltaX: 0, deltaY: 0, deltaMode: 0, ctrlKey: false, shiftKey: false }, o);
+  const L = { locked: true };
+  const tp = Core.wheelGesture(wh({ deltaY: 6 }), {}, 0, L);
+  assert.equal(tp.kind, 'zoom'); assert.ok(tp.dZoom < 0); assert.equal(tp.dPitch, 0); assert.equal(tp.dBearing, 0);
+  const side = Core.wheelGesture(wh({ deltaX: -8, deltaY: 1 }), {}, 0, L);
+  assert.equal(side.kind, 'zoom'); assert.equal(side.dBearing, 0, 'горизонталь двумя пальцами не поворачивает');
+  assert.equal(Core.wheelGesture(wh({ deltaY: 100 }), {}, 0, L).kind, 'zoom');
+  const pinch = Core.wheelGesture(wh({ deltaY: -100 * Math.log(2), ctrlKey: true }), {}, 0, L);
+  assert.equal(pinch.kind, 'zoom');
+  assert.ok(Math.abs(pinch.dZoom - 1) < 1e-9, 'щипок вдвое — ровно +1 уровень (формула Chromium)');
+  const tilt = Core.wheelGesture(wh({ deltaY: 10, shiftKey: true }), {}, 0, L);
+  assert.equal(tilt.kind, 'tilt'); assert.ok(tilt.dPitch > 0);
+  // жест не «залипает»: в замке всё, кроме Shift, — масштаб
+  const st = {};
+  Core.wheelGesture(wh({ deltaY: 4, shiftKey: true }), st, 0, L);
+  assert.equal(Core.wheelGesture(wh({ deltaY: 4 }), st, 50, L).kind, 'zoom');
+  // без замка — прежнее поведение
+  assert.equal(Core.wheelGesture(wh({ deltaY: 6 }), {}, 0, { locked: false }).kind, 'orbit');
+  assert.equal(Core.wheelGesture(wh({ deltaY: 6 }), {}, 0).kind, 'orbit');
+});
+
+test('3D: переключатель «Зафиксировать наклон» (по умолчанию вкл, tnd-3d-pitch-lock), «Вернуть», замок отключает поворот жестами', () => {
+  const d3 = read('../ui/trophynav-3d.js');
+  assert.match(d3, /const LS_LOCK = 'tnd-3d-pitch-lock';/);
+  assert.match(d3, /view\.locked = lsGet\(LS_LOCK\) !== '0';/, 'по умолчанию — вкл');
+  assert.match(d3, /data-tn3d-act="lock" aria-pressed="\$\{locked\}"[^>]*>\$\{ico\(locked \? 'lock' : 'lock-open', 'tn-ico-t'\)\}Зафиксировать наклон/);
+  assert.match(d3, /data-tn3d-act="restore"[^>]*>\$\{ico\('undo', 'tn-ico-t'\)\}Вернуть/);
+  assert.match(d3, /Core\.wheelGesture\(e, view\.wheel, performance\.now\(\), \{ locked: view\.locked \}\)/);
+  assert.match(d3, /view\.root\.addEventListener\('wheel', onWheel, \{ passive: false \}\)/, 'колесо/щипок над всем оверлеем');
+  // поведение замка на заглушке MapLibre
+  const ctx = { console, localStorage: { getItem: () => null, setItem() {} }, CustomEvent: function () {},
+    document: { readyState: 'loading', addEventListener() {}, dispatchEvent() {} }, addEventListener() {} };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(read('../ui/trophynav-maps-core.js'), ctx);
+  vm.runInContext(read('../ui/trophynav-3d.js'), ctx);
+  const st = { dragRotate: true, touchPitch: true, rot: true, kbRot: true };
+  const eased = [];
+  const ml = {
+    dragRotate: { disable: () => { st.dragRotate = false; }, enable: () => { st.dragRotate = true; } },
+    touchPitch: { disable: () => { st.touchPitch = false; }, enable: () => { st.touchPitch = true; } },
+    touchZoomRotate: { disableRotation: () => { st.rot = false; }, enableRotation: () => { st.rot = true; } },
+    keyboard: { disableRotation: () => { st.kbRot = false; }, enableRotation: () => { st.kbRot = true; } },
+    getPitch: () => 45, getBearing: () => 30, easeTo: o => eased.push(o),
+  };
+  const api = ctx.TrophyNav3D;
+  api._view.ml = ml;
+  api._view.fixed = null;
+  api._lock.setLocked(true);
+  assert.deepEqual({ ...st }, { dragRotate: false, touchPitch: false, rot: false, kbRot: false });
+  api._lock.restoreView();
+  assert.equal(JSON.stringify(eased.at(-1)), JSON.stringify({ pitch: 45, bearing: 30, duration: 400 }), 'вернуть к запомненному при включении');
+  api._lock.setLocked(false);
+  assert.deepEqual({ ...st }, { dragRotate: true, touchPitch: true, rot: true, kbRot: true });
+  api._view.fixed = null;
+  api._view.ml = null;
+});

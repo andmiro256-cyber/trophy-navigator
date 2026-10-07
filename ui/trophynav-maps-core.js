@@ -277,7 +277,10 @@
   }
 
   /**
-   * Колесо в 3D-виде. Правило (оно же в подсказке):
+   * Колесо в 3D-виде. Правило (оно же в подсказке).
+   * Наклон зафиксирован (opts.locked, по умолчанию в 3D-виде): колесо и два пальца — масштаб вокруг курсора,
+   * Ctrl + колесо (щипок) — масштаб, Shift — наклон (явное действие); наклон и поворот жестами не меняются.
+   * Наклон не зафиксирован:
    * - Ctrl + колесо (так WebView присылает щипок тачпада) — масштаб;
    * - Shift + колесо — наклон (для обычной мыши);
    * - тачпад двумя пальцами: вверх-вниз — наклон, влево-вправо — поворот;
@@ -294,11 +297,14 @@
     return dy > 0 && (dy < 30 || !Number.isInteger(e.deltaY));
   }
 
-  function wheelGesture(e, state, now) {
+  // Щипок в WebView2/Chromium: deltaY ≈ −100·ln(scale) — масштаб log2(scale) = −deltaY / (100·ln 2)
+  const PINCH_ZOOM_PER_PX = 1 / (100 * Math.LN2);
+  function wheelGesture(e, state, now, opts = {}) {
     state = state || {};
     let kind;
     if (e.ctrlKey) kind = 'zoom';
     else if (e.shiftKey) kind = 'tilt';
+    else if (opts.locked) kind = 'zoom';
     else if (state.kind && now - (state.at || 0) < GESTURE_HOLD_MS && state.kind !== 'zoom-pinch') kind = state.kind;
     else kind = looksLikeTouchpad(e) ? 'orbit' : 'zoom';
     state.kind = e.ctrlKey ? 'zoom-pinch' : kind;
@@ -306,8 +312,8 @@
     const unit = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 300 : 1;
     const dx = (e.deltaX || 0) * unit, dy = (e.deltaY || 0) * unit;
     if (kind === 'zoom') {
-      // Щипок шлёт мелкие шаги — чувствительнее; щелчок колеса (~100) — полшага масштаба
-      const k = e.ctrlKey ? 0.01 : 0.005;
+      // Щипок — по формуле Chromium; два пальца шлют мелкие шаги — чувствительнее; щелчок колеса (~100) — полшага
+      const k = e.ctrlKey ? PINCH_ZOOM_PER_PX : looksLikeTouchpad(e) ? 0.01 : 0.005;
       return { kind, dZoom: clamp(-dy * k, -1, 1), dPitch: 0, dBearing: 0 };
     }
     if (kind === 'tilt') {
