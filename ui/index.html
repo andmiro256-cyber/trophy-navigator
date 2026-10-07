@@ -1287,7 +1287,7 @@
       <svg class="tn-ico tn-ico-s" aria-hidden="true"><use href="#tn-i-search"/></svg>
       <input type="text" id="search-input" placeholder="Поиск..."
         autocomplete="off" spellcheck="false">
-      <button type="button" id="search-clear" class="search-clear-btn" onclick="clearSearch()" aria-label="Очистить поиск" title="Очистить поиск" style="display:none">✕</button>
+      <button type="button" id="search-clear" class="search-clear-btn" onclick="clearSearch()" aria-label="Очистить поиск" title="Очистить поиск" style="display:none"><svg class="tn-ico tn-ico-s" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="search-results" id="search-results" style="position:absolute;top:100%;right:0;width:340px;margin-top:2px"></div>
   </div>
@@ -1339,7 +1339,7 @@
       <div class="rr-tab" data-tab="charts" onclick="rrSwitchTab('charts')">Графики</div>
       <div class="rr-tab" data-tab="timeline" onclick="rrSwitchTab('timeline')">Timeline</div>
     </div>
-    <span class="rr-close" onclick="rrClose()" title="Закрыть отчёт">✕</span>
+    <button type="button" class="rr-close tn-icon-btn" onclick="rrClose()" title="Закрыть отчёт" aria-label="Закрыть отчёт"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
   </div>
   <div class="rr-body">
     <!-- Overview cards -->
@@ -1369,7 +1369,7 @@
   <div class="modal" id="modal-race-report-win" style="top:120px;left:50%;transform:translateX(-50%);width:380px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-race-report-win')">
       Race Report
-      <button type="button" class="modal-close" onclick="closeModal('modal-race-report')" aria-label="Закрыть">✕</button>
+      <button type="button" class="modal-close" onclick="closeModal('modal-race-report')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body" style="padding:14px">
       <div style="margin-bottom:10px">
@@ -1480,8 +1480,8 @@
 <div class="modal-overlay" id="modal-wpts">
   <div class="modal" id="modal-wpts-win" style="top:60px;left:20px;width:460px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-wpts-win')">
-      📍 Список точек (Waypoints)
-      <button type="button" class="modal-close" onclick="closeModal('modal-wpts')" aria-label="Закрыть">✕</button>
+      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-pin"/></svg>Список точек (Waypoints)</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-wpts')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body">
       <!-- Панель наборов точек -->
@@ -1556,8 +1556,8 @@
 <div class="modal-overlay" id="modal-wpt-props">
   <div class="modal" id="modal-wpt-props-win" style="top:80px;left:500px;width:340px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-wpt-props-win')">
-      ✏️ Свойства точки
-      <button type="button" class="modal-close" onclick="closeModal('modal-wpt-props')" aria-label="Закрыть">✕</button>
+      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-edit"/></svg>Свойства точки</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-wpt-props')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body">
       <div class="prop-field">
@@ -1663,8 +1663,8 @@
 <div class="modal-overlay" id="modal-tracks">
   <div class="modal" id="modal-tracks-win" style="top:60px;left:500px;width:460px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-tracks-win')">
-      〜 Треки
-      <button type="button" class="modal-close" onclick="closeModal('modal-tracks')" aria-label="Закрыть">✕</button>
+      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-track"/></svg>Треки</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-tracks')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body">
       <!-- Панель рисования трека -->
@@ -1755,8 +1755,8 @@
 <div class="modal-overlay" id="modal-routes">
   <div class="modal" id="modal-routes-win" style="top:60px;left:830px;width:460px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-routes-win')">
-      ⚑ Маршруты по КП
-      <button type="button" class="modal-close" onclick="closeModal('modal-routes')" aria-label="Закрыть">✕</button>
+      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-route"/></svg>Маршруты по КП</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-routes')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body">
       <!-- Панель создания маршрута -->
@@ -1839,8 +1839,8 @@
 <div class="modal-overlay" id="modal-files">
   <div class="modal" id="modal-files-win" style="top:60px;left:120px;width:340px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-files-win')">
-      <span>📁 Файлы</span>
-      <button type="button" class="modal-close" onclick="closeModal('modal-files')" aria-label="Закрыть">✕</button>
+      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-folder"/></svg>Файлы</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-files')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body">
       <div class="save-section">
@@ -1884,8 +1884,8 @@
 <div class="modal-overlay" id="modal-settings">
   <div class="modal settings-win" id="modal-settings-win" style="top:60px;left:200px;width:760px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-settings-win')">
-      ⚙ Настройки
-      <button type="button" class="modal-close" onclick="closeModal('modal-settings')" aria-label="Закрыть">✕</button>
+      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-settings"/></svg>Настройки</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-settings')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body">
       <div class="settings-tabs" role="tablist" aria-label="Разделы настроек">
@@ -2080,8 +2080,8 @@
 <div class="modal-overlay" id="modal-offline">
   <div class="modal" id="modal-offline-win" style="top:60px;left:300px;width:420px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-offline-win')">
-      📦 Офлайн карты
-      <button type="button" class="modal-close" onclick="closeModal('modal-offline')" aria-label="Закрыть">✕</button>
+      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-download"/></svg>Офлайн карты</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-offline')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body">
       <div class="settings-tabs" role="tablist" aria-label="Разделы офлайн-карт">
@@ -2141,8 +2141,8 @@
 <div class="modal-overlay" id="modal-download-settings">
   <div class="modal" id="modal-download-settings-win" style="top:60px;left:250px;width:440px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-download-settings-win')">
-      ⬇ Скачивание тайлов
-      <button type="button" class="modal-close" onclick="cancelDownloadSettings()" aria-label="Закрыть">✕</button>
+      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-download"/></svg>Скачивание тайлов</span>
+      <button type="button" class="modal-close" onclick="cancelDownloadSettings()" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body">
       <!-- Координаты области -->
@@ -2252,7 +2252,7 @@
   <div class="modal" style="top:18%;left:50%;transform:translateX(-50%);width:430px">
     <div class="modal-header danger">
       🗑 Удалить данные
-      <button type="button" class="modal-close" onclick="closeModal('modal-clear-confirm')" aria-label="Закрыть">✕</button>
+      <button type="button" class="modal-close" onclick="closeModal('modal-clear-confirm')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body" style="text-align:center;padding:18px">
       <div style="font-size:13px;color:var(--text-primary);margin-bottom:8px">Выберите, что убрать с карты</div>
@@ -2285,7 +2285,7 @@
   <div class="modal" style="top:30%;left:50%;transform:translateX(-50%);width:360px;z-index:6000">
     <div class="modal-header" id="modal-dialog-header">
       <span id="modal-dialog-title">Подтверждение</span>
-      <button type="button" class="modal-close" onclick="dialogCancel()" aria-label="Закрыть">✕</button>
+      <button type="button" class="modal-close" onclick="dialogCancel()" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body" style="padding:16px">
       <div id="modal-dialog-message" class="dialog-message"></div>
@@ -2306,8 +2306,8 @@
 <div class="modal-overlay" id="modal-sync">
   <div class="modal" id="modal-sync-win" style="top:60px;left:350px;width:380px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-sync-win')">
-      ☁ Облачная синхронизация
-      <button type="button" class="modal-close" onclick="closeModal('modal-sync')" aria-label="Закрыть">✕</button>
+      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-cloud-sync"/></svg>Облачная синхронизация</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-sync')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body">
       <!-- Статус подключения -->
@@ -2386,7 +2386,7 @@
       <span style="display:flex;align-items:center;gap:2px">
         <button type="button" class="tn-icon-btn" onclick="event.stopPropagation();showHiddenLayersManager()" title="Показать скрытые карты" aria-label="Показать скрытые карты"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-eye"/></svg></button>
         <button type="button" class="tn-icon-btn" onclick="event.stopPropagation();refreshTileCatalog()" title="Обновить каталог с сервера" aria-label="Обновить каталог с сервера"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-cloud-sync"/></svg></button>
-        <button type="button" class="modal-close" onclick="closeModal('modal-layers')" aria-label="Закрыть">✕</button>
+        <button type="button" class="modal-close" onclick="closeModal('modal-layers')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
       </span>
     </div>
     <div class="modal-body">
@@ -13296,7 +13296,7 @@ function showTrialBanner() {
   } else {
     banner.innerHTML = `⏳ Пробный период: осталось ${daysLeft} дн.<br><span style="font-size:11px;color:var(--text-secondary)">Navigator Pro: 2000₽/год · Full (Android+Desktop+Server): 5000₽/год</span>`;
   }
-  banner.innerHTML += `<span onclick="this.parentElement.remove()" style="position:absolute;top:4px;right:8px;cursor:pointer;color:var(--text-secondary);font-size:14px">✕</span>`;
+  banner.innerHTML += `<button type="button" class="tn-icon-btn tn-icon-btn-s" onclick="this.parentElement.remove()" title="Закрыть" aria-label="Закрыть" style="position:absolute;top:2px;right:4px">${tnIcon('close')}</button>`;
   document.body.appendChild(banner);
 }
 
@@ -13602,7 +13602,7 @@ function showOnboarding() {
   overlay.style.cssText = 'position:fixed;inset:0;z-index:7000;display:flex;align-items:center;justify-content:center;background:var(--scrim)';
   overlay.innerHTML = `<div style="background:var(--bg-elevated);border:1px solid var(--border-bright);border-radius:16px;padding:28px;width:420px;text-align:center">
     <div style="display:flex;justify-content:flex-end;margin:-12px -12px 4px 0">
-      <button onclick="dismissOnboarding()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;line-height:1">✕</button>
+      <button type="button" class="tn-icon-btn" onclick="dismissOnboarding()" title="Закрыть" aria-label="Закрыть">${tnIcon('close')}</button>
     </div>
     <div style="font-size:36px;margin-bottom:8px">🏆</div>
     <div style="font-size:20px;font-weight:700;color:var(--primary-text);margin-bottom:4px">Trophy Navigator Desktop</div>
@@ -14451,8 +14451,8 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${escapeHtml(missedCPs
 <div class="modal-overlay" id="modal-about">
   <div class="modal" id="modal-about-win" style="top:40px;left:50%;transform:translateX(-50%);width:520px;resize:both;overflow:auto;min-width:380px;min-height:300px;z-index:5000">
     <div class="modal-header" onmousedown="startDrag(event,'modal-about-win')">
-      <span>🏆 Trophy Navigator Desktop</span>
-      <button type="button" class="modal-close" onclick="closeModal('modal-about')" aria-label="Закрыть">✕</button>
+      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-info"/></svg>Trophy Navigator Desktop</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-about')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body" style="padding:16px;overflow-y:auto;max-height:calc(100vh - 120px)">
       <!-- Шапка -->
@@ -14563,8 +14563,8 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${escapeHtml(missedCPs
 <div class="modal-overlay" id="modal-save-gpx">
   <div class="modal" style="top:15%;left:50%;transform:translateX(-50%);width:380px">
     <div class="modal-header">
-      💾 Сохранить в GPX
-      <button type="button" class="modal-close" onclick="closeModal('modal-save-gpx')" aria-label="Закрыть">✕</button>
+      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-save"/></svg>Сохранить в GPX</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-save-gpx')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body" style="max-height:60vh;overflow-y:auto">
       <div style="font-size:12px;color:var(--text-primary);margin-bottom:8px">Выберите данные для сохранения:</div>
@@ -14583,8 +14583,8 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${escapeHtml(missedCPs
 <div class="modal-overlay" id="modal-routing">
   <div class="modal" id="modal-routing-win" style="top:80px;right:20px;left:auto;width:380px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-routing-win')">
-      🛣 Маршрут по дорогам
-      <button type="button" class="modal-close" onclick="closeModal('modal-routing')" aria-label="Закрыть">✕</button>
+      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-road"/></svg>Маршрут по дорогам</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-routing')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body">
       <div class="route-endpoint">
@@ -15483,7 +15483,7 @@ function toggleSidebarCollapse(id) {
   const el = document.getElementById(id);
   el.classList.toggle('collapsed');
   const expandBtn = el.querySelector('.live-expand-btn');
-  if (expandBtn) expandBtn.textContent = el.classList.contains('collapsed') ? '▶' : '◀';
+  if (expandBtn) expandBtn.innerHTML = tnIcon(el.classList.contains('collapsed') ? 'chevron-right' : 'chevron-left', 'tn-ico-s');
 }
 
 function renderLiveGroupSelect() {
@@ -16633,7 +16633,7 @@ function liveShowNextShareInboxModal() {
   if (!entry?.shareId) return;
   liveState.activeShareId = entry.shareId;
   liveState.activeShareEntry = entry;
-  document.getElementById('live-share-inbox-title').textContent = `📥 ${entry.senderName || 'Участник'}`;
+  document.getElementById('live-share-inbox-title').textContent = entry.senderName || 'Участник';
   document.getElementById('live-share-inbox-body').textContent = `Поделился GPX-пакетом: «${entry.name || 'Вложение'}»\n${liveAttachmentTypeLabel(entry.type)} · ${Math.round((entry.size || 0) / 1024)} КБ`;
   const metaParts = [];
   if (entry.groupName) metaParts.push(`Группа: ${entry.groupName}`);
@@ -16997,17 +16997,17 @@ liveLoadCache();
 
 <!-- Live monitoring sidebar -->
 <div id="live-sidebar">
-      <button class="live-expand-btn" onclick="toggleSidebarCollapse('live-sidebar')" title="Развернуть">▶</button>
+      <button class="live-expand-btn" onclick="toggleSidebarCollapse('live-sidebar')" title="Развернуть" aria-label="Развернуть"><svg class="tn-ico tn-ico-s" aria-hidden="true"><use href="#tn-i-chevron-right"/></svg></button>
   <div class="live-header">
     <div class="live-dot off" id="live-status-dot"></div>
     <span id="live-header-text">Участники</span>
     <div class="live-header-actions">
-      <button class="live-header-action" onclick="openLiveMessagesModal()" title="Сообщения">💬<span id="live-messages-badge" style="display:none;position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--error);color:var(--on-primary);font-size:10px;align-items:center;justify-content:center"></span></button>
-      <button class="live-header-action" onclick="openLiveGroupsManager()" title="Группы">👥</button>
-      <button class="live-header-action" onclick="toggleLiveMyTrails()" title="Хвост моих устройств">🧵</button>
-      <button class="live-header-action" onclick="liveShowAll()" title="Показать всех">🎯</button>
-      <button class="live-header-action" onclick="toggleSidebarCollapse('live-sidebar')" title="Свернуть">◀</button>
-      <button class="live-header-action" onclick="toggleLive()" title="Закрыть">✕</button>
+      <button class="live-header-action" onclick="openLiveMessagesModal()" title="Сообщения" aria-label="Сообщения"><svg class="tn-ico tn-ico-s" aria-hidden="true"><use href="#tn-i-chat"/></svg><span id="live-messages-badge" style="display:none;position:absolute;top:-4px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--error);color:var(--on-primary);font-size:10px;align-items:center;justify-content:center"></span></button>
+      <button class="live-header-action" onclick="openLiveGroupsManager()" title="Группы" aria-label="Группы"><svg class="tn-ico tn-ico-s" aria-hidden="true"><use href="#tn-i-group"/></svg></button>
+      <button class="live-header-action" onclick="toggleLiveMyTrails()" title="Хвост моих устройств" aria-label="Хвост моих устройств"><svg class="tn-ico tn-ico-s" aria-hidden="true"><use href="#tn-i-track"/></svg></button>
+      <button class="live-header-action" onclick="liveShowAll()" title="Показать всех" aria-label="Показать всех"><svg class="tn-ico tn-ico-s" aria-hidden="true"><use href="#tn-i-my-location"/></svg></button>
+      <button class="live-header-action" onclick="toggleSidebarCollapse('live-sidebar')" title="Свернуть" aria-label="Свернуть"><svg class="tn-ico tn-ico-s" aria-hidden="true"><use href="#tn-i-chevron-left"/></svg></button>
+      <button class="live-header-action" onclick="toggleLive()" title="Закрыть" aria-label="Закрыть"><svg class="tn-ico tn-ico-s" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
   </div>
   <div style="padding:8px 10px 0">
@@ -17027,8 +17027,8 @@ liveLoadCache();
 <div class="modal-overlay" id="modal-live-messages">
   <div class="modal" id="modal-live-messages-win" style="top:80px;left:50%;transform:translateX(-50%);width:540px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-live-messages-win')">
-      💬 Сообщения мониторинга
-      <button type="button" class="modal-close" onclick="closeModal('modal-live-messages')" aria-label="Закрыть">✕</button>
+      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-chat"/></svg>Сообщения мониторинга</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-live-messages')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body">
       <div class="prop-field">
@@ -17056,8 +17056,8 @@ liveLoadCache();
 <div class="modal-overlay" id="modal-live-groups">
   <div class="modal" id="modal-live-groups-win" style="top:70px;left:50%;transform:translateX(-50%);width:620px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-live-groups-win')">
-      👥 Группы мониторинга
-      <button type="button" class="modal-close" onclick="closeModal('modal-live-groups')" aria-label="Закрыть">✕</button>
+      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-group"/></svg>Группы мониторинга</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-live-groups')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body" style="display:flex;gap:14px">
       <div style="flex:1;min-width:0">
@@ -17095,8 +17095,8 @@ liveLoadCache();
 <div class="modal-overlay" id="modal-live-share">
   <div class="modal" id="modal-live-share-win" style="top:90px;left:50%;transform:translateX(-50%);width:460px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-live-share-win')">
-      📄 Отправка GPX
-      <button type="button" class="modal-close" onclick="closeModal('modal-live-share')" aria-label="Закрыть">✕</button>
+      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-file"/></svg>Отправка GPX</span>
+      <button type="button" class="modal-close" onclick="closeModal('modal-live-share')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body">
       <div class="prop-field">
@@ -17135,8 +17135,8 @@ liveLoadCache();
 <div class="modal-overlay" id="modal-live-share-inbox">
   <div class="modal" id="modal-live-share-inbox-win" style="top:30%;left:50%;transform:translateX(-50%);width:380px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-live-share-inbox-win')">
-      <span id="live-share-inbox-title">📥 GPX-пакет</span>
-      <button type="button" class="modal-close" onclick="liveDeclineIncomingShare()" aria-label="Закрыть">✕</button>
+      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-download"/></svg><span id="live-share-inbox-title">GPX-пакет</span></span>
+      <button type="button" class="modal-close" onclick="liveDeclineIncomingShare()" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body">
       <div id="live-share-inbox-body" style="font-size:13px;color:var(--text-primary);white-space:pre-wrap;margin-bottom:8px"></div>
