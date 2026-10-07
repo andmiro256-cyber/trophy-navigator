@@ -90,6 +90,7 @@
           geometry: { type: 'LineString', coordinates: flat.map(p => [p.lng, p.lat]) },
         });
       } else if (layer instanceof L.Marker) {
+        if (layer._liveDev) return;  // участники Live — свой слой 'tn-live' (цвет по свежести, обновляется)
         const ll = layer.getLatLng();
         const wp = layer.wpData;
         const tip = layer.getTooltip?.()?.getContent?.();
@@ -125,7 +126,40 @@
         paint: { 'text-color': '#1a2030', 'text-halo-color': '#ffffff', 'text-halo-width': 1.6 } });  // theme-check: data (цвет на карте)
     };
     if (ml.isStyleLoaded()) add(); else ml.once('load', add);
+    if (ml.isStyleLoaded()) addLive(ml); else ml.once('load', () => addLive(ml));
     return lines.length + points.length;
+  }
+
+  // ─── участники Live: те же, что в списке (фильтр группы), цвет — свежесть последней точки ───
+  // Цвета — данные карты (как на маркерах), не UI: зелёный ≤ 5 мин, жёлтый ≤ 1 ч, красный дольше
+  const LIVE_COLORS = ['match', ['get', 'age'], 'online', '#2E7D32', 'recent', '#F9A825', 'old', '#C62828', '#9E9E9E'];  // theme-check: data (цвет на карте)
+  const liveFeatures = () => (typeof window.tndLive3d?.features === 'function' ? window.tndLive3d.features() : []);
+  function addLive(ml) {
+    if (ml.getSource('tn-live')) return;
+    ml.addSource('tn-live', { type: 'geojson', data: { type: 'FeatureCollection', features: liveFeatures() } });
+    ml.addLayer({ id: 'tn-live', type: 'circle', source: 'tn-live',
+      paint: { 'circle-radius': 7, 'circle-color': LIVE_COLORS, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2,  // theme-check: data (цвет на карте)
+        'circle-opacity': ['case', ['==', ['get', 'age'], 'online'], 1, 0.55],
+        'circle-stroke-opacity': ['case', ['==', ['get', 'age'], 'online'], 1, 0.55],
+        'circle-pitch-alignment': 'viewport' } });
+    ml.addLayer({ id: 'tn-live-labels', type: 'symbol', source: 'tn-live',
+      layout: { 'text-field': ['get', 'name'], 'text-font': ['Roboto Medium'], 'text-size': 13, 'text-offset': [0, 1.1],
+        'text-anchor': 'top', 'text-optional': true },
+      paint: { 'text-color': '#1a2030', 'text-halo-color': '#ffffff', 'text-halo-width': 1.6,  // theme-check: data (цвет на карте)
+        'text-opacity': ['case', ['==', ['get', 'age'], 'online'], 1, 0.7] } });
+    ml.on('click', 'tn-live', e => {
+      const f = e.features?.[0];
+      const html = f && window.tndLive3d?.popupHtml?.(f.properties.id);
+      if (!html) return;
+      new window.maplibregl.Popup({ offset: 12, maxWidth: '260px' }).setLngLat(f.geometry.coordinates).setHTML(html).addTo(ml);
+    });
+    ml.on('mouseenter', 'tn-live', () => { ml.getCanvas().style.cursor = 'pointer'; });
+    ml.on('mouseleave', 'tn-live', () => { ml.getCanvas().style.cursor = ''; });
+  }
+  /** После каждого опроса Live (index.html liveProcessDevices): обновить участников, если 3D открыт. */
+  function setLive(features) {
+    const src = view.ml?.getSource?.('tn-live');
+    if (src) src.setData({ type: 'FeatureCollection', features: Array.isArray(features) ? features : liveFeatures() });
   }
 
   // ─── управление ───
@@ -384,7 +418,7 @@
     addMapButton();
   }
 
-  window.TrophyNav3D = { open, close, isOpen: () => !!view.ml, _view: view, collectOverlay };
+  window.TrophyNav3D = { open, close, isOpen: () => !!view.ml, _view: view, collectOverlay, setLive };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 })();

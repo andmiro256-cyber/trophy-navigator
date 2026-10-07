@@ -17012,6 +17012,8 @@ function liveProcessDevices(devices) {
 
   liveRenderSidebar(filteredDevices, now);
   renderLiveGroupsManager();
+  // 3D-вид открыт — те же участники и та же свежесть
+  if (window.TrophyNav3D?.isOpen?.()) window.TrophyNav3D.setLive(liveFeatures3d(filteredDevices, now));
 }
 
 function liveGetMarkerSize() {
@@ -17085,6 +17087,23 @@ function liveUpdateMarker(dev, isOffline) {
   }
   liveAppendTrail(dev);
 }
+
+/** Участники Live для 3D-вида: те же, что в списке (фильтр группы, есть позиция), класс свежести — liveAgeClass. */
+function liveFeatures3d(devices, now = Date.now()) {
+  return devices.filter(dev => liveHasPos(dev.lat) && liveHasPos(dev.lon)).map(dev => ({
+    type: 'Feature',
+    properties: { id: liveDeviceMarkerId(dev), name: String(dev.name || ''), age: liveAgeClass(dev, now) },
+    geometry: { type: 'Point', coordinates: [Number(dev.lon), Number(dev.lat)] },
+  }));
+}
+window.tndLive3d = {
+  // только когда Live показан на карте (есть маркеры) — как в списке
+  features: () => (Object.keys(liveState.markers || {}).length ? liveFeatures3d(liveGetFilteredDevices(liveState.devices || [])) : []),
+  popupHtml: id => {
+    const dev = (liveState.devices || []).find(d => liveDeviceMarkerId(d) === id);
+    return dev ? livePopupHtml(dev) : '';
+  },
+};
 
 function liveShowPopup(dev) {
   L.popup({ offset: [0, -15] })

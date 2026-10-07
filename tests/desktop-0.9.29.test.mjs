@@ -606,3 +606,61 @@ test('Live: время «21:40» сегодня / «06.10 21:40» раньше /
   assert.match(pop, /&lt;i&gt;80&lt;\/i&gt;%/);
   assert.doesNotMatch(pop, /<b>Вася|<i>80/);
 });
+
+// ─── Live в 3D-виде ───
+test('Live в 3D: после опроса при открытом 3D — setData с теми же участниками (фильтр группы) и классами свежести', () => {
+  const grab = (startMark, endMark) => { const a = html.indexOf(startMark); const b = html.indexOf(endMark, a); assert.ok(a > 0 && b > a, startMark); return html.slice(a, b); };
+  const now = Date.parse('2026-10-08T12:00:00Z');
+  const devs = [
+    { id: 'a', name: 'Онлайн', lat: 60, lon: 30, lastUpdate: new Date(now - 60000).toISOString(), group: 1 },
+    { id: 'b', name: 'Час', lat: 61, lon: 31, lastUpdate: new Date(now - 30 * 60000).toISOString(), group: 1 },
+    { id: 'c', name: 'Давно', lat: 62, lon: 32, lastUpdate: new Date(now - 5 * 3600000).toISOString(), group: 1 },
+    { id: 'd', name: 'Чужая группа', lat: 63, lon: 33, lastUpdate: new Date(now).toISOString(), group: 2 },
+    { id: 'e', name: 'Без позиции', lat: null, lon: null, group: 1 },
+  ];
+  const sets = [], sidebar = [];
+  const ctx = {
+    Date: { now: () => now, prototype: Date.prototype }, liveState: { devices: [], markers: {}, _firstFitDone: true },
+    liveHasPos: v => v != null && Number.isFinite(Number(v)), liveDeviceMarkerId: d => d.id,
+    liveGetFilteredDevices: list => list.filter(d => d.group === 1), liveUpdateMarker() {}, liveShowAll() {},
+    liveRenderSidebar: (list, n) => sidebar.push(list.map(d => d.id)), renderLiveGroupsManager() {},
+    map: { removeLayer() {} },
+    window: { TrophyNav3D: { isOpen: () => true, setLive: f => sets.push(f) } },
+  };
+  ctx.Date = Date;
+  vm.createContext(ctx);
+  const T = html.match(/const LIVE_OFFLINE_TIMEOUT = (\d+);/)[1];
+  vm.runInContext(`const LIVE_OFFLINE_TIMEOUT = ${T};
+    ${grab('// Свежесть последней точки', '/** Содержимое попапа участника Live')}
+    ${grab('/** Участники Live для 3D-вида', 'window.tndLive3d = {')}
+    ${grab('function liveProcessDevices(devices) {', '\nfunction ')}
+    Date.now = () => ${now};
+    liveProcessDevices(this.devs);`, Object.assign(ctx, { devs }));
+  assert.equal(sets.length, 1);
+  const got = sets[0].map(f => [f.properties.id, f.properties.name, f.properties.age, f.geometry.coordinates.join(',')]);
+  assert.deepEqual(JSON.parse(JSON.stringify(got)), [['a', 'Онлайн', 'online', '30,60'], ['b', 'Час', 'recent', '31,61'], ['c', 'Давно', 'old', '32,62']]);
+  assert.deepEqual(JSON.parse(JSON.stringify(sidebar[0])), ['a', 'b', 'c', 'e'], 'в 3D — те же участники, что в списке (с позицией)');
+  // 3D: точки Live не дублируются общим слоем точек; свой слой с цветом по свежести; клик — тот же попап
+  const d3 = read('../ui/trophynav-3d.js');
+  assert.match(d3, /if \(layer\._liveDev\) return;/);
+  assert.match(d3, /'circle-color': LIVE_COLORS/);
+  assert.match(d3, /\['match', \['get', 'age'\], 'online', '#2E7D32', 'recent', '#F9A825', 'old', '#C62828'/);
+  assert.match(d3, /ml\.on\('click', 'tn-live'[\s\S]*window\.tndLive3d\?\.popupHtml\?\.\(f\.properties\.id\)[\s\S]*new window\.maplibregl\.Popup/);
+  assert.match(html, /popupHtml: id => \{[\s\S]*livePopupHtml\(dev\)/);
+});
+
+test('Live в 3D: setLive обновляет источник tn-live, если 3D открыт; без 3D — ничего', () => {
+  const ctx = { console, localStorage: { getItem: () => null, setItem() {} }, CustomEvent: function () {},
+    document: { readyState: 'loading', addEventListener() {}, dispatchEvent() {} }, addEventListener() {} };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(read('../ui/trophynav-3d.js'), ctx);
+  const api = ctx.TrophyNav3D;
+  api.setLive([{ id: 1 }]);   // 3D закрыт — без ошибок
+  const data = [];
+  api._view.ml = { getSource: id => (id === 'tn-live' ? { setData: d => data.push(d) } : null) };
+  api.setLive([{ type: 'Feature', properties: { id: 'a', age: 'online' } }]);
+  assert.equal(data.length, 1);
+  assert.equal(data[0].features[0].properties.age, 'online');
+  api._view.ml = null;
+});
