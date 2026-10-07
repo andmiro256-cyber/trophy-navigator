@@ -2807,14 +2807,20 @@ function formatDm(value, pos, neg) {
 }
 
 function parseCoordinateInput(value, pos, neg) {
-  const text = String(value || '').trim().replace(',', '.');
+  const text = String(value ?? '').trim().replace(',', '.');
   const hemi = text.slice(-1).toUpperCase();
   const sign = hemi === neg ? -1 : 1;
   const body = hemi === pos || hemi === neg ? text.slice(0, -1).trim() : text;
+  // Пусто (или одна буква полушария) — не координата: Number('') дал бы 0 и точка улетела бы на экватор
+  if (body === '') return NaN;
   const dm = body.match(/^(\d+(?:\.\d+)?)\s*[°º]\s*(\d+(?:\.\d+)?)'?$/);
   if (dm) return sign * (parseFloat(dm[1]) + parseFloat(dm[2]) / 60);
   const decimal = Number(body);
-  return Number.isFinite(decimal) ? decimal : NaN;
+  return Number.isFinite(decimal) ? sign * decimal : NaN;
+}
+
+function isBlankCoordinateInput(value) {
+  return String(value ?? '').trim() === '';
 }
 
 function getWaypointPropCoordinates() {
@@ -3721,10 +3727,16 @@ function applyWaypointProps() {
   if (!activeWaypoint) { closeModal('modal-wpt-props'); return; }
   const oldName = activeWaypoint.wpData.name;
   const name = document.getElementById('prop-name').value.trim().slice(0, 16);
-  const lat = parseCoordinateInput(document.getElementById('prop-lat').value, 'N', 'S');
-  const lng = parseCoordinateInput(document.getElementById('prop-lng').value, 'E', 'W');
+  const latText = document.getElementById('prop-lat').value;
+  const lngText = document.getElementById('prop-lng').value;
+  if (isBlankCoordinateInput(latText) || isBlankCoordinateInput(lngText)) {
+    showToast('⚠ Укажите широту и долготу — точка не сохранена');
+    return;
+  }
+  const lat = parseCoordinateInput(latText, 'N', 'S');
+  const lng = parseCoordinateInput(lngText, 'E', 'W');
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
-    showToast('Некорректные координаты точки');
+    showToast('⚠ Некорректные координаты точки — точка не сохранена');
     return;
   }
   activeWaypoint.wpData.name = name || activeWaypoint.wpData.name;
