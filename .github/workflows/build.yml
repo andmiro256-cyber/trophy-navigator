@@ -100,8 +100,11 @@ jobs:
             echo "::error::linuxdeploy GTK AppRun hook not found"
             exit 1
           fi
+          # Старый linuxdeploy-plugin-gtk навязывал x11 — меняем на Wayland по умолчанию. Новый (с 10.2026) строку
+          # закомментировал и бэкенд не задаёт: GTK сам начинает с Wayland, менять нечего.
           sed -i 's/^export GDK_BACKEND=x11/export GDK_BACKEND="${GDK_BACKEND:-wayland}"/' "$GTK_HOOK"
-          if ! grep -Fq 'export GDK_BACKEND="${GDK_BACKEND:-wayland}"' "$GTK_HOOK"; then
+          if grep -q '^export GDK_BACKEND=' "$GTK_HOOK" \
+            && ! grep -Fq 'export GDK_BACKEND="${GDK_BACKEND:-wayland}"' "$GTK_HOOK"; then
             echo "::error::failed to make Wayland the default GDK backend"
             exit 1
           fi
@@ -122,8 +125,9 @@ jobs:
             echo "::error::AppImage still forces GDK_BACKEND=x11"
             exit 1
           fi
-          if ! grep -Fq 'export GDK_BACKEND="${GDK_BACKEND:-wayland}"' \
-            "$WORK_DIR"/squashfs-root/apprun-hooks/linuxdeploy-plugin-gtk.sh; then
+          REPACKED_HOOK="$WORK_DIR/squashfs-root/apprun-hooks/linuxdeploy-plugin-gtk.sh"
+          if grep -q '^export GDK_BACKEND=' "$REPACKED_HOOK" \
+            && ! grep -Fq 'export GDK_BACKEND="${GDK_BACKEND:-wayland}"' "$REPACKED_HOOK"; then
             echo "::error::repacked AppImage does not default to Wayland"
             exit 1
           fi
