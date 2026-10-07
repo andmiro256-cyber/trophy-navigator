@@ -804,13 +804,38 @@ pub fn find_remote_map(catalog: &serde_json::Value, id: &str) -> Option<RemoteMa
 }
 
 /// Нужно ли качать файл: нет его, другой размер или хеш не тот, что в каталоге.
-fn needs_download(target: &Path, remote: &RemoteFile) -> bool {
+///
+/// Файл нужного размера без `.sha256` (скопирован вручную, сайдкар не записался) сверяется по
+/// содержимому: совпал с каталогом — сайдкар записывается и качать не нужно, иначе — качать.
+/// `on_hash` вызывается перед пересчётом (большой файл считается секунды — показать «Проверка»).
+fn needs_download(target: &Path, remote: &RemoteFile, on_hash: &mut dyn FnMut()) -> bool {
     match file_sig(target) {
         None => true,
-        Some((len, _)) => {
-            len != remote.size
-                || read_sidecar_sha(target).as_deref() != Some(remote.sha256.as_str())
-        }
+        Some((len, _)) if len != remote.size => true,
+        Some(_) => match read_sidecar_sha(target) {
+            Some(sha) => sha != remote.sha256,
+            None => {
+                on_hash();
+                let same = sha256_of_file(target)
+                    .map(|(hasher, _)| hex(&hasher.finalize()) == remote.sha256)
+                    .unwrap_or(false);
+                if same {
+                    write_sidecar(target, &remote.sha256);
+                }
+                !same
+            }
+        },
+    }
+}
+
+/// `.sha256` рядом с файлом. Не записался — не ошибка загрузки: файл уже целый и проверенный,
+/// окно покажет «Проверить», и следующая проверка пересчитает хеш.
+fn write_sidecar(target: &Path, sha256: &str) {
+    if let Err(e) = write_atomic(&with_suffix(target, ".sha256"), sha256.as_bytes()) {
+        eprintln!(
+            "TrophyNav Maps: не записан {}.sha256: {e}",
+            target.display()
+        );
     }
 }
 
@@ -1016,7 +1041,7 @@ pub fn download_verified(
                 }
                 publish(&part, target).map_err(DlError::Other)?;
                 let _ = fs::remove_file(with_suffix(&part, ".meta"));
-                let _ = write_atomic(&with_suffix(target, ".sha256"), remote.sha256.as_bytes());
+                write_sidecar(target, &remote.sha256);
                 return Ok(());
             }
             Err(e @ (DlError::Cancelled | DlError::ServerChanged)) => return Err(e),
@@ -1067,13 +1092,14 @@ fn download_region<R: Runtime>(
         .ok_or_else(|| DlError::Other("Карты нет в каталоге".to_string()))?;
     let mut jobs: Vec<(RemoteFile, PathBuf)> = Vec::new();
     let target = map_file(dir, id);
-    if needs_download(&target, &remote.main) {
+    let mut on_hash = || emit("verify", 0, 0, None);
+    if needs_download(&target, &remote.main, &mut on_hash) {
         jobs.push((remote.main.clone(), target));
     }
     // Рельеф (отмывка, крутизна) идёт следом на том же прогрессе: без него у «Топо» нет теней
     for (kind, file) in &remote.terrain {
         let t = extra_file(dir, id, *kind);
-        if needs_download(&t, file) {
+        if needs_download(&t, file, &mut on_hash) {
             jobs.push((file.clone(), t));
         }
     }
@@ -1431,6 +1457,41 @@ mod tests {
         assert!(matches!(err, DlError::Other(ref m) if m.contains("Контрольная сумма")));
         assert_eq!(fs::read(&target).unwrap(), b"old working map");
         assert!(!with_suffix(&target, ".part").exists());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn file_without_sidecar_is_checked_by_content() {
+        let dir = temp_dir("sidecar");
+        let body = vec![5u8; 30_000];
+        let remote = RemoteFile {
+            file: "f.mbtiles".into(),
+            size: body.len() as u64,
+            sha256: sha_hex(&body),
+        };
+        let target = dir.join("f.mbtiles");
+        let mut hashed = 0;
+        assert!(needs_download(&target, &remote, &mut || hashed += 1));
+        assert_eq!(hashed, 0, "нет файла — хеш не считается");
+
+        // Скопирован вручную: тот же размер, сайдкара нет, содержимое то же — качать не нужно
+        fs::write(&target, &body).unwrap();
+        assert!(!needs_download(&target, &remote, &mut || hashed += 1));
+        assert_eq!(hashed, 1);
+        assert_eq!(
+            read_sidecar_sha(&target).as_deref(),
+            Some(remote.sha256.as_str())
+        );
+        // Сайдкар записан — второй раз не пересчитывается
+        assert!(!needs_download(&target, &remote, &mut || hashed += 1));
+        assert_eq!(hashed, 1);
+
+        // Тот же размер, другая сборка — качать, сайдкар не появляется
+        fs::remove_file(with_suffix(&target, ".sha256")).unwrap();
+        fs::write(&target, vec![6u8; body.len()]).unwrap();
+        assert!(needs_download(&target, &remote, &mut || hashed += 1));
+        assert_eq!(hashed, 2);
+        assert!(read_sidecar_sha(&target).is_none());
         let _ = fs::remove_dir_all(&dir);
     }
 

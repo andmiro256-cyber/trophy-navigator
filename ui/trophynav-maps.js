@@ -30,6 +30,7 @@
     catalogSavedAt: null,
     catalogError: '',
     downloads: {},      // id → {phase, done, total}
+    fetched: {},        // id → true: в текущей загрузке байты реально качались (иначе это была проверка)
     filter: '',
     activeLayer: null,  // TnVectorLayer на карте
   };
@@ -180,7 +181,8 @@
     initialize(id) {
       this.mapId = id;
       this._gl = null;
-      this._token = 0;
+      this._token = 0;     // жизненный цикл слоя: снят с карты — старые ответы не применяются
+      this._styleSeq = 0;  // номер последнего запроса стиля: применяется только самый свежий выбор
     },
     onAdd(map) {
       this._map = map;
@@ -207,8 +209,13 @@
     async _build(token) {
       try {
         await ensureLibs();
-        const style = await buildStyleFor(this.mapId);
-        if (token !== this._token || !this._map) return;
+        // Тему/рельеф/значки могли поменять, пока собирался стиль: собрать заново по последнему выбору
+        let style, seq;
+        do {
+          seq = this._styleSeq;
+          style = await buildStyleFor(this.mapId);
+          if (token !== this._token || !this._map) return;
+        } while (seq !== this._styleSeq);
         const gl = L.maplibreGL({ style, interactive: false, pane: 'tilePane', attributionControl: false });
         this._gl = gl;
         gl.addTo(this._map);
@@ -236,15 +243,19 @@
 
     /** Пересобрать стиль после смены темы, рельефа или значков — без пересоздания WebGL. */
     async reloadStyle() {
+      // Номер запроса — до любых await: поздний ответ прежнего выбора (тема «Топо» грузится дольше
+      // «Обычной») не должен лечь поверх последнего. Пока слой строится, _build сам увидит новый номер.
+      const seq = ++this._styleSeq;
       const mlMap = this.glMap();
       if (!mlMap) return;
       const token = this._token;
+      const current = () => token === this._token && seq === this._styleSeq;
       try {
         const style = await buildStyleFor(this.mapId);
-        if (token !== this._token) return;
+        if (!current()) return;
         mlMap.setStyle(style, { diff: false });
       } catch (e) {
-        toast(`⚠ Не удалось применить настройки карты: ${e?.message || e}`);
+        if (current()) toast(`⚠ Не удалось применить настройки карты: ${e?.message || e}`);
       }
     },
   });
@@ -482,14 +493,27 @@
     return overlay;
   }
 
-  function updateAvailable(local, remote) {
-    if (!local || !remote) return false;
-    return local.size !== remote.size || (!!local.sha256 && local.sha256 !== String(remote.sha256 || '').toLowerCase())
-      || (remote.terrain || []).some(t => {
-        const l = local[t.kind];
-        return !l || l.size !== t.size || (!!l.sha256 && l.sha256 !== String(t.sha256 || '').toLowerCase());
-      });
+  /**
+   * Сравнение файла на диске с записью каталога — так же, как needs_download в Rust:
+   * 'update' — другой размер или другой SHA-256 (или файла рельефа нет);
+   * 'verify' — размер тот же, но SHA неизвестен (нет .sha256: файл скопирован вручную или сайдкар
+   *            не записался) — совпадение сборки не подтверждено, загрузка сначала пересчитает хеш;
+   * 'none'   — совпадает.
+   */
+  function fileState(l, r) {
+    if (!l) return 'update';
+    const remoteSha = String(r.sha256 || '').toLowerCase();
+    if (l.size !== r.size) return 'update';
+    if (!remoteSha) return 'none';
+    if (!l.sha256) return 'verify';
+    return l.sha256 === remoteSha ? 'none' : 'update';
   }
+  function updateState(local, remote) {
+    if (!local || !remote) return 'none';
+    const states = [fileState(local, remote), ...(remote.terrain || []).map(t => fileState(local[t.kind], t))];
+    return states.includes('update') ? 'update' : states.includes('verify') ? 'verify' : 'none';
+  }
+  const updateAvailable = (local, remote) => updateState(local, remote) !== 'none';
 
   const progressPct = dl => (dl.total ? Math.min(100, Math.floor(dl.done / dl.total * 100)) : 0);
   const progressText = (dl, total) => (dl.phase === 'start' ? 'Подключение к серверу карт…'
@@ -518,10 +542,12 @@
       else parts.push(`<span class="ok">✓ скачана</span> · ${formatSize(local.size + (local.dem?.size || 0) + (local.slope?.size || 0))}`);
       if (local.dem || local.slope) parts.push('рельеф');
       if (remote?.built) parts.push(`сборка ${esc(remote.built)}`);
-      const upd = updateAvailable(local, remote);
-      if (upd) parts.push(`<span class="upd">есть новая версия</span>`);
+      const upd = updateState(local, remote);
+      if (upd === 'update') parts.push(`<span class="upd">есть новая версия</span>`);
+      if (upd === 'verify') parts.push(`<span class="upd">версия не подтверждена</span>`);
       actions = (local.error ? '' : `<button type="button" class="tnmaps-btn primary" data-tnmaps-act="show" data-id="${esc(id)}">Показать</button>`)
-        + (upd ? `<button type="button" class="tnmaps-btn" data-tnmaps-act="download" data-id="${esc(id)}">⟳ Обновить</button>` : '')
+        + (upd === 'update' ? `<button type="button" class="tnmaps-btn" data-tnmaps-act="download" data-id="${esc(id)}">⟳ Обновить</button>` : '')
+        + (upd === 'verify' ? `<button type="button" class="tnmaps-btn" data-tnmaps-act="download" data-id="${esc(id)}" title="Сверить файл с сервером; если он другой — скачать заново">⟳ Проверить</button>` : '')
         + `<button type="button" class="tnmaps-btn danger" data-tnmaps-act="delete" data-id="${esc(id)}" title="Удалить карту области">Удалить</button>`;
     } else {
       const part = state.partial[id];
@@ -595,11 +621,13 @@
       return;
     }
     state.downloads[id] = { phase: 'start', done: 0, total: 0 };
+    delete state.fetched[id];
     renderWindow();
     try {
       await invoke('tnmaps_download', { id });
+      const downloaded = !!state.fetched[id];
       await refreshLocal();
-      toast(`✓ ${regionName(id)}: карта скачана`);
+      toast(downloaded ? `✓ ${regionName(id)}: карта скачана` : `✓ ${regionName(id)}: карта проверена, совпадает с сервером`);
       // Обновлённая карта на экране — перечитать (тот же стиль, новые тайлы)
       if (activeId() === id) state.activeLayer.reloadStyle();
     } catch (e) {
@@ -658,6 +686,7 @@
     else {
       const prev = state.downloads[p.id];
       state.downloads[p.id] = { phase: p.phase, done: p.done, total: p.total, message: p.message };
+      if (p.phase === 'download') state.fetched[p.id] = true;
       // Прогресс — на месте, без перерисовки списка: иначе кнопка «Остановить» пересоздаётся
       // каждые 250 мс и клик по ней теряется
       const item = document.querySelector(`#modal-tnmaps [data-tnmaps-item="${CSS.escape(p.id)}"]`);
