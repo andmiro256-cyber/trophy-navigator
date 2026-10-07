@@ -1411,10 +1411,10 @@
      СТРОКА СОСТОЯНИЯ
 ════════════════════════════════════════════ -->
 <div id="statusbar">
-  <span title="Координаты курсора">📍 <span class="highlight" id="sb-coords">—</span></span>
+  <span title="Координаты курсора"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-pin"/></svg><span class="highlight" id="sb-coords">—</span></span>
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
-  <span title="Режим">⬡ <span class="highlight" id="sb-mode">Обзор</span></span>
-  <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
+  <span title="Режим"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-navigation"/></svg><span class="highlight" id="sb-mode">Обзор</span></span>
+  <span title="Активный слой"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-layers-o"/></svg><span class="highlight" id="sb-layer">OpenStreetMap</span></span>
   <span id="app-version-label" class="app-version">Trophy Navigator · v0.9.28</span>
 </div>
 
@@ -1425,10 +1425,10 @@
     <span class="ruler-panel-count" id="ruler-panel-count">0 точек</span>
   </div>
   <div class="ruler-panel-actions">
-    <button id="ruler-track-btn" class="btn-primary" onclick="saveRulerAsTrack()">〜 В трек</button>
-    <button class="btn-secondary" onclick="undoRulerPoint()" title="Отменить последнюю точку">↩</button>
+    <button id="ruler-track-btn" class="btn-primary" onclick="saveRulerAsTrack()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-track"/></svg>В трек</button>
+    <button class="btn-secondary" onclick="undoRulerPoint()" title="Отменить последнюю точку" aria-label="Отменить последнюю точку"><svg class="tn-ico tn-ico-s" aria-hidden="true"><use href="#tn-i-undo"/></svg></button>
     <button class="btn-secondary" onclick="clearRuler()" title="Очистить линейку">Очистить</button>
-    <button class="btn-secondary" onclick="setMode('hand')" title="Закрыть линейку">✕</button>
+    <button class="btn-secondary" onclick="setMode('hand')" title="Закрыть линейку" aria-label="Закрыть линейку"><svg class="tn-ico tn-ico-s" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
   </div>
 </div>
 
@@ -1436,39 +1436,39 @@
      КОНТЕКСТНОЕ МЕНЮ
 ════════════════════════════════════════════ -->
 <div id="ctx-menu">
-  <div class="ctx-item" onclick="ctxAction('props')">✏️ Свойства</div>
-  <div class="ctx-item" onclick="ctxAction('move')">✥ Двигать</div>
-  <div class="ctx-item" onclick="ctxAction('center')">🎯 Центрировать</div>
-  <div class="ctx-item" onclick="ctxAction('copy')">📋 Копировать координаты</div>
+  <div class="ctx-item" onclick="ctxAction('props')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-edit"/></svg>Свойства</div>
+  <div class="ctx-item" onclick="ctxAction('move')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-move"/></svg>Двигать</div>
+  <div class="ctx-item" onclick="ctxAction('center')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-my-location"/></svg>Центрировать</div>
+  <div class="ctx-item" onclick="ctxAction('copy')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-copy"/></svg>Копировать координаты</div>
   <div class="ctx-sep"></div>
-  <div class="ctx-item" onclick="ctxAction('map:yandex-map')">🗺 Яндекс Карты</div>
-  <div class="ctx-item" onclick="ctxAction('map:yandex-panorama')">👁 Яндекс Панорама</div>
-  <div class="ctx-item" onclick="ctxAction('map:google-map')">🌍 Google Maps</div>
-  <div class="ctx-item" onclick="ctxAction('map:google-streetview')">🚶 Street View</div>
+  <div class="ctx-item" onclick="ctxAction('map:yandex-map')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-map"/></svg>Яндекс Карты</div>
+  <div class="ctx-item" onclick="ctxAction('map:yandex-panorama')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-eye"/></svg>Яндекс Панорама</div>
+  <div class="ctx-item" onclick="ctxAction('map:google-map')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-globe"/></svg>Google Maps</div>
+  <div class="ctx-item" onclick="ctxAction('map:google-streetview')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-user"/></svg>Street View</div>
   <div class="ctx-sep"></div>
-  <div class="ctx-item danger" onclick="ctxAction('delete')">🗑 Удалить</div>
+  <div class="ctx-item danger" onclick="ctxAction('delete')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-delete"/></svg>Удалить</div>
 </div>
 <div id="ctx-menu-track">
-  <div class="ctx-item" onclick="ctxTrackAction('map:yandex-map')">🗺 Яндекс Карты здесь</div>
-  <div class="ctx-item" onclick="ctxTrackAction('map:yandex-panorama')">👁 Яндекс Панорама здесь</div>
-  <div class="ctx-item" onclick="ctxTrackAction('map:google-map')">🌍 Google Maps здесь</div>
-  <div class="ctx-item" onclick="ctxTrackAction('map:google-streetview')">🚶 Street View здесь</div>
+  <div class="ctx-item" onclick="ctxTrackAction('map:yandex-map')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-map"/></svg>Яндекс Карты здесь</div>
+  <div class="ctx-item" onclick="ctxTrackAction('map:yandex-panorama')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-eye"/></svg>Яндекс Панорама здесь</div>
+  <div class="ctx-item" onclick="ctxTrackAction('map:google-map')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-globe"/></svg>Google Maps здесь</div>
+  <div class="ctx-item" onclick="ctxTrackAction('map:google-streetview')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-user"/></svg>Street View здесь</div>
   <div class="ctx-sep"></div>
-  <div class="ctx-item danger" onclick="ctxTrackAction('delete-track')">🗑 Удалить весь трек</div>
-  <div class="ctx-item danger" onclick="ctxTrackAction('delete')">🗑 Удалить точку</div>
-  <div class="ctx-item" onclick="ctxTrackAction('split')">✂️ Разбить трек здесь</div>
+  <div class="ctx-item danger" onclick="ctxTrackAction('delete-track')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-delete"/></svg>Удалить весь трек</div>
+  <div class="ctx-item danger" onclick="ctxTrackAction('delete')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-delete"/></svg>Удалить точку</div>
+  <div class="ctx-item" onclick="ctxTrackAction('split')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-scissors"/></svg>Разбить трек здесь</div>
 </div>
 <div id="ctx-menu-map">
-  <div class="ctx-item" onclick="ctxMapAction('addwpt')">📍 Добавить точку здесь</div>
-  <div class="ctx-item" onclick="ctxMapAction('center')">🎯 Центрировать карту</div>
-  <div class="ctx-item" onclick="ctxMapAction('copycoords')">📋 Копировать координаты</div>
-  <div class="ctx-item" onclick="ctxMapAction('measure')">📐 Измерить расстояние отсюда</div>
+  <div class="ctx-item" onclick="ctxMapAction('addwpt')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-add-wp"/></svg>Добавить точку здесь</div>
+  <div class="ctx-item" onclick="ctxMapAction('center')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-my-location"/></svg>Центрировать карту</div>
+  <div class="ctx-item" onclick="ctxMapAction('copycoords')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-copy"/></svg>Копировать координаты</div>
+  <div class="ctx-item" onclick="ctxMapAction('measure')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-ruler"/></svg>Измерить расстояние отсюда</div>
   <div class="ctx-sep"></div>
-  <div class="ctx-item" onclick="ctxMapAction('map:yandex-map')">🗺 Яндекс Карты здесь</div>
-  <div class="ctx-item" onclick="ctxMapAction('map:yandex-panorama')">👁 Яндекс Панорама здесь</div>
-  <div class="ctx-item" onclick="ctxMapAction('map:google-map')">🌍 Google Maps здесь</div>
-  <div class="ctx-item" onclick="ctxMapAction('map:google-streetview')">🚶 Street View здесь</div>
-  <div class="ctx-item" id="ctx-undo-route" onclick="ctxMapAction('undoroute')" style="display:none">↩ Убрать последнюю точку маршрута</div>
+  <div class="ctx-item" onclick="ctxMapAction('map:yandex-map')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-map"/></svg>Яндекс Карты здесь</div>
+  <div class="ctx-item" onclick="ctxMapAction('map:yandex-panorama')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-eye"/></svg>Яндекс Панорама здесь</div>
+  <div class="ctx-item" onclick="ctxMapAction('map:google-map')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-globe"/></svg>Google Maps здесь</div>
+  <div class="ctx-item" onclick="ctxMapAction('map:google-streetview')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-user"/></svg>Street View здесь</div>
+  <div class="ctx-item" id="ctx-undo-route" onclick="ctxMapAction('undoroute')" style="display:none"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-undo"/></svg>Убрать последнюю точку маршрута</div>
   <div class="ctx-sep"></div>
   <div class="ctx-item" onclick="ctxMapAction('routefrom')">🟢 Маршрут отсюда</div>
   <div class="ctx-item" onclick="ctxMapAction('routeto')">🔴 Маршрут сюда</div>
@@ -1489,9 +1489,9 @@
         <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">Набор:</span>
         <select id="wpt-set-select" onchange="onSetSelectChange(this)" style="flex:1;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:3px 6px;font-size:12px"></select>
         <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="promptNewSet()" title="Новый набор">+</button>
-        <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="if(activeSetId)toggleSetVisibility(activeSetId)" title="Скрыть/показать">👁</button>
-        <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="if(activeSetId)renameWaypointSet(activeSetId)" title="Переименовать">✏</button>
-        <button class="btn-secondary btn-danger" style="padding:3px 8px;font-size:11px" onclick="if(activeSetId)deleteWaypointSet(activeSetId)" title="Удалить набор">✕</button>
+        <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="if(activeSetId)toggleSetVisibility(activeSetId)" title="Скрыть/показать" aria-label="Скрыть/показать"><svg class="tn-ico tn-ico-xs" aria-hidden="true"><use href="#tn-i-eye"/></svg></button>
+        <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="if(activeSetId)renameWaypointSet(activeSetId)" title="Переименовать" aria-label="Переименовать"><svg class="tn-ico tn-ico-xs" aria-hidden="true"><use href="#tn-i-edit"/></svg></button>
+        <button class="btn-secondary btn-danger" style="padding:3px 8px;font-size:11px" onclick="if(activeSetId)deleteWaypointSet(activeSetId)" title="Удалить набор" aria-label="Удалить набор"><svg class="tn-ico tn-ico-xs" aria-hidden="true"><use href="#tn-i-delete"/></svg></button>
       </div>
       <div style="margin-bottom:8px;display:flex;gap:6px;align-items:center">
         <input id="wpt-search" placeholder="🔍 Поиск по названию..." oninput="updateWptTable()" style="flex:1;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:4px 8px;font-size:12px">
@@ -1500,9 +1500,9 @@
         <label style="font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:4px;cursor:pointer">
           <input type="checkbox" id="wpt-select-all" class="wpt-cb" onchange="selectAllWaypoints(this)"> Все
         </label>
-        <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="toggleBulkEditPanel()">✏ Редактировать</button>
-        <button class="btn-secondary btn-danger" style="padding:3px 8px;font-size:11px" onclick="deleteSelectedWaypoints()">🗑 Удалить выбранные</button>
-        <button class="btn-secondary btn-danger" style="padding:3px 8px;font-size:11px" onclick="clearAllWaypoints()">🗑 Очистить</button>
+        <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="toggleBulkEditPanel()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-edit"/></svg>Редактировать</button>
+        <button class="btn-secondary btn-danger" style="padding:3px 8px;font-size:11px" onclick="deleteSelectedWaypoints()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-delete"/></svg>Удалить выбранные</button>
+        <button class="btn-secondary btn-danger" style="padding:3px 8px;font-size:11px" onclick="clearAllWaypoints()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-delete"/></svg>Очистить</button>
       </div>
       <!-- Панель массового редактирования -->
       <div id="bulk-edit-panel" style="display:none;background:var(--bg-interactive);border:1px solid var(--border-normal);border-radius:6px;padding:8px;margin-bottom:8px">
@@ -1541,11 +1541,11 @@
     </div>
     <div class="modal-footer">
       <span style="font-size:11px;color:var(--text-muted);align-self:center;margin-right:4px">Сохранить:</span>
-      <div class="save-btn" onclick="saveWaypointsWPT()">💾 .wpt</div>
-      <div class="save-btn" onclick="saveWaypointsGPX()">💾 .gpx</div>
+      <div class="save-btn" onclick="saveWaypointsWPT()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>.wpt</div>
+      <div class="save-btn" onclick="saveWaypointsGPX()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>.gpx</div>
       <span style="font-size:11px;color:var(--text-muted);align-self:center;margin-left:8px;margin-right:4px">Загрузить:</span>
-      <div class="open-btn" onclick="openFile('.wpt', loadWPT)">📥 .wpt</div>
-      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXFile)">📥 .gpx</div>
+      <div class="open-btn" onclick="openFile('.wpt', loadWPT)"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>.wpt</div>
+      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXFile)"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>.gpx</div>
     </div>
   </div>
 </div>
@@ -1680,11 +1680,11 @@
         </div>
         <div id="track-build-extra" style="font-size:11px;color:var(--success-text);margin-bottom:4px;display:none"></div>
         <div class="btn-row">
-          <button id="track-build-cancel-btn" class="btn-secondary btn-danger" onclick="cancelTrackDraw()" style="font-size:11px">✕ Отмена</button>
-          <button id="track-build-undo-btn" class="btn-secondary" onclick="undoLastAction()" style="font-size:11px">↩ Отменить</button>
-          <button id="track-build-delete-point-btn" class="btn-secondary btn-danger" onclick="deleteSelectedTrackPoint()" style="display:none;font-size:11px">🗑 Удалить точку</button>
-          <button id="track-build-split-point-btn" class="btn-secondary" onclick="splitSelectedTrackPoint()" style="display:none;font-size:11px">✂ Разбить здесь</button>
-          <button id="track-build-finish-btn" class="btn-primary" onclick="finishTrackDraw()" style="font-size:11px">✓ Готово</button>
+          <button id="track-build-cancel-btn" class="btn-secondary btn-danger" onclick="cancelTrackDraw()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-close"/></svg>Отмена</button>
+          <button id="track-build-undo-btn" class="btn-secondary" onclick="undoLastAction()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-undo"/></svg>Отменить</button>
+          <button id="track-build-delete-point-btn" class="btn-secondary btn-danger" onclick="deleteSelectedTrackPoint()" style="display:none;font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-delete"/></svg>Удалить точку</button>
+          <button id="track-build-split-point-btn" class="btn-secondary" onclick="splitSelectedTrackPoint()" style="display:none;font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-scissors"/></svg>Разбить здесь</button>
+          <button id="track-build-finish-btn" class="btn-primary" onclick="finishTrackDraw()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-check"/></svg>Готово</button>
         </div>
       </div>
       <!-- Список треков -->
@@ -1710,23 +1710,23 @@
           <span id="track-point-size-val" style="min-width:48px;text-align:right;font-size:12px">3px</span>
         </div>
         <div class="btn-row">
-          <button class="btn-secondary btn-danger" onclick="deleteSelectedTrack()" style="font-size:11px">🗑 Удалить трек</button>
-          <button class="btn-primary" onclick="applyTrackProps()" style="font-size:11px">✓ Сохранить свойства</button>
+          <button class="btn-secondary btn-danger" onclick="deleteSelectedTrack()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-delete"/></svg>Удалить трек</button>
+          <button class="btn-primary" onclick="applyTrackProps()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-check"/></svg>Сохранить свойства</button>
         </div>
         <div class="btn-row" style="margin-top:4px">
-          <button class="btn-secondary" onclick="centerSelectedTrack()" style="font-size:11px">🎯 Центрировать</button>
-          <button class="btn-secondary" onclick="startTrackEdit()" style="font-size:11px">✏ Редактировать</button>
-          <button class="btn-secondary" onclick="reverseSelectedTrack()" style="font-size:11px">⇄ Развернуть</button>
-          <button class="btn-secondary" onclick="continueSelectedTrack()" style="font-size:11px">➕ Продолжить</button>
+          <button class="btn-secondary" onclick="centerSelectedTrack()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-my-location"/></svg>Центрировать</button>
+          <button class="btn-secondary" onclick="startTrackEdit()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-edit"/></svg>Редактировать</button>
+          <button class="btn-secondary" onclick="reverseSelectedTrack()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-swap-horiz"/></svg>Развернуть</button>
+          <button class="btn-secondary" onclick="continueSelectedTrack()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-add"/></svg>Продолжить</button>
         </div>
       </div>
       <!-- Плеер треков -->
       <div id="track-player-panel" style="background:var(--bg-interactive);border:1px solid var(--border-normal);border-radius:6px;padding:8px;margin-top:8px">
-        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">▶ Плеер треков</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-play"/></svg>Плеер треков</div>
         <div class="btn-row" style="margin-bottom:6px">
-          <button class="btn-primary" onclick="playSelectedTracks()" style="font-size:11px">▶ Старт</button>
-          <button class="btn-secondary" onclick="pauseTrackPlayer()" style="font-size:11px">⏸ Пауза</button>
-          <button class="btn-secondary btn-danger" onclick="stopTrackPlayer()" style="font-size:11px">⏹ Стоп</button>
+          <button class="btn-primary" onclick="playSelectedTracks()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-play"/></svg>Старт</button>
+          <button class="btn-secondary" onclick="pauseTrackPlayer()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-pause"/></svg>Пауза</button>
+          <button class="btn-secondary btn-danger" onclick="stopTrackPlayer()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-stop"/></svg>Стоп</button>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:11px;color:var(--text-muted)">Скорость:</span>
@@ -1740,11 +1740,11 @@
     </div>
     <div class="modal-footer">
       <span style="font-size:11px;color:var(--text-muted);align-self:center;margin-right:4px">Сохранить:</span>
-      <div class="save-btn" onclick="saveTracksPLT()">💾 .plt</div>
-      <div class="save-btn" onclick="saveTracksGPX()">💾 .gpx</div>
+      <div class="save-btn" onclick="saveTracksPLT()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>.plt</div>
+      <div class="save-btn" onclick="saveTracksGPX()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>.gpx</div>
       <span style="font-size:11px;color:var(--text-muted);align-self:center;margin-left:8px;margin-right:4px">Загрузить:</span>
-      <div class="open-btn" onclick="openFile('.plt', loadPLT)">📥 .plt</div>
-      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXTracks)">📥 .gpx</div>
+      <div class="open-btn" onclick="openFile('.plt', loadPLT)"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>.plt</div>
+      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXTracks)"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>.gpx</div>
     </div>
   </div>
 </div>
@@ -1780,8 +1780,8 @@
         </div>
         <div id="route-build-kp-list" style="max-height:150px;overflow-y:auto;margin-bottom:6px"></div>
         <div class="btn-row">
-          <button class="btn-secondary btn-danger" onclick="cancelRouteDraw()" style="font-size:11px">✕ Отмена</button>
-          <button class="btn-primary" onclick="finishRouteDraw()" style="font-size:11px">✓ Сохранить</button>
+          <button class="btn-secondary btn-danger" onclick="cancelRouteDraw()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-close"/></svg>Отмена</button>
+          <button class="btn-primary" onclick="finishRouteDraw()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-check"/></svg>Сохранить</button>
         </div>
       </div>
       <!-- Список маршрутов -->
@@ -1810,11 +1810,11 @@
           </select>
         </div>
         <div class="btn-row">
-          <button class="btn-secondary" onclick="startRouteEdit()" style="font-size:11px">✎ КП</button>
-          <button class="btn-secondary" onclick="centerSelectedRoute()" style="font-size:11px">🎯 Центрировать</button>
-          <button class="btn-secondary" onclick="toggleSelectedRouteVisible()" style="font-size:11px">👁 Показать/скрыть</button>
-          <button class="btn-secondary btn-danger" onclick="deleteSelectedRoute()" style="font-size:11px">🗑 Удалить</button>
-          <button class="btn-primary" onclick="applyRouteProps()" style="font-size:11px">✓ Сохранить свойства</button>
+          <button class="btn-secondary" onclick="startRouteEdit()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-edit"/></svg>КП</button>
+          <button class="btn-secondary" onclick="centerSelectedRoute()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-my-location"/></svg>Центрировать</button>
+          <button class="btn-secondary" onclick="toggleSelectedRouteVisible()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-eye"/></svg>Показать/скрыть</button>
+          <button class="btn-secondary btn-danger" onclick="deleteSelectedRoute()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-delete"/></svg>Удалить</button>
+          <button class="btn-primary" onclick="applyRouteProps()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-check"/></svg>Сохранить свойства</button>
         </div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
           В раскрытом списке маршрута можно менять имя/радиус КП и удалять их. Кнопка «✎ КП» включает добавление новых точек на карте.
@@ -1824,11 +1824,11 @@
     </div>
     <div class="modal-footer">
       <span style="font-size:11px;color:var(--text-muted);align-self:center;margin-right:4px">Сохранить:</span>
-      <div class="save-btn" onclick="saveRoutesRTE()">💾 .rte</div>
-      <div class="save-btn" onclick="saveRoutesGPX()">💾 .gpx</div>
+      <div class="save-btn" onclick="saveRoutesRTE()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>.rte</div>
+      <div class="save-btn" onclick="saveRoutesGPX()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>.gpx</div>
       <span style="font-size:11px;color:var(--text-muted);align-self:center;margin-left:8px;margin-right:4px">Загрузить:</span>
-      <div class="open-btn" onclick="openFile('.rte,.RTE', loadRTE)">📥 .rte</div>
-      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXRoutes)">📥 .gpx</div>
+      <div class="open-btn" onclick="openFile('.rte,.RTE', loadRTE)"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>.rte</div>
+      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXRoutes)"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>.gpx</div>
     </div>
   </div>
 </div>
@@ -1846,22 +1846,22 @@
       <div class="save-section">
         <h4>Сохранить</h4>
         <div class="save-btns">
-          <div class="save-btn-grid" onclick="saveWaypointsWPT()">💾 Точки (.wpt)</div>
-          <div class="save-btn-grid" onclick="saveWaypointsGPX()">💾 Точки (.gpx)</div>
-          <div class="save-btn-grid" onclick="saveTracksPLT()">💾 Треки (.plt)</div>
-          <div class="save-btn-grid" onclick="saveTracksGPX()">💾 Треки (.gpx)</div>
-          <div class="save-btn-grid" onclick="saveRoutesRTE()">💾 Маршруты (.rte)</div>
-          <div class="save-btn-grid" onclick="saveRoutesGPX()">💾 Маршруты (.gpx)</div>
-          <div class="save-btn-grid" style="grid-column:span 2;background:var(--bg-selected-soft);border-color:var(--border-bright);color:var(--text-link)" onclick="showSaveGPXDialog()">💾 Сохранить в .gpx</div>
+          <div class="save-btn-grid" onclick="saveWaypointsWPT()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>Точки (.wpt)</div>
+          <div class="save-btn-grid" onclick="saveWaypointsGPX()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>Точки (.gpx)</div>
+          <div class="save-btn-grid" onclick="saveTracksPLT()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>Треки (.plt)</div>
+          <div class="save-btn-grid" onclick="saveTracksGPX()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>Треки (.gpx)</div>
+          <div class="save-btn-grid" onclick="saveRoutesRTE()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>Маршруты (.rte)</div>
+          <div class="save-btn-grid" onclick="saveRoutesGPX()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>Маршруты (.gpx)</div>
+          <div class="save-btn-grid" style="grid-column:span 2;background:var(--bg-selected-soft);border-color:var(--border-bright);color:var(--text-link)" onclick="showSaveGPXDialog()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>Сохранить в .gpx</div>
         </div>
       </div>
       <div class="save-section" style="margin-top:12px">
         <h4>Загрузить</h4>
         <div class="save-btns">
-          <div class="save-btn-grid" onclick="openFile('.wpt', loadWPT)">📥 Точки (.wpt)</div>
-          <div class="save-btn-grid" onclick="openFile('.plt', loadPLT)">📥 Треки (.plt)</div>
-          <div class="save-btn-grid" onclick="openFile('.rte,.RTE', loadRTE)">📥 Маршруты (.rte)</div>
-          <div class="save-btn-grid" onclick="openFile('.gpx,.GPX', loadGPXFile)">📥 GPX файл</div>
+          <div class="save-btn-grid" onclick="openFile('.wpt', loadWPT)"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>Точки (.wpt)</div>
+          <div class="save-btn-grid" onclick="openFile('.plt', loadPLT)"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>Треки (.plt)</div>
+          <div class="save-btn-grid" onclick="openFile('.rte,.RTE', loadRTE)"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>Маршруты (.rte)</div>
+          <div class="save-btn-grid" onclick="openFile('.gpx,.GPX', loadGPXFile)"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>GPX файл</div>
         </div>
       </div>
       <div class="save-section" style="margin-top:12px">
@@ -2056,15 +2056,15 @@
 
         <!-- Кнопки -->
         <div style="display:flex;gap:8px">
-          <button class="btn-secondary" style="flex:1;font-size:11px;color:var(--accent-red)" onclick="clearTileCache()">🗑 Очистить весь кэш</button>
+          <button class="btn-secondary" style="flex:1;font-size:11px;color:var(--accent-red)" onclick="clearTileCache()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-delete"/></svg>Очистить весь кэш</button>
         </div>
       </div>
 
       <div class="setting-card settings-workdir">
-        <div class="setting-card-title">📁 Рабочая папка</div>
+        <div class="setting-card-title"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-folder"/></svg>Рабочая папка</div>
         <div class="setting-card-value" id="setting-workdir-path">—</div>
         <div class="setting-card-note">Подпапки: waypoints, tracks, routes, maps, gpx, backup</div>
-        <button class="btn-secondary btn-sm" style="margin-top:8px" onclick="openWorkDir()">📂 Открыть в проводнике</button>
+        <button class="btn-secondary btn-sm" style="margin-top:8px" onclick="openWorkDir()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>Открыть в проводнике</button>
       </div>
       <div class="btn-row">
         <button class="btn-secondary" onclick="closeModal('modal-settings')">Закрыть</button>
@@ -2270,9 +2270,9 @@
       <div id="clear-data-list" class="clear-data-list"></div>
       <div class="dialog-note">Удаление нельзя отменить</div>
       <div style="display:flex;gap:8px">
-        <button class="btn-secondary" style="flex:1" onclick="closeModal('modal-clear-confirm');hideAllWorkObjects()">👁 Скрыть всё</button>
+        <button class="btn-secondary" style="flex:1" onclick="closeModal('modal-clear-confirm');hideAllWorkObjects()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-eye-off"/></svg>Скрыть всё</button>
         <button class="btn-secondary" style="flex:1" onclick="closeModal('modal-clear-confirm')">Отмена</button>
-        <button id="clear-delete-btn" class="btn-primary btn-danger" style="flex:1" onclick="clearSelectedDataConfirmed()">🗑 Удалить</button>
+        <button id="clear-delete-btn" class="btn-primary btn-danger" style="flex:1" onclick="clearSelectedDataConfirmed()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-delete"/></svg>Удалить</button>
       </div>
     </div>
   </div>
@@ -2342,7 +2342,7 @@
       <input id="sync-api-key" type="hidden" value="">
 
       <!-- Отправить в облако -->
-      <div class="sync-section-title">⬆ Отправить в облако</div>
+      <div class="sync-section-title"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-cloud-upload"/></svg>Отправить в облако</div>
       <div style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text-primary);margin-bottom:8px">
         <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
           <input type="checkbox" id="sync-cb-waypoints" checked> 📍 Точки (<span id="sync-wpt-count">0</span>)
@@ -2360,7 +2360,7 @@
       <button class="btn-primary" style="width:100%" onclick="syncPush()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-cloud-upload"/></svg>Отправить в облако</button>
 
       <!-- Загрузить из облака -->
-      <div class="sync-section-title" style="margin-top:12px">⬇ Загрузить из облака</div>
+      <div class="sync-section-title" style="margin-top:12px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-cloud-download"/></svg>Загрузить из облака</div>
       <div id="sync-server-info" style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Нажмите «Проверить» для просмотра данных</div>
       <button class="btn-secondary" style="width:100%" onclick="syncPull()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-cloud-download"/></svg>Загрузить из облака</button>
 
@@ -2478,7 +2478,7 @@
 
       <!-- Скачанные офлайн-карты -->
       <div id="offline-layers-section" style="display:none">
-        <div class="layer-section-title" style="margin-top:8px">📦 Скачанные карты</div>
+        <div class="layer-section-title" style="margin-top:8px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-download"/></svg>Скачанные карты</div>
         <div id="offline-layers-list"></div>
       </div>
     </div>
@@ -3709,8 +3709,8 @@ function updateWptTable() {
       <td class="wpt-coords">${formatDm(d.lat, 'N', 'S')} ${formatDm(d.lng, 'E', 'W')}</td>
       <td onclick="event.stopPropagation()">
         <div class="wpt-map-actions">
-          <button type="button" class="wpt-map-btn" title="Яндекс Карты" onclick="openWaypointMapByIndex(${idx}, 'yandex-map')">🗺</button>
-          <button type="button" class="wpt-map-btn" title="Яндекс Панорама" onclick="openWaypointMapByIndex(${idx}, 'yandex-panorama')">👁</button>
+          <button type="button" class="wpt-map-btn" title="Яндекс Карты" aria-label="Яндекс Карты" onclick="openWaypointMapByIndex(${idx}, 'yandex-map')">${tnIcon('map', 'tn-ico-s')}</button>
+          <button type="button" class="wpt-map-btn" title="Яндекс Панорама" aria-label="Яндекс Панорама" onclick="openWaypointMapByIndex(${idx}, 'yandex-panorama')">${tnIcon('eye', 'tn-ico-s')}</button>
         </div>
       </td>
       <td class="wpt-radius">${escapeHtml(d.radius)}м</td>
@@ -6861,7 +6861,7 @@ function setTrackPanelState(mode, track) {
     hint.textContent = 'Тяните точки мышью · клик по линии — вставить · ПКМ по точке — удалить или разбить';
     cancelBtn.setAttribute('onclick', 'cancelTrackEdit()');
     finishBtn.setAttribute('onclick', 'finishTrackEdit()');
-    finishBtn.textContent = '✓ Сохранить';
+    finishBtn.innerHTML = tnIcon('check', 'tn-ico-t') + 'Сохранить';
   } else {
     panel.style.background = 'var(--bg-success)';
     panel.style.borderColor = 'var(--border-success)';
@@ -6872,7 +6872,7 @@ function setTrackPanelState(mode, track) {
       : 'Кликайте по карте для добавления новых точек в конец трека';
     cancelBtn.setAttribute('onclick', 'cancelTrackDraw()');
     finishBtn.setAttribute('onclick', 'finishTrackDraw()');
-    finishBtn.textContent = '✓ Готово';
+    finishBtn.innerHTML = tnIcon('check', 'tn-ico-t') + 'Готово';
   }
 }
 
@@ -7566,12 +7566,12 @@ function updateTrackBuildPanel(t) {
   if (deleteBtn) {
     const selectedIdx = currentTrackEdit?.track?.id === t.id ? currentTrackEdit?.selectedPointIdx : null;
     deleteBtn.style.display = isTrackEditActive(t) ? '' : 'none';
-    deleteBtn.textContent = selectedIdx != null ? `🗑 Удалить точку #${selectedIdx + 1}` : '🗑 Удалить точку';
+    deleteBtn.innerHTML = tnIcon('delete', 'tn-ico-t') + (selectedIdx != null ? `Удалить точку #${selectedIdx + 1}` : 'Удалить точку');
     if (splitBtn) {
       splitBtn.style.display = isTrackEditActive(t) ? '' : 'none';
       const canSplitSelected = selectedIdx != null && selectedIdx > 0 && selectedIdx < t.points.length - 1;
       splitBtn.disabled = !canSplitSelected;
-      splitBtn.textContent = selectedIdx != null ? `✂ Разбить по #${selectedIdx + 1}` : '✂ Разбить здесь';
+      splitBtn.innerHTML = tnIcon('scissors', 'tn-ico-t') + (selectedIdx != null ? `Разбить по #${selectedIdx + 1}` : 'Разбить здесь');
     }
   }
   // Скорость и длительность — только если есть временны́е метки в pointsData
@@ -8455,9 +8455,9 @@ function updateRouteBuildList() {
     return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 4px;font-size:11px;color:var(--text-primary);border-bottom:1px solid var(--row-border)">'
       + '<span style="min-width:0;overflow:hidden;text-overflow:ellipsis">' + (i+1) + '. <b>' + escapeHtml(lbl) + '</b> <span style="color:var(--text-muted)">' + coord + radiusBadge + '</span></span>'
       + '<span class="route-kp-actions">'
-      + '<button type="button" class="route-kp-btn" onclick="moveCurrentRouteBuildPoint(' + i + ',-1)" title="Выше"' + (i === 0 ? ' disabled' : '') + '>↑</button>'
-      + '<button type="button" class="route-kp-btn" onclick="moveCurrentRouteBuildPoint(' + i + ',1)" title="Ниже"' + (i === currentRouteDraw.points.length - 1 ? ' disabled' : '') + '>↓</button>'
-      + '<button type="button" class="route-kp-btn danger" onclick="removeRouteBuildPoint(' + i + ')" title="Удалить">✕</button>'
+      + '<button type="button" class="route-kp-btn" onclick="moveCurrentRouteBuildPoint(' + i + ',-1)" title="Выше" aria-label="Выше"' + (i === 0 ? ' disabled' : '') + '>' + tnIcon('chevron-up', 'tn-ico-xs') + '</button>'
+      + '<button type="button" class="route-kp-btn" onclick="moveCurrentRouteBuildPoint(' + i + ',1)" title="Ниже" aria-label="Ниже"' + (i === currentRouteDraw.points.length - 1 ? ' disabled' : '') + '>' + tnIcon('chevron-down', 'tn-ico-xs') + '</button>'
+      + '<button type="button" class="route-kp-btn danger" onclick="removeRouteBuildPoint(' + i + ')" title="Удалить" aria-label="Удалить">' + tnIcon('close', 'tn-ico-xs') + '</button>'
       + '</span>'
       + '</div>';
   }).join('');
@@ -8809,9 +8809,9 @@ function updateRouteList() {
       const prev = i > 0 ? r.points[i-1] : null;
       const dist = prev ? (prev.distanceTo(p)/1000).toFixed(1) + ' км' : '—';
       const bear = prev ? calcBearing(prev.lat, prev.lng, p.lat, p.lng).toFixed(0) + '°' : '';
-      const upBtn = `<button type="button" class="route-kp-btn" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},-1)" title="Выше"${i === 0 ? ' disabled' : ''}>↑</button>`;
-      const downBtn = `<button type="button" class="route-kp-btn" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},1)" title="Ниже"${i === r.points.length - 1 ? ' disabled' : ''}>↓</button>`;
-      const delBtn = `<button type="button" class="route-kp-btn danger" onclick="event.stopPropagation();deleteRoutePoint(${r.id},${i})" title="Удалить">✕</button>`;
+      const upBtn = `<button type="button" class="route-kp-btn" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},-1)" title="Выше" aria-label="Выше"${i === 0 ? ' disabled' : ''}>${tnIcon('chevron-up', 'tn-ico-xs')}</button>`;
+      const downBtn = `<button type="button" class="route-kp-btn" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},1)" title="Ниже" aria-label="Ниже"${i === r.points.length - 1 ? ' disabled' : ''}>${tnIcon('chevron-down', 'tn-ico-xs')}</button>`;
+      const delBtn = `<button type="button" class="route-kp-btn danger" onclick="event.stopPropagation();deleteRoutePoint(${r.id},${i})" title="Удалить" aria-label="Удалить">${tnIcon('close', 'tn-ico-xs')}</button>`;
       const radius = Number(r.pointRadii?.[i]) || 0;
       return `<div class="route-kp" draggable="true" data-route-id="${escapeHtml(r.id)}" data-kp-idx="${i}"
         ondragstart="onRouteKpDragStart(event)" ondragover="onRouteKpDragOver(event)" ondrop="onRouteKpDrop(event)"
@@ -11501,7 +11501,7 @@ function updateClearDeleteButton() {
   if (!btn) return;
   const count = document.querySelectorAll('.clear-data-cb:checked').length;
   btn.disabled = count === 0;
-  btn.textContent = count > 0 ? `🗑 Удалить (${count})` : '🗑 Удалить';
+  btn.innerHTML = tnIcon('delete', 'tn-ico-t') + (count > 0 ? `Удалить (${count})` : 'Удалить');
 }
 
 function showClearConfirm() {
@@ -14571,7 +14571,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${escapeHtml(missedCPs
       <div id="save-gpx-details"></div>
       <div style="display:flex;gap:8px;margin-top:12px">
         <button class="btn-secondary" style="flex:1" onclick="closeModal('modal-save-gpx')">Отмена</button>
-        <button class="btn-primary" style="flex:1" onclick="saveSelectedGPX()">💾 Сохранить</button>
+        <button class="btn-primary" style="flex:1" onclick="saveSelectedGPX()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>Сохранить</button>
       </div>
     </div>
   </div>
@@ -14590,18 +14590,18 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${escapeHtml(missedCPs
       <div class="route-endpoint">
         <div class="ep-marker ep-a">A</div>
         <input type="text" id="route-from-input" placeholder="Откуда (адрес или клик)">
-        <button type="button" class="ep-pick" id="route-pick-a" onclick="startRoutePick('A')" title="Выбрать старт на карте" aria-label="Выбрать старт на карте">📍</button>
+        <button type="button" class="ep-pick" id="route-pick-a" onclick="startRoutePick('A')" title="Выбрать старт на карте" aria-label="Выбрать старт на карте"><svg class="tn-ico tn-ico-s" aria-hidden="true"><use href="#tn-i-pin"/></svg></button>
       </div>
       <div style="display:flex;justify-content:center">
-        <button type="button" class="routing-swap" onclick="swapRouteEndpoints()" title="Поменять старт и финиш местами" aria-label="Поменять старт и финиш местами">⇅</button>
+        <button type="button" class="routing-swap" onclick="swapRouteEndpoints()" title="Поменять старт и финиш местами" aria-label="Поменять старт и финиш местами"><svg class="tn-ico tn-ico-s" aria-hidden="true"><use href="#tn-i-swap-vert"/></svg></button>
       </div>
       <div class="route-endpoint">
         <div class="ep-marker ep-b">B</div>
         <input type="text" id="route-to-input" placeholder="Куда (адрес или клик)">
-        <button type="button" class="ep-pick" id="route-pick-b" onclick="startRoutePick('B')" title="Выбрать финиш на карте" aria-label="Выбрать финиш на карте">📍</button>
+        <button type="button" class="ep-pick" id="route-pick-b" onclick="startRoutePick('B')" title="Выбрать финиш на карте" aria-label="Выбрать финиш на карте"><svg class="tn-ico tn-ico-s" aria-hidden="true"><use href="#tn-i-pin"/></svg></button>
       </div>
       <div class="btn-row" style="margin-top:8px">
-        <button class="btn-primary" onclick="calculateOsrmRoute()">🛣 Построить</button>
+        <button class="btn-primary" onclick="calculateOsrmRoute()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-road"/></svg>Построить</button>
         <button class="btn-secondary" onclick="clearOsrmRoute()">Очистить</button>
       </div>
       <div class="routing-draft-status" id="route-draft-status" role="status" aria-live="polite" hidden>
@@ -15149,10 +15149,10 @@ function renderOsrmRouteList() {
         <div style="font-size:11px;color:${route.visible ? 'var(--text-secondary)' : 'var(--error-text)'}">${route.visible ? 'видим' : 'скрыт'}</div>
       </div>
       <div class="routing-route-actions">
-        <button class="routing-route-btn" onclick="toggleOsrmRouteVisible(${route.id})">${route.visible ? '👁 Скрыть' : '◌ Показать'}</button>
-        <button class="routing-route-btn" onclick="centerOsrmRoute(${route.id})">🎯 Центр</button>
-        <button class="routing-route-btn" onclick="saveOsrmRouteAsTrack(${route.id})">💾 В треки</button>
-        <button class="routing-route-btn danger" onclick="deleteOsrmRoute(${route.id})">✕ Удалить</button>
+        <button class="routing-route-btn" onclick="toggleOsrmRouteVisible(${route.id})">${route.visible ? tnIcon('eye-off', 'tn-ico-t') + 'Скрыть' : tnIcon('eye', 'tn-ico-t') + 'Показать'}</button>
+        <button class="routing-route-btn" onclick="centerOsrmRoute(${route.id})">${tnIcon('my-location', 'tn-ico-t')}Центр</button>
+        <button class="routing-route-btn" onclick="saveOsrmRouteAsTrack(${route.id})">${tnIcon('save', 'tn-ico-t')}В треки</button>
+        <button class="routing-route-btn danger" onclick="deleteOsrmRoute(${route.id})">${tnIcon('delete', 'tn-ico-t')}Удалить</button>
       </div>
     </div>`;
   }).join('');
@@ -15734,7 +15734,7 @@ function renderLiveGroupsManager() {
         </div>
         <button class="btn-secondary" style="padding:4px 8px;font-size:11px" data-group-id="${escapeHtml(group.id)}" onclick="liveHandleGroupChange(this.dataset.groupId)">Показать</button>
         <button class="btn-secondary" style="padding:4px 8px;font-size:11px" data-group-id="${escapeHtml(group.id)}" onclick="liveStartGroupEdit(this.dataset.groupId)">Изм.</button>
-        <button class="btn-secondary btn-danger" style="padding:4px 8px;font-size:11px" data-group-id="${escapeHtml(group.id)}" onclick="liveDeleteGroup(this.dataset.groupId)">✕</button>
+        <button class="btn-secondary btn-danger" style="padding:4px 8px;font-size:11px" data-group-id="${escapeHtml(group.id)}" onclick="liveDeleteGroup(this.dataset.groupId)" title="Удалить группу" aria-label="Удалить группу">${tnIcon('delete', 'tn-ico-xs')}</button>
       </div>
     `).join('');
 
@@ -16903,7 +16903,7 @@ function liveShowPopup(dev) {
         ${status.emoji} ${liveEsc(status.label)}<br>
         🏎 ${speed} · 📡 ${alt}<br>
         🔋 ${battery} · 🕐 ${time}<br>
-        ${deviceId ? `<div style="margin-top:6px"><button data-device-id="${escapeHtml(deviceId)}" onclick="liveOpenDeviceThread(this.dataset.deviceId)" class="btn-primary btn-sm">💬 Написать</button></div>` : ''}
+        ${deviceId ? `<div style="margin-top:6px"><button data-device-id="${escapeHtml(deviceId)}" onclick="liveOpenDeviceThread(this.dataset.deviceId)" class="btn-primary btn-sm"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-chat"/></svg>Написать</button></div>` : ''}
         <small style="color:var(--text-muted)">${safeNum(dev.lat).toFixed(5)}, ${safeNum(dev.lon).toFixed(5)}</small>
       </div>`)
     .openOn(map);
@@ -16936,7 +16936,7 @@ function liveRenderSidebar(devices, now) {
         <div class="live-dev-name ${isPro ? 'pro' : ''}">${isPro ? '⭐ ' : ''}${liveEsc(dev.name || 'Unknown')}</div>
         <div class="live-dev-meta">${[`${status.emoji} ${liveEsc(status.label)}`, time, battery].filter(Boolean).join(' · ')}</div>
       </div>
-      ${uniqueId ? `<button data-device-id="${escapeHtml(uniqueId)}" onclick="event.stopPropagation();liveOpenDeviceThread(this.dataset.deviceId)" title="Сообщение" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:14px">💬</button>` : ''}
+      ${uniqueId ? `<button data-device-id="${escapeHtml(uniqueId)}" onclick="event.stopPropagation();liveOpenDeviceThread(this.dataset.deviceId)" title="Сообщение" aria-label="Сообщение" class="tn-icon-btn tn-icon-btn-s">${tnIcon('chat')}</button>` : ''}
       ${speed ? `<div class="live-dev-speed">${speed}</div>` : ''}
     </div>`;
   }).join('');
@@ -17045,7 +17045,7 @@ liveLoadCache();
       </div>
       <div class="btn-row">
         <button class="btn-secondary" onclick="liveFetchMessages(false)">Обновить</button>
-        <button class="btn-secondary" onclick="liveOpenShareModal()">📄 GPX</button>
+        <button class="btn-secondary" onclick="liveOpenShareModal()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-file"/></svg>GPX</button>
         <div style="flex:1"></div>
         <button class="btn-primary" onclick="liveSendMessage()">Отправить</button>
       </div>
@@ -17163,9 +17163,9 @@ renderLiveGroupsManager();
 ════════════════════════════════════════════ -->
 <div id="polygon-toolbar">
   <span class="pt-count" id="pt-count">0 / 8 точек</span>
-  <button onclick="undoPolygonPoint()" title="Отменить последнюю точку">↩ Отменить</button>
-  <button class="pt-done" id="btn-polygon-done" disabled onclick="finishPolygon()">✓ Готово</button>
-  <button class="pt-cancel" onclick="cancelAreaSelect()">✕ Отмена</button>
+  <button onclick="undoPolygonPoint()" title="Отменить последнюю точку"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-undo"/></svg>Отменить</button>
+  <button class="pt-done" id="btn-polygon-done" disabled onclick="finishPolygon()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-check"/></svg>Готово</button>
+  <button class="pt-cancel" onclick="cancelAreaSelect()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-close"/></svg>Отмена</button>
 </div>
 
 </body>

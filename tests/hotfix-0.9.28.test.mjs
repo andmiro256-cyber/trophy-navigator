@@ -32,6 +32,7 @@ function makeDom(body = '') {
     { url: 'https://review.invalid/', runScripts: 'dangerously', pretendToBeVisual: true });
   const w = dom.window;
   w.eval(read('../ui/leaflet.js'));
+  w.eval(read('../ui/tn-icons.js')); // tnIcon: кнопки-значки в разметке строк
   w.eval('var map = L.map("map", { attributionControl: false }).setView([60, 30], 10);');
   w.eval(HELPERS);
   w.toasts = [];
@@ -204,7 +205,6 @@ test('#3 «Мои карты»: Вкл/Выкл и 🗑 передают обр�
   const { dom, w } = makeDom('<div id="offline-maps-list"></div><div id="offline-maps-empty"></div>');
   try {
     w.eval(sourceBetween('async function scanOfflineMaps()', 'function updateOfflineMapCardState('));
-    w.eval(read('../ui/tn-icons.js')); // tnIcon для кнопок карточки
     w.eval('var offlineMaps = {}; var appDataPath = "/home/u/Документы/Trophy Navigator";');
     const weirdName = `My "best" map 'Карелия' <b>&amp;.mbtiles`;
     const externalPath = `/media/u/Flash Drive/he said "hi" & left/Ladoga 'z13'.mbtiles`;
