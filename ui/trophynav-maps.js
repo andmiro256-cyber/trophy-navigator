@@ -33,6 +33,8 @@
     fetched: {},        // id → true: в текущей загрузке байты реально качались (иначе это была проверка)
     filter: '',
     activeLayer: null,  // TnVectorLayer на карте
+    theme: {},          // id карты → выбранная тема (в памяти; localStorage — только между запусками)
+    applyingTheme: null, // id карты, у которой тема ещё перерисовывается («Применяю тему…»)
   };
 
   // ─── мелочи ───
@@ -87,7 +89,16 @@
   }
 
   // ─── настройки (как на Android: тема у каждой карты своя) ───
-  const themeFor = id => Core.normalizeTheme(lsGet(`${LS_THEME}:${id}`) || lsGet(LS_THEME) || Core.DEFAULT_THEME);
+  /**
+   * Тема карты: сначала выбор в этой сессии (память), localStorage — только то, что сохранено с прошлого
+   * запуска. Перечитывать localStorage после await нельзя: потерянная или чужая запись вернула бы старую тему.
+   */
+  function themeFor(id) {
+    if (state.theme[id]) return state.theme[id];
+    const saved = Core.normalizeTheme(lsGet(`${LS_THEME}:${id}`) || lsGet(LS_THEME) || Core.DEFAULT_THEME);
+    state.theme[id] = saved;
+    return saved;
+  }
   function readRelief() {
     try { return Core.normalizeRelief(JSON.parse(lsGet(LS_RELIEF) || '{}')); } catch { return Core.normalizeRelief({}); }
   }
@@ -164,18 +175,24 @@
     return state.local;
   }
 
-  async function buildStyleFor(id) {
+  /**
+   * Стиль карты. Тему, рельеф и значки фиксируем до первого await: применяется ровно тот выбор,
+   * ради которого стиль собирают (opts.theme — явно от вызывающего).
+   */
+  async function buildStyleFor(id, opts = {}) {
+    const themeId = Core.normalizeTheme(opts.theme || themeFor(id));
+    const relief = readRelief();
+    const poi = readPoi();
     let map = localEntry(id);
     if (!map) { await refreshLocal(); map = localEntry(id); }
     if (!map) throw new Error('карта области не скачана');
     if (map.error) throw new Error(map.error);
     const template = await fetchAsset('style-liberty.json');
     if (!template) throw new Error('нет файла стиля');
-    const themeId = themeFor(id);
     // «Обычная» — базовый стиль без файла темы
     const themeText = themeId === 'normal' ? null : await fetchAsset(`theme-${themeId}.json`);
     const theme = themeText ? JSON.parse(themeText) : null;
-    return Core.buildStyle({ template, map, base: STYLE_BASE, theme, relief: readRelief(), poi: readPoi() });
+    return Core.buildStyle({ template, map, base: STYLE_BASE, theme, relief, poi });
   }
 
   // ─── слой Leaflet ───
@@ -215,7 +232,7 @@
         let style, seq;
         do {
           seq = this._styleSeq;
-          style = await buildStyleFor(this.mapId);
+          style = await buildStyleFor(this.mapId, { theme: themeFor(this.mapId) });
           if (token !== this._token || !this._map) return;
         } while (seq !== this._styleSeq);
         const gl = L.maplibreGL({ style, interactive: false, pane: 'tilePane', attributionControl: false });
@@ -243,22 +260,43 @@
       }
     },
 
-    /** Пересобрать стиль после смены темы, рельефа или значков — без пересоздания WebGL. */
-    async reloadStyle() {
+    /**
+     * Пересобрать стиль после смены темы, рельефа или значков — без пересоздания WebGL.
+     * theme — явно (по умолчанию — выбор в памяти на момент вызова, до любых await).
+     */
+    async reloadStyle(theme = themeFor(this.mapId)) {
       // Номер запроса — до любых await: поздний ответ прежнего выбора (тема «Топо» грузится дольше
       // «Обычной») не должен лечь поверх последнего. Пока слой строится, _build сам увидит новый номер.
       const seq = ++this._styleSeq;
       const mlMap = this.glMap();
-      if (!mlMap) return;
+      if (!mlMap) { this._themeApplied(seq); return; }
       const token = this._token;
       const current = () => token === this._token && seq === this._styleSeq;
       try {
-        const style = await buildStyleFor(this.mapId);
+        const style = await buildStyleFor(this.mapId, { theme });
         if (!current()) return;
-        mlMap.setStyle(style, { diff: false });
+        // diff:true — у тем одни и те же источники, спрайт и шрифты, меняются слои и paint: MapLibre
+        // правит только изменённые слои, тайлы не грузятся заново. Если разница не выражается
+        // операциями diff, MapLibre сам пересобирает стиль целиком (Unable to perform style diff).
+        mlMap.setStyle(style, { diff: true });
+        if (typeof mlMap.once === 'function') {
+          mlMap.once('idle', () => { if (current()) this._themeApplied(seq); });
+          // idle может не прийти (слой сняли, контекст потерян) — индикатор всё равно убрать
+          setTimeout(() => { if (current()) this._themeApplied(seq); }, 20000);
+        } else this._themeApplied(seq);
       } catch (e) {
-        if (current()) toast(`⚠ Не удалось применить настройки карты: ${e?.message || e}`);
+        if (current()) {
+          this._themeApplied(seq);
+          toast(`⚠ Не удалось применить настройки карты: ${e?.message || e}`);
+        }
       }
+    },
+    /** Перерисовка по последнему выбору закончилась — убрать «Применяю тему…». */
+    _themeApplied(seq) {
+      if (seq !== this._styleSeq || state.applyingTheme !== this.mapId) return;
+      state.applyingTheme = null;
+      renderLayerSection();
+      renderWindow();
     },
   });
 
@@ -310,10 +348,15 @@
   function setTheme(themeId) {
     const id = activeId();
     if (!id) return;
-    lsSet(`${LS_THEME}:${id}`, Core.normalizeTheme(themeId));
-    lsSet(LS_THEME, Core.normalizeTheme(themeId));
-    state.activeLayer.reloadStyle();
+    const theme = Core.normalizeTheme(themeId);
+    state.theme[id] = theme;
+    lsSet(`${LS_THEME}:${id}`, theme);
+    lsSet(LS_THEME, theme);
+    // Тема — явным аргументом: после await стиль не перечитывает выбор ни из памяти, ни из localStorage
+    state.applyingTheme = id;
+    state.activeLayer.reloadStyle(theme);
     renderLayerSection();
+    renderWindow();
   }
   function setRelief(patch) {
     lsSet(LS_RELIEF, JSON.stringify(Object.assign(readRelief(), patch)));
