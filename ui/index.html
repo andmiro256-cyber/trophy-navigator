@@ -1826,18 +1826,19 @@
      МОДАЛЬНОЕ ОКНО: НАСТРОЙКИ
 ════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-settings">
-  <div class="modal" id="modal-settings-win" style="top:60px;left:200px;width:380px">
+  <div class="modal settings-win" id="modal-settings-win" style="top:60px;left:200px;width:760px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-settings-win')">
       ⚙ Настройки
       <button type="button" class="modal-close" onclick="closeModal('modal-settings')" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body">
       <div class="settings-tabs" role="tablist" aria-label="Разделы настроек">
-        <button type="button" role="tab" aria-selected="true" aria-controls="tab-display" class="tab-btn active" onclick="switchTab(this,'tab-display')">Отображение</button>
-        <button type="button" role="tab" aria-selected="false" aria-controls="tab-colors" class="tab-btn" onclick="switchTab(this,'tab-colors')">Цвета</button>
-        <button type="button" role="tab" aria-selected="false" aria-controls="tab-cache" class="tab-btn" onclick="switchTab(this,'tab-cache');updateCacheUI()">Кэш карт</button>
+        <button type="button" role="tab" aria-selected="true" aria-controls="tab-display" class="tab-btn active" onclick="switchTab(this,'tab-display')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-monitor"/></svg><span>Отображение</span></button>
+        <button type="button" role="tab" aria-selected="false" aria-controls="tab-colors" class="tab-btn" onclick="switchTab(this,'tab-colors')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-palette"/></svg><span>Цвета</span></button>
+        <button type="button" role="tab" aria-selected="false" aria-controls="tab-cache" class="tab-btn" onclick="switchTab(this,'tab-cache');updateCacheUI()"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-layers-o"/></svg><span>Кэш карт</span></button>
       </div>
       <div class="tab-content active" id="tab-display">
+        <div class="setting-group-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-monitor"/></svg> Отображение</div>
         <div class="setting-row">
           <span class="setting-label">Тема оформления</span>
           <div class="setting-control">
@@ -1898,7 +1899,7 @@
       </div>
 
       <div class="tab-content" id="tab-colors">
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Цвета по умолчанию для новых объектов</div>
+        <div class="setting-group-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-palette"/></svg> Цвета по умолчанию для новых объектов</div>
 
         <div class="setting-row">
           <span class="setting-label">Точки — цвет</span>
@@ -1919,7 +1920,7 @@
           </div>
         </div>
 
-        <div style="font-size:11px;color:var(--text-muted);margin-top:12px;margin-bottom:8px">Радиус сближения</div>
+        <div class="setting-group-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-my-location"/></svg> Радиус сближения</div>
 
         <div class="setting-row">
           <span class="setting-label">Цвет заливки радиуса</span>
@@ -1938,14 +1939,14 @@
           </div>
         </div>
 
-        <div style="font-size:11px;color:var(--text-muted);margin-top:12px;margin-bottom:8px">Маршрут по дорогам (OSRM)</div>
+        <div class="setting-group-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-road"/></svg> Маршрут по дорогам (OSRM)</div>
 
         <div class="setting-row">
           <span class="setting-label">Цвет маршрута</span>
           <div class="setting-control"><input id="setting-color-osrm" type="color" value="#4a8adf" class="color-swatch"></div>
         </div>
 
-        <div style="font-size:11px;color:var(--text-muted);margin-top:12px;margin-bottom:8px">Поиск</div>
+        <div class="setting-group-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-search"/></svg> Поиск</div>
 
         <div class="setting-row">
           <span class="setting-label">Цвет маркера поиска</span>
@@ -1955,6 +1956,7 @@
 
       <!-- ВКЛАДКА: КЭШ КАРТ -->
       <div class="tab-content" id="tab-cache">
+        <div class="setting-group-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-layers-o"/></svg> Кэш тайлов</div>
         <div class="setting-row">
           <span class="setting-label">Включить кэш тайлов</span>
           <div class="setting-control">
@@ -2002,11 +2004,11 @@
         </div>
       </div>
 
-      <div style="margin-top:12px;padding:8px;background:var(--bg-sunken);border-radius:6px">
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">📁 Рабочая папка</div>
-        <div style="font-size:12px;color:var(--text-primary);word-break:break-all" id="setting-workdir-path">—</div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">Подпапки: waypoints, tracks, routes, maps, gpx</div>
-        <button class="btn-secondary" style="font-size:11px;margin-top:6px" onclick="openWorkDir()">📂 Открыть в проводнике</button>
+      <div class="setting-card settings-workdir">
+        <div class="setting-card-title">📁 Рабочая папка</div>
+        <div class="setting-card-value" id="setting-workdir-path">—</div>
+        <div class="setting-card-note">Подпапки: waypoints, tracks, routes, maps, gpx</div>
+        <button class="btn-secondary btn-sm" style="margin-top:8px" onclick="openWorkDir()">📂 Открыть в проводнике</button>
       </div>
       <div class="btn-row">
         <button class="btn-secondary" onclick="closeModal('modal-settings')">Закрыть</button>
@@ -2192,7 +2194,7 @@
 ════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-clear-confirm">
   <div class="modal" style="top:18%;left:50%;transform:translateX(-50%);width:430px">
-    <div class="modal-header" style="background:#6a2a2a">
+    <div class="modal-header danger">
       🗑 Удалить данные
       <button type="button" class="modal-close" onclick="closeModal('modal-clear-confirm')" aria-label="Закрыть">✕</button>
     </div>
@@ -2210,7 +2212,7 @@
         <button class="btn-secondary" style="padding:4px 10px;font-size:11px" onclick="setClearDataSelection(false)">Снять</button>
       </div>
       <div id="clear-data-list" class="clear-data-list"></div>
-      <div style="font-size:11px;color:#e07070;margin-bottom:16px">Удаление нельзя отменить</div>
+      <div class="dialog-note">Удаление нельзя отменить</div>
       <div style="display:flex;gap:8px">
         <button class="btn-secondary" style="flex:1" onclick="closeModal('modal-clear-confirm');hideAllWorkObjects()">👁 Скрыть всё</button>
         <button class="btn-secondary" style="flex:1" onclick="closeModal('modal-clear-confirm')">Отмена</button>
@@ -2230,13 +2232,13 @@
       <button type="button" class="modal-close" onclick="dialogCancel()" aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body" style="padding:16px">
-      <div id="modal-dialog-message" style="font-size:13px;color:#e0e0e0;margin-bottom:12px;white-space:pre-wrap"></div>
+      <div id="modal-dialog-message" class="dialog-message"></div>
       <div id="modal-dialog-input-wrap" style="display:none;margin-bottom:12px">
         <input id="modal-dialog-input" type="text" style="width:100%;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:6px 10px;font-size:13px">
       </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn-secondary" style="flex:1" onclick="dialogCancel()">Отмена</button>
-        <button class="btn-primary" id="modal-dialog-ok" style="flex:1" onclick="dialogOk()">OK</button>
+      <div class="dialog-actions">
+        <button type="button" class="btn-text" onclick="dialogCancel()">Отмена</button>
+        <button type="button" class="btn-text" id="modal-dialog-ok" onclick="dialogOk()">OK</button>
       </div>
     </div>
   </div>
@@ -3597,11 +3599,11 @@ function updateWptTable() {
     const syncBadge = d.syncedAt ? `<span title="Синхр. с ${d.source === 'android' ? 'Android' : 'desktop'} · ${new Date(d.syncedAt).toLocaleString('ru-RU')}" style="font-size:10px;opacity:0.7;margin-left:2px">☁</span>` : '';
     const srcHint = d.source && d.source !== 'desktop' ? `<span style="font-size:9px;color:var(--text-muted);margin-left:3px">${d.source}</span>` : '';
     return `<tr oncontextmenu="showCtxMenuTable(event,${idx})" onclick="map.panTo([${d.lat},${d.lng}])">
-      <td class="wpt-cb-cell" onclick="event.stopPropagation()"><label for="wpt-cb-${idx}"><input type="checkbox" id="wpt-cb-${idx}" class="wpt-cb" data-idx="${idx}" style="accent-color:#4a8adf"></label></td>
+      <td class="wpt-cb-cell" onclick="event.stopPropagation()"><label for="wpt-cb-${idx}"><input type="checkbox" id="wpt-cb-${idx}" class="wpt-cb" data-idx="${idx}"></label></td>
       <td class="wpt-pick-cell" onclick="event.stopPropagation()"><label for="wpt-cb-${idx}"><span class="wpt-icon" style="background:${d.color}"></span></label></td>
-      <td style="color:var(--text-muted)">${d.num}</td>
-      <td style="font-weight:500">${d.name}${syncBadge}${srcHint}</td>
-      <td style="font-family:monospace;font-size:11px">${formatDm(d.lat, 'N', 'S')} ${formatDm(d.lng, 'E', 'W')}</td>
+      <td class="wpt-num">${d.num}</td>
+      <td class="wpt-name">${d.name}${syncBadge}${srcHint}</td>
+      <td class="wpt-coords">${formatDm(d.lat, 'N', 'S')} ${formatDm(d.lng, 'E', 'W')}</td>
       <td onclick="event.stopPropagation()">
         <div class="wpt-map-actions">
           <button type="button" class="wpt-map-btn" title="Яндекс Карты" onclick="openWaypointMapByIndex(${idx}, 'yandex-map')">🗺</button>
@@ -7792,16 +7794,17 @@ function updateTrackList() {
       : (isLargeTrack(t) && (t.pointSize ?? 3) > 0
         ? ` · <span style="font-size:10px;color:var(--text-muted)" title="Точки появятся с z${TRACK_MARKER_DETAIL_ZOOM}">точки с z${TRACK_MARKER_DETAIL_ZOOM}</span>`
         : '');
-    return `<div class="track-item${sel ? ' selected' : ''}" style="${sel ? 'background:var(--bg-selected);border-left:3px solid var(--border-bright);' : ''}" onclick="selectTrackById(${t.id})">
+    return `<div class="track-item${sel ? ' selected' : ''}" onclick="selectTrackById(${t.id})">
       <input type="checkbox" class="track-play-cb" data-track-id="${t.id}" onclick="event.stopPropagation()" style="accent-color:${t.color};margin-right:4px" title="Выбрать для плеера">
-      <div class="track-color" style="background:${t.color};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px" title="Скрыть/показать" onclick="event.stopPropagation();toggleTrackVisible(${t.id})">${t.visible !== false ? '👁' : '○'}</div>
+      <div class="track-color" style="background:${t.color}"></div>
       <div class="track-info">
-        <input class="track-name" value="${escapeHtml(t.name)}" onclick="event.stopPropagation()" onchange="renameTrack(${t.id},this.value)"
-          style="background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text-primary);font-size:13px;font-weight:500;outline:none;width:100%;padding:0"
-          onfocus="this.style.borderBottomColor='#4a8adf'" onblur="this.style.borderBottomColor='transparent'">${syncInfo}
+        <input class="track-name inline-name" value="${escapeHtml(t.name)}" onclick="event.stopPropagation()" onchange="renameTrack(${t.id},this.value)" style="width:100%">${syncInfo}
         <div class="track-meta">${t.points.length} точек · ${km} км${srcTag}${modeTag}${pointTag}</div>
       </div>
-      <span style="font-size:12px;color:#e07070;cursor:pointer;padding:0 4px" onclick="event.stopPropagation();deleteTrackById(${t.id})" title="Удалить трек">✕</span>
+      <span class="row-acts">
+        <button type="button" class="row-act${t.visible !== false ? '' : ' off'}" title="Скрыть/показать" onclick="event.stopPropagation();toggleTrackVisible(${t.id})">${tnIcon(t.visible !== false ? 'eye' : 'eye-off')}</button>
+        <button type="button" class="row-act danger" title="Удалить трек" onclick="event.stopPropagation();deleteTrackById(${t.id})">${tnIcon('delete')}</button>
+      </span>
     </div>`;
   }).join('');
 }
@@ -8726,20 +8729,18 @@ function updateRouteList() {
     }).join('');
     const sel = r.id === selectedRouteId;
     const expanded = sel;
-    return `<div class="route-item">
-      <div class="route-header" onclick="selectRouteById(${r.id});toggleRouteEl(this)" style="cursor:pointer;${sel ? 'background:var(--bg-selected);border-left:3px solid var(--border-bright);padding-left:5px;border-radius:4px' : ''}">
-        <div style="display:flex;align-items:center;gap:8px">
+    return `<div class="route-item${sel ? ' selected' : ''}">
+      <div class="route-header" onclick="selectRouteById(${r.id});toggleRouteEl(this)">
+        <div class="route-title">
           <span class="route-color-dot" style="background:${r.color}"></span>
-          <input id="route-name-${r.id}" value="${escapeHtml(r.name)}" onclick="event.stopPropagation()" onchange="renameRoute(${r.id})"
-            style="font-size:13px;color:var(--text-primary);background:transparent;border:none;border-bottom:1px solid transparent;outline:none;width:120px;padding:0"
-            onfocus="this.style.borderBottomColor='#4a8adf'" onblur="this.style.borderBottomColor='transparent'">${syncInfo}
+          <input id="route-name-${r.id}" class="inline-name" value="${escapeHtml(r.name)}" onclick="event.stopPropagation()" onchange="renameRoute(${r.id})" style="width:130px">${syncInfo}
         </div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:11px;color:var(--text-muted)">${r.points.length} КП · ${km} км · ${(r.width || 3)}px${srcTag} <span class="route-arrow">${expanded ? '▾' : '▸'}</span></span>
-          <button type="button" class="route-kp-btn" onclick="event.stopPropagation();startRouteEdit(${r.id})" title="Редактировать КП">✎</button>
-          <span style="font-size:12px;color:var(--text-secondary);cursor:pointer;padding:0 4px" onclick="event.stopPropagation();toggleRouteVisible(${r.id})" title="Скрыть/показать">${r.visible === false ? '○' : '👁'}</span>
-          <span style="font-size:12px;color:var(--text-secondary);cursor:pointer;padding:0 4px" onclick="event.stopPropagation();centerRoute(${r.id})" title="Центрировать">🎯</span>
-          <span style="font-size:12px;color:#e07070;cursor:pointer;padding:0 4px" onclick="event.stopPropagation();deleteRoute(${r.id})" title="Удалить">✕</span>
+        <div class="row-acts">
+          <span class="route-meta">${r.points.length} КП · ${km} км · ${(r.width || 3)}px${srcTag} <span class="route-arrow">${expanded ? '▾' : '▸'}</span></span>
+          <button type="button" class="row-act" onclick="event.stopPropagation();startRouteEdit(${r.id})" title="Редактировать КП">${tnIcon('edit')}</button>
+          <button type="button" class="row-act${r.visible === false ? ' off' : ''}" onclick="event.stopPropagation();toggleRouteVisible(${r.id})" title="Скрыть/показать">${tnIcon(r.visible === false ? 'eye-off' : 'eye')}</button>
+          <button type="button" class="row-act" onclick="event.stopPropagation();centerRoute(${r.id})" title="Центрировать">${tnIcon('my-location')}</button>
+          <button type="button" class="row-act danger" onclick="event.stopPropagation();deleteRoute(${r.id})" title="Удалить">${tnIcon('delete')}</button>
         </div>
       </div>
       <div class="route-kp-list" style="display:${expanded ? 'block' : 'none'}">${kpRows}</div>
@@ -8922,6 +8923,11 @@ function applyBulkEdit() {
 let toastTimer;
 // ─── Кастомный confirm / prompt (заменяет нативный) ───
 let _dialogResolve = null;
+/** Опасное подтверждение: «Удалить» и заголовок цветом ошибки (классы, цвета — из темы) */
+function setDialogDanger(on) {
+  document.getElementById('modal-dialog-ok').classList.toggle('danger', !!on);
+  document.getElementById('modal-dialog-header').classList.toggle('danger', !!on);
+}
 function tndConfirm(message, title) {
   return new Promise(resolve => {
     _dialogResolve = resolve;
@@ -8929,8 +8935,7 @@ function tndConfirm(message, title) {
     document.getElementById('modal-dialog-message').textContent = message;
     document.getElementById('modal-dialog-input-wrap').style.display = 'none';
     document.getElementById('modal-dialog-ok').textContent = 'OK';
-    document.getElementById('modal-dialog-ok').style.background = '';
-    document.getElementById('modal-dialog-header').style.background = '';
+    setDialogDanger(false);
     openModal('modal-dialog');
   });
 }
@@ -8943,8 +8948,7 @@ function tndPrompt(message, defaultVal, title) {
     inp.value = defaultVal || '';
     document.getElementById('modal-dialog-input-wrap').style.display = 'block';
     document.getElementById('modal-dialog-ok').textContent = 'OK';
-    document.getElementById('modal-dialog-ok').style.background = '';
-    document.getElementById('modal-dialog-header').style.background = '';
+    setDialogDanger(false);
     openModal('modal-dialog');
     setTimeout(() => inp.focus(), 100);
   });
@@ -8956,14 +8960,13 @@ function tndConfirmDanger(message, title) {
     document.getElementById('modal-dialog-message').textContent = message;
     document.getElementById('modal-dialog-input-wrap').style.display = 'none';
     document.getElementById('modal-dialog-ok').textContent = 'Удалить';
-    document.getElementById('modal-dialog-ok').style.background = '#8a2a2a';
-    document.getElementById('modal-dialog-header').style.background = '#6a2a2a';
+    setDialogDanger(true);
     openModal('modal-dialog');
   });
 }
 function dialogOk() {
   closeModal('modal-dialog');
-  document.getElementById('modal-dialog-ok').style.background = '';
+  setDialogDanger(false);
   if (_dialogResolve) {
     const inp = document.getElementById('modal-dialog-input');
     const isPrompt = document.getElementById('modal-dialog-input-wrap').style.display !== 'none';
@@ -8973,7 +8976,7 @@ function dialogOk() {
 }
 function dialogCancel() {
   closeModal('modal-dialog');
-  document.getElementById('modal-dialog-ok').style.background = '';
+  setDialogDanger(false);
   if (_dialogResolve) {
     const isPrompt = document.getElementById('modal-dialog-input-wrap').style.display !== 'none';
     _dialogResolve(isPrompt ? null : false);
