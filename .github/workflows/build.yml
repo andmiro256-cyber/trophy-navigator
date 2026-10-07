@@ -126,6 +126,10 @@ jobs:
             exit 1
           fi
           REPACKED_HOOK="$WORK_DIR/squashfs-root/apprun-hooks/linuxdeploy-plugin-gtk.sh"
+          if [ ! -f "$REPACKED_HOOK" ]; then
+            echo "::error::GTK hook missing in repacked AppImage"
+            exit 1
+          fi
           if grep -q '^export GDK_BACKEND=' "$REPACKED_HOOK" \
             && ! grep -Fq 'export GDK_BACKEND="${GDK_BACKEND:-wayland}"' "$REPACKED_HOOK"; then
             echo "::error::repacked AppImage does not default to Wayland"
