@@ -5191,7 +5191,8 @@ function setLayer(name, el) {
   document.querySelectorAll('.base-layer').forEach(d => d.classList.remove('active'));
   const layerEl = el || [...document.querySelectorAll('.base-layer')].find(node => node.dataset.layer === name);
   if (layerEl) layerEl.classList.add('active');
-  closeModal('modal-layers');
+  // TrophyNav Maps: окно остаётся открытым — под выбранной картой сразу виден блок темы и рельефа
+  if (!window.TrophyNavMaps?.isLayerName(name)) closeModal('modal-layers');
   showToast('Карта: ' + (window.TrophyNavMaps?.labelFor(name) || name));
 }
 

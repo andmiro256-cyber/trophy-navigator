@@ -221,6 +221,7 @@
         document.dispatchEvent(new CustomEvent('tnmaps:active', { detail: { id: null } }));
       }
       renderLayerSection();
+      renderWindow();
     },
     getAttribution() { return ATTRIBUTION; },
     glMap() { return this._gl?.getMaplibreMap?.() || null; },
@@ -253,6 +254,7 @@
           fallbackToRaster('Видеокарта сбросила векторную карту (WebGL). Показана растровая карта.');
         }, { once: true });
         renderLayerSection();
+        renderWindow();
       } catch (e) {
         if (token !== this._token) return;
         console.warn('TrophyNav Maps: не открылась', e);
@@ -634,9 +636,14 @@
       actions = `<button type="button" class="tnmaps-btn primary" data-tnmaps-act="download" data-id="${esc(id)}">${ico('download', 'tn-ico-t')}${part ? 'Докачать' : 'Скачать'}</button>`;
     }
     if (local && dl?.phase === 'error') parts.push(`<span class="err">${esc(dl.message || 'ошибка')}</span>`);
+    // Карта на экране — тема прямо здесь, где карту скачивают и включают
+    const themeRow = local && !local.error && activeId() === id
+      ? `<div class="tnmaps-item-theme" data-tnmaps-item-theme><span class="tnmaps-label">Тема</span>${themeSegHtml(themeFor(id))}</div>`
+        + (state.applyingTheme === id ? '<div class="tnmaps-applying" role="status">Применяю тему…</div>' : '')
+      : '';
     return `<div class="tnmaps-item${local ? ' downloaded' : ''}">
       <div class="tnmaps-item-main"><div class="tnmaps-item-name">${esc(regionName(id))}</div>
-      <div class="tnmaps-item-sub">${parts.join(' · ')}</div></div>
+      <div class="tnmaps-item-sub">${parts.join(' · ')}</div>${themeRow}</div>
       <div class="tnmaps-item-actions">${actions}</div></div>`;
   }
 
@@ -735,6 +742,8 @@
   }
 
   function onWindowClick(e) {
+    const th = e.target.closest('[data-tnmaps-theme]');
+    if (th) { setTheme(th.dataset.tnmapsTheme); return; }
     const btn = e.target.closest('[data-tnmaps-act]');
     if (!btn) return;
     const id = btn.dataset.id;
