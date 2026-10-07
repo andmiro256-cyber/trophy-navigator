@@ -273,6 +273,17 @@ test('п.5: настоящий Leaflet — щелчок колеса = полу�
   } finally { dom.window.close(); }
 });
 
+test('версия 0.9.29 везде одна', () => {
+  assert.match(read('../src-tauri/tauri.conf.json'), /"version": "0\.9\.29"/);
+  assert.match(read('../src-tauri/Cargo.toml'), /^version = "0\.9\.29"$/m);
+  assert.match(read('../src-tauri/Cargo.lock'), /name = "trophy-navigator-desktop"\nversion = "0\.9\.29"/);
+  assert.match(html, /<title>🧭 Trophy Navigator Desktop v0\.9\.29<\/title>/);
+  assert.match(html, /id="app-version-label" class="app-version">Trophy Navigator · v0\.9\.29</);
+  assert.match(html, /let appDisplayVersion = '0\.9\.29';/);
+  assert.match(html, /id="about-version"[^>]*>0\.9\.29</);
+  assert.doesNotMatch(html, /0\.9\.28/);
+});
+
 // ─── главный баг с v0.9.27: клик по строке TrophyNav Maps и кнопкам темы в «Карте и слоях» терялся ───
 async function domLayersWindow() {
   const dom = new JSDOM(`<!doctype html><body><div id="map"></div>
