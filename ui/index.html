@@ -48,6 +48,8 @@
   .modal-title > .tn-ico { width: 20px; height: 20px; color: var(--text-secondary); }
   .ctx-item > .tn-ico { width: 18px; height: 18px; color: var(--text-secondary); }
   .ctx-item.danger > .tn-ico { color: inherit; }
+  .base-layer .tn-ico-t { margin-right: 8px; }
+  .base-layer > .tn-ico-t { margin-right: -2px; }
 
   /* ─── Убрать attribution Leaflet ─── */
   .leaflet-control-attribution { display: none !important; }
@@ -2377,10 +2379,10 @@
 <div class="modal-overlay" id="modal-layers">
   <div class="modal" id="modal-layers-win" style="top:60px;right:10px;left:auto;width:350px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-layers-win')">
-      🗺 Карта и слои
-      <span style="display:flex;align-items:center;gap:6px">
-        <span style="font-size:14px;color:var(--text-secondary);cursor:pointer;padding:2px 4px" onclick="event.stopPropagation();showHiddenLayersManager()" title="Показать скрытые карты">👁</span>
-        <span style="font-size:14px;color:var(--text-secondary);cursor:pointer;padding:2px 4px" onclick="event.stopPropagation();refreshTileCatalog()" title="Обновить каталог с сервера">🔄</span>
+      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-layers"/></svg>Карта и слои</span>
+      <span style="display:flex;align-items:center;gap:2px">
+        <button type="button" class="tn-icon-btn" onclick="event.stopPropagation();showHiddenLayersManager()" title="Показать скрытые карты" aria-label="Показать скрытые карты"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-eye"/></svg></button>
+        <button type="button" class="tn-icon-btn" onclick="event.stopPropagation();refreshTileCatalog()" title="Обновить каталог с сервера" aria-label="Обновить каталог с сервера"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-cloud-sync"/></svg></button>
         <button type="button" class="modal-close" onclick="closeModal('modal-layers')" aria-label="Закрыть">✕</button>
       </span>
     </div>
@@ -2403,7 +2405,7 @@
         </div>
         <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px">Шаблон: <code>{x}</code>, <code>{y}</code>, <code>{z}</code> — координаты тайла, <code>{s}</code> — поддомен</div>
         <div class="btn-row">
-          <button class="btn-secondary" style="font-size:11px" onclick="openFile('.xml,.XML', importLocusXml)">📂 Импорт .xml</button>
+          <button class="btn-secondary" style="font-size:11px" onclick="openFile('.xml,.XML', importLocusXml)"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>Импорт .xml</button>
           <div style="flex:1"></div>
           <button class="btn-secondary" style="font-size:11px" onclick="hideAddCustomLayer()">Отмена</button>
           <button class="btn-primary" style="font-size:11px" onclick="addCustomLayer()">Добавить</button>
@@ -2413,17 +2415,17 @@
       <!-- TrophyNav Maps: векторные карты областей (ui/trophynav-maps.js) -->
       <div class="layer-section-title tnmaps-title-row" style="margin-top:8px">
         <span>TrophyNav Maps</span>
-        <button type="button" class="tnmaps-link" onclick="window.TrophyNavMaps?.openWindow()">⬇ Карты областей</button>
+        <button type="button" class="tnmaps-link" onclick="window.TrophyNavMaps?.openWindow()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-cloud-download"/></svg>Карты областей</button>
       </div>
       <div id="tnmaps-layers"></div>
 
       <!-- Бесплатные карты (всегда доступны) -->
       <div class="layer-section-title" style="margin-top:8px">Бесплатные карты</div>
       <div id="catalog-free-layers">
-        <div class="base-layer active" data-layer="OpenStreetMap" onclick="setLayer('OpenStreetMap', this)">🗺 OpenStreetMap</div>
-        <div class="base-layer" data-layer="OpenTopoMap" onclick="setLayer('OpenTopoMap', this)">🏔 OpenTopoMap</div>
-        <div class="base-layer" data-layer="CyclOSM" onclick="setLayer('CyclOSM', this)">🚴 CyclOSM</div>
-        <div class="base-layer" data-layer="OSM Humanitarian" onclick="setLayer('OSM Humanitarian', this)">🗺 OSM Humanitarian</div>
+        <div class="base-layer active" data-layer="OpenStreetMap" onclick="setLayer('OpenStreetMap', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>OpenStreetMap</div>
+        <div class="base-layer" data-layer="OpenTopoMap" onclick="setLayer('OpenTopoMap', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-terrain"/></svg>OpenTopoMap</div>
+        <div class="base-layer" data-layer="CyclOSM" onclick="setLayer('CyclOSM', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-bike"/></svg>CyclOSM</div>
+        <div class="base-layer" data-layer="OSM Humanitarian" onclick="setLayer('OSM Humanitarian', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>OSM Humanitarian</div>
       </div>
 
       <!-- Premium карты (требуют лицензию) -->
@@ -2431,36 +2433,36 @@
       <div id="premium-layers-container">
         <div id="catalog-base-layers">
           <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">Яндекс</div>
-          <div class="base-layer premium-layer" data-layer="Яндекс Схема" onclick="setLayerPremium('Яндекс Схема', this)">🗺 Яндекс Схема</div>
-          <div class="base-layer premium-layer" data-layer="Яндекс Гибрид" onclick="setLayerPremium('Яндекс Гибрид', this)">🛰 Яндекс Гибрид</div>
-          <div class="base-layer premium-layer" data-layer="Яндекс Спутник" onclick="setLayerPremium('Яндекс Спутник', this)">🛰 Яндекс Спутник</div>
-          <div class="base-layer premium-layer" data-layer="Космоснимки рельеф" onclick="setLayerPremium('Космоснимки рельеф', this)">🏔 Космоснимки</div>
+          <div class="base-layer premium-layer" data-layer="Яндекс Схема" onclick="setLayerPremium('Яндекс Схема', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>Яндекс Схема</div>
+          <div class="base-layer premium-layer" data-layer="Яндекс Гибрид" onclick="setLayerPremium('Яндекс Гибрид', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-satellite"/></svg>Яндекс Гибрид</div>
+          <div class="base-layer premium-layer" data-layer="Яндекс Спутник" onclick="setLayerPremium('Яндекс Спутник', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-satellite"/></svg>Яндекс Спутник</div>
+          <div class="base-layer premium-layer" data-layer="Космоснимки рельеф" onclick="setLayerPremium('Космоснимки рельеф', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-terrain"/></svg>Космоснимки</div>
 
           <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">Google / Bing / ESRI</div>
-          <div class="base-layer premium-layer" data-layer="2GIS" onclick="setLayerPremium('2GIS', this)">🗺 2GIS</div>
-          <div class="base-layer premium-layer" data-layer="Спутник Google" onclick="setLayerPremium('Спутник Google', this)">🛰 Спутник Google</div>
-          <div class="base-layer premium-layer" data-layer="Карты Google" onclick="setLayerPremium('Карты Google', this)">🗺 Карты Google</div>
-          <div class="base-layer premium-layer" data-layer="Рельеф Google" onclick="setLayerPremium('Рельеф Google', this)">🏔 Рельеф Google</div>
-          <div class="base-layer premium-layer" data-layer="Гибрид Google" onclick="setLayerPremium('Гибрид Google', this)">🛰 Гибрид Google</div>
-          <div class="base-layer premium-layer" data-layer="Спутник Bing" onclick="setLayerPremium('Спутник Bing', this)">🛰 Спутник Bing</div>
-          <div class="base-layer premium-layer" data-layer="Гибрид Bing" onclick="setLayerPremium('Гибрид Bing', this)">🛰 Гибрид Bing</div>
-          <div class="base-layer premium-layer" data-layer="Спутник ESRI" onclick="setLayerPremium('Спутник ESRI', this)">🛰 Спутник ESRI</div>
-          <div class="base-layer premium-layer" data-layer="ESRI Clarity" onclick="setLayerPremium('ESRI Clarity', this)">🛰 ESRI Clarity</div>
+          <div class="base-layer premium-layer" data-layer="2GIS" onclick="setLayerPremium('2GIS', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>2GIS</div>
+          <div class="base-layer premium-layer" data-layer="Спутник Google" onclick="setLayerPremium('Спутник Google', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-satellite"/></svg>Спутник Google</div>
+          <div class="base-layer premium-layer" data-layer="Карты Google" onclick="setLayerPremium('Карты Google', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>Карты Google</div>
+          <div class="base-layer premium-layer" data-layer="Рельеф Google" onclick="setLayerPremium('Рельеф Google', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-terrain"/></svg>Рельеф Google</div>
+          <div class="base-layer premium-layer" data-layer="Гибрид Google" onclick="setLayerPremium('Гибрид Google', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-satellite"/></svg>Гибрид Google</div>
+          <div class="base-layer premium-layer" data-layer="Спутник Bing" onclick="setLayerPremium('Спутник Bing', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-satellite"/></svg>Спутник Bing</div>
+          <div class="base-layer premium-layer" data-layer="Гибрид Bing" onclick="setLayerPremium('Гибрид Bing', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-satellite"/></svg>Гибрид Bing</div>
+          <div class="base-layer premium-layer" data-layer="Спутник ESRI" onclick="setLayerPremium('Спутник ESRI', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-satellite"/></svg>Спутник ESRI</div>
+          <div class="base-layer premium-layer" data-layer="ESRI Clarity" onclick="setLayerPremium('ESRI Clarity', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-satellite"/></svg>ESRI Clarity</div>
 
           <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">Thunderforest / Прочие</div>
-          <div class="base-layer premium-layer" data-layer="TF Outdoors" onclick="setLayerPremium('TF Outdoors', this)">🏔 TF Outdoors</div>
-          <div class="base-layer premium-layer" data-layer="LoMaps" onclick="setLayerPremium('LoMaps', this)">🗺 LoMaps</div>
-          <div class="base-layer premium-layer" data-layer="TF Transport" onclick="setLayerPremium('TF Transport', this)">🗺 TF Transport</div>
-          <div class="base-layer premium-layer" data-layer="TF Велосипед" onclick="setLayerPremium('TF Велосипед', this)">🚴 TF Велосипед</div>
-          <div class="base-layer premium-layer" data-layer="MTB Map" onclick="setLayerPremium('MTB Map', this)">🚵 MTB Map</div>
-          <div class="base-layer premium-layer" data-layer="Michelin" onclick="setLayerPremium('Michelin', this)">🗺 Michelin</div>
+          <div class="base-layer premium-layer" data-layer="TF Outdoors" onclick="setLayerPremium('TF Outdoors', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-terrain"/></svg>TF Outdoors</div>
+          <div class="base-layer premium-layer" data-layer="LoMaps" onclick="setLayerPremium('LoMaps', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>LoMaps</div>
+          <div class="base-layer premium-layer" data-layer="TF Transport" onclick="setLayerPremium('TF Transport', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>TF Transport</div>
+          <div class="base-layer premium-layer" data-layer="TF Велосипед" onclick="setLayerPremium('TF Велосипед', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-bike"/></svg>TF Велосипед</div>
+          <div class="base-layer premium-layer" data-layer="MTB Map" onclick="setLayerPremium('MTB Map', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-bike"/></svg>MTB Map</div>
+          <div class="base-layer premium-layer" data-layer="Michelin" onclick="setLayerPremium('Michelin', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>Michelin</div>
 
           <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">ГГЦ / Генштаб (nakarte.me)</div>
-          <div class="base-layer premium-layer" data-layer="ГГЦ 250м" onclick="setLayerPremium('ГГЦ 250м', this)">📋 ГГЦ 250м</div>
-          <div class="base-layer premium-layer" data-layer="ГГЦ 500м" onclick="setLayerPremium('ГГЦ 500м', this)">📋 ГГЦ 500м</div>
-          <div class="base-layer premium-layer" data-layer="ГГЦ 1км" onclick="setLayerPremium('ГГЦ 1км', this)">📋 ГГЦ 1км</div>
-          <div class="base-layer premium-layer" data-layer="ГГЦ 2км" onclick="setLayerPremium('ГГЦ 2км', this)">📋 ГГЦ 2км</div>
-          <div class="base-layer premium-layer" data-layer="Генштаб 250м" onclick="setLayerPremium('Генштаб 250м', this)">🏔 Генштаб 250м</div>
+          <div class="base-layer premium-layer" data-layer="ГГЦ 250м" onclick="setLayerPremium('ГГЦ 250м', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>ГГЦ 250м</div>
+          <div class="base-layer premium-layer" data-layer="ГГЦ 500м" onclick="setLayerPremium('ГГЦ 500м', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>ГГЦ 500м</div>
+          <div class="base-layer premium-layer" data-layer="ГГЦ 1км" onclick="setLayerPremium('ГГЦ 1км', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>ГГЦ 1км</div>
+          <div class="base-layer premium-layer" data-layer="ГГЦ 2км" onclick="setLayerPremium('ГГЦ 2км', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>ГГЦ 2км</div>
+          <div class="base-layer premium-layer" data-layer="Генштаб 250м" onclick="setLayerPremium('Генштаб 250м', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-terrain"/></svg>Генштаб 250м</div>
         </div>
       </div>
 
@@ -4776,10 +4778,10 @@ function hasActiveOfflineMaps() {
   return getActiveOfflineMapEntries().length > 0;
 }
 
-function setLayerStatusText(label, emoji = '🗺') {
+function setLayerStatusText(label) {
   const toolbarEl = document.getElementById('current-layer-name');
   const statusEl = document.getElementById('sb-layer');
-  if (toolbarEl) toolbarEl.textContent = `${emoji} ${label}`;
+  if (toolbarEl) toolbarEl.textContent = label;
   if (statusEl) statusEl.textContent = label;
 }
 
@@ -4789,17 +4791,17 @@ function updateBaseLayerStatusText() {
     const primary = activeOffline[activeOffline.length - 1];
     const shortName = (primary.name || getFileNameFromPath(primary._path || '') || 'Офлайн карта')
       .replace(/\.(sqlitedb|mbtiles|rmap|db|sqlite)$/i, '');
-    setLayerStatusText(activeOffline.length > 1 ? `${shortName} +${activeOffline.length - 1}` : shortName, '📦');
+    setLayerStatusText(activeOffline.length > 1 ? `${shortName} +${activeOffline.length - 1}` : shortName);
     return;
   }
   if (window.TrophyNavMaps?.isLayerName(currentBaseLayerName)) {
-    setLayerStatusText(window.TrophyNavMaps.labelFor(currentBaseLayerName), '🧭');
+    setLayerStatusText(window.TrophyNavMaps.labelFor(currentBaseLayerName));
     return;
   }
   const label = currentBaseLayerName.startsWith('custom:')
     ? currentBaseLayerName.replace(/^custom:/, '')
     : currentBaseLayerName;
-  setLayerStatusText(label, layerEmoji[currentBaseLayerName] || getLayerEmoji(label));
+  setLayerStatusText(label);
 }
 
 function updateOnlineBaseForOfflineState() {
@@ -4856,14 +4858,12 @@ function deactivateActiveOfflineMapsForOnlineBase() {
 const FREE_LAYER_KEYS = new Set(['osm_standard', 'opentopomap', 'cyclosm', 'osm_hot']);
 const SPECIAL_PREMIUM_LAYER_NAMES = ['Яндекс Схема', 'Яндекс Гибрид', 'Спутник Bing', 'Гибрид Bing'];
 
-function getLayerEmoji(label) {
-  if (/Спутник|Гибрид/i.test(label)) return '\u{1F6F0}';
-  if (/ГГЦ/i.test(label)) return '\u{1F4CB}';
-  if (/Рельеф|Topo|Генштаб/i.test(label)) return '\u{1F3D4}';
-  if (/Cycle|Велосипед/i.test(label)) return '\u{1F6B4}';
-  if (/MTB/i.test(label)) return '\u{1F6B5}';
-  if (/OpenTopoMap/i.test(label)) return '\u{1F3D4}';
-  return '\u{1F5FA}';
+/** Значок слоя в списке «Карта и слои» (набор tn-icons.js): спутник, рельеф, велокарта или обычная карта. */
+function getLayerIcon(label) {
+  if (/Спутник|Гибрид/i.test(label)) return 'satellite';
+  if (/Рельеф|Topo|Генштаб/i.test(label)) return 'terrain';
+  if (/Cycle|Велосипед|MTB/i.test(label)) return 'bike';
+  return 'map';
 }
 
 function fallbackLayerMaxZoom(name) {
@@ -4945,21 +4945,8 @@ function applyDownloadZoomLimit() {
   return limit;
 }
 
-// Fallback emoji map (used before catalog loads)
-const layerEmoji = {
-  'OpenStreetMap':'\u{1F5FA}', 'OpenTopoMap':'\u{1F3D4}', '2GIS':'\u{1F5FA}',
-  'Яндекс Схема':'\u{1F5FA}', 'Яндекс Гибрид':'\u{1F6F0}',
-  'Спутник Google':'\u{1F6F0}', 'Гибрид Google':'\u{1F6F0}', 'Спутник Bing':'\u{1F6F0}', 'Гибрид Bing':'\u{1F6F0}', 'Спутник ESRI':'\u{1F6F0}',
-  'ГГЦ 250м':'\u{1F4CB}', 'ГГЦ 500м':'\u{1F4CB}', 'ГГЦ 1км':'\u{1F4CB}', 'ГГЦ 2км':'\u{1F4CB}',
-  'Генштаб 250м':'\u{1F3D4}',
-};
-
 function buildLayerUI() {
   if (!tileCatalog) return;
-
-  // --- Build emoji map from catalog ---
-  tileCatalog.base.forEach(e => { layerEmoji[e.label] = getLayerEmoji(e.label); });
-  (tileCatalog.overlays || []).forEach(e => { layerEmoji[e.label] = getLayerEmoji(e.label); });
 
   const hidden = getHiddenLayers();
 
@@ -4975,9 +4962,8 @@ function buildLayerUI() {
         div.dataset.layer = e.label;
         div.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
         div.innerHTML = `<span onclick="setLayer(this.parentElement.dataset.layer, this.parentElement)"
-          style="flex:1;cursor:pointer">${getLayerEmoji(e.label)} ${escapeHtml(e.label)}</span>
-          <span data-layer-key="${escapeHtml(e.key)}" onclick="event.stopPropagation();toggleLayerHidden(this.dataset.layerKey)" title="Скрыть"
-          style="color:var(--text-muted);font-size:10px;cursor:pointer;padding:0 4px">✕</span>`;
+          style="flex:1;cursor:pointer">${tnIcon(getLayerIcon(e.label), 'tn-ico-t tn-ico-m')}${escapeHtml(e.label)}</span>
+          <button type="button" class="tn-icon-btn tn-icon-btn-s" data-layer-key="${escapeHtml(e.key)}" onclick="event.stopPropagation();toggleLayerHidden(this.dataset.layerKey)" title="Скрыть из списка" aria-label="Скрыть из списка">${tnIcon('eye-off')}</button>`;
         freeContainer.appendChild(div);
       });
     }
@@ -5000,9 +4986,8 @@ function buildLayerUI() {
         div.dataset.layer = e.label;
         div.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
         div.innerHTML = `<span onclick="setLayerPremium(this.parentElement.dataset.layer, this.parentElement)"
-          style="flex:1;cursor:pointer">${getLayerEmoji(e.label)} ${escapeHtml(e.label)}</span>` + (e.key ? `
-          <span data-layer-key="${escapeHtml(e.key)}" onclick="event.stopPropagation();toggleLayerHidden(this.dataset.layerKey)" title="Скрыть"
-          style="color:var(--text-muted);font-size:10px;cursor:pointer;padding:0 4px">✕</span>` : '');
+          style="flex:1;cursor:pointer">${tnIcon(getLayerIcon(e.label), 'tn-ico-t tn-ico-m')}${escapeHtml(e.label)}</span>` + (e.key ? `
+          <button type="button" class="tn-icon-btn tn-icon-btn-s" data-layer-key="${escapeHtml(e.key)}" onclick="event.stopPropagation();toggleLayerHidden(this.dataset.layerKey)" title="Скрыть из списка" aria-label="Скрыть из списка">${tnIcon('eye-off')}</button>` : '');
         premiumContainer.appendChild(div);
       });
     }
@@ -9322,7 +9307,7 @@ function openDownloadSettings(bounds) {
     lbl.appendChild(rb);
     const maxZ = catalogMaxZoom(entry, 18);
     lbl.appendChild(document.createTextNode(
-      `${getLayerEmoji(entry.label)} ${entry.label} (z${maxZ})`
+      `${entry.label} (z${maxZ})`
     ));
     radioBox.appendChild(lbl);
   });
@@ -13353,9 +13338,9 @@ function renderCustomLayers() {
   }
   el.innerHTML = customLayers.map(l => `
     <div class="base-layer" data-layer="custom:${safeNum(l.id)}" onclick="setCustomLayer(${safeNum(l.id)}, this)" style="position:relative">
-      🗺 ${escapeHtml(l.name)}
+      ${tnIcon('map', 'tn-ico-t tn-ico-m')}${escapeHtml(l.name)}
       <span style="margin-left:auto;font-size:11px;color:var(--text-muted)">${l.tms ? 'TMS' : 'XYZ'} z${escapeHtml(l.maxZoom)}</span>
-      <span style="font-size:12px;color:var(--accent-red);cursor:pointer;padding:0 4px" onclick="event.stopPropagation();deleteCustomLayer(${safeNum(l.id)})" title="Удалить">✕</span>
+      <button type="button" class="tn-icon-btn tn-icon-btn-s danger" onclick="event.stopPropagation();deleteCustomLayer(${safeNum(l.id)})" title="Удалить карту" aria-label="Удалить карту">${tnIcon('delete')}</button>
     </div>
   `).join('');
 }

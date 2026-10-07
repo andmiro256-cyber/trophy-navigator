@@ -44,6 +44,8 @@
   const toast = (msg, type) => { if (typeof window.showToast === 'function') window.showToast(msg, type); else console.log(msg); };
   const lsGet = key => { try { return localStorage.getItem(key); } catch { return null; } };
   const lsSet = (key, value) => { try { localStorage.setItem(key, value); } catch { /* приватный режим */ } };
+  /** Значок из набора tn-icons.js (в тестах без DOM — пусто). */
+  const ico = (name, cls) => (typeof window.tnIcon === 'function' ? window.tnIcon(name, cls) : '');
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   function formatSize(bytes) {
     const b = Number(bytes) || 0;
@@ -384,7 +386,7 @@
       const name = LAYER_PREFIX + m.id;
       const extras = (m.dem ? 1 : 0) + (m.slope ? 1 : 0);
       return `<div class="base-layer${name === current ? ' active' : ''}" data-layer="${esc(name)}" data-tnmaps-show="${esc(m.id)}">
-        🧭 ${esc(regionName(m.id))}<span class="tnmaps-size">${formatSize(m.size + (m.dem?.size || 0) + (m.slope?.size || 0))}${extras ? ' · рельеф' : ''}</span></div>`;
+        ${ico('compass', 'tn-ico-t tn-ico-m')}${esc(regionName(m.id))}<span class="tnmaps-size">${formatSize(m.size + (m.dem?.size || 0) + (m.slope?.size || 0))}${extras ? ' · рельеф' : ''}</span></div>`;
     }).join('');
     let controls = '';
     if (act) {
@@ -395,7 +397,7 @@
       const poi = Core.parsePoi(readPoi());
       controls = `<div class="tnmaps-controls">
         <div class="tnmaps-row"><span class="tnmaps-label">3D</span>
-          <button type="button" class="tnmaps-chip" data-tnmaps-3d>⛰ Открыть 3D-вид</button>
+          <button type="button" class="tnmaps-chip" data-tnmaps-3d>${ico('terrain', 'tn-ico-t')}Открыть 3D-вид</button>
         </div>
         <div class="tnmaps-row"><span class="tnmaps-label">Тема</span>
           ${Core.THEMES.map(t => `<button type="button" class="tnmaps-chip${t.id === theme ? ' active' : ''}" data-tnmaps-theme="${t.id}">${t.title}</button>`).join('')}
@@ -469,10 +471,10 @@
     overlay.innerHTML = `
       <div class="modal" id="modal-tnmaps-win" role="dialog" aria-label="TrophyNav Maps по областям">
         <div class="modal-header" data-tnmaps-drag>
-          🧭 TrophyNav Maps по областям
-          <span style="display:flex;align-items:center;gap:6px">
-            <button type="button" class="tnmaps-link" data-tnmaps-act="reload" title="Обновить список с сервера">🔄</button>
-            <button type="button" class="modal-close" data-tnmaps-act="close" aria-label="Закрыть">✕</button>
+          <span class="modal-title">${ico('compass')}TrophyNav Maps по областям</span>
+          <span style="display:flex;align-items:center;gap:2px">
+            <button type="button" class="tn-icon-btn" data-tnmaps-act="reload" title="Обновить список с сервера" aria-label="Обновить список с сервера">${ico('cloud-sync')}</button>
+            <button type="button" class="modal-close" data-tnmaps-act="close" aria-label="Закрыть">${ico('close')}</button>
           </span>
         </div>
         <div class="modal-body">
@@ -480,7 +482,7 @@
           <input class="tnmaps-search" type="search" placeholder="Поиск области" data-tnmaps-search>
           <div class="tnmaps-list" data-tnmaps-list></div>
           <div class="tnmaps-foot"><span data-tnmaps-dir></span>
-            <button type="button" class="tnmaps-link" data-tnmaps-act="folder">Открыть папку</button></div>
+            <button type="button" class="tnmaps-link" data-tnmaps-act="folder">${ico('folder', 'tn-ico-t')}Открыть папку</button></div>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -546,8 +548,8 @@
       if (upd === 'update') parts.push(`<span class="upd">есть новая версия</span>`);
       if (upd === 'verify') parts.push(`<span class="upd">версия не подтверждена</span>`);
       actions = (local.error ? '' : `<button type="button" class="tnmaps-btn primary" data-tnmaps-act="show" data-id="${esc(id)}">Показать</button>`)
-        + (upd === 'update' ? `<button type="button" class="tnmaps-btn" data-tnmaps-act="download" data-id="${esc(id)}">⟳ Обновить</button>` : '')
-        + (upd === 'verify' ? `<button type="button" class="tnmaps-btn" data-tnmaps-act="download" data-id="${esc(id)}" title="Сверить файл с сервером; если он другой — скачать заново">⟳ Проверить</button>` : '')
+        + (upd === 'update' ? `<button type="button" class="tnmaps-btn" data-tnmaps-act="download" data-id="${esc(id)}" title="Скачать новую версию карты области с сервера">${ico('cloud-download', 'tn-ico-t')}Обновить</button>` : '')
+        + (upd === 'verify' ? `<button type="button" class="tnmaps-btn" data-tnmaps-act="download" data-id="${esc(id)}" title="Сверить файл с сервером; если он другой — скачать заново">${ico('cloud-check', 'tn-ico-t')}Проверить</button>` : '')
         + `<button type="button" class="tnmaps-btn danger" data-tnmaps-act="delete" data-id="${esc(id)}" title="Удалить карту области">Удалить</button>`;
     } else {
       const part = state.partial[id];
@@ -556,7 +558,7 @@
       if (remote?.built) parts.push(`сборка ${esc(remote.built)}`);
       if (part) parts.push(`<span class="upd">скачано ${Math.min(99, Math.floor(part / (remote?.size || part) * 100))}%</span>`);
       if (dl?.phase === 'error') parts.push(`<span class="err">${esc(dl.message || 'ошибка')}</span>`);
-      actions = `<button type="button" class="tnmaps-btn primary" data-tnmaps-act="download" data-id="${esc(id)}">${part ? '⬇ Докачать' : '⬇ Скачать'}</button>`;
+      actions = `<button type="button" class="tnmaps-btn primary" data-tnmaps-act="download" data-id="${esc(id)}">${ico('download', 'tn-ico-t')}${part ? 'Докачать' : 'Скачать'}</button>`;
     }
     if (local && dl?.phase === 'error') parts.push(`<span class="err">${esc(dl.message || 'ошибка')}</span>`);
     return `<div class="tnmaps-item${local ? ' downloaded' : ''}">

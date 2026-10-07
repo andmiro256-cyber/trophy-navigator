@@ -20,6 +20,7 @@
   const toast = (msg, type) => { if (typeof window.showToast === 'function') window.showToast(msg, type); };
   const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* приватный режим */ } };
+  const ico = (name, cls) => (typeof window.tnIcon === 'function' ? window.tnIcon(name, cls) : '');
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   const view = {
@@ -207,7 +208,7 @@
     el.innerHTML = `
       <div class="tn3d-map"></div>
       <div class="tn3d-panel" role="group" aria-label="3D-вид">
-        <div class="tn3d-title"><span>⛰ 3D · TrophyNav Maps<br><span class="tn3d-sub">${esc(name)}</span></span>
+        <div class="tn3d-title"><span>${ico('terrain', 'tn-ico-t')}3D · TrophyNav Maps<br><span class="tn3d-sub">${esc(name)}</span></span>
           <button type="button" class="tn3d-btn primary" data-tn3d-act="close" title="Вернуться к обычной карте (Esc)">2D</button></div>
         <div class="tn3d-row"><label>Наклон</label><input type="range" min="0" max="${Core.MAX_PITCH}" step="1" value="${ENTER_PITCH}" data-tn3d="pitch">
           <span class="tn3d-val" data-tn3d-val="pitch">${ENTER_PITCH}°</span></div>
@@ -215,8 +216,8 @@
           value="${exag}" data-tn3d="exag" ${hasDem ? '' : 'disabled'}><span class="tn3d-val" data-tn3d-val="exag">×${exag.toFixed(1)}</span></div>
         ${hasDem ? '' : '<div class="tn3d-note">Рельеф для этой области не скачан — наклон и здания работают, горы плоские.</div>'}
         <div class="tn3d-row"><label>Поворот <span class="tn3d-val" data-tn3d-val="bearing">0°</span></label>
-          <button type="button" class="tn3d-btn" data-tn3d-act="left" title="Повернуть влево">↺</button>
-          <button type="button" class="tn3d-btn" data-tn3d-act="right" title="Повернуть вправо">↻</button></div>
+          <button type="button" class="tn3d-btn" data-tn3d-act="left" title="Повернуть влево" aria-label="Повернуть влево">${ico('rotate-left', 'tn-ico-s')}</button>
+          <button type="button" class="tn3d-btn" data-tn3d-act="right" title="Повернуть вправо" aria-label="Повернуть вправо">${ico('refresh', 'tn-ico-s')}</button></div>
         <div class="tn3d-row">
           <button type="button" class="tn3d-btn" data-tn3d-act="north">Север вверх</button>
           <button type="button" class="tn3d-btn" data-tn3d-act="top">Сверху</button></div>
@@ -261,7 +262,7 @@
     const here = tn.regionAt(c.lat, c.lng, tn.activeId());
     const id = explicitId || here;
     if (!id) {
-      toast('⚠ Для 3D нужна скачанная карта TrophyNav Maps этой местности — «Карта и слои» → «⬇ Карты областей»', 'warning');
+      toast('⚠ Для 3D нужна скачанная карта TrophyNav Maps этой местности — «Карта и слои» → «Карты областей»', 'warning');
       return;
     }
     injectCss();
