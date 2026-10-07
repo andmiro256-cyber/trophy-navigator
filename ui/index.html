@@ -2554,7 +2554,32 @@ async function ensureChartJsLoaded() {
 // Фикс для EPSG:3395 — без этого нижние тайлы пропадают
 L.CRS.EPSG3395.infinite = true;
 let currentCRS = 'EPSG3857';
-const map = L.map('map', { zoomControl: true, attributionControl: false, maxZoom: 22, preferCanvas: true }).setView([55.75, 37.62], 10);
+// Мягкий зум: шаг четверть уровня, кнопки и клавиши +/− — полуровень, щелчок колеса (WebKitGTK: deltaY 125,
+// Leaflet делит на 2) — тоже около полуровня. Растровые тайлы на дробном зуме масштабируются — так задумано.
+const TND_MAP_ZOOM_OPTIONS = { zoomSnap: 0.25, zoomDelta: 0.5, wheelPxPerZoomLevel: 120, wheelDebounceTime: 30 };
+// Leaflet выбрасывает щелчки колеса, пришедшие во время анимации зума (_tryAnimatedZoom ничего не делает,
+// пока _animatingZoom): 8 быстрых щелчков давали +4 уровня. Копим их и применяем после окончания анимации.
+(function keepWheelClicksDuringZoomAnimation() {
+  const proto = L.Map.ScrollWheelZoom.prototype;
+  const perform = proto._performZoom;
+  proto._performZoom = function () {
+    const m = this._map;
+    if (m._animatingZoom && this._delta) {
+      if (!this._tndWaitZoomEnd) {
+        this._tndWaitZoomEnd = true;
+        m.once('zoomend', () => setTimeout(() => {
+          this._tndWaitZoomEnd = false;
+          if (this._delta && this._map) this._performZoom();
+        }, 0));
+      }
+      return;
+    }
+    return perform.call(this);
+  };
+})();
+/** Зум для подписей: дробный уровень показываем целым. */
+const formatZoomLevel = z => String(Math.round(Number(z) || 0));
+const map = L.map('map', { zoomControl: true, attributionControl: false, maxZoom: 22, preferCanvas: true, ...TND_MAP_ZOOM_OPTIONS }).setView([55.75, 37.62], 10);
 const trackCanvasRenderer = L.canvas({ padding: 0.5 });
 const trackPointCanvasRenderer = L.canvas({ padding: 0.5, tolerance: 8 });
 function createTrackPolylineLayer(points, options = {}) {
@@ -2590,8 +2615,8 @@ const ZoomDisplay = L.Control.extend({
   onAdd(map) {
     const div = L.DomUtil.create('div', 'zoom-display-ctrl');
     div.title = 'Текущий зум';
-    div.textContent = map.getZoom();
-    map.on('zoomend', () => div.textContent = map.getZoom());
+    div.textContent = formatZoomLevel(map.getZoom());
+    map.on('zoomend', () => div.textContent = formatZoomLevel(map.getZoom()));
     return div;
   }
 });
@@ -2627,8 +2652,8 @@ map.on('mousemove', e => {
   const lonD = Math.floor(Math.abs(lon)), lonM = ((Math.abs(lon)-lonD)*60).toFixed(3);
   document.getElementById('sb-coords').textContent = `${latD}°${latM}'${lat>=0?'N':'S'}  ${lonD}°${lonM}'${lon>=0?'E':'W'}`;
 });
-map.on('zoomend', () => document.getElementById('sb-zoom').textContent = map.getZoom());
-document.getElementById('sb-zoom').textContent = map.getZoom();
+map.on('zoomend', () => document.getElementById('sb-zoom').textContent = formatZoomLevel(map.getZoom()));
+document.getElementById('sb-zoom').textContent = formatZoomLevel(map.getZoom());
 
 // ─────────────────────────────────────────────
 // ТОЧКИ

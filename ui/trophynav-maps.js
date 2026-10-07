@@ -236,7 +236,8 @@
           style = await buildStyleFor(this.mapId, { theme: themeFor(this.mapId) });
           if (token !== this._token || !this._map) return;
         } while (seq !== this._styleSeq);
-        const gl = L.maplibreGL({ style, interactive: false, pane: 'tilePane', attributionControl: false });
+        // padding 0.05: холст больше окна на 5% с каждой стороны (было 10%) — меньше пикселей на кадр
+        const gl = L.maplibreGL({ style, interactive: false, pane: 'tilePane', attributionControl: false, padding: 0.05 });
         this._gl = gl;
         gl.addTo(this._map);
         const mlMap = gl.getMaplibreMap();
