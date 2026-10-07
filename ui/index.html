@@ -321,6 +321,19 @@
     white-space: nowrap;
   }
   .modal-footer .save-btn:hover, .modal-footer .open-btn:hover { filter: brightness(0.96); }
+  /* Футер окон «Точки», «Треки», «Маршруты»: «Сохранить ▾» и «Загрузить» в одну строку, справа */
+  .modal-footer.file-footer { flex-wrap: nowrap; justify-content: flex-end; align-items: center; }
+  .modal-footer.file-footer .save-btn, .modal-footer.file-footer .open-btn {
+    appearance: none; display: inline-flex; align-items: center; height: 34px; min-height: 34px; padding: 0 14px; font-family: inherit;
+  }
+  .modal-footer.file-footer .tn-ico.save-chev { margin: 0 0 0 4px; }
+  .save-menu {
+    position: fixed; z-index: 7000; min-width: 140px; padding: 4px; background: var(--modal-bg);
+    border: 1px solid var(--card-stroke); border-radius: var(--radius-m); box-shadow: var(--panel-shadow);
+  }
+  .save-menu[hidden] { display: none; }
+  .save-menu .ctx-item { width: 100%; border: 0; background: transparent; font-family: inherit; border-radius: var(--radius-s); text-align: left; }
+  .save-menu .ctx-item:hover, .save-menu .ctx-item:focus-visible { background: var(--row-hover); outline: none; }
   /* Текстовые кнопки диалога (как OK/Отмена в RaceNavAlertDialog): справа, оранжевые, полужирные */
   .dialog-actions { display: flex; justify-content: flex-end; gap: 4px; margin-top: 12px; }
   .btn-text {
@@ -1543,13 +1556,9 @@
         <tbody id="wpt-tbody"></tbody>
       </table>
     </div>
-    <div class="modal-footer">
-      <span style="font-size:11px;color:var(--text-muted);align-self:center;margin-right:4px">Сохранить:</span>
-      <div class="save-btn" onclick="saveWaypointsWPT()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>.wpt</div>
-      <div class="save-btn" onclick="saveWaypointsGPX()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>.gpx</div>
-      <span style="font-size:11px;color:var(--text-muted);align-self:center;margin-left:8px;margin-right:4px">Загрузить:</span>
-      <div class="open-btn" onclick="openFile('.wpt', loadWPT)"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>.wpt</div>
-      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXFile)"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>.gpx</div>
+    <div class="modal-footer file-footer">
+      <button type="button" class="save-btn" data-save-kind="waypoints" aria-haspopup="menu" aria-expanded="false" onclick="toggleSaveMenu(this, 'waypoints')"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>Сохранить<svg class="tn-ico tn-ico-t save-chev" aria-hidden="true"><use href="#tn-i-chevron-down"/></svg></button>
+      <button type="button" class="open-btn" data-open-kind="waypoints" onclick="openFileFor('waypoints')"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>Загрузить</button>
     </div>
   </div>
 </div>
@@ -1742,13 +1751,9 @@
       <button class="btn-secondary" style="width:100%;margin-top:8px;color:var(--accent);border-color:var(--accent)" onclick="rrOpenDialog()">Race Report</button>
       <button class="btn-primary" style="width:100%;margin-top:8px" onclick="startNewTrack()">+ Новый трек</button>
     </div>
-    <div class="modal-footer">
-      <span style="font-size:11px;color:var(--text-muted);align-self:center;margin-right:4px">Сохранить:</span>
-      <div class="save-btn" onclick="saveTracksPLT()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>.plt</div>
-      <div class="save-btn" onclick="saveTracksGPX()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>.gpx</div>
-      <span style="font-size:11px;color:var(--text-muted);align-self:center;margin-left:8px;margin-right:4px">Загрузить:</span>
-      <div class="open-btn" onclick="openFile('.plt', loadPLT)"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>.plt</div>
-      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXTracks)"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>.gpx</div>
+    <div class="modal-footer file-footer">
+      <button type="button" class="save-btn" data-save-kind="tracks" aria-haspopup="menu" aria-expanded="false" onclick="toggleSaveMenu(this, 'tracks')"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>Сохранить<svg class="tn-ico tn-ico-t save-chev" aria-hidden="true"><use href="#tn-i-chevron-down"/></svg></button>
+      <button type="button" class="open-btn" data-open-kind="tracks" onclick="openFileFor('tracks')"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>Загрузить</button>
     </div>
   </div>
 </div>
@@ -1826,13 +1831,9 @@
       </div>
       <button class="btn-primary" style="width:100%;margin-top:8px" onclick="startNewRoute()">+ Новый маршрут по КП</button>
     </div>
-    <div class="modal-footer">
-      <span style="font-size:11px;color:var(--text-muted);align-self:center;margin-right:4px">Сохранить:</span>
-      <div class="save-btn" onclick="saveRoutesRTE()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>.rte</div>
-      <div class="save-btn" onclick="saveRoutesGPX()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>.gpx</div>
-      <span style="font-size:11px;color:var(--text-muted);align-self:center;margin-left:8px;margin-right:4px">Загрузить:</span>
-      <div class="open-btn" onclick="openFile('.rte,.RTE', loadRTE)"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>.rte</div>
-      <div class="open-btn" onclick="openFile('.gpx,.GPX', loadGPXRoutes)"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>.gpx</div>
+    <div class="modal-footer file-footer">
+      <button type="button" class="save-btn" data-save-kind="routes" aria-haspopup="menu" aria-expanded="false" onclick="toggleSaveMenu(this, 'routes')"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-save"/></svg>Сохранить<svg class="tn-ico tn-ico-t save-chev" aria-hidden="true"><use href="#tn-i-chevron-down"/></svg></button>
+      <button type="button" class="open-btn" data-open-kind="routes" onclick="openFileFor('routes')"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>Загрузить</button>
     </div>
   </div>
 </div>
@@ -5401,6 +5402,79 @@ function openFile(accept, callback) {
     }
   }
   openFileHtmlFallback(accept, callback);
+}
+
+// ─── Футер окон «Точки», «Треки», «Маршруты»: одна «Загрузить» по всем форматам, «Сохранить ▾» с выбором формата ───
+const FILE_FORMATS = {
+  waypoints: { load: { wpt: (...a) => loadWPT(...a), gpx: (...a) => loadGPXFile(...a) }, save: [['gpx', () => saveWaypointsGPX()], ['wpt', () => saveWaypointsWPT()]] },
+  tracks: { load: { plt: (...a) => loadPLT(...a), gpx: (...a) => loadGPXTracks(...a) }, save: [['gpx', () => saveTracksGPX()], ['plt', () => saveTracksPLT()]] },
+  routes: { load: { rte: (...a) => loadRTE(...a), gpx: (...a) => loadGPXRoutes(...a) }, save: [['gpx', () => saveRoutesGPX()], ['rte', () => saveRoutesRTE()]] },
+};
+/** Расширение файла без регистра: «Трек.PLT» → plt. */
+const fileExtOf = name => (String(name || '').match(/\.([^.\\/]+)$/)?.[1] || '').toLowerCase();
+/** accept для диалога: свой формат окна первым (по нему выбирается папка), затем .gpx; оба регистра. */
+function fileAcceptFor(kind) {
+  return Object.keys(FILE_FORMATS[kind].load).flatMap(ext => [`.${ext}`, `.${ext.toUpperCase()}`]).join(',');
+}
+function openFileFor(kind) {
+  const formats = FILE_FORMATS[kind];
+  if (!formats) return;
+  openFile(fileAcceptFor(kind), (text, fname, meta) => {
+    const load = formats.load[fileExtOf(fname)];
+    if (load) load(text, fname, meta);
+    else showToast(`⚠ Формат файла не поддерживается: ${fname}`, 'warning');
+  });
+}
+function closeSaveMenu(returnFocus) {
+  const menu = document.getElementById('save-menu');
+  if (!menu || menu.hidden) return;
+  menu.hidden = true;
+  const btn = menu._trigger;
+  menu._trigger = null;
+  btn?.setAttribute('aria-expanded', 'false');
+  if (returnFocus) btn?.focus();
+}
+function saveFileAs(kind, ext) {
+  closeSaveMenu(true);
+  FILE_FORMATS[kind]?.save.find(([e]) => e === ext)?.[1]();
+}
+function toggleSaveMenu(btn, kind) {
+  let menu = document.getElementById('save-menu');
+  if (menu && !menu.hidden && menu._trigger === btn) { closeSaveMenu(true); return; }
+  const save = FILE_FORMATS[kind]?.save || [];
+  if (save.length === 1) { save[0][1](); return; }
+  if (!menu) {
+    menu = document.createElement('div');
+    menu.id = 'save-menu';
+    menu.className = 'save-menu';
+    menu.setAttribute('role', 'menu');
+    menu.hidden = true;
+    document.body.appendChild(menu);
+    menu.addEventListener('keydown', e => {
+      const items = [...menu.querySelectorAll('[role="menuitem"]')];
+      const i = items.indexOf(document.activeElement);
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeSaveMenu(true); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length]?.focus(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length]?.focus(); }
+      else if (e.key === 'Tab') closeSaveMenu(false);
+    });
+    // Клик мимо меню — закрыть (capture: Linux click-fallback останавливает pointerdown на кнопках с onclick)
+    document.addEventListener('pointerdown', e => {
+      const m = document.getElementById('save-menu');
+      if (m && !m.hidden && !m.contains(e.target) && !m._trigger?.contains(e.target)) closeSaveMenu(false);
+    }, true);
+  }
+  closeSaveMenu(false);
+  menu.innerHTML = save.map(([ext]) =>
+    `<button type="button" class="ctx-item" role="menuitem" onclick="saveFileAs('${kind}', '${ext}')">в .${ext}</button>`).join('');
+  menu._trigger = btn;
+  menu.hidden = false;
+  btn.setAttribute('aria-expanded', 'true');
+  const r = btn.getBoundingClientRect();
+  const h = menu.offsetHeight || 0, wdt = menu.offsetWidth || 0;
+  menu.style.left = `${Math.max(4, Math.min(r.left, window.innerWidth - wdt - 4))}px`;
+  menu.style.top = `${r.top - h - 4 >= 4 ? r.top - h - 4 : r.bottom + 4}px`;
+  menu.querySelector('[role="menuitem"]')?.focus();
 }
 
 function openFileHtmlFallback(accept, callback) {

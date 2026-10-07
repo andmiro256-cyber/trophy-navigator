@@ -459,3 +459,78 @@ test('GestureEvent (WebKit): preventDefault и зум карты; Ctrl+коле�
     assert.equal(key('-', field), false, 'в поле ввода Ctrl+− не перехватывается');
   } finally { dom.window.close(); }
 });
+
+// ─── футер «Точки», «Треки», «Маршруты»: «Сохранить ▾» и «Загрузить» в одну строку ───
+test('футеры трёх окон: две кнопки без подписей «Сохранить:/Загрузить:», nowrap, справа', () => {
+  const footers = [...html.matchAll(/<div class="modal-footer file-footer">([\s\S]*?)\n {4}<\/div>/g)].map(m => m[1]);
+  assert.equal(footers.length, 3);
+  for (const [i, kind] of ['waypoints', 'tracks', 'routes'].entries()) {
+    const f = footers[i];
+    assert.equal((f.match(/<button /g) || []).length, 2, kind);
+    assert.match(f, new RegExp(`class="save-btn" data-save-kind="${kind}" aria-haspopup="menu"[^>]*onclick="toggleSaveMenu\\(this, '${kind}'\\)"`));
+    assert.match(f, new RegExp(`class="open-btn" data-open-kind="${kind}" onclick="openFileFor\\('${kind}'\\)"`));
+    assert.match(f, /#tn-i-save[\s\S]*Сохранить[\s\S]*#tn-i-chevron-down/);
+    assert.match(f, /#tn-i-open"\/><\/svg>Загрузить</);
+  }
+  assert.doesNotMatch(html, />(Сохранить|Загрузить):</);
+  assert.match(html, /\.modal-footer\.file-footer \{ flex-wrap: nowrap; justify-content: flex-end;/);
+  // Linux click-fallback по-прежнему ловит эти кнопки (button[onclick]) и пункты меню (.ctx-item[onclick])
+  assert.match(html, /'button\[onclick\]',[\s\S]*'\.ctx-item\[onclick\]'/);
+});
+
+function fileFooterBlock() {
+  const start = html.indexOf('// ─── Футер окон «Точки», «Треки», «Маршруты»');
+  const end = html.indexOf('function openFileHtmlFallback(accept, callback) {');
+  assert.ok(start > 0 && end > start);
+  return html.slice(start, end);
+}
+
+test('«Загрузить» — нужный загрузчик по расширению без учёта регистра; «Сохранить ▾» — меню форматов, Esc закрывает', needDom, () => {
+  const dom = new JSDOM('<!doctype html><body><button id="b">Сохранить</button></body>', { url: 'https://review.invalid/', runScripts: 'dangerously', pretendToBeVisual: true });
+  const w = dom.window;
+  try {
+    w.eval(`var calls = []; var opened = null; var toasts = [];
+      function openFile(accept, cb) { opened = { accept, cb }; }
+      function showToast(m) { toasts.push(m); }
+      ${['loadWPT', 'loadGPXFile', 'loadPLT', 'loadGPXTracks', 'loadRTE', 'loadGPXRoutes', 'saveWaypointsGPX', 'saveWaypointsWPT',
+        'saveTracksGPX', 'saveTracksPLT', 'saveRoutesGPX', 'saveRoutesRTE'].map(n => `function ${n}(t, f) { calls.push(['${n}', f]); }`).join('\n')}
+      ${fileFooterBlock()}`);
+    w.openFileFor('tracks');
+    assert.equal(w.opened.accept, '.plt,.PLT,.gpx,.GPX', 'свой формат первым — по нему папка по умолчанию');
+    w.opened.cb('x', 'Трек.PLT', {});
+    w.opened.cb('x', 'b.gpx', {});
+    w.opened.cb('x', 'c.kml', {});
+    assert.deepEqual(Array.from(w.calls, c => c[0]), ['loadPLT', 'loadGPXTracks']);
+    assert.equal(w.toasts.length, 1);
+    w.calls.length = 0;
+    w.openFileFor('waypoints'); assert.equal(w.opened.accept, '.wpt,.WPT,.gpx,.GPX');
+    w.opened.cb('x', 'p.WPT'); w.opened.cb('x', 'p.Gpx');
+    w.openFileFor('routes'); assert.equal(w.opened.accept, '.rte,.RTE,.gpx,.GPX');
+    w.opened.cb('x', 'r.rte'); w.opened.cb('x', 'r.GPX');
+    assert.deepEqual(Array.from(w.calls, c => c[0]), ['loadWPT', 'loadGPXFile', 'loadRTE', 'loadGPXRoutes']);
+
+    w.calls.length = 0;
+    const btn = w.document.getElementById('b');
+    w.toggleSaveMenu(btn, 'tracks');
+    const menu = w.document.getElementById('save-menu');
+    assert.equal(menu.hidden, false);
+    assert.equal(btn.getAttribute('aria-expanded'), 'true');
+    const items = [...menu.querySelectorAll('[role="menuitem"]')];
+    assert.deepEqual(Array.from(items, i => i.textContent), ['в .gpx', 'в .plt']);
+    assert.equal(w.document.activeElement, items[0], 'фокус на первом пункте — меню доступно с клавиатуры');
+    items[1].click();
+    assert.deepEqual(Array.from(w.calls, c => c[0]), ['saveTracksPLT']);
+    assert.equal(menu.hidden, true);
+    // Esc и клик мимо закрывают
+    w.toggleSaveMenu(btn, 'tracks');
+    menu.querySelector('[role="menuitem"]').dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    assert.equal(menu.hidden, true);
+    assert.equal(w.document.activeElement, btn);
+    w.toggleSaveMenu(btn, 'tracks');
+    w.document.body.dispatchEvent(new w.MouseEvent('pointerdown', { bubbles: true }));
+    assert.equal(menu.hidden, true);
+    w.toggleSaveMenu(btn, 'tracks');
+    menu.querySelector('[role="menuitem"]').click();
+    assert.deepEqual(Array.from(w.calls, c => c[0]), ['saveTracksPLT', 'saveTracksGPX']);
+  } finally { dom.window.close(); }
+});
