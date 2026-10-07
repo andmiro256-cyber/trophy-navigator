@@ -127,6 +127,11 @@ jobs:
             echo "::error::repacked AppImage does not default to Wayland"
             exit 1
           fi
+          # Updater выбирает способ установки по метке бандла в бинарнике.
+          if ! grep -aq '__TAURI_BUNDLE_TYPE_VAR_APP' "$WORK_DIR"/squashfs-root/usr/bin/trophy-navigator-desktop; then
+            echo "::error::AppImage binary has no AppImage bundle marker"
+            exit 1
+          fi
 
           mv "$WORK_DIR/repacked.AppImage" "$APPIMAGE"
           chmod +x "$APPIMAGE"
@@ -164,11 +169,37 @@ jobs:
           path: |
             src-tauri/target/release/bundle/appimage/*.AppImage
             src-tauri/target/release/bundle/appimage/*.AppImage.sig
+      - name: Verify deb updater artifact
+        run: |
+          set -euo pipefail
+
+          # С 0.9.27 DEB-установка обновляется сама (plugin: pkexec dpkg -i), поэтому
+          # пакету нужна подпись updater-а и метка бандла DEB внутри бинарника:
+          # без неё plugin пошёл бы по ветке AppImage и перезаписал /usr/bin (TRO-28).
+          BUNDLE_DIR="src-tauri/target/release/bundle/deb"
+          DEB="$(find "$BUNDLE_DIR" -maxdepth 1 -type f -name '*.deb' -print -quit)"
+          if [ -z "$DEB" ]; then
+            echo "::error::deb package not found in $BUNDLE_DIR"
+            exit 1
+          fi
+          if [ ! -s "$DEB.sig" ]; then
+            echo "::error::updater signature for the deb package was not created"
+            exit 1
+          fi
+          WORK_DIR="$(mktemp -d)"
+          dpkg-deb -x "$DEB" "$WORK_DIR"
+          if ! grep -aq '__TAURI_BUNDLE_TYPE_VAR_DEB' "$WORK_DIR/usr/bin/trophy-navigator-desktop"; then
+            echo "::error::deb binary has no DEB bundle marker"
+            exit 1
+          fi
+          rm -rf "$WORK_DIR"
       - name: Upload deb
         uses: actions/upload-artifact@v4
         with:
           name: TrophyNavigator-Linux-deb
-          path: src-tauri/target/release/bundle/deb/*.deb
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/deb/*.deb.sig
 
   build-macos:
     name: build-macos-${{ matrix.arch }}
@@ -280,22 +311,19 @@ jobs:
           MACOS_X64_DMG_SRC=$(find artifacts/TrophyNavigator-macOS-x64 -type f -name '*.dmg' | head -n 1)
           MACOS_ARM64_APP_SRC=$(find artifacts/TrophyNavigator-macOS-arm64 -type f -name '*.app.tar.gz' | head -n 1)
           MACOS_X64_APP_SRC=$(find artifacts/TrophyNavigator-macOS-x64 -type f -name '*.app.tar.gz' | head -n 1)
-          if [ -z "$APPIMAGE_SRC" ] || [ -z "$NSIS_SRC" ]; then
+          # deb обязателен: с 0.9.27 он получает обновления через manifest (linux-x86_64-deb).
+          if [ -z "$APPIMAGE_SRC" ] || [ -z "$NSIS_SRC" ] || [ -z "$DEB_SRC" ]; then
             echo "Release artifacts not found" >&2
             exit 1
           fi
 
           APPIMAGE_ASSET_NAME=$(copy_release_asset "$APPIMAGE_SRC")
           NSIS_ASSET_NAME=$(copy_release_asset "$NSIS_SRC")
+          copy_release_asset "$DEB_SRC" >/dev/null
 
+          MSI_ASSET_NAME=""
           if [ -n "$MSI_SRC" ]; then
-            copy_release_asset "$MSI_SRC" >/dev/null
-          fi
-
-          if [ -n "$DEB_SRC" ]; then
-            copy_release_asset "$DEB_SRC" >/dev/null
-          else
-            echo "::warning::deb package was not found, publishing without it"
+            MSI_ASSET_NAME=$(copy_release_asset "$MSI_SRC")
           fi
 
           if [ -n "$MACOS_ARM64_DMG_SRC" ]; then
@@ -321,41 +349,82 @@ jobs:
 
           echo "appimage_asset_name=$APPIMAGE_ASSET_NAME" >> "$GITHUB_OUTPUT"
           echo "nsis_asset_name=$NSIS_ASSET_NAME" >> "$GITHUB_OUTPUT"
+          echo "msi_asset_name=$MSI_ASSET_NAME" >> "$GITHUB_OUTPUT"
       - name: Create latest.json for updater
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          MANIFEST_FILE: ${{ steps.channel.outputs.manifest_file }}
+          MSI_ASSET_NAME: ${{ steps.assets.outputs.msi_asset_name }}
         run: |
-          VERSION=${{ steps.version.outputs.version }}
-          MANIFEST_FILE=${{ steps.channel.outputs.manifest_file }}
-          APPIMAGE_SIG=$(cat artifacts/TrophyNavigator-Linux/*.AppImage.sig 2>/dev/null || echo "")
-          NSIS_SIG=$(cat artifacts/TrophyNavigator-Windows/*.exe.sig 2>/dev/null || echo "")
-          MACOS_ARM64_SIG=$(cat "release-assets/Trophy.Navigator.Desktop_${VERSION}_aarch64.app.tar.gz.sig")
-          MACOS_X64_SIG=$(cat "release-assets/Trophy.Navigator.Desktop_${VERSION}_x64.app.tar.gz.sig")
-          MACOS_ARM64_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VERSION}/Trophy.Navigator.Desktop_${VERSION}_aarch64.app.tar.gz"
-          MACOS_X64_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VERSION}/Trophy.Navigator.Desktop_${VERSION}_x64.app.tar.gz"
-          cat > "$MANIFEST_FILE" << EOF
-          {
-            "version": "$VERSION",
-            "notes": "На Linux AppImage теперь открывается через нативный Wayland. Автообновление запускается только для штатно смонтированного AppImage и больше не может повредить распакованную или DEB-установку.",
-            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "platforms": {
-              "linux-x86_64": {
-                "signature": "$APPIMAGE_SIG",
-                "url": "https://trophynav.ru/releases/trophy-navigator-desktop_${VERSION}_amd64.AppImage"
-              },
-              "windows-x86_64": {
-                "signature": "$NSIS_SIG",
-                "url": "https://trophynav.ru/releases/trophy-navigator-desktop_${VERSION}_x64-setup.exe"
-              },
-              "darwin-aarch64": {
-                "signature": "$MACOS_ARM64_SIG",
-                "url": "$MACOS_ARM64_URL"
-              },
-              "darwin-x86_64": {
-                "signature": "$MACOS_X64_SIG",
-                "url": "$MACOS_X64_URL"
-              }
-            }
+          set -euo pipefail
+
+          # tauri-plugin-updater >= 2.10 ищет сначала `{os}-{arch}-{bundle}`
+          # (linux-x86_64-deb, linux-x86_64-appimage, windows-x86_64-nsis,
+          # windows-x86_64-msi, darwin-aarch64-app), затем общий `{os}-{arch}`.
+          # Общий linux-x86_64 остаётся AppImage-ом для сборок без метки бандла.
+          read_sig() {
+            local file
+            file="$(find "$1" -maxdepth 1 -type f -name "$2" -print -quit 2>/dev/null || true)"
+            if [ -n "$file" ] && [ -s "$file" ]; then cat "$file"; fi
           }
-          EOF
+          export APPIMAGE_SIG="$(read_sig artifacts/TrophyNavigator-Linux '*.AppImage.sig')"
+          export DEB_SIG="$(read_sig artifacts/TrophyNavigator-Linux-deb '*.deb.sig')"
+          export NSIS_SIG="$(read_sig artifacts/TrophyNavigator-Windows '*.exe.sig')"
+          export MSI_SIG="$(read_sig artifacts/TrophyNavigator-Windows-msi '*.msi.sig')"
+          export MACOS_ARM64_SIG="$(cat "release-assets/Trophy.Navigator.Desktop_${VERSION}_aarch64.app.tar.gz.sig")"
+          export MACOS_X64_SIG="$(cat "release-assets/Trophy.Navigator.Desktop_${VERSION}_x64.app.tar.gz.sig")"
+          export PUB_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          env = os.environ
+          version = env["VERSION"]
+          site = "https://trophynav.ru/releases"
+          gh = f"https://github.com/{env['GITHUB_REPOSITORY']}/releases/download/v{version}"
+
+          def entry(sig_var, url):
+              sig = env.get(sig_var, "").strip()
+              if not sig:
+                  print(f"::error::updater signature {sig_var} is missing", file=sys.stderr)
+                  sys.exit(1)
+              return {"signature": sig, "url": url}
+
+          appimage = entry("APPIMAGE_SIG", f"{site}/trophy-navigator-desktop_{version}_amd64.AppImage")
+          deb = entry("DEB_SIG", f"{site}/trophy-navigator-desktop_{version}_amd64.deb")
+          nsis = entry("NSIS_SIG", f"{site}/trophy-navigator-desktop_{version}_x64-setup.exe")
+          mac_arm = entry("MACOS_ARM64_SIG", f"{gh}/Trophy.Navigator.Desktop_{version}_aarch64.app.tar.gz")
+          mac_x64 = entry("MACOS_X64_SIG", f"{gh}/Trophy.Navigator.Desktop_{version}_x64.app.tar.gz")
+
+          platforms = {
+              "linux-x86_64": appimage,
+              "linux-x86_64-appimage": appimage,
+              "linux-x86_64-deb": deb,
+              "windows-x86_64": nsis,
+              "windows-x86_64-nsis": nsis,
+              "darwin-aarch64": mac_arm,
+              "darwin-aarch64-app": mac_arm,
+              "darwin-x86_64": mac_x64,
+              "darwin-x86_64-app": mac_x64,
+          }
+          if env.get("MSI_ASSET_NAME") and env.get("MSI_SIG", "").strip():
+              platforms["windows-x86_64-msi"] = entry("MSI_SIG", f"{gh}/{env['MSI_ASSET_NAME']}")
+          else:
+              print("::warning::MSI updater artifact not found; MSI installs fall back to NSIS")
+
+          manifest = {
+              "version": version,
+              "notes": "Автообновление теперь работает и для DEB-установки на Linux: пакет ставится системно, будет запрошен пароль администратора. AppImage и Windows обновляются как раньше.",
+              "pub_date": env["PUB_DATE"],
+              "platforms": platforms,
+          }
+          with open(env["MANIFEST_FILE"], "w", encoding="utf-8") as fh:
+              json.dump(manifest, fh, ensure_ascii=False, indent=2)
+              fh.write("\n")
+          print(json.dumps(sorted(platforms), ensure_ascii=False))
+          PY
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:

@@ -16,6 +16,25 @@ test('AppImage repack defaults to Wayland and rejects a forced X11 hook', () => 
   assert.ok(repack >= 0 && sign > repack, 'the modified AppImage must be signed only after repacking');
 });
 
+test('CI ships a signed deb with a DEB bundle marker and bundle-specific manifest keys', () => {
+  const verify = workflow.indexOf('- name: Verify deb updater artifact');
+  const upload = workflow.indexOf('- name: Upload deb');
+  assert.ok(verify >= 0 && upload > verify, 'the deb must be verified before it is uploaded');
+  assert.match(workflow, /updater signature for the deb package was not created/);
+  assert.match(workflow, /grep -aq '__TAURI_BUNDLE_TYPE_VAR_DEB'/);
+  assert.match(workflow, /grep -aq '__TAURI_BUNDLE_TYPE_VAR_APP'/);
+  assert.match(workflow, /src-tauri\/target\/release\/bundle\/deb\/\*\.deb\.sig/);
+
+  for (const key of ['linux-x86_64', 'linux-x86_64-appimage', 'linux-x86_64-deb',
+    'windows-x86_64', 'windows-x86_64-nsis', 'windows-x86_64-msi', 'darwin-aarch64', 'darwin-x86_64']) {
+    assert.ok(workflow.includes(`"${key}"`), `manifest key ${key} must be generated`);
+  }
+  assert.match(workflow, /"linux-x86_64-deb": deb/);
+  assert.match(workflow, /deb = entry\("DEB_SIG", f"\{site\}\/trophy-navigator-desktop_\{version\}_amd64\.deb"\)/);
+  assert.match(workflow, /"linux-x86_64": appimage/);
+  assert.match(workflow, /updater signature \{sig_var\} is missing/);
+});
+
 function linuxInstallKindBody() {
   const start = rust.indexOf('fn linux_update_install_kind(');
   assert.ok(start >= 0, 'linux_update_install_kind must exist');
