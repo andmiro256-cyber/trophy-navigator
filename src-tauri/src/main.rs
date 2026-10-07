@@ -29,6 +29,7 @@ struct UpdateInfo {
     date: Option<String>,
     body: Option<String>,
     can_auto_install: bool,
+    install_kind: &'static str,
     manual_download_url: Option<&'static str>,
 }
 
@@ -37,21 +38,72 @@ fn get_app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
+/// Чем updater заменит текущую установку. Тип берётся из метки бандла, которую
+/// tauri-bundler вшивает в бинарник при сборке `.deb`/`.AppImage`/`.msi`/`.exe`
+/// (`tauri::utils::platform::bundle_type`), а не из эвристик по путям.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum UpdateInstallKind {
+    /// Системный пакет `.deb`: plugin ставит новый пакет через `pkexec dpkg -i`
+    /// (запрос пароля администратора), запасные пути — zenity/kdialog + sudo.
+    LinuxDeb,
+    /// Штатно смонтированный AppImage: заменяется файл из переменной `APPIMAGE`.
+    LinuxAppImage,
+    /// Windows (NSIS/MSI) и macOS (.app) — штатные установщики tauri.
+    #[cfg_attr(target_os = "linux", allow(dead_code))]
+    Platform,
+    /// Автоустановка невозможна или опасна — только ручное обновление.
+    Manual,
+}
+
+impl UpdateInstallKind {
+    fn can_auto_install(self) -> bool {
+        self != Self::Manual
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::LinuxDeb => "deb",
+            Self::LinuxAppImage => "appimage",
+            Self::Platform => "platform",
+            Self::Manual => "manual",
+        }
+    }
+}
+
 #[cfg(target_os = "linux")]
 fn linux_appimage_path_is_valid(value: Option<&std::ffi::OsStr>) -> bool {
     value.map(Path::new).is_some_and(Path::is_file)
 }
 
-fn can_auto_install_update() -> bool {
+#[cfg(target_os = "linux")]
+fn linux_update_install_kind(
+    bundle: Option<tauri::utils::config::BundleType>,
+    appimage: Option<&std::ffi::OsStr>,
+) -> UpdateInstallKind {
+    use tauri::utils::config::BundleType;
+
+    match bundle {
+        Some(BundleType::Deb) => UpdateInstallKind::LinuxDeb,
+        Some(BundleType::AppImage) if linux_appimage_path_is_valid(appimage) => {
+            UpdateInstallKind::LinuxAppImage
+        }
+        // TRO-28: распакованный AppImage (нет APPIMAGE) и сборка без метки бандла
+        // (cargo build / tauri dev) — plugin записал бы AppImage поверх собственного
+        // ELF. RPM в manifest не публикуется. Всё это — ручной режим.
+        _ => UpdateInstallKind::Manual,
+    }
+}
+
+fn update_install_kind() -> UpdateInstallKind {
     #[cfg(target_os = "linux")]
     {
         let appimage = std::env::var_os("APPIMAGE");
-        linux_appimage_path_is_valid(appimage.as_deref())
+        linux_update_install_kind(tauri::utils::platform::bundle_type(), appimage.as_deref())
     }
 
     #[cfg(not(target_os = "linux"))]
     {
-        true
+        UpdateInstallKind::Platform
     }
 }
 
@@ -73,7 +125,8 @@ async fn check_app_update<R: Runtime>(webview: Webview<R>) -> Result<Option<Upda
     let current_version = update.current_version.clone();
     let version = update.version.clone();
     let body = update.body.clone();
-    let can_auto_install = can_auto_install_update();
+    let install_kind = update_install_kind();
+    let can_auto_install = install_kind.can_auto_install();
     let rid = can_auto_install.then(|| webview.resources_table().add(update));
 
     let info = UpdateInfo {
@@ -83,6 +136,7 @@ async fn check_app_update<R: Runtime>(webview: Webview<R>) -> Result<Option<Upda
         date,
         body,
         can_auto_install,
+        install_kind: install_kind.as_str(),
         manual_download_url: (!can_auto_install).then_some(MANUAL_UPDATE_URL),
     };
 
@@ -98,10 +152,10 @@ struct DownloadProgress {
 
 #[tauri::command]
 async fn install_app_update<R: Runtime>(webview: Webview<R>, rid: u32) -> Result<(), String> {
-    if !can_auto_install_update() {
+    if !update_install_kind().can_auto_install() {
         let _ = webview.resources_table().close(rid);
         return Err(format!(
-            "Автоустановка недоступна для этой Linux-установки. Скачайте обновление вручную: {MANUAL_UPDATE_URL}"
+            "Автоустановка недоступна для этой установки. Скачайте обновление вручную: {MANUAL_UPDATE_URL}"
         ));
     }
 
@@ -1351,8 +1405,78 @@ fn get_raw_machine_id() -> Result<String, Box<dyn std::error::Error>> {
 
 #[cfg(all(test, target_os = "linux"))]
 mod tests {
-    use super::linux_appimage_path_is_valid;
+    use super::{linux_appimage_path_is_valid, linux_update_install_kind, UpdateInstallKind};
     use std::ffi::OsStr;
+    use tauri::utils::config::BundleType;
+
+    const MISSING_APPIMAGE: &str = "/definitely/missing/TrophyNavigator.AppImage";
+
+    #[test]
+    fn deb_bundle_installs_updates_as_a_system_package() {
+        assert_eq!(
+            linux_update_install_kind(Some(BundleType::Deb), None),
+            UpdateInstallKind::LinuxDeb
+        );
+        // Посторонняя APPIMAGE не переключает DEB-установку на перезапись файла.
+        let executable = std::env::current_exe().expect("test executable path");
+        assert_eq!(
+            linux_update_install_kind(Some(BundleType::Deb), Some(executable.as_os_str())),
+            UpdateInstallKind::LinuxDeb
+        );
+        assert!(UpdateInstallKind::LinuxDeb.can_auto_install());
+        assert_eq!(UpdateInstallKind::LinuxDeb.as_str(), "deb");
+    }
+
+    #[test]
+    fn appimage_bundle_requires_a_real_appimage_file() {
+        let executable = std::env::current_exe().expect("test executable path");
+        assert_eq!(
+            linux_update_install_kind(Some(BundleType::AppImage), Some(executable.as_os_str())),
+            UpdateInstallKind::LinuxAppImage
+        );
+        // Распакованный AppImage (squashfs-root/AppRun): APPIMAGE нет или файл пропал.
+        assert_eq!(
+            linux_update_install_kind(Some(BundleType::AppImage), None),
+            UpdateInstallKind::Manual
+        );
+        assert_eq!(
+            linux_update_install_kind(
+                Some(BundleType::AppImage),
+                Some(OsStr::new(MISSING_APPIMAGE))
+            ),
+            UpdateInstallKind::Manual
+        );
+    }
+
+    #[test]
+    fn unbundled_and_unpublished_linux_builds_stay_manual() {
+        let executable = std::env::current_exe().expect("test executable path");
+        // cargo build / tauri dev: метки бандла нет — даже при заданной APPIMAGE.
+        assert_eq!(
+            linux_update_install_kind(None, Some(executable.as_os_str())),
+            UpdateInstallKind::Manual
+        );
+        assert_eq!(
+            linux_update_install_kind(None, None),
+            UpdateInstallKind::Manual
+        );
+        // RPM не публикуется в manifest.
+        assert_eq!(
+            linux_update_install_kind(Some(BundleType::Rpm), Some(executable.as_os_str())),
+            UpdateInstallKind::Manual
+        );
+        assert!(!UpdateInstallKind::Manual.can_auto_install());
+    }
+
+    #[test]
+    fn this_test_binary_is_not_a_bundled_installation() {
+        // Бинарник cargo test не проходил через tauri-bundler, метки бандла нет.
+        assert_eq!(tauri::utils::platform::bundle_type(), None);
+        assert_eq!(
+            linux_update_install_kind(tauri::utils::platform::bundle_type(), None),
+            UpdateInstallKind::Manual
+        );
+    }
 
     #[test]
     fn linux_auto_update_rejects_missing_appimage_path() {

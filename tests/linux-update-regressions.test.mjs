@@ -16,16 +16,38 @@ test('AppImage repack defaults to Wayland and rejects a forced X11 hook', () => 
   assert.ok(repack >= 0 && sign > repack, 'the modified AppImage must be signed only after repacking');
 });
 
+function linuxInstallKindBody() {
+  const start = rust.indexOf('fn linux_update_install_kind(');
+  assert.ok(start >= 0, 'linux_update_install_kind must exist');
+  const end = rust.indexOf('\n}\n', start);
+  return rust.slice(start, end);
+}
+
 test('Linux updater only retains an installable update for a real APPIMAGE file', () => {
   assert.match(rust, /std::env::var_os\("APPIMAGE"\)/);
   assert.match(rust, /value\.map\(Path::new\)\.is_some_and\(Path::is_file\)/);
   assert.match(rust, /let rid = can_auto_install\.then\(\|\| webview\.resources_table\(\)\.add\(update\)\)/);
+  assert.match(linuxInstallKindBody(),
+    /Some\(BundleType::AppImage\) if linux_appimage_path_is_valid\(appimage\) =>\s*\{?\s*UpdateInstallKind::LinuxAppImage/);
 
   const installCommand = rust.indexOf('async fn install_app_update');
-  const safetyGuard = rust.indexOf('if !can_auto_install_update()', installCommand);
+  const safetyGuard = rust.indexOf('if !update_install_kind().can_auto_install()', installCommand);
   const resourceLookup = rust.indexOf('.get::<Update>(rid)', installCommand);
   assert.ok(installCommand >= 0 && safetyGuard > installCommand && resourceLookup > safetyGuard,
     'the safety guard must run before the updater resource is used');
+});
+
+test('Linux install kind comes from the bundle type baked in by tauri-bundler', () => {
+  assert.match(rust, /linux_update_install_kind\(tauri::utils::platform::bundle_type\(\), appimage\.as_deref\(\)\)/);
+
+  const body = linuxInstallKindBody();
+  assert.match(body, /Some\(BundleType::Deb\) => UpdateInstallKind::LinuxDeb/);
+  // Всё остальное (нет метки бандла, rpm, AppImage без APPIMAGE) — только ручной режим,
+  // иначе plugin откатится в install_appimage и перезапишет собственный ELF (TRO-28).
+  assert.match(body, /_ => UpdateInstallKind::Manual/);
+  assert.doesNotMatch(body, /None\s*=>\s*UpdateInstallKind::(LinuxDeb|LinuxAppImage|Platform)/);
+  assert.doesNotMatch(body, /BundleType::Rpm\)?\s*=>\s*UpdateInstallKind::(LinuxDeb|LinuxAppImage|Platform)/);
+  assert.doesNotMatch(body, /current_exe|\/usr\/bin|starts_with/, 'install kind must not rely on path heuristics');
 });
 
 test('manual Linux updates show a download action and never call auto-install', () => {
