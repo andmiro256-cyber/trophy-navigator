@@ -188,6 +188,12 @@
   .leaflet-bar a, .leaflet-bar a:hover { background-color: var(--tile-bg); color: var(--text-primary); border-bottom-color: var(--card-stroke); }
   .leaflet-bar a:hover { background-image: linear-gradient(var(--ripple), var(--ripple)); }
   .leaflet-bar a.leaflet-disabled { background-color: var(--surface-variant); color: var(--text-hint); }
+  /* «Обзор» — квадратная кнопка под Z; включённый режим — рамка и заливка primary, как у .tb-btn.active */
+  .hand-mode-ctrl { margin-top: 6px !important; }
+  .hand-mode-ctrl a { display: flex; align-items: center; justify-content: center; }
+  .hand-mode-ctrl .tn-ico { width: 20px; height: 20px; }
+  .hand-mode-ctrl:has(a.active) { border-color: var(--primary) !important; }
+  .hand-mode-ctrl a.active, .hand-mode-ctrl a.active:hover { background-color: var(--tile-bg); background-image: linear-gradient(var(--primary-soft), var(--primary-soft)); color: var(--primary-text); }
 
   /* ─── СТРОКА СОСТОЯНИЯ ─── */
   #statusbar {
@@ -1229,9 +1235,8 @@
   <!-- Блокировка перемещения -->
   <button class="tb-btn" id="btn-lock" onclick="toggleLock()" title="Заблокировать/разблокировать перемещение объектов (K)" aria-label="Блокировка перемещения"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-lock-open"/></svg></button>
 
-  <!-- Режимы навигации -->
+  <!-- Линейка и маршрут по дорогам (кнопка «Обзор» — на карте под +/−/Z) -->
   <div class="tb-group tb-segment">
-    <button class="tb-btn active" id="btn-hand" onclick="requestHandMode()" title="Навигация (H)" aria-label="Навигация"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-compass"/></svg></button>
     <button class="tb-btn desktop-overflow-tool" id="btn-ruler" onclick="toggleMode('ruler')" title="Линейка (M)" aria-label="Линейка"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-ruler"/></svg></button>
     <button class="tb-btn desktop-overflow-tool" id="btn-routing" onclick="openModal('modal-routing')" title="Маршрут по дорогам" aria-label="Маршрут по дорогам"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-road"/></svg></button>
   </div>
@@ -1382,7 +1387,7 @@
 <div id="statusbar">
   <span title="Координаты курсора">📍 <span class="highlight" id="sb-coords">—</span></span>
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
-  <span title="Режим">⬡ <span class="highlight" id="sb-mode">Навигация</span></span>
+  <span title="Режим">⬡ <span class="highlight" id="sb-mode">Обзор</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
   <span id="app-version-label" class="app-version">Trophy Navigator · v0.9.26</span>
 </div>
@@ -2032,7 +2037,7 @@
       <div class="setting-card settings-workdir">
         <div class="setting-card-title">📁 Рабочая папка</div>
         <div class="setting-card-value" id="setting-workdir-path">—</div>
-        <div class="setting-card-note">Подпапки: waypoints, tracks, routes, maps, gpx</div>
+        <div class="setting-card-note">Подпапки: waypoints, tracks, routes, maps, gpx, backup</div>
         <button class="btn-secondary btn-sm" style="margin-top:8px" onclick="openWorkDir()">📂 Открыть в проводнике</button>
       </div>
       <div class="btn-row">
@@ -2561,6 +2566,26 @@ const ZoomDisplay = L.Control.extend({
   }
 });
 new ZoomDisplay().addTo(map);
+
+// Кнопка режима «Обзор» (H) — двигать карту; под +/−/Z, как управляющие кнопки карты на Android.
+// id btn-hand: подсветку включённого режима ставит setMode() через btnMap.
+const HandModeControl = L.Control.extend({
+  options: { position: 'topleft' },
+  onAdd() {
+    const box = L.DomUtil.create('div', 'leaflet-bar hand-mode-ctrl');
+    const a = L.DomUtil.create('a', 'active', box);
+    a.id = 'btn-hand';
+    a.href = '#';
+    a.title = 'Обзор (H) — двигать карту';
+    a.setAttribute('role', 'button');
+    a.setAttribute('aria-label', 'Обзор — двигать карту');
+    a.innerHTML = '<svg class="tn-ico" aria-hidden="true"><use href="#tn-i-compass"/></svg>';
+    L.DomEvent.disableClickPropagation(box);
+    L.DomEvent.on(a, 'click', ev => { L.DomEvent.preventDefault(ev); requestHandMode(); });
+    return box;
+  }
+});
+new HandModeControl().addTo(map);
 
 // Масштабная линейка
 L.control.scale({ imperial: false, maxWidth: 200, position: 'bottomleft' }).addTo(map);
@@ -3832,7 +3857,7 @@ function syncWaypointReferences(marker, options = {}) {
 let currentMode = 'hand';
 let routePickMode = null;
 const modeNames = {
-  hand:'Навигация',
+  hand:'Обзор',
   waypoint:'Добавить точку (клик)',
   track:'Рисовать трек (ESC — отмена)',
   trackedit:'Редактирование трека',
@@ -3917,7 +3942,7 @@ function setMode(mode) {
 }
 function toggleMode(mode) {
   if (focusActiveGeometrySession()) return;
-  if (currentMode === mode) { setMode('hand'); showToast('Навигация'); }
+  if (currentMode === mode) { setMode('hand'); showToast('Обзор'); }
   else setMode(mode);
 }
 
@@ -3943,7 +3968,7 @@ function focusActiveGeometrySession() {
 function requestHandMode() {
   if (focusActiveGeometrySession()) return;
   setMode('hand');
-  showToast('Навигация');
+  showToast('Обзор');
 }
 
 // ─── БЛОКИРОВКА ПЕРЕМЕЩЕНИЯ ОБЪЕКТОВ ───
@@ -7096,7 +7121,7 @@ function scheduleTrackMarkerRefresh() {
 
 map.on('zoomend moveend', scheduleTrackMarkerRefresh);
 
-// Захват трека мышью. Работает в режиме навигации и в режиме правки трека:
+// Захват трека мышью. Работает в режиме «Обзор» и в режиме правки трека:
 // подвёл курсор к линии — она подсвечивается курсором-ладонью, потянул —
 // в этой точке трек ломается и следует за мышью. Замок 🔒 всё это отключает.
 function trackGestureAllowed() {
@@ -13426,7 +13451,7 @@ setupOfflineMapDropzone();
 function showShortcutsHelp() {
   if (document.getElementById('shortcuts-overlay')) return;
   const shortcuts = [
-    ['H / Пробел', 'Навигация (рука)'],
+    ['H / Пробел', 'Обзор (двигать карту)'],
     ['W', 'Добавить точку'],
     ['T', 'Новый трек'],
     ['R', 'Новый маршрут'],
@@ -14437,7 +14462,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${missedCPs.join(', ')
           <div>• Автосохранение каждые 30 сек</div>
 
           <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:12px 0 4px">⌨ Горячие клавиши</div>
-          <div>• <b>H / Пробел</b> — навигация &nbsp; <b>W</b> — добавить точку</div>
+          <div>• <b>H / Пробел</b> — обзор (двигать карту) &nbsp; <b>W</b> — добавить точку</div>
           <div>• <b>T</b> — новый трек &nbsp; <b>R</b> — новый маршрут</div>
           <div>• <b>M</b> — линейка &nbsp; <b>K</b> — блокировка</div>
           <div>• <b>/</b> — поиск &nbsp; <b>D</b> — скачать карту</div>

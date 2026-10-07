@@ -43,3 +43,15 @@ test('focus treatment and persisted theme switching remain explicit', () => {
   assert.match(html, /const modalReturnFocus = new WeakMap\(\)/);
   assert.match(html, /requestAnimationFrame\(\(\) => overlay\.querySelector\('\.modal-close, button, input, select, textarea'\)/);
 });
+
+test('«Обзор» (hand mode) lives on the map under +/−/Z, not in the top bar', () => {
+  const toolbar = html.slice(html.indexOf('<div id="toolbar"'), html.indexOf('id="toolbar-more-menu"'));
+  assert.doesNotMatch(toolbar, /id="btn-hand"/);
+  assert.match(html, /new ZoomDisplay\(\)\.addTo\(map\);\s*[\s\S]{0,200}const HandModeControl = L\.Control\.extend\(\{\s*options: \{ position: 'topleft' \}/);
+  assert.match(html, /a\.id = 'btn-hand';\s*a\.href = '#';\s*a\.title = 'Обзор \(H\) — двигать карту';/);
+  assert.match(html, /L\.DomEvent\.on\(a, 'click', ev => \{ L\.DomEvent\.preventDefault\(ev\); requestHandMode\(\); \}\);/);
+  assert.match(html, /hand:'Обзор',/);
+  assert.match(html, /id="sb-mode">Обзор</);
+  assert.match(html, /\['H \/ Пробел', 'Обзор \(двигать карту\)'\]/);
+  assert.doesNotMatch(html, /showToast\('Навигация'\)|Навигация \(H\)|Навигация \(рука\)/);
+});
