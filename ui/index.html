@@ -2574,19 +2574,31 @@ const TND_MAP_ZOOM_OPTIONS = { zoomSnap: 0.25, zoomDelta: 0.5, wheelPxPerZoomLev
   const proto = L.Map.ScrollWheelZoom.prototype;
   const onWheel = proto._onWheelScroll;
   const perform = proto._performZoom;
-  /** Шаг одиночного щелчка — та же формула, что в _performZoom Leaflet 1.9. */
+  /** Шаг одной пачки колеса — формула _performZoom Leaflet 1.9 с округлением до zoomSnap. */
   function wheelStep(m, delta) {
     const snap = m.options.zoomSnap || 0;
     const d2 = Math.abs(delta) / (4 * m.options.wheelPxPerZoomLevel);
     const d3 = 4 * Math.log(2 / (1 + Math.exp(-d2))) / Math.LN2;
     return Math.sign(delta) * (snap ? Math.ceil(d3 / snap) * snap : d3);
   }
-  function defer(h, levels) {
-    h._tndPendingZoom = (h._tndPendingZoom || 0) + levels;
+  // Как в самом Leaflet (wheelDebounceTime): события без паузы — одна пачка, считается один раз. Тачпад и щипок
+  // (Ctrl+wheel) шлют десятки мелких событий подряд; если считать каждое отдельно с округлением вверх, 20 мелких
+  // давали +5 уровней вместо +0,25 (ревью 2554). Отдельные щелчки мыши — каждый своя пачка, своим шагом.
+  function flushBatch(h) {
+    if (!h._tndBatch) return;
+    h._tndPendingZoom = (h._tndPendingZoom || 0) + wheelStep(h._map, h._tndBatch);
+    h._tndBatch = 0;
+  }
+  function addToBatch(h, delta) {
+    const now = Date.now();
+    if (h._tndBatchAt && now - h._tndBatchAt > (h._map.options.wheelDebounceTime || 40)) flushBatch(h);
+    h._tndBatch = (h._tndBatch || 0) + delta;
+    h._tndBatchAt = now;
     if (h._tndWaitZoomEnd) return;
     h._tndWaitZoomEnd = true;
     h._map.once('zoomend', () => setTimeout(() => {
       h._tndWaitZoomEnd = false;
+      flushBatch(h); h._tndBatchAt = 0;
       const m = h._map, add = h._tndPendingZoom || 0;
       h._tndPendingZoom = 0;
       if (!m || !add) return;
@@ -2601,14 +2613,16 @@ const TND_MAP_ZOOM_OPTIONS = { zoomSnap: 0.25, zoomDelta: 0.5, wheelPxPerZoomLev
     if (!m._animatingZoom) return onWheel.call(this, e);
     this._lastMousePos = m.mouseEventToContainerPoint(e);
     const delta = L.DomEvent.getWheelDelta(e);
-    if (delta) defer(this, wheelStep(m, delta));
+    if (delta) addToBatch(this, delta);
     L.DomEvent.stop(e);
   };
   proto._performZoom = function () {
     const m = this._map;
     if (m._animatingZoom && this._delta) {
-      // щелчки, собранные до начала чужой анимации, — тоже не терять
-      defer(this, wheelStep(m, this._delta));
+      // щелчки, собранные до начала чужой анимации, — тоже не терять (своей пачкой)
+      flushBatch(this);
+      this._tndPendingZoom = (this._tndPendingZoom || 0) + wheelStep(m, this._delta);
+      if (!this._tndWaitZoomEnd) addToBatch(this, 0);
       this._delta = 0;
       this._startTime = null;
       return;

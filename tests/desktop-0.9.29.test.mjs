@@ -257,11 +257,13 @@ test('п.5: настоящий Leaflet — щелчок колеса = полу�
     h._delta = 62.5;
     h._performZoom();
     assert.deepEqual(calls, [10.5], 'один щелчок — полуровень');
-    // идёт анимация: щелчки не выброшены, каждый — полуровень, применяются после zoomend
+    // идёт анимация: щелчки мыши (с паузами больше wheelDebounceTime) не выброшены, каждый — полуровень
     calls.length = 0;
+    let now = 1_000_000;
+    w.Date.now = () => now;
     map._animatingZoom = true;
-    const wheel = () => map.getContainer().dispatchEvent(new w.WheelEvent('wheel', { deltaY: -125, deltaMode: 0, bubbles: true, cancelable: true }));
-    wheel(); wheel(); wheel();
+    const wheel = (deltaY) => map.getContainer().dispatchEvent(new w.WheelEvent('wheel', { deltaY, deltaMode: 0, bubbles: true, cancelable: true }));
+    wheel(-125); now += 80; wheel(-125); now += 80; wheel(-125); now += 80;
     // щелчки, собранные до начала анимации (таймер debounce сработал уже во время неё)
     h._delta = 62.5;
     h._performZoom();
@@ -270,6 +272,22 @@ test('п.5: настоящий Leaflet — щелчок колеса = полу�
     map.fire('zoomend');
     await new Promise(r => setTimeout(r, 5));
     assert.deepEqual(calls, [12], '4 щелчка во время анимации = +2 уровня, ни один не потерян и не сжат');
+
+    // ревью #2554: поток тачпада/щипка без пауз — одна пачка; 20 мелких событий = одно событие той же суммы
+    const zoomFor = async (events) => {
+      calls.length = 0;
+      map._animatingZoom = true;
+      for (const d of events) { wheel(d); now += 5; }
+      map._animatingZoom = false;
+      map.fire('zoomend');
+      await new Promise(r => setTimeout(r, 5));
+      now += 1000;
+      return calls[0] ?? map.getZoom();
+    };
+    const one = await zoomFor([-50]);
+    const twenty = await zoomFor(Array(20).fill(-2.5));
+    assert.equal(twenty, one, `20 мелких событий (${twenty}) = одно с той же суммой (${one})`);
+    assert.ok(one - 10 <= 0.5, 'небольшой жест тачпада — не больше полуровня');
   } finally { dom.window.close(); }
 });
 
