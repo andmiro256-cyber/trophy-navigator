@@ -324,7 +324,9 @@ async function domLayersWindow() {
   for (let i = 0; i < 5; i++) await tick();
   return { dom, w, t: w.__t, calls };
 }
-const fire = (w, el, type) => el.dispatchEvent(new w.MouseEvent(type, { bubbles: true, cancelable: true, button: 0 }));
+// click мышью несёт detail ≥ 1; click с клавиатуры (Enter/Пробел) — detail 0
+const fire = (w, el, type, detail = type === 'click' ? 1 : 0) =>
+  el.dispatchEvent(new w.MouseEvent(type, { bubbles: true, cancelable: true, button: 0, detail }));
 // то, что делает bringModalToFront на каждый mousedown в окне
 const bringToFront = (w, overlay) => { overlay.classList.remove('active'); overlay.classList.add('active'); };
 
@@ -365,6 +367,19 @@ test('баг v0.9.27: даже если строку пересоздали ме
     fire(w, w.document.querySelector('[data-tnmaps-show="lo"]'), 'pointerdown');
     fire(w, w.document.getElementById('tnmaps-layers'), 'pointerup');
     assert.deepEqual(calls.setLayer, []);
+  } finally { dom.window.close(); }
+});
+
+test('ревью 2554 P3: нажатия с клавиатуры подряд — каждое своё действие, не считаются дублем', needDom, async () => {
+  const { dom, w, calls } = await domLayersWindow();
+  try {
+    const row = () => w.document.querySelector('[data-tnmaps-show="lo"]');
+    // мышью: pointerup выполнил, следующий click того же нажатия — дубль
+    fire(w, row(), 'pointerdown'); fire(w, row(), 'pointerup'); fire(w, row(), 'click');
+    assert.equal(calls.setLayer.length, 1);
+    // клавиатура сразу следом и ещё дважды — три самостоятельных действия
+    fire(w, row(), 'click', 0); fire(w, row(), 'click', 0); fire(w, row(), 'click', 0);
+    assert.equal(calls.setLayer.length, 4);
   } finally { dom.window.close(); }
 });
 

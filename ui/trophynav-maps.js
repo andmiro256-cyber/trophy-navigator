@@ -531,7 +531,6 @@
   }
   const press = { key: null, doneKey: null, doneAt: 0 };
   function runClickAction({ el, key }) {
-    press.doneKey = key; press.doneAt = Date.now();
     if (key.startsWith('show:')) { showRegion(el.dataset.tnmapsShow, el); return; }
     if (key.startsWith('theme:')) { setTheme(el.dataset.tnmapsTheme); return; }
     if (key === '3d') {
@@ -560,13 +559,16 @@
       const act = clickAction(t);
       const down = press.key;
       press.key = null;
-      if (act && down === act.key) runClickAction(act);
+      // помечаем выполненным только действие от pointerup: следующий click того же нажатия — его дубль
+      if (act && down === act.key) { press.doneKey = act.key; press.doneAt = Date.now(); runClickAction(act); }
       return;
     }
     if (e.type === 'click') {
       const act = clickAction(t);
       if (!act) return;
-      if (press.doneKey === act.key && Date.now() - press.doneAt < 1000) { press.doneKey = null; return; }
+      // click с клавиатуры (detail 0: Enter/Пробел) — всегда самостоятельное действие (ревью 2554, P3)
+      if (e.detail !== 0 && press.doneKey === act.key && Date.now() - press.doneAt < 1000) { press.doneKey = null; return; }
+      press.doneKey = null;
       runClickAction(act);
       return;
     }
