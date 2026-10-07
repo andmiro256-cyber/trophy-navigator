@@ -6547,7 +6547,12 @@ function openModal(id) {
     const themeSel = document.getElementById('setting-theme');
     if (themeSel) themeSel.value = getTheme();
     const pathEl = document.getElementById('setting-workdir-path');
-    if (pathEl) pathEl.textContent = appDataPath || 'Не инициализирована';
+    if (pathEl) {
+      const err = workDirInitError;
+      pathEl.textContent = appDataPath
+        ? appDataPath + (err ? ' — ' + err : '')
+        : 'Не создана' + (err ? ': ' + err : '');
+    }
     updateColorModeUI('track');
     updateColorModeUI('route');
   }
@@ -11007,6 +11012,7 @@ function rehydrateCompactState(localState, fileState) {
 
 let stateFileSaveTimer = null;
 let stateFileSaveInFlight = false;
+let stateFileSaveErrorShown = false;
 let statePersistenceReady = false;
 let startupStateHadUserData = false;
 
@@ -12439,6 +12445,9 @@ async function saveSyncedGPXFiles(state, checks) {
   if (!window.__TAURI__ || !appDataPath) return;
   try {
     const { writeTextFile } = window.__TAURI__.fs;
+    for (const [key, sub] of [['waypoints', 'waypoints'], ['tracks', 'tracks'], ['routes', 'routes'], ['gpx', 'gpx']]) {
+      if (checks[key]) await ensureWorkSubdir(sub);
+    }
     const escXml = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
     // Сохраняем точки
@@ -12839,27 +12848,53 @@ async function openWorkDir() {
   }
 }
 
+let workDirInitError = '';
+
+/** Создать подпапку рабочей папки (mkdir recursive не падает, если папка уже есть). */
+async function ensureWorkSubdir(sub) {
+  if (!appDataPath || !window.__TAURI__?.fs?.mkdir) return null;
+  const path = appDataPath + '/' + sub;
+  await window.__TAURI__.fs.mkdir(path, { recursive: true });
+  return path;
+}
+
 async function initWorkingDirectory() {
   if (!window.__TAURI__) return null;
-  try {
-    const { documentDir } = window.__TAURI__.path || {};
-    const { mkdir, exists } = window.__TAURI__.fs;
-    if (!documentDir) return null;
-    const docDir = await documentDir();
-    const sep = docDir.endsWith('/') || docDir.endsWith('\\') ? '' : '/';
-    appDataPath = docDir + sep + APP_DIR_NAME;
-    // Создаём структуру папок
-    if (!(await exists(appDataPath))) await mkdir(appDataPath, { recursive: true });
-    for (const sub of APP_SUBDIRS) {
-      const subPath = appDataPath + '/' + sub;
-      if (!(await exists(subPath))) await mkdir(subPath, { recursive: true });
-    }
-    console.log('Working directory:', appDataPath);
-    return appDataPath;
-  } catch (e) {
-    console.warn('Cannot init working directory:', e);
+  const { documentDir } = window.__TAURI__.path || {};
+  const fs = window.__TAURI__.fs || {};
+  if (!documentDir || typeof fs.mkdir !== 'function') {
+    workDirInitError = 'нет доступа к файловой системе';
+    console.warn('Cannot init working directory:', workDirInitError);
+    showToast('Рабочая папка недоступна: ' + workDirInitError, 'error');
     return null;
   }
+  let root = '';
+  try {
+    const docDir = await documentDir();
+    const sep = docDir.endsWith('/') || docDir.endsWith('\\') ? '' : '/';
+    root = docDir + sep + APP_DIR_NAME;
+    await fs.mkdir(root, { recursive: true });
+  } catch (e) {
+    workDirInitError = String(e?.message || e);
+    console.warn('Cannot create working directory:', root, e);
+    showToast('Не удалось создать рабочую папку ' + (root || APP_DIR_NAME) + ': ' + workDirInitError, 'error');
+    return null;
+  }
+  appDataPath = root;
+  // Каждая подпапка — отдельно: ошибка одной не отменяет остальные
+  const failed = [];
+  for (const sub of APP_SUBDIRS) {
+    try {
+      await ensureWorkSubdir(sub);
+    } catch (e) {
+      failed.push(sub);
+      console.warn('Cannot create working subdirectory:', sub, e);
+    }
+  }
+  workDirInitError = failed.length ? 'не созданы папки: ' + failed.join(', ') : '';
+  if (failed.length) showToast('Рабочая папка ' + appDataPath + ': ' + workDirInitError, 'error');
+  console.log('Working directory:', appDataPath);
+  return appDataPath;
 }
 
 async function saveStateToFile() {
@@ -12872,8 +12907,13 @@ async function saveStateToFile() {
   try {
     const state = collectState();
     await tauriInvoke('save_state_atomic', { path: appDataPath + '/session.json', data: JSON.stringify(state, null, 2) });
+    stateFileSaveErrorShown = false;
   } catch (e) {
     console.warn('Auto-save to file failed:', e);
+    if (!stateFileSaveErrorShown) {
+      stateFileSaveErrorShown = true;
+      showToast('Не удалось сохранить сессию в ' + appDataPath + '/session.json: ' + (e?.message || e), 'error');
+    }
   } finally {
     stateFileSaveInFlight = false;
   }
@@ -13531,8 +13571,10 @@ function setTheme(theme) {
   localStorage.setItem('tnd-theme', theme);
   const sel = document.getElementById('setting-theme');
   if (sel && sel.value !== theme) sel.value = theme;
-  // Графики отчёта о гонке — на canvas: перерисовать в новых цветах, если открыт
-  if (typeof rrChartSpeed !== 'undefined' && rrChartSpeed && typeof rrRenderCharts === 'function') rrRenderCharts();
+  // Подписчики (графики отчёта о гонке на canvas) перерисовываются сами. Прямое обращение к
+  // rrChartSpeed здесь нельзя: setTheme вызывается в initApp раньше, чем выполнится `let rrChartSpeed`
+  // (временная мёртвая зона → ReferenceError, и запуск обрывался до создания рабочих папок).
+  document.dispatchEvent(new CustomEvent('tn-theme-change', { detail: { theme } }));
 }
 
 function waitForFirstPaint() {
@@ -13547,8 +13589,10 @@ function waitForFirstPaint() {
 
 // Инициализация при загрузке
 (async function initApp() {
-  initLinuxClickFallback();
-  setTheme(getTheme());
+  // Оформление не должно обрывать запуск: ошибка здесь раньше оставляла приложение без рабочих
+  // папок, восстановления сессии, лицензии и синхронизации
+  try { initLinuxClickFallback(); } catch (e) { console.warn('initLinuxClickFallback failed:', e); }
+  try { setTheme(getTheme()); } catch (e) { console.warn('setTheme failed:', e); }
   await waitForFirstPaint();
   await initWorkingDirectory();
   // Пробуем восстановить: сначала из файла, если нет — из localStorage
@@ -13560,6 +13604,8 @@ function waitForFirstPaint() {
   } else {
     restoreState(); // fallback на localStorage
   }
+  // Ошибку рабочей папки показать после тоста восстановления, чтобы он её не перекрыл
+  if (workDirInitError) setTimeout(() => showToast('Рабочая папка: ' + workDirInitError, 'error'), 2800);
   await recoverPersistedGpxIfNeeded();
   // Восстановить позицию карты из localStorage
   const savedView = localStorage.getItem('tnd-map-view');
@@ -13633,6 +13679,7 @@ let rrData = null;        // current report data
 let rrOverlays = [];      // map overlays for the report
 let rrChartSpeed = null;
 let rrChartSeg = null;
+document.addEventListener('tn-theme-change', () => { if (rrChartSpeed) rrRenderCharts(); });
 let rrCursorMarker = null;
 
 // ─── Open dialog ───
