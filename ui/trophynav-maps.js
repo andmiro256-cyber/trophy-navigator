@@ -393,10 +393,10 @@
       .tnmaps-seg-btn:first-child { border-left:0; }
       .tnmaps-seg-btn:hover { background:var(--hover); }
       .tnmaps-seg-btn.active { background:var(--primary); color:var(--on-primary); }
-      .tnmaps-checks { gap:10px; }
+      .tnmaps-checks { gap:8px; }
       .tnmaps-checks label { display:flex; align-items:center; gap:4px; min-width:0; cursor:pointer; color:var(--text-primary); }
       .tnmaps-checks label > span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-      .tnmaps-checks input, .tnmaps-poi input { margin:0; flex:0 0 auto; }
+      .tnmaps-checks input, .tnmaps-poi input { margin:0; flex:0 0 auto; width:14px; height:14px; accent-color:var(--primary); }
       .tnmaps-checks label.off { color:var(--text-muted); cursor:default; }
       .tnmaps-val input[type=range] { flex:1; min-width:0; margin:0; }
       .tnmaps-pct { flex:0 0 36px; text-align:right; font-variant-numeric:tabular-nums; color:var(--text-secondary); }
@@ -473,9 +473,9 @@
         ${state.applyingTheme === act ? '<div class="tnmaps-applying tnmaps-sub" role="status" data-tnmaps-applying>Применяю тему…</div>' : ''}
         <span class="tnmaps-label">Рельеф</span>
         <div class="tnmaps-val tnmaps-checks">
-          <label><input type="checkbox" data-tnmaps-relief="on" ${r.on ? 'checked' : ''}><span>показывать</span></label>
+          <label title="Показывать рельеф"><input type="checkbox" data-tnmaps-relief="on" ${r.on ? 'checked' : ''}><span>вкл.</span></label>
           <label class="${r.on ? '' : 'off'}"><input type="checkbox" data-tnmaps-relief="contours" ${r.contours ? 'checked' : ''} ${on(r.on)}><span>горизонтали</span></label>
-          <label class="${r.on && hasSlope ? '' : 'off'}" title="${hasSlope ? '' : 'У этой области нет файла крутизны'}"><input type="checkbox" data-tnmaps-relief="slope" ${slopeOn ? 'checked' : ''} ${on(r.on && hasSlope)}><span>крутизна</span></label>
+          <label class="${r.on && hasSlope ? '' : 'off'}" title="${hasSlope ? 'Крутизна склонов' : 'У этой области нет файла крутизны'}"><input type="checkbox" data-tnmaps-relief="slope" ${slopeOn ? 'checked' : ''} ${on(r.on && hasSlope)}><span>крутизна</span></label>
         </div>
         <span class="tnmaps-label">Отмывка</span>
         <div class="tnmaps-val">
