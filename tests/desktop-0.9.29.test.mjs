@@ -193,7 +193,7 @@ test('п.4: блок под картой — две колонки, тема о�
     assert.equal(slope2.checked, true);
     assert.equal(slope2.disabled, false);
   } finally { dom.window.close(); }
-  assert.match(mapsJs, /grid-template-columns:56px minmax\(0,1fr\)/);
+  assert.match(mapsJs, /grid-template-columns:52px minmax\(0,1fr\)/);
   assert.match(mapsJs, /\.tnmaps-seg \{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
   assert.match(mapsJs, /\.tnmaps-seg-btn\.active \{ background:var\(--primary\)/);
 });

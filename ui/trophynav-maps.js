@@ -384,7 +384,7 @@
       .tnmaps-size { margin-left:auto; font-size:10px; color:var(--text-muted); }
       /* Блок под активной картой: две колонки — подпись фиксированной ширины и элементы; строки 34 px */
       .tnmaps-controls { background:var(--surface-variant); border:0; border-radius:var(--radius-m); padding:6px 10px; margin:4px 0 6px;
-        display:grid; grid-template-columns:56px minmax(0,1fr); column-gap:8px; row-gap:2px; align-items:center; }
+        display:grid; grid-template-columns:52px minmax(0,1fr); column-gap:8px; row-gap:2px; align-items:center; }
       .tnmaps-label { font-size:11px; color:var(--text-muted); line-height:34px; white-space:nowrap; }
       .tnmaps-val { min-height:34px; min-width:0; display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text-primary); }
       .tnmaps-sub { grid-column:2; }
@@ -393,8 +393,8 @@
       .tnmaps-seg-btn:first-child { border-left:0; }
       .tnmaps-seg-btn:hover { background:var(--hover); }
       .tnmaps-seg-btn.active { background:var(--primary); color:var(--on-primary); }
-      .tnmaps-checks { gap:8px; }
-      .tnmaps-checks label { display:flex; align-items:center; gap:4px; min-width:0; cursor:pointer; color:var(--text-primary); }
+      .tnmaps-checks { gap:6px; }
+      .tnmaps-checks label { display:flex; align-items:center; gap:3px; min-width:0; cursor:pointer; color:var(--text-primary); }
       .tnmaps-checks label > span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
       .tnmaps-checks input, .tnmaps-poi input { margin:0; flex:0 0 auto; width:14px; height:14px; accent-color:var(--primary); }
       .tnmaps-checks label.off { color:var(--text-muted); cursor:default; }
