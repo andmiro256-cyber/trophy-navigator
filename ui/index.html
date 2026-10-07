@@ -27,6 +27,27 @@
   .tn-ico { width: 22px; height: 22px; flex: 0 0 auto; display: block; }
   .tn-ico-s { width: 18px; height: 18px; }
   .tn-ico-xs { width: 16px; height: 16px; }
+  /* Значки в кнопках и заголовках — те же линейные SVG, что на верхней панели, вместо эмодзи
+     (цветные эмодзи в Linux рисуются квадратами шрифта и не берут цвет темы).
+     .tn-icon-btn — кнопка-значок без фона и рамки; .tn-ico-t — значок 16 px перед текстом кнопки;
+     .tn-ico-m — приглушённый значок в строке списка; .modal-title — заголовок окна со значком. */
+  .tn-icon-btn {
+    appearance: none; background: transparent; border: 0; padding: 0; margin: 0;
+    min-width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+    color: var(--text-secondary); cursor: pointer; border-radius: var(--radius-pill); flex: none; font: inherit;
+  }
+  .tn-icon-btn .tn-ico { width: 20px; height: 20px; }
+  .tn-icon-btn.tn-icon-btn-s .tn-ico { width: 18px; height: 18px; }
+  .tn-icon-btn:hover { color: var(--primary); }
+  .tn-icon-btn.danger:hover { color: var(--error-text); }
+  .tn-icon-btn:disabled { opacity: 0.35; cursor: default; color: var(--text-secondary); }
+  .tn-ico.tn-ico-t { width: 16px; height: 16px; display: inline-block; vertical-align: -3px; margin-right: 6px; }
+  .tn-ico.tn-ico-m { color: var(--text-secondary); }
+  .modal-close .tn-ico { width: 20px; height: 20px; }
+  .modal-title { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+  .modal-title > .tn-ico { width: 20px; height: 20px; color: var(--text-secondary); }
+  .ctx-item > .tn-ico { width: 18px; height: 18px; color: var(--text-secondary); }
+  .ctx-item.danger > .tn-ico { color: inherit; }
 
   /* ─── Убрать attribution Leaflet ─── */
   .leaflet-control-attribution { display: none !important; }
