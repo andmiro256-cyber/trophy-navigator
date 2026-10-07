@@ -13,6 +13,7 @@ use std::time::{Duration, SystemTime};
 use tauri::{AppHandle, Emitter, Manager, Runtime, Url, Webview, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
+mod gpu_env;
 mod vector_maps;
 
 const MAX_TILE_BYTES: u64 = 2 * 1024 * 1024;
@@ -1774,6 +1775,8 @@ mod tests {
 }
 
 fn main() {
+    // До любых потоков и до webview: решает, включать ли GPU-композитинг WebKit (NVIDIA + Wayland).
+    gpu_env::apply();
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             get_app_version,
