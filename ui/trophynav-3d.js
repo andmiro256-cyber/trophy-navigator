@@ -32,6 +32,8 @@
     raf: 0,
     onResize: null,
     onKey: null,
+    opening: null,   // Promise открытия, пока оно идёт (двойной клик по «3D» — одно открытие)
+    seq: 0,          // номер открытия; close() его меняет — незавершённое открытие ничего не создаёт
   };
 
   // ─── стили (только переменные темы приложения) ───
@@ -233,8 +235,18 @@
   }
 
   // ─── открыть / закрыть ───
-  async function open(explicitId) {
-    if (view.ml) return;
+  /** Повторный вызов, пока 3D открыт или открывается, ничего не создаёт: один оверлей, одна карта MapLibre. */
+  function open(explicitId) {
+    if (view.ml) return Promise.resolve();
+    if (view.opening) return view.opening;
+    const seq = ++view.seq;
+    const p = doOpen(explicitId, seq).finally(() => { if (view.opening === p) view.opening = null; });
+    view.opening = p;
+    return p;
+  }
+
+  async function doOpen(explicitId, seq) {
+    const stale = () => seq !== view.seq;
     const tn = window.TrophyNavMaps;
     const lmap = leafletMap();
     if (!tn || !lmap) return;
@@ -243,6 +255,7 @@
       return;
     }
     await tn.refreshLocal().catch(() => {});
+    if (stale()) return;
     const c = lmap.getCenter();
     // Область под центром карты; карта на экране — если её область здесь (иначе 3D показал бы пустоту)
     const here = tn.regionAt(c.lat, c.lng, tn.activeId());
@@ -257,6 +270,10 @@
       await tn.ensureLibs();
       const local = tn.localEntry(id);
       const style = Core.to3dStyle(await tn.buildStyleFor(id), local, tn.STYLE_BASE, exag);
+      // Пока грузились библиотеки и стиль, 3D могли закрыть (Esc) — тогда ничего не создавать
+      if (stale()) return;
+      // Остатки прежнего вида (не должно быть, но второй оверлей поверх — хуже): убрать
+      teardown();
       view.id = id;
       view.hasDem = !!local?.dem;
       const objects = collectOverlay();
@@ -302,6 +319,7 @@
       ml.getCanvas().focus();
       document.dispatchEvent(new CustomEvent('tnmaps:3d', { detail: { open: true, id } }));
     } catch (e) {
+      if (stale()) return;
       console.warn('TrophyNav 3D: не открылся', e);
       close(true);
       toast(`⚠ 3D-вид не открылся: ${e?.message || e}`, 'warning');
@@ -314,6 +332,16 @@
       const c = ml.getCenter();
       lmap.setView([c.lat, c.lng], Math.min(lmap.getMaxZoom(), ml.getZoom() + 1), { animate: false });
     }
+    // Незавершённое открытие больше ничего не создаст
+    view.seq++;
+    view.opening = null;
+    teardown();
+    document.dispatchEvent(new CustomEvent('tnmaps:3d', { detail: { open: false } }));
+  }
+
+  /** Снять карту MapLibre (WebGL), оверлей и обработчики окна. */
+  function teardown() {
+    const ml = view.ml;
     if (view.raf) cancelAnimationFrame(view.raf);
     view.raf = 0;
     view.ml = null;
@@ -323,7 +351,8 @@
     if (view.onKey) window.removeEventListener('keydown', view.onKey, true);
     if (view.onResize) window.removeEventListener('resize', view.onResize);
     view.onKey = view.onResize = null;
-    document.dispatchEvent(new CustomEvent('tnmaps:3d', { detail: { open: false } }));
+    // Чужой #tn3d-root (оставленный прежним открытием) тоже убрать
+    document.querySelectorAll?.('#tn3d-root').forEach(el => el.remove());
   }
 
   // ─── кнопка «3D» на карте (видна, когда на экране TrophyNav Maps) ───
