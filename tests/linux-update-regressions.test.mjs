@@ -50,6 +50,25 @@ test('Linux install kind comes from the bundle type baked in by tauri-bundler', 
   assert.doesNotMatch(body, /current_exe|\/usr\/bin|starts_with/, 'install kind must not rely on path heuristics');
 });
 
+test('DEB auto-update warns about the administrator password before installing', () => {
+  assert.match(html, /function getUpdatePasswordHint\(kind\)[\s\S]*?kind === 'deb'[\s\S]*?пароль администратора/);
+  assert.match(html, /pendingUpdateKind = update\.installKind \|\| null;[\s\S]*?getUpdatePasswordHint\(pendingUpdateKind\)[\s\S]*?setInstallUpdateButton\(pendingUpdateVersion\)/);
+
+  // Подтверждение установки показывает подсказку до вызова install_app_update.
+  const install = html.indexOf('async function installPendingUpdate()');
+  const hint = html.indexOf('getUpdatePasswordHint(pendingUpdateKind)', install);
+  const confirm = html.indexOf('tndConfirm(', install);
+  const invoke = html.indexOf("tauriInvoke('install_app_update'", install);
+  assert.ok(install >= 0 && hint > install && confirm > hint && invoke > confirm,
+    'the password hint must be shown before the package is installed');
+
+  // Стартовая проверка передаёт тип установки в installPendingUpdate.
+  const startupCheck = html.indexOf('if (!update.canAutoInstall || !update.rid)');
+  const startupKind = html.indexOf('pendingUpdateKind = update.installKind || null;', startupCheck);
+  const startupInstall = html.indexOf('installPendingUpdate();', startupCheck);
+  assert.ok(startupKind > startupCheck && startupInstall > startupKind);
+});
+
 test('manual Linux updates show a download action and never call auto-install', () => {
   assert.match(html, /function setManualUpdateButton\(url\)[\s\S]*?openExternalUrl\(url\)/);
   assert.match(html, /if \(!update\.canAutoInstall \|\| !pendingUpdateRid\)[\s\S]*?Автоустановка недоступна[^`]*скачайте пакет вручную/);

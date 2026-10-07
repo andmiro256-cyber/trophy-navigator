@@ -10748,6 +10748,14 @@ let updateCheckBusy = false;
 let pendingUpdateRid = null;
 let pendingUpdateVersion = null;
 let pendingManualUpdateUrl = null;
+let pendingUpdateKind = null;
+
+// DEB-установку updater обновляет через `pkexec dpkg -i` — система спросит пароль.
+function getUpdatePasswordHint(kind) {
+  return kind === 'deb'
+    ? 'Обновление ставится как системный пакет .deb — будет запрошен пароль администратора.'
+    : '';
+}
 
 function normalizeVersion(value) {
   return String(value || '').trim().replace(/^v/i, '').split(/\s+/)[0];
@@ -12721,7 +12729,9 @@ async function fallbackCheckForUpdates(silent = false) {
 
 async function installPendingUpdate() {
   if (updateCheckBusy || !pendingUpdateRid) return;
-  if (!await tndConfirm(`Установить обновление ${pendingUpdateVersion || ''}?`.trim())) return;
+  const passwordHint = getUpdatePasswordHint(pendingUpdateKind);
+  const confirmText = `Установить обновление ${pendingUpdateVersion || ''}?`.trim();
+  if (!await tndConfirm(passwordHint ? `${confirmText}\n\n${passwordHint}` : confirmText)) return;
 
   updateCheckBusy = true;
   const btn = getUpdateButton();
@@ -12729,7 +12739,8 @@ async function installPendingUpdate() {
   btn.disabled = true;
   btn.textContent = '⏳ Скачиваем...';
   status.style.color = '#5a7aaa';
-  status.innerHTML = '<div style="margin-bottom:4px">Скачиваем обновление...</div>' +
+  status.innerHTML = '<div style="margin-bottom:4px">Скачиваем обновление...' +
+    (passwordHint ? ' После загрузки введите пароль администратора в системном окне.' : '') + '</div>' +
     '<div style="background:#1a2a3a;border-radius:4px;height:8px;overflow:hidden">' +
     '<div id="update-progress-bar" style="background:#4a8adf;height:100%;width:0%;transition:width 0.3s;border-radius:4px"></div></div>' +
     '<div id="update-progress-text" style="font-size:10px;margin-top:3px;color:var(--text-muted)">0%</div>';
@@ -12769,7 +12780,10 @@ async function installPendingUpdate() {
   } catch (e) {
     if (unlisten) unlisten();
     status.style.color = '#df7a4a';
-    status.textContent = '✗ ' + getErrorMessage(e, 'Не удалось установить обновление');
+    status.textContent = '✗ ' + getErrorMessage(e, 'Не удалось установить обновление') +
+      (pendingUpdateKind === 'deb' ? ' Если окно пароля было закрыто — проверьте обновление ещё раз.' : '');
+    // Rust уже закрыл updater-resource: повторная установка требует новой проверки.
+    pendingUpdateRid = null;
   } finally {
     updateCheckBusy = false;
     btn.disabled = false;
@@ -12789,6 +12803,7 @@ async function checkForUpdates(silent = false) {
   pendingUpdateRid = null;
   pendingUpdateVersion = null;
   pendingManualUpdateUrl = null;
+  pendingUpdateKind = null;
   btn.disabled = true;
   btn.textContent = '⏳ Проверяем...';
   status.style.color = '#5a7aaa';
@@ -12809,6 +12824,7 @@ async function checkForUpdates(silent = false) {
 
     pendingUpdateRid = update.rid;
     pendingUpdateVersion = normalizeVersion(update.version);
+    pendingUpdateKind = update.installKind || null;
     const published = formatPublishedDate(update.date);
     const notes = update.body ? `. ${update.body}` : '';
 
@@ -12819,7 +12835,8 @@ async function checkForUpdates(silent = false) {
       status.textContent = `⬆ Доступна версия ${pendingUpdateVersion}${published ? ` от ${published}` : ''}${notes} Автоустановка недоступна для этой Linux-установки — скачайте пакет вручную.`;
       setManualUpdateButton(pendingManualUpdateUrl);
     } else {
-      status.textContent = `⬆ Доступна версия ${pendingUpdateVersion}${published ? ` от ${published}` : ''}${notes}`;
+      const passwordHint = getUpdatePasswordHint(pendingUpdateKind);
+      status.textContent = `⬆ Доступна версия ${pendingUpdateVersion}${published ? ` от ${published}` : ''}${notes}${passwordHint ? ` ${passwordHint}` : ''}`;
       setInstallUpdateButton(pendingUpdateVersion);
     }
   } catch(e) {
@@ -13631,6 +13648,7 @@ function waitForFirstPaint() {
         if (doUpdate) {
           pendingUpdateRid = update.rid;
           pendingUpdateVersion = ver;
+          pendingUpdateKind = update.installKind || null;
           // Install directly without reopening modal (fixes race condition)
           installPendingUpdate();
         } else {
