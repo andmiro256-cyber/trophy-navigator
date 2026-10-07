@@ -13,6 +13,8 @@ use std::time::{Duration, SystemTime};
 use tauri::{AppHandle, Emitter, Manager, Runtime, Url, Webview, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
+mod vector_maps;
+
 const MAX_TILE_BYTES: u64 = 2 * 1024 * 1024;
 const OFFLINE_DOWNLOAD_BATCH_SIZE: u64 = 250;
 const OFFLINE_TILE_CACHE_LIMIT: usize = 4;
@@ -1784,8 +1786,22 @@ fn main() {
             inspect_offline_map,
             read_offline_tile,
             get_hardware_id,
-            save_state_atomic
+            save_state_atomic,
+            vector_maps::tnmaps_local,
+            vector_maps::tnmaps_catalog,
+            vector_maps::tnmaps_download,
+            vector_maps::tnmaps_cancel,
+            vector_maps::tnmaps_delete
         ])
+        // TrophyNav Maps: векторные тайлы, рельеф и файлы стиля (отдельно от растровых офлайн-карт)
+        .register_asynchronous_uri_scheme_protocol(
+            vector_maps::SCHEME,
+            vector_maps::handle_protocol,
+        )
+        .setup(|app| {
+            vector_maps::init(app.handle());
+            Ok(())
+        })
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())

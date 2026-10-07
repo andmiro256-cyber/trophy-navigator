@@ -4497,9 +4497,11 @@ dependencies = [
 name = "trophy-navigator-desktop"
 version = "0.9.27"
 dependencies = [
+ "flate2",
  "rusqlite",
  "serde",
  "serde_json",
+ "sha2",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
