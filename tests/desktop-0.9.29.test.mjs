@@ -274,3 +274,102 @@ test('п.5: настоящий Leaflet — щелчок колеса = полу�
     assert.equal(calls[0] % 0.25, 0, 'шаг кратен zoomSnap');
   } finally { dom.window.close(); }
 });
+
+// ─── главный баг с v0.9.27: клик по строке TrophyNav Maps и кнопкам темы в «Карте и слоях» терялся ───
+async function domLayersWindow() {
+  const dom = new JSDOM(`<!doctype html><body><div id="map"></div>
+    <div class="modal-overlay open" id="modal-layers"><div class="modal" id="modal-layers-win"><div id="tnmaps-layers"></div></div></div></body>`,
+  { url: 'https://review.invalid/', runScripts: 'dangerously', pretendToBeVisual: true });
+  const w = dom.window;
+  if (w.document.readyState !== 'complete') await new Promise(r => w.addEventListener('load', r));
+  w.eval(read('../ui/leaflet.js'));
+  w.eval('var map = L.map("map"); var currentBaseLayerName = "OpenStreetMap";');
+  const calls = { invoke: 0, setLayer: [] };
+  w.__TAURI_INTERNALS__ = { invoke: async cmd => {
+    if (cmd === 'tnmaps_local') { calls.invoke++; return { maps: [{ id: 'lo', size: 10 }], partial: {}, dir: '/d' }; }
+    if (cmd === 'tnmaps_catalog') return { catalog: { maps: [] } };
+    throw new Error(cmd);
+  } };
+  w.setLayer = name => calls.setLayer.push(name);
+  w.eval(read('../ui/tn-icons.js'));
+  w.eval(read('../ui/trophynav-maps-core.js'));
+  w.eval(mapsJs.replace('window.TrophyNavMaps = {', EXPORTS));
+  for (let i = 0; i < 5; i++) await tick();
+  return { dom, w, t: w.__t, calls };
+}
+const fire = (w, el, type) => el.dispatchEvent(new w.MouseEvent(type, { bubbles: true, cancelable: true, button: 0 }));
+// то, что делает bringModalToFront на каждый mousedown в окне
+const bringToFront = (w, overlay) => { overlay.classList.remove('active'); overlay.classList.add('active'); };
+
+test('баг v0.9.27: нажатие в окне (bringModalToFront → class active) не пересоздаёт строку; выбор TrophyNav Maps срабатывает', needDom, async () => {
+  const { dom, w, calls } = await domLayersWindow();
+  try {
+    const overlay = w.document.getElementById('modal-layers');
+    const row = w.document.querySelector('[data-tnmaps-show="lo"]');
+    assert.ok(row, 'строка ЛО есть');
+    const before = calls.invoke;
+    fire(w, row, 'pointerdown');
+    bringToFront(w, overlay);
+    for (let i = 0; i < 5; i++) await tick();   // человек держит кнопку 60–150 мс
+    assert.equal(calls.invoke, before, 'смена active не перечитывает список');
+    assert.ok(row.isConnected, 'строка под нажатой кнопкой не пересоздана');
+    fire(w, row, 'pointerup');
+    fire(w, row, 'click');
+    assert.deepEqual(calls.setLayer, ['tnmap:lo'], 'выбор выполнен один раз (pointerup, click не дублирует)');
+    // переход закрыто → открыто по-прежнему обновляет список
+    overlay.classList.remove('open');
+    await tick();
+    overlay.classList.add('open');
+    for (let i = 0; i < 5; i++) await tick();
+    assert.equal(calls.invoke, before + 1);
+  } finally { dom.window.close(); }
+});
+
+test('баг v0.9.27: даже если строку пересоздали между pointerdown и pointerup — выбор по тому же действию срабатывает', needDom, async () => {
+  const { dom, w, t, calls } = await domLayersWindow();
+  try {
+    fire(w, w.document.querySelector('[data-tnmaps-show="lo"]'), 'pointerdown');
+    w.document.getElementById('tnmaps-layers').__tnmapsHtml = '';   // заставить перерисовку
+    t.renderLayerSection();
+    fire(w, w.document.querySelector('[data-tnmaps-show="lo"]'), 'pointerup');
+    assert.deepEqual(calls.setLayer, ['tnmap:lo']);
+    // pointerdown на одной строке, pointerup на другой кнопке — ничего
+    calls.setLayer.length = 0;
+    fire(w, w.document.querySelector('[data-tnmaps-show="lo"]'), 'pointerdown');
+    fire(w, w.document.getElementById('tnmaps-layers'), 'pointerup');
+    assert.deepEqual(calls.setLayer, []);
+  } finally { dom.window.close(); }
+});
+
+test('баг v0.9.27: кнопка темы — pointerdown, смена active, pointerup → тема применена', needDom, async () => {
+  const { dom, w, t } = await domLayersWindow();
+  try {
+    const layer = new t.TnVectorLayer('lo');
+    t.state.activeLayer = layer;
+    w.map.hasLayer = l => l === layer;
+    const themes = [];
+    layer.reloadStyle = th => themes.push(th);
+    t.renderLayerSection();
+    const btn = w.document.querySelector('#tnmaps-layers [data-tnmaps-theme="topo"]');
+    fire(w, btn, 'pointerdown');
+    bringToFront(w, w.document.getElementById('modal-layers'));
+    for (let i = 0; i < 5; i++) await tick();
+    assert.ok(btn.isConnected);
+    fire(w, btn, 'pointerup');
+    fire(w, btn, 'click');
+    assert.deepEqual(themes, ['topo']);
+    // клавиатура (только click) тоже работает
+    fire(w, w.document.querySelector('#tnmaps-layers [data-tnmaps-theme="contrast"]'), 'click');
+    assert.deepEqual(themes, ['topo', 'contrast']);
+  } finally { dom.window.close(); }
+});
+
+test('renderLayerSection с той же разметкой не заменяет узлы', needDom, async () => {
+  const { dom, w, t } = await domLayersWindow();
+  try {
+    const row = w.document.querySelector('[data-tnmaps-show="lo"]');
+    t.renderLayerSection();
+    t.renderLayerSection();
+    assert.equal(w.document.querySelector('[data-tnmaps-show="lo"]'), row);
+  } finally { dom.window.close(); }
+});

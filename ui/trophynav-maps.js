@@ -499,41 +499,87 @@
       </div>`;
     }
     const hint = state.local.length ? '' : '<div class="tnmaps-empty">Нет скачанных областей. Векторные карты работают без интернета.</div>';
+    const html = items + controls + hint;
+    // Та же разметка — узлы не трогать: пересоздание строки под нажатой кнопкой мыши съедает click
+    // (WebKit не шлёт click, если элемент mousedown удалён до mouseup)
+    if (box.__tnmapsHtml === html && box.childElementCount) return;
+    box.__tnmapsHtml = html;
     const poiOpen = box.querySelector('[data-tnmaps-poi-list]')?.hidden === false;
-    box.innerHTML = items + controls + hint;
+    box.innerHTML = html;
     if (poiOpen) { const l = box.querySelector('[data-tnmaps-poi-list]'); if (l) l.hidden = false; }
   }
 
-  function onLayerSectionEvent(e) {
-    const t = e.target;
-    const show = t.closest?.('[data-tnmaps-show]');
-    if (show && e.type === 'click') { showRegion(show.dataset.tnmapsShow, show); return; }
-    if (t.closest?.('[data-tnmaps-3d]') && e.type === 'click') {
+  /**
+   * Кнопки раздела срабатывают по pointerup, если pointerdown был на том же действии (строка может
+   * пересоздаться между нажатием и отпусканием — сравниваем действие, а не узел), и по click — для
+   * клавиатуры и случая без pointer-событий. Повторный click того же действия сразу после pointerup
+   * не выполняется второй раз.
+   */
+  const CLICK_ACTIONS = [
+    ['[data-tnmaps-show]', el => `show:${el.dataset.tnmapsShow}`],
+    ['[data-tnmaps-theme]', el => `theme:${el.dataset.tnmapsTheme}`],
+    ['[data-tnmaps-3d]', () => '3d'],
+    ['[data-tnmaps-poi-toggle]', () => 'poi-toggle'],
+    ['[data-tnmaps-poi-all]', () => 'poi-all'],
+  ];
+  function clickAction(target) {
+    for (const [sel, key] of CLICK_ACTIONS) {
+      const el = target?.closest?.(sel);
+      if (el) return { el, key: key(el) };
+    }
+    return null;
+  }
+  const press = { key: null, doneKey: null, doneAt: 0 };
+  function runClickAction({ el, key }) {
+    press.doneKey = key; press.doneAt = Date.now();
+    if (key.startsWith('show:')) { showRegion(el.dataset.tnmapsShow, el); return; }
+    if (key.startsWith('theme:')) { setTheme(el.dataset.tnmapsTheme); return; }
+    if (key === '3d') {
       if (typeof window.closeModal === 'function') window.closeModal('modal-layers');
       window.TrophyNav3D?.open();
       return;
     }
-    const th = t.closest?.('[data-tnmaps-theme]');
-    if (th && e.type === 'click') { setTheme(th.dataset.tnmapsTheme); return; }
+    if (key === 'poi-toggle') {
+      const list = document.querySelector('#tnmaps-layers [data-tnmaps-poi-list]');
+      if (list) list.hidden = !list.hidden;
+      return;
+    }
+    if (key === 'poi-all') {
+      const cur = Core.parsePoi(readPoi());
+      setPoi(cur.size < Core.POI_ALL.length ? Core.POI_ALL : []);
+    }
+  }
+
+  function onLayerSectionEvent(e) {
+    const t = e.target;
+    if (e.type === 'pointerdown') {
+      press.key = e.button === 0 || e.button == null ? clickAction(t)?.key || null : null;
+      return;
+    }
+    if (e.type === 'pointerup') {
+      const act = clickAction(t);
+      const down = press.key;
+      press.key = null;
+      if (act && down === act.key) runClickAction(act);
+      return;
+    }
+    if (e.type === 'click') {
+      const act = clickAction(t);
+      if (!act) return;
+      if (press.doneKey === act.key && Date.now() - press.doneAt < 1000) { press.doneKey = null; return; }
+      runClickAction(act);
+      return;
+    }
     if (t.matches?.('[data-tnmaps-relief]') && e.type === 'change') { setRelief({ [t.dataset.tnmapsRelief]: t.checked }); return; }
     if (t.matches?.('[data-tnmaps-strength]')) {
       if (e.type === 'input') t.nextElementSibling.textContent = `${t.value * 10}%`;
       if (e.type === 'change') setRelief({ strength: Number(t.value) });
       return;
     }
-    if (t.closest?.('[data-tnmaps-poi-toggle]') && e.type === 'click') {
-      const list = document.querySelector('#tnmaps-layers [data-tnmaps-poi-list]');
-      if (list) list.hidden = !list.hidden;
-      return;
-    }
     if (t.matches?.('[data-tnmaps-poi]') && e.type === 'change') {
       const sel = [...document.querySelectorAll('#tnmaps-layers [data-tnmaps-poi]')].filter(cb => cb.checked).map(cb => cb.dataset.tnmapsPoi);
       setPoi(sel);
       return;
-    }
-    if (t.closest?.('[data-tnmaps-poi-all]') && e.type === 'click') {
-      const cur = Core.parsePoi(readPoi());
-      setPoi(cur.size < Core.POI_ALL.length ? Core.POI_ALL : []);
     }
   }
 
@@ -788,12 +834,17 @@
   function init() {
     injectCss();
     const box = document.getElementById('tnmaps-layers');
-    if (box) ['click', 'change', 'input'].forEach(t => box.addEventListener(t, onLayerSectionEvent));
+    if (box) ['pointerdown', 'pointerup', 'click', 'change', 'input'].forEach(t => box.addEventListener(t, onLayerSectionEvent));
     // Окно «Карта и слои» открылось — обновить список скачанных
     const layersModal = document.getElementById('modal-layers');
     if (layersModal) {
+      // Только переход «закрыто → открыто»: класс меняется и от bringModalToFront (active) на каждом
+      // нажатии мыши в окне — перерисовка в этот момент съедала клик по строке и кнопкам темы
+      let wasOpen = layersModal.classList.contains('open');
       new MutationObserver(() => {
-        if (layersModal.classList.contains('open')) refreshLocal().then(renderLayerSection).catch(() => {});
+        const isOpen = layersModal.classList.contains('open');
+        if (isOpen && !wasOpen) refreshLocal().then(renderLayerSection).catch(() => {});
+        wasOpen = isOpen;
       }).observe(layersModal, { attributes: true, attributeFilter: ['class'] });
     }
     window.__TAURI__?.event?.listen?.('tnmaps-download', onDownloadEvent);
