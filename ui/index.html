@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🧭 Trophy Navigator Desktop v0.9.27</title>
+  <title>🧭 Trophy Navigator Desktop v0.9.28</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <link rel="stylesheet" href="theme.css"/>
@@ -1389,7 +1389,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим">⬡ <span class="highlight" id="sb-mode">Обзор</span></span>
   <span title="Активный слой">▣ <span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span id="app-version-label" class="app-version">Trophy Navigator · v0.9.27</span>
+  <span id="app-version-label" class="app-version">Trophy Navigator · v0.9.28</span>
 </div>
 
 <div id="ruler-panel">
@@ -10824,10 +10824,10 @@ function tauriInvoke(command, args = {}) {
   return invoke(command, args);
 }
 
-let appDisplayVersion = '0.9.27';
+let appDisplayVersion = '0.9.28';
 
 function getCurrentAppVersion() {
-  return normalizeVersion(appDisplayVersion || document.getElementById('about-version')?.textContent || '0.9.27');
+  return normalizeVersion(appDisplayVersion || document.getElementById('about-version')?.textContent || '0.9.28');
 }
 
 function setDisplayedAppVersion(version) {
@@ -14440,7 +14440,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${escapeHtml(missedCPs
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--card-stroke)">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:var(--text-primary)">0.9.27</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:var(--text-primary)">0.9.28</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--card-stroke)">
           <span style="color:var(--text-muted)">Платформа</span><span style="color:var(--text-primary)" id="about-platform">—</span>
