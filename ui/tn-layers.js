@@ -584,12 +584,14 @@
     const open = ui.open.has(item.iid);
     const isTn = !!item.tn;
     const label = item.label || sourceId(item.source);
+    // «TrophyNav Maps · Ленинградская область» в узкой строке — только область, вид карты показывает значок и метка
+    const shown = isTn ? label.replace(/^TrophyNav Maps\s*·\s*/, '') : label;
     const top = index === total - 1, bottom = index === 0;
     return `<div class="tnst-row${item.enabled ? '' : ' disabled'}${ui.flash === item.iid ? ' flash' : ''}" data-iid="${esc(item.iid)}" data-reason="${esc(runtime.get(item.iid)?.view?.reason || '')}">
       <div class="tnst-line">
         <button type="button" class="tn-icon-btn tn-icon-btn-s tnst-drag" data-act="drag" data-iid="${esc(item.iid)}" title="Перетащите, чтобы поменять порядок" aria-label="Перетащить ${esc(label)}">${ico('swap-vert')}</button>
         <button type="button" class="tn-icon-btn tn-icon-btn-s" data-act="toggle" data-iid="${esc(item.iid)}" aria-pressed="${item.enabled}" title="${item.enabled ? 'Скрыть слой' : 'Показать слой'}" aria-label="${item.enabled ? 'Скрыть' : 'Показать'} ${esc(label)}">${ico(item.enabled ? 'eye' : 'eye-off')}</button>
-        <span class="tnst-name" title="${esc(label)}">${ico(kindIcon(item.source, label), 'tn-ico-t tn-ico-m')}<span>${esc(label)}</span>${isTn ? `<span class="tnst-badge">${item.tn.mode === 'full' ? 'целиком' : 'дороги'}</span>` : ''}</span>
+        <span class="tnst-name" title="${esc(label)}">${ico(kindIcon(item.source, label), 'tn-ico-t tn-ico-m')}<span>${esc(shown)}</span>${isTn ? `<span class="tnst-badge">TN · ${item.tn.mode === 'full' ? 'целиком' : 'дороги'}</span>` : ''}</span>
         <button type="button" class="tn-icon-btn tn-icon-btn-s${open ? ' on' : ''}" data-act="settings" data-iid="${esc(item.iid)}" aria-expanded="${open}" title="Настроить" aria-label="Настроить ${esc(label)}">${ico('sliders')}</button>
         <button type="button" class="tn-icon-btn tn-icon-btn-s danger" data-act="remove" data-iid="${esc(item.iid)}" title="Убрать слой" aria-label="Убрать ${esc(label)}">${ico('delete')}</button>
       </div>
