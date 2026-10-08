@@ -1299,7 +1299,7 @@
   <button class="tb-btn tb-captioned offline-btn desktop-overflow-tool" onclick="openModal('modal-offline');scanOfflineMaps()" title="Офлайн карты — скачать и загрузить (D)"><span class="tb-icon"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-download"/></svg></span><span class="tb-text">Офлайн карты</span></button>
 
   <!-- Синхронизация -->
-  <button class="tb-btn tb-captioned sync-btn desktop-overflow-tool" onclick="openSyncModal()" title="Облачная синхронизация"><span class="tb-icon"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-cloud-sync"/></svg></span><span class="tb-text">Синхр.</span></button>
+  <button class="tb-btn tb-captioned sync-btn desktop-overflow-tool" onclick="openSyncModal()" title="Синхронизация с сервером"><span class="tb-icon"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-cloud-sync"/></svg></span><span class="tb-text">Синхр.</span></button>
 
   <!-- Live мониторинг -->
   <button class="tb-btn tb-captioned desktop-overflow-tool" id="btn-live" onclick="toggleLive()" title="Мониторинг участников"><span class="tb-icon"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-signal"/></svg></span><span class="tb-text">Live</span></button>
@@ -1334,7 +1334,7 @@
   <button type="button" class="toolbar-more-item" role="menuitem" data-mode="ruler" onclick="closeToolbarMore();toggleMode('ruler')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-ruler"/></svg> Линейка <span class="kbd-hint">M</span></button>
   <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openModal('modal-routing')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-road"/></svg> Маршрут по дорогам</button>
   <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openModal('modal-offline');scanOfflineMaps()"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-download"/></svg> Офлайн-карты</button>
-  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openSyncModal()"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-cloud-sync"/></svg> Облачная синхронизация</button>
+  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openSyncModal()"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-cloud-sync"/></svg> Синхронизация с сервером</button>
   <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();toggleLive()"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-signal"/></svg> Мониторинг участников</button>
   <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openServerPanel()"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-server"/></svg> Связь с сервером</button>
   <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openModal('modal-about')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-info"/></svg> О программе</button>
@@ -2320,7 +2320,7 @@
 <div class="modal-overlay" id="modal-sync">
   <div class="modal" id="modal-sync-win" style="top:60px;left:350px;width:380px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-sync-win')">
-      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-cloud-sync"/></svg>Облачная синхронизация</span>
+      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-cloud-sync"/></svg>Синхронизация с сервером</span>
       <button type="button" class="modal-close" onclick="closeModal('modal-sync')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body">
@@ -2355,8 +2355,8 @@
 
       <input id="sync-api-key" type="hidden" value="">
 
-      <!-- Отправить в облако -->
-      <div class="sync-section-title"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-cloud-upload"/></svg>Отправить в облако</div>
+      <!-- Отправить на сервер -->
+      <div class="sync-section-title"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-cloud-upload"/></svg>Отправить на сервер</div>
       <div style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text-primary);margin-bottom:8px">
         <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
           <input type="checkbox" id="sync-cb-waypoints" checked> 📍 Точки (<span id="sync-wpt-count">0</span>)
@@ -2371,15 +2371,19 @@
           <input type="checkbox" id="sync-cb-gpx" checked> 📄 GPX файлы (<span id="sync-gpx-count">0</span>)
         </label>
       </div>
-      <button class="btn-primary" style="width:100%" onclick="syncPush()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-cloud-upload"/></svg>Отправить в облако</button>
+      <button class="btn-primary" style="width:100%" onclick="syncPush()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-cloud-upload"/></svg>Отправить на сервер</button>
 
-      <!-- Загрузить из облака -->
-      <div class="sync-section-title" style="margin-top:12px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-cloud-download"/></svg>Загрузить из облака</div>
+      <!-- Получить с сервера: только добавляет -->
+      <div class="sync-section-title" style="margin-top:12px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-cloud-download"/></svg>Получить с сервера</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Добавляются только объекты с новыми названиями — то, что уже есть на компьютере, не меняется и не удаляется.</div>
       <div id="sync-server-info" style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Нажмите «Проверить» для просмотра данных</div>
-      <button class="btn-secondary" style="width:100%" onclick="syncPull()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-cloud-download"/></svg>Загрузить из облака</button>
+      <button class="btn-secondary" style="width:100%" onclick="syncPull()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-cloud-download"/></svg>Получить с сервера</button>
+
+      <div class="sync-section-title" style="margin-top:12px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-delete"/></svg>Очистить данные на сервере</div>
+      <button class="btn-secondary btn-danger" style="width:100%" onclick="TNServer.clearServerData()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-delete"/></svg>Очистить данные на сервере</button>
 
       <div style="font-size:10px;color:var(--text-muted);margin-top:10px;text-align:center;line-height:1.6">
-        Облачная синхронизация через trophynav.ru<br>
+        Синхронизация через сервер trophynav.ru<br>
         Почта: <span style="color:var(--text-secondary)">info@trophynav.ru</span> · Сайт: <span style="color:var(--text-secondary)">trophynav.ru</span>
       </div>
 
@@ -12304,111 +12308,8 @@ function buildSyncPayload(fullState, checks) {
   return payload;
 }
 
-function toSyncTimestamp(value) {
-  const ts = Date.parse(value || '');
-  return Number.isFinite(ts) ? ts : 0;
-}
-
-function mergeSyncCounters(localCounters = {}, remoteCounters = {}) {
-  const result = { ...(localCounters || {}) };
-  Object.entries(remoteCounters || {}).forEach(([key, value]) => {
-    const localValue = result[key];
-    if (typeof localValue === 'number' && typeof value === 'number') {
-      result[key] = Math.max(localValue, value);
-    } else {
-      result[key] = value;
-    }
-  });
-  return result;
-}
-
-function getSyncEntityKey(item, type) {
-  if (!item || typeof item !== 'object') return null;
-  if (item.id != null && item.id !== '') return `${type}:id:${item.id}`;
-
-  if (type === 'waypoints' && Number.isFinite(item.lat) && Number.isFinite(item.lng)) {
-    return `${type}:geo:${String(item.name || '').trim()}:${item.lat.toFixed(6)}:${item.lng.toFixed(6)}`;
-  }
-
-  const createdAt = String(item.createdAt || item.importedAt || '').trim();
-  const name = String(item.name || '').trim();
-  if (createdAt || name) return `${type}:meta:${createdAt}:${name}`;
-  return null;
-}
-
-function mergeSyncItems(localItems = [], remoteItems = [], type) {
-  const merged = new Map();
-  const extras = [];
-
-  const put = (item, sourceTag) => {
-    if (!item || typeof item !== 'object') return;
-    const key = getSyncEntityKey(item, type);
-    if (!key) {
-      extras.push(item);
-      return;
-    }
-    const prev = merged.get(key);
-    if (!prev) {
-      merged.set(key, item);
-      return;
-    }
-
-    const prevTs = toSyncTimestamp(prev.updatedAt || prev.syncedAt || prev.createdAt || prev.importedAt);
-    const nextTs = toSyncTimestamp(item.updatedAt || item.syncedAt || item.createdAt || item.importedAt);
-    if (nextTs >= prevTs || sourceTag === 'remote') {
-      merged.set(key, { ...prev, ...item });
-    }
-  };
-
-  localItems.forEach(item => put(item, 'local'));
-  remoteItems.forEach(item => put(item, 'remote'));
-
-  return [...Array.from(merged.values()), ...extras];
-}
-
-function mergeWaypointSets(localSets = [], remoteSets = []) {
-  const merged = new Map();
-  localSets.forEach(set => {
-    if (set && set.id != null) merged.set(set.id, { ...set });
-  });
-  remoteSets.forEach(set => {
-    if (!set || set.id == null) return;
-    const prev = merged.get(set.id) || {};
-    merged.set(set.id, { ...prev, ...set });
-  });
-  return Array.from(merged.values());
-}
-
-function mergeSyncState(localState, remoteState, checks) {
-  const merged = {
-    ...localState,
-    version: APP_STATE_VERSION,
-    _source: remoteState?._source || localState?._source || 'desktop',
-    settings: { ...(localState.settings || {}), ...(remoteState.settings || {}) },
-    map: { ...(localState.map || {}), ...(remoteState.map || {}) },
-    counters: mergeSyncCounters(localState.counters || {}, remoteState.counters || {}),
-    waypointSets: checks.waypoints
-      ? mergeWaypointSets(localState.waypointSets || [], remoteState.waypointSets || [])
-      : (localState.waypointSets || []),
-    activeSetId: checks.waypoints
-      ? (remoteState.activeSetId ?? localState.activeSetId ?? null)
-      : (localState.activeSetId ?? null),
-    waypoints: checks.waypoints
-      ? mergeSyncItems(localState.waypoints || [], remoteState.waypoints || [], 'waypoints')
-      : (localState.waypoints || []),
-    tracks: checks.tracks
-      ? mergeSyncItems(localState.tracks || [], remoteState.tracks || [], 'tracks')
-      : (localState.tracks || []),
-    routes: checks.routes
-      ? mergeSyncItems(localState.routes || [], remoteState.routes || [], 'routes')
-      : (localState.routes || []),
-    gpxFiles: checks.gpx
-      ? mergeSyncItems(localState.gpxFiles || [], remoteState.gpxFiles || [], 'gpx')
-      : (localState.gpxFiles || [])
-  };
-
-  return merged;
-}
+// Слияние при «Получить с сервера» — TNServer.mergeAddOnly (ui/tn-server.js): только добавляет.
+// Прежнее слияние по id с победой сервера заменяло локальные объекты (и чужие с тем же номером) — удалено.
 
 function normalizeSyncPullState(payload, fallbackState = null) {
   const fallback = fallbackState || {
@@ -12721,6 +12622,7 @@ async function syncPush() {
       document.getElementById('sync-last-time').textContent = new Date().toLocaleString('ru-RU');
       localStorage.setItem('tnd-sync-last', new Date().toISOString());
       const acceptedCounts = formatSyncPushCounts(data.pushed, checks);
+      window.TNServer?.rememberExchange('push', acceptedCounts || 'данные отправлены');
       if (acceptedCounts) {
         const serverInfo = document.getElementById('sync-server-info');
         if (serverInfo) serverInfo.textContent = `Принято сервером: ${acceptedCounts}`;
@@ -12738,11 +12640,12 @@ async function syncPush() {
   }
 }
 
-// ─── Сохранение синхронизированных данных как GPX файлы ───
+// ─── Добавленные «Получить с сервера» объекты — GPX-файлами в рабочей папке ───
+// state — только добавленное; существующий файл не перезаписывается (берётся «имя (2).gpx»)
 async function saveSyncedGPXFiles(state, checks) {
   if (!window.__TAURI__ || !appDataPath) return;
   try {
-    const { writeTextFile } = window.__TAURI__.fs;
+    const writeNew = (sub, base, ext, content) => TNServer.writeNewTextFile(appDataPath + '/' + sub, base, ext, content);
     for (const [key, sub] of [['waypoints', 'waypoints'], ['tracks', 'tracks'], ['routes', 'routes'], ['gpx', 'gpx']]) {
       if (checks[key]) await ensureWorkSubdir(sub);
     }
@@ -12770,7 +12673,7 @@ async function saveSyncedGPXFiles(state, checks) {
         }
         gpx += '</gpx>';
         const fname = (set.name || 'waypoints').replace(/[^a-zA-Zа-яА-Я0-9_\- ]/g, '_');
-        await writeTextFile(appDataPath + '/waypoints/' + fname + '.gpx', gpx);
+        await writeNew('waypoints', fname, '.gpx', gpx);
       }
     }
 
@@ -12792,7 +12695,7 @@ async function saveSyncedGPXFiles(state, checks) {
         });
         gpx += `    </trkseg>\n  </trk>\n</gpx>`;
         const fname = (t.name || 'track_' + t.id).replace(/[^a-zA-Zа-яА-Я0-9_\- ]/g, '_');
-        await writeTextFile(appDataPath + '/tracks/' + fname + '.gpx', gpx);
+        await writeNew('tracks', fname, '.gpx', gpx);
       }
     }
 
@@ -12820,15 +12723,15 @@ async function saveSyncedGPXFiles(state, checks) {
         });
         gpx += `  </rte>\n</gpx>`;
         const fname = (r.name || 'route_' + r.id).replace(/[^a-zA-Zа-яА-Я0-9_\- ]/g, '_');
-        await writeTextFile(appDataPath + '/routes/' + fname + '.gpx', gpx);
+        await writeNew('routes', fname, '.gpx', gpx);
       }
     }
 
     // Сохраняем импортированные GPX файлы
     if (checks.gpx && state.gpxFiles && state.gpxFiles.length > 0) {
       for (const g of state.gpxFiles) {
-        const fname = (g.name || 'imported.gpx').replace(/[^a-zA-Zа-яА-Я0-9_.\- ]/g, '_');
-        await writeTextFile(appDataPath + '/gpx/' + fname, g.content);
+        const fname = (g.name || 'imported.gpx').replace(/[^a-zA-Zа-яА-Я0-9_.\- ]/g, '_').replace(/\.gpx$/i, '');
+        await writeNew('gpx', fname, '.gpx', g.content);
       }
     }
 
@@ -12845,75 +12748,56 @@ async function syncPull(silent) {
   if (!cfg.email || !cfg.syncKey) { if (!silent) showToast('Привяжите email для синхронизации'); return; }
   const checks = getSyncChecks();
 
-  if (!silent && !await tndConfirm('Загрузить данные с сервера? Выбранные типы будут объединены с локальными данными, при конфликте победит более новая версия.')) return;
+  if (!silent && !await tndConfirm('Получить данные с сервера? Добавятся только точки, маршруты и треки с новыми названиями — то, что уже есть на компьютере, не изменится и не удалится.', 'Получить с сервера')) return;
 
-  updateSyncStatus('Загрузка...', false);
+  updateSyncStatus('Получение...', false);
   try {
     const resp = await fetch(syncApiUrl('/api/sync/pull'), {
       headers: syncHeaders()
     });
     if (!resp.ok) {
       updateSyncStatus('Ошибка: ' + resp.status, false);
+      if (!silent) showToast('Не удалось получить данные с сервера');
       return;
     }
     const payload = await resp.json();
     if (payload.error) {
       updateSyncStatus('Ошибка: ' + payload.error, false);
+      if (!silent) showToast('Не удалось получить данные с сервера');
       return;
     }
 
+    // Только добавить (как Android SyncMerge.addMissingByName): объект с названием, которое уже есть на
+    // компьютере, не заменяется; локальное не удаляется; повтор названия от сервера — одна копия.
+    // Без запасного локального состояния: тип, которого нет в ответе, — пустой список, а не «копия своего».
     const localState = collectState();
-    let state = normalizeSyncPullState(payload, localState);
+    const remote = normalizeSyncPullState(payload);
     const syncTime = new Date().toISOString();
-    const serverSource = state._source || 'sync';
+    const { state, stats, added } = TNServer.mergeAddOnly(localState, remote, checks, {
+      syncTime,
+      source: remote._source || 'sync',
+      makeWaypointId: () => makeEntityId('wp')
+    });
 
-    // Помечаем синхронизированные элементы
-    if (checks.waypoints && state.waypoints) {
-      state.waypoints = state.waypoints.map(wp => ({
-        ...wp,
-        source: wp.source || serverSource,
-        syncedAt: wp.syncedAt || syncTime
-      }));
-    }
-    if (checks.tracks && state.tracks) {
-      state.tracks = state.tracks.map(t => ({
-        ...t,
-        source: t.source || serverSource,
-        syncedAt: t.syncedAt || syncTime
-      }));
-    }
-    if (checks.routes && state.routes) {
-      state.routes = state.routes.map(r => ({
-        ...r,
-        source: r.source || serverSource,
-        syncedAt: r.syncedAt || syncTime
-      }));
+    if (TNServer.addedTotal(stats) > 0) {
+      applyState(state);
+      saveState();
+      // В рабочую папку — только добавленное, новыми файлами
+      saveSyncedGPXFiles({ ...added, waypointSets: state.waypointSets }, checks);
     }
 
-    // Помечаем GPX файлы
-    if (checks.gpx && state.gpxFiles) {
-      state.gpxFiles = state.gpxFiles.map(g => ({
-        ...g,
-        source: g.source || serverSource,
-        syncedAt: g.syncedAt || syncTime
-      }));
-    }
-
-    state = mergeSyncState(localState, state, checks);
-
-    applyState(state);
-    saveState();
-
-    // Сохраняем синхронизированные данные как GPX файлы
-    saveSyncedGPXFiles(state, checks);
-
+    const summary = TNServer.formatPullSummary(stats);
     updateSyncStatus('Подключено', true);
     document.getElementById('sync-last-time').textContent = new Date().toLocaleString('ru-RU');
-    localStorage.setItem('tnd-sync-last', new Date().toISOString());
-    if (!silent) showToast('Данные загружены с trophynav.ru');
+    localStorage.setItem('tnd-sync-last', syncTime);
+    TNServer.rememberExchange('pull', summary, syncTime);
+    const serverInfo = document.getElementById('sync-server-info');
+    if (serverInfo && !silent) serverInfo.textContent = summary;
+    if (!silent) showToast(summary, 'success');
+    return stats;
   } catch (e) {
     updateSyncStatus('Нет связи', false);
-    if (!silent) showToast('Не удалось загрузить данные');
+    if (!silent) showToast('Не удалось получить данные с сервера');
   }
 }
 
@@ -13944,7 +13828,7 @@ function waitForFirstPaint() {
   setTimeout(showTrialBanner, 3000);
   updatePremiumUI();
   console.log('TND init OK | Trial:', getTrialDaysLeft(), 'd | Licensed:', isLicensed());
-  // Auto-sync: загрузить данные из облака при запуске (silent mode)
+  // Auto-sync: получить с сервера при запуске (тихо; только добавляет новое)
   loadSyncConfig();
   setTimeout(() => { syncPull(true); }, 2000);
   // Onboarding при первом запуске
