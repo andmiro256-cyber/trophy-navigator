@@ -2607,7 +2607,9 @@ let currentCRS = 'EPSG3857';
 const TND_MAP_ZOOM_OPTIONS = { zoomSnap: 0, zoomDelta: 0.5, scrollWheelZoom: false };
 /** Зум для подписей: дробный уровень показываем целым. */
 const formatZoomLevel = z => String(Math.round(Number(z) || 0));
-const map = L.map('map', { zoomControl: true, attributionControl: false, maxZoom: 22, preferCanvas: true, ...TND_MAP_ZOOM_OPTIONS }).setView([55.75, 37.62], 10);
+// renderer: холст точек/маршрутов с запасом в пол-экрана (по умолчанию 10%) — при плавном отдалении
+// колесом холст сжимается до зума-конца, и с запасом 10% линии маршрута «пропадали» по краям (Андрей 09.10)
+const map = L.map('map', { zoomControl: true, attributionControl: false, maxZoom: 22, preferCanvas: true, renderer: L.canvas({ padding: 0.5 }), ...TND_MAP_ZOOM_OPTIONS }).setView([55.75, 37.62], 10);
 const trackCanvasRenderer = L.canvas({ padding: 0.5 });
 const trackPointCanvasRenderer = L.canvas({ padding: 0.5, tolerance: 8 });
 function createTrackPolylineLayer(points, options = {}) {
