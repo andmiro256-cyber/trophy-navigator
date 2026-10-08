@@ -23,8 +23,14 @@ ureq = { version = "2", features = ["tls"] }
 rusqlite = { version = "0.32", features = ["bundled"] }
 flate2 = "1"
 sha2 = "0.10"
+# Голосовой поиск (src/voice.rs): запись с микрофона и распознавание речи в приложении, без сервера
+cpal = "0.15"
+whisper-rs = "0.16"
 
 # Щипок тачпада: перехват GDK_TOUCHPAD_PINCH у WebKitWebView (src/pinch.rs); версии — как у wry/tauri
+[dev-dependencies]
+hound = "3"
+
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"
 webkit2gtk = "2.0"
