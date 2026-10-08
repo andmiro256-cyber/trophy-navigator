@@ -77,9 +77,18 @@
   function localEntry(id) {
     return state.local.find(m => m.id === id) || null;
   }
+  /** Обзорная карта России — не область: не в списке областей, не «удалить», в bounds-поиске не участвует. */
+  const OVERVIEW_ID = Core?.OVERVIEW_ID || 'russia-overview';
+  const isOverview = m => !!m && (m.kind === 'overview' || m.id === OVERVIEW_ID || catalogEntry(m.id)?.kind === 'overview');
+  /** Скачанная исправная обзорная карта или null. */
+  function overviewLocal() {
+    const m = localEntry(OVERVIEW_ID);
+    return m && !m.error ? m : null;
+  }
   function regionName(id) {
     const c = catalogEntry(id);
     if (c?.name) return c.name;
+    if (id === OVERVIEW_ID) return 'Обзорная карта России';
     const l = localEntry(id);
     // Имя в metadata бывает дефолтом сборщика («OpenMapTiles…») — тогда id
     if (l?.name && !/openmaptiles/i.test(l.name)) return l.name;
@@ -193,7 +202,9 @@
     // «Обычная» — базовый стиль без файла темы
     const themeText = themeId === 'normal' ? null : await fetchAsset(`theme-${themeId}.json`);
     const theme = themeText ? JSON.parse(themeText) : null;
-    return Core.buildStyle({ template, map, base: STYLE_BASE, theme, relief, poi });
+    // Обзорная карта под областью: при отдалении и за краем области не белый лист (не в «слое поверх»)
+    const overview = opts.overview === false ? null : overviewLocal();
+    return Core.buildStyle({ template, map, base: STYLE_BASE, theme, relief, poi, overview });
   }
 
   // ─── слой Leaflet ───
@@ -351,7 +362,7 @@
       try {
         if (!hasWebGL()) throw new Error('нет WebGL');
         await ensureLibs();
-        let style = await buildStyleFor(this.mapId, { theme: themeFor(this.mapId) });
+        let style = await buildStyleFor(this.mapId, { theme: themeFor(this.mapId), overview: false });
         if (this.opts.mode === 'roads-labels') style = Core.roadsLabelsStyle(style, { poi: !!this.opts.poi });
         if (token !== this._token || !this._map) return;
         const gl = L.maplibreGL({ style, interactive: false, pane: this.opts.pane || 'tilePane', attributionControl: false, padding: 0.05 });
@@ -393,6 +404,7 @@
     if (typeof window.setLayer !== 'function') return;
     if (!localEntry(id)) await refreshLocal().catch(() => {});
     window.setLayer(LAYER_PREFIX + id, el);
+    if (id === OVERVIEW_ID) return; // вся страна: камеру не трогать
     const b = catalogEntry(id)?.bounds || localEntry(id)?.bounds;
     const lmap = leafletMap();
     if (Array.isArray(b) && b.length === 4 && lmap?.getCenter) {
@@ -601,7 +613,7 @@
     if (!box) return;
     const current = currentLayerName();
     const act = activeId();
-    const items = state.local.filter(m => !m.error).map(m => {
+    const items = state.local.filter(m => !m.error).sort((a, b) => isOverview(a) - isOverview(b)).map(m => {
       const name = LAYER_PREFIX + m.id;
       const extras = (m.dem ? 1 : 0) + (m.slope ? 1 : 0);
       return `<div class="base-layer${name === current ? ' active' : ''}" data-layer="${esc(name)}" data-tnmaps-show="${esc(m.id)}">
@@ -831,7 +843,7 @@
       actions = (local.error ? '' : `<button type="button" class="tnmaps-btn primary" data-tnmaps-act="show" data-id="${esc(id)}">Показать</button>`)
         + (upd === 'update' ? `<button type="button" class="tnmaps-btn" data-tnmaps-act="download" data-id="${esc(id)}" title="Скачать новую версию карты области с сервера">${ico('cloud-download', 'tn-ico-t')}Обновить</button>` : '')
         + (upd === 'verify' ? `<button type="button" class="tnmaps-btn" data-tnmaps-act="download" data-id="${esc(id)}" title="Сверить файл с сервером; если он другой — скачать заново">${ico('cloud-check', 'tn-ico-t')}Проверить</button>` : '')
-        + `<button type="button" class="tnmaps-btn danger" data-tnmaps-act="delete" data-id="${esc(id)}" title="Удалить карту области">Удалить</button>`;
+        + (id === OVERVIEW_ID ? '' : `<button type="button" class="tnmaps-btn danger" data-tnmaps-act="delete" data-id="${esc(id)}" title="Удалить карту области">Удалить</button>`);
     } else {
       const part = state.partial[id];
       parts.push(formatSize(total));
@@ -864,17 +876,19 @@
       const when = state.catalogSavedAt ? new Date(state.catalogSavedAt * 1000).toLocaleString('ru-RU') : '';
       status.textContent = state.catalogFromCache
         ? `Нет связи с сервером — список от ${when}. Скачанные карты работают без интернета.`
-        : `${(state.catalog.maps || []).length} областей на сервере. Карта области работает без интернета.`;
+        : `${(state.catalog.maps || []).filter(m => !isOverview(m)).length} областей на сервере. Карта области работает без интернета.`;
       status.className = 'tnmaps-status' + (state.catalogFromCache ? ' warn' : '');
     }
     const q = state.filter.trim().toLowerCase();
-    const ids = new Set([...(state.catalog?.maps || []).map(m => m.id), ...state.local.map(m => m.id)]);
+    const ids = new Set([...(state.catalog?.maps || []), ...state.local].filter(m => !isOverview(m)).map(m => m.id));
+    const ovShown = catalogEntry(OVERVIEW_ID) || localEntry(OVERVIEW_ID) || state.downloads[OVERVIEW_ID];
     const match = id => !q || regionName(id).toLowerCase().includes(q) || id.includes(q);
     const byName = (a, b) => regionName(a).localeCompare(regionName(b), 'ru');
     const mine = [...ids].filter(id => (localEntry(id) || state.downloads[id]?.phase === 'download' || state.downloads[id]?.phase === 'verify') && match(id)).sort(byName);
     const rest = [...ids].filter(id => !mine.includes(id) && match(id)).sort(byName);
     overlay.querySelector('[data-tnmaps-list]').innerHTML =
-      (mine.length ? `<div class="tnmaps-group">На этом компьютере</div>${mine.map(itemHtml).join('')}` : '')
+      (ovShown && !q ? `<div class="tnmaps-group">Обзорная карта страны</div>${itemHtml(OVERVIEW_ID)}` : '')
+      + (mine.length ? `<div class="tnmaps-group">На этом компьютере</div>${mine.map(itemHtml).join('')}` : '')
       + (rest.length ? `<div class="tnmaps-group">Можно скачать</div>${rest.map(itemHtml).join('')}` : '')
       + (!mine.length && !rest.length ? '<div class="tnmaps-empty">Ничего не найдено</div>' : '');
     overlay.querySelector('[data-tnmaps-dir]').textContent = state.dir ? `Папка: ${state.dir}` : '';
@@ -904,7 +918,7 @@
   }
 
   async function startDownload(id) {
-    if (typeof window.isPremiumAvailable === 'function' && !window.isPremiumAvailable()) {
+    if (id !== OVERVIEW_ID && typeof window.isPremiumAvailable === 'function' && !window.isPremiumAvailable()) {
       toast('⚠ Скачивание TrophyNav Maps — по лицензии или в триал-периоде', 'warning');
       return;
     }
@@ -917,7 +931,7 @@
       await refreshLocal();
       toast(downloaded ? `✓ ${regionName(id)}: карта скачана` : `✓ ${regionName(id)}: карта проверена, совпадает с сервером`);
       // Обновлённая карта на экране — перечитать (тот же стиль, новые тайлы)
-      if (activeId() === id) state.activeLayer.reloadStyle();
+      if (activeId() === id || (id === OVERVIEW_ID && activeId())) state.activeLayer.reloadStyle();
     } catch (e) {
       const msg = String(e?.message || e);
       if (!/остановлена/i.test(msg)) toast(`⚠ ${regionName(id)}: ${msg}`);
@@ -930,6 +944,7 @@
   }
 
   async function deleteRegion(id) {
+    if (id === OVERVIEW_ID) return; // обзорную только обновляют
     const ask = typeof window.tndConfirmDanger === 'function' ? window.tndConfirmDanger : window.tndConfirm;
     const ok = typeof ask === 'function'
       ? await ask(`Удалить карту «${regionName(id)}» с этого компьютера? Вместе с ней удалятся файлы рельефа этой области.`, 'Удаление карты')
@@ -1012,16 +1027,55 @@
     }
     window.__TAURI__?.event?.listen?.('tnmaps-download', onDownloadEvent);
     if (window.__TAURI_INTERNALS__) {
-      refreshLocal().then(renderLayerSection).catch(() => {});
+      const local = refreshLocal().then(renderLayerSection).catch(() => {});
       // Названия областей для списка и строки состояния (тихо, без окна)
-      loadCatalog().then(() => { renderLayerSection(); window.updateBaseLayerStatusText?.(); });
+      const catalog = loadCatalog().then(() => { renderLayerSection(); window.updateBaseLayerStatusText?.(); });
+      Promise.all([local, catalog]).then(fetchOverviewOnce);
     }
   }
 
-  /** Область по bounds: по умолчанию скачанные (3D), includeCatalog — также доступные для загрузки. */
+  /**
+   * Обзорная карта скачивается сама, тихо: при первом запуске, когда каталог пришёл с сервера (есть сеть)
+   * и в нём есть её запись. Недокачанный файл докачивается. Новая версия — кнопкой «Обновить» в окне.
+   */
+  async function fetchOverviewOnce() {
+    const id = OVERVIEW_ID;
+    if (!catalogEntry(id) || state.catalogFromCache || state.downloads[id] || localEntry(id)) return;
+    try {
+      await invoke('tnmaps_download', { id });
+      await refreshLocal();
+      if (activeId()) state.activeLayer.reloadStyle();
+    } catch (e) {
+      console.warn('TrophyNav Maps: обзорная карта не скачалась', e);
+      await refreshLocal().catch(() => {});
+    } finally {
+      delete state.downloads[id];
+      renderWindow();
+      renderLayerSection();
+    }
+  }
+
+  /**
+   * Область по полигонам слоя regions обзорной карты — из тайлов, уже загруженных картой на экране.
+   * undefined — полигонов нет (обзорной нет, тайлы не пришли, точка в море/за границей): решают bounds.
+   */
+  function polygonRegionAt(lat, lng, prefer) {
+    if (!overviewLocal() || !activeId()) return undefined;
+    const gl = state.activeLayer.glMap?.();
+    const source = activeId() === OVERVIEW_ID ? 'openmaptiles' : Core.OVERVIEW_SOURCE;
+    if (!gl?.getSource?.(source) || typeof gl.querySourceFeatures !== 'function') return undefined;
+    let features;
+    try { features = gl.querySourceFeatures(source, { sourceLayer: 'regions' }); } catch { return undefined; }
+    return Core.regionFromFeatures(features, lng, lat, { prefer }) || undefined;
+  }
+
+  /**
+   * Область под точкой: по умолчанию скачанные (3D), includeCatalog — также доступные для загрузки.
+   * Есть обзорная карта — по полигонам субъектов (п. 2 ТЗ), иначе (и вне полигонов) — по bounds.
+   */
   function regionAt(lat, lng, prefer, includeCatalog = false) {
     const inside = m => {
-      if (!m || m.error || m.kind === 'overview') return false;
+      if (!m || m.error || isOverview(m)) return false;
       const b = catalogEntry(m.id)?.bounds || m.bounds;
       return Array.isArray(b) && b.length === 4 && lng >= b[0] && lng <= b[2] && lat >= b[1] && lat <= b[3];
     };
@@ -1029,6 +1083,11 @@
     const entries = includeCatalog
       ? [...state.local, ...(state.catalog?.maps || []).filter(m => !localEntry(m.id) || localEntry(m.id).error)]
       : state.local;
+    const byPolygon = polygonRegionAt(lat, lng, prefer);
+    if (byPolygon !== undefined) {
+      // Полигон под точкой известен: только эта область (или ничего, если её нет ни на диске, ни в каталоге)
+      return entries.some(e => e.id === byPolygon && !e.error) ? byPolygon : null;
+    }
     if (prefer && inside(entries.find(m => m.id === prefer))) return prefer;
     return entries.find(inside)?.id || null;
   }
