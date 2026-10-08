@@ -324,7 +324,107 @@
     return { kind, dZoom: 0, dPitch: clamp(dy * 0.25, -10, 10), dBearing: clamp(dx * 0.25, -15, 15) };
   }
 
+  // ─── Слой TrophyNav Maps поверх другой карты: смысловые группы слоёв стиля ───
+  // Группа определяется по type + source-layer + классу в фильтре слоя, а не по его id: id темы может
+  // быть любым, а источник данных и класс объекта — это и есть роль слоя. Слой, роль которого не
+  // распознана, получает 'unknown' и в режиме «только дороги и подписи» не показывается (и тест падает).
+  const STACK_GROUPS = ['background', 'landcover', 'landuse', 'water-fill', 'waterway', 'park', 'building',
+    'building-3d', 'aeroway', 'road', 'road-area', 'road-label', 'place-label', 'water-label', 'peak', 'boundary',
+    'poi', 'power', 'relief-hillshade', 'relief-contour', 'relief-slope'];
+  /** Классы из фильтра слоя: ["==","class",x] и ["in","class",…] на любом уровне вложенности. */
+  function filterClasses(filter, out = new Set()) {
+    if (!Array.isArray(filter)) return out;
+    const [op, key, ...rest] = filter;
+    if ((op === '==' || op === 'in') && key === 'class') rest.forEach(v => out.add(String(v)));
+    filter.forEach(part => { if (Array.isArray(part)) filterClasses(part, out); });
+    return out;
+  }
+  // source-layer «outdoor» (данные TrophyNav: тропы, болота, горизонтали, природные подписи) — по классу
+  const OUTDOOR_LINE_ROAD = new Set(['track', 'path', 'ford_way', 'winter_road', 'track_detected', 'boardwalk', 'bridge',
+    'cutline', 'abandoned_railway', 'narrow_gauge']);
+  const OUTDOOR_COVER = new Set(['wetland', 'scrub', 'clearcut', 'peat', 'quarry', 'dam_area']);
+  const OUTDOOR_WATER = new Set(['ditch', 'dam']);
+  const OUTDOOR_WATER_LABEL = new Set(['bay_label', 'lake_label', 'waterway_label', 'rapids_label', 'sea_label']);
+  const OUTDOOR_PLACE_LABEL = new Set(['island_label', 'cape_label', 'ridge_label', 'valley_label', 'pass_label',
+    'valley_point', 'range_label', 'forest_label', 'wetland_label', 'locality']);
+  const OUTDOOR_POI = new Set(['survey_point', 'ranger', 'fire_water', 'bridge_point', 'spring', 'water', 'shelter',
+    'hunting_stand', 'viewpoint', 'camp_site', 'picnic', 'tower']);
+  const OUTDOOR_RELIEF = new Set(['contour', 'cliff', 'embankment']);
+  const OUTDOOR_POWER = new Set(['power', 'power_minor', 'power_tower', 'power_pole']);
+
+  function classifyOutdoor(layer) {
+    const classes = [...filterClasses(layer.filter)];
+    if (!classes.length) return 'unknown';
+    const all = set => classes.every(c => set.has(c));
+    const some = set => classes.some(c => set.has(c));
+    if (all(OUTDOOR_RELIEF)) return 'relief-contour';
+    if (all(OUTDOOR_POWER)) return 'power';
+    if (layer.type === 'symbol') {
+      if (all(OUTDOOR_WATER_LABEL)) return 'water-label';
+      if (all(OUTDOOR_PLACE_LABEL)) return 'place-label';
+      if (classes.includes('peak_gn')) return 'peak';
+      if (some(OUTDOOR_POI)) return 'poi';
+      if (some(OUTDOOR_LINE_ROAD)) return 'road-label';   // подписи зимников, мостов, узкоколеек
+      return 'unknown';
+    }
+    if (layer.type === 'fill') return all(OUTDOOR_COVER) ? 'landcover' : 'unknown';
+    if (layer.type === 'line') {
+      if (some(OUTDOOR_LINE_ROAD)) return 'road';
+      if (all(OUTDOOR_COVER)) return 'landcover';   // контуры болот, вырубок
+      if (all(OUTDOOR_WATER)) return 'waterway';
+    }
+    return 'unknown';
+  }
+
+  function classifyLayer(layer) {
+    if (!isObj(layer)) return 'unknown';
+    const type = layer.type, sl = layer['source-layer'];
+    if (type === 'background') return 'background';
+    if (type === 'hillshade') return 'relief-hillshade';
+    if (type === 'raster') return layer.source === 'slope' ? 'relief-slope' : 'unknown';
+    switch (sl) {
+      case 'landcover': return 'landcover';
+      case 'landuse': return 'landuse';
+      case 'park': return 'park';
+      case 'water': return type === 'fill' ? 'water-fill' : 'unknown';
+      case 'waterway': return type === 'symbol' ? 'water-label' : 'waterway';
+      case 'water_name': return 'water-label';
+      case 'aeroway': return 'aeroway';
+      case 'transportation': return type === 'fill' ? 'road-area' : 'road';
+      case 'transportation_name': return 'road-label';
+      case 'building': return type === 'fill-extrusion' ? 'building-3d' : 'building';
+      case 'boundary': return 'boundary';
+      case 'poi': return 'poi';
+      case 'mountain_peak': return 'peak';
+      case 'place': return 'place-label';
+      case 'outdoor': return classifyOutdoor(layer);
+      default: return 'unknown';
+    }
+  }
+
+  const ROADS_LABELS_GROUPS = new Set(['road', 'road-label', 'place-label', 'water-label', 'boundary', 'peak']);
+  /**
+   * Стиль для режима «только дороги и подписи»: дороги с обводками, мосты, тропы, ж/д, границы и подписи;
+   * фон, заливки, вода, здания и рельеф убраны — нижняя карта (спутник) видна. Значки POI — по opts.poi.
+   * Каждому слою проставляется metadata['tn:group']. Неиспользуемые источники рельефа снимаются.
+   */
+  function roadsLabelsStyle(style, opts = {}) {
+    const s = clone(style);
+    const keep = new Set(ROADS_LABELS_GROUPS);
+    if (opts.poi) keep.add('poi');
+    s.layers = s.layers.filter(l => {
+      const group = classifyLayer(l);
+      l.metadata = Object.assign({}, isObj(l.metadata) ? l.metadata : {}, { 'tn:group': group });
+      return keep.has(group);
+    });
+    const used = new Set(s.layers.map(l => l.source).filter(Boolean));
+    Object.keys(s.sources || {}).forEach(k => { if (!used.has(k)) delete s.sources[k]; });
+    delete s.terrain;
+    return s;
+  }
+
   const api = {
+    STACK_GROUPS, filterClasses, classifyLayer, roadsLabelsStyle, ROADS_LABELS_GROUPS,
     applyThemeLayers, THEMES, DEFAULT_THEME, normalizeTheme,
     POI_GROUPS, POI_ALL, POI_LAYERS, parsePoi, formatPoi, poiSummary, poiCondition, combineFilter, applyPoiFilter,
     DEFAULT_RELIEF, normalizeRelief, scalePaint, applyRelief, dropLayersWithoutSource, applyBuildings,
