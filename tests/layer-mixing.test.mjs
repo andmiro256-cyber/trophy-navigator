@@ -23,7 +23,7 @@ test('модель: добавить, один экземпляр на исто�
   let r = M.addItem(s, { source: 'map:Google Спутник', label: 'Google Спутник' });
   assert.ok(r.item && /^st_/.test(r.item.iid));
   s = r.stack;
-  assert.equal(s.items[0].opacity, 1);
+  assert.equal(s.items[0].opacity, 0.5, 'растровая карта поверх — 50 % (решение 08.10)');
   assert.deepEqual(s.items[0].raster, M.NEUTRAL);
   const again = M.addItem(s, { source: 'map:Google Спутник' });
   assert.equal(again.existed, true, 'тот же источник второй раз не добавляется');

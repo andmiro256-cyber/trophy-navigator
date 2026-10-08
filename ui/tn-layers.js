@@ -134,8 +134,16 @@
   const findBySource = (stack, source) => stack.items.find(i => i.source === source) || null;
 
   /**
+   * Прозрачность нового слоя (решение Андрея 08.10): растровая карта поверх (map/custom/offline) — 50 %,
+   * чтобы основа под ней была видна сразу; TrophyNav Maps «дороги и подписи» — 100 %; оверлей каталога —
+   * его собственная (передаёт вызывающий), без неё 70 %. Уже сохранённые слои не меняются (normalizeItem).
+   */
+  const DEFAULT_OPACITY = Object.freeze({ map: 0.5, custom: 0.5, offline: 0.5, tnmap: 1, overlay: 0.7 });
+  const defaultOpacity = source => DEFAULT_OPACITY[sourceKind(source)] ?? 1;
+
+  /**
    * Добавить слой наверх. Тот же источник второй раз не добавляется (existed — строку подсветить),
-   * больше MAX_ITEMS — full. opacity по умолчанию — 1 (у оверлеев каталога — их собственная).
+   * больше MAX_ITEMS — full. opacity по умолчанию — defaultOpacity(source).
    */
   function addItem(stack, { source, label, opacity, enabled, tn, raster } = {}) {
     const s = cloneStack(stack);
@@ -144,7 +152,7 @@
     const existing = findBySource(s, source);
     if (existing) return { stack: s, item: existing, existed: true };
     if (s.items.length >= MAX_ITEMS) return { stack: s, item: null, full: true };
-    const item = normalizeItem({ source, label, opacity: opacity ?? 1, enabled, tn, raster }, new Set(s.items.map(i => i.iid)));
+    const item = normalizeItem({ source, label, opacity: opacity ?? defaultOpacity(source), enabled, tn, raster }, new Set(s.items.map(i => i.iid)));
     s.items.push(item);
     return { stack: s, item };
   }
@@ -253,12 +261,43 @@
   }
   const paneZ = index => PANE_Z0 + clamp(index, 0, 9) * PANE_STEP;
 
+  // ─── «Нет покрытия» (сервер ответил 404) против «сеть/ошибка» ───
+  /** Карты ГГЦ/Генштаб (nakarte.me): покрытие у масштабов разное — где нет 500 м, часто есть 250 м и 1 км. */
+  const coverageFamily = label => /^(ГГЦ|Генштаб)\s/.test(String(label || ''));
+  const COVERAGE_HINT = ['ГГЦ 250м', 'ГГЦ 1км'];
+  const orList = list => (list.length > 1 ? `${list.slice(0, -1).join(', ')} или ${list[list.length - 1]}` : list[0] || '');
+  /**
+   * Текст строки слоя без покрытия. alts — карты семейства, у которых тайл под центром есть:
+   * массив — проверено; null — проверить не удалось (общая подсказка); undefined — проверка ещё идёт.
+   */
+  function coverageNote(label, alts) {
+    const head = `У «${label}» нет карты на это место`;
+    if (Array.isArray(alts)) return alts.length ? `${head} — попробуйте ${orList(alts)}.` : `${head}.`;
+    if (alts === null && coverageFamily(label)) {
+      const hint = COVERAGE_HINT.filter(n => n !== label);
+      return hint.length ? `${head} — попробуйте ${orList(hint)}.` : `${head}.`;
+    }
+    return `${head}.`;
+  }
+  /**
+   * Что известно об ошибке тайла из события tileerror Leaflet: status ('missing' — сервер ответил «нет тайла»)
+   * и url для проверки. error.status — число HTTP или 'missing'; url — error.url (CachedTileLayer) или src тайла.
+   */
+  function tileErrorInfo(evt) {
+    const err = evt?.error;
+    const raw = err?.status ?? evt?.tile?.dataset?.tileStatus;
+    const status = raw === 'missing' || [404, 410, 204].includes(Number(raw)) ? 'missing' : null;
+    const src = err?.url || evt?.tile?.src || '';
+    return { status, url: /^https?:\/\//i.test(src) ? src : '' };
+  }
+
   const Model = {
     VERSION, MAX_ITEMS, NEUTRAL, TN_MODES, PANE_Z0, PANE_STEP, LS_STACK, LS_PRESETS,
     normalizeAdjust, isNeutralAdjust, cssFilter, maplibreRasterPaint, sourceKind, sourceId, baseSourceFor,
     makeIid, normalizeItem, emptyStack, normalizeStack, cloneStack, findItem, findBySource, addItem, removeItem,
     moveItem, moveItemTo, updateItem, setAdjust, resetAdjust, serializeStack,
     normalizePresets, savePreset, deletePreset, presetStack, toR9, suspendReason, paneZ, normOpacity,
+    DEFAULT_OPACITY, defaultOpacity, coverageFamily, coverageNote, tileErrorInfo,
   };
 
   // ═══ Связь с основным скриптом index.html ═══
@@ -290,6 +329,14 @@
     confirm: (msg, title) => (typeof root.tndConfirmDanger === 'function' ? root.tndConfirmDanger(msg, title) : Promise.resolve(true)),
     saveSession: () => g(() => saveState({ fileDelay: 1000 })),
     storage: () => g(() => root.localStorage) || null,
+    /** 'ok' | 'missing' | 'error' — один запрос тайла (probeTileStatus в index.html); нет функции — null. */
+    probeTile: url => g(() => probeTileStatus(url)) || null,
+    /** Карты семейства с тайлом под центром карты: Promise<string[] | null>; нет функции — null. */
+    coverageAlternatives: name => {
+      const m = g(() => map);
+      const c = m?.getCenter?.();
+      return c ? g(() => coverageAlternatives(name, c.lat, c.lng, m.getZoom())) || null : null;
+    },
     doc: () => (typeof document !== 'undefined' ? document : null),
   };
   let host = { ...defaultHost };
@@ -402,13 +449,45 @@
     rt.health = health;
     updateRowNotes();
   }
-  function watchTiles(rt, layer) {
-    const stats = { ok: 0, err: 0 };
+  /**
+   * Нет ни одного тайла (4 ошибки, 0 загрузок) — почему: 'nocover' (сервер ответил «нет тайла», 404) или
+   * 'error' (сеть/источник). Статус приходит в событии (error.status) или проверяется одним запросом тайла.
+   * 'loading' (сдвиг карты) начинает подсчёт заново; первый загруженный тайл возвращает 'ok'.
+   */
+  function watchTiles(rt, layer, item) {
+    const stats = { ok: 0, err: 0, cycle: 0, url: '', missing: false, decided: false };
+    const token = rt.token;
+    const live = cycle => token === rt.token && cycle === stats.cycle && !stats.ok;
+    const noCover = cycle => {
+      rt.cover = { alts: undefined };
+      setHealth(rt, 'nocover');
+      updateRowNotes();
+      const kind = sourceKind(item?.source);
+      if (kind !== 'map' || !coverageFamily(sourceId(item.source))) return;
+      const p = host.coverageAlternatives(sourceId(item.source));
+      const done = alts => { if (live(cycle) && rt.health === 'nocover') { rt.cover = { alts }; updateRowNotes(); } };
+      if (p && typeof p.then === 'function') p.then(done, () => done(null)); else done(null);
+    };
+    const decide = () => {
+      stats.decided = true;
+      const cycle = stats.cycle;
+      if (stats.missing) { noCover(cycle); return; }
+      const p = stats.url ? host.probeTile(stats.url) : null;
+      if (!p || typeof p.then !== 'function') { setHealth(rt, 'error'); return; }
+      p.then(res => { if (live(cycle)) { if (res === 'missing') noCover(cycle); else setHealth(rt, 'error'); } },
+        () => { if (live(cycle)) setHealth(rt, 'error'); });
+    };
     eachTileLayer(layer, l => {
       if (typeof l.on !== 'function') return;
-      l.on('loading', () => { stats.ok = 0; stats.err = 0; });
-      l.on('tileload', () => { stats.ok++; setHealth(rt, 'ok'); });
-      l.on('tileerror', () => { stats.err++; if (!stats.ok && stats.err >= 4) setHealth(rt, 'error'); });
+      l.on('loading', () => { stats.ok = 0; stats.err = 0; stats.url = ''; stats.missing = false; stats.decided = false; stats.cycle++; });
+      l.on('tileload', () => { stats.ok++; rt.cover = null; setHealth(rt, 'ok'); });
+      l.on('tileerror', e => {
+        stats.err++;
+        const info = tileErrorInfo(e);
+        if (info.status === 'missing') stats.missing = true;
+        if (info.url && !stats.url) stats.url = info.url;
+        if (!stats.ok && stats.err >= 4 && !stats.decided) decide();
+      });
     });
   }
 
@@ -488,7 +567,7 @@
       if (token !== rt.token) return;
       if (!layer) { rt.view = { ...(rt.view || {}), reason: 'missing', detail: 'карта не найдена' }; rt.health = null; renderPanel(); return; }
       rt.layer = layer;
-      watchTiles(rt, layer);
+      watchTiles(rt, layer, item);
       try { layer.addTo(m); } catch (e) { console.warn('Слой поверх не добавился:', e); setHealth(rt, 'error'); return; }
       const it = findItem(stack, item.iid);
       if (it) applyLook(rt, it, m.getPane(pane));
@@ -553,6 +632,7 @@
         : { cls: 'warn', text: 'Временно скрыт: основа — Яндекс в своей проекции, слой лёг бы со сдвигом.' };
     }
     if (reason === 'off') return null;
+    if (rt?.health === 'nocover') return { cls: 'warn', text: coverageNote(item.label || sourceId(item.source), rt.cover?.alts) };
     if (rt?.health === 'error') return { cls: 'warn', text: rt.error ? `Ошибка: ${rt.error}` : 'Нет тайлов (сеть или источник) — нижние карты видны.' };
     return null;
   }
@@ -717,7 +797,8 @@
   // ─── действия ───
   function addSource(source, label) {
     const resolved = resolveSource(source);
-    const opacity = sourceKind(source) === 'overlay' ? normOpacity(resolved.defaultOpacity ?? 0.7) : 1;
+    // Оверлей — прозрачность каталога; остальным — по виду источника (растровая карта поверх — 50 %)
+    const opacity = sourceKind(source) === 'overlay' ? normOpacity(resolved.defaultOpacity ?? 0.7) : defaultOpacity(source);
     const res = addItem(stack, { source, label, opacity });
     if (res.full) { host.toast(`⚠ Не больше ${MAX_ITEMS} слоёв поверх — уберите один`, 'warning'); return false; }
     if (res.existed) { flash(res.item.iid); return true; }
