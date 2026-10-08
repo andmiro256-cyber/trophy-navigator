@@ -37,7 +37,7 @@
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": false,
-    "targets": "all",
+    "targets": ["nsis", "appimage", "app", "dmg"],
     "macOS": {
       "minimumSystemVersion": "10.15"
     },
