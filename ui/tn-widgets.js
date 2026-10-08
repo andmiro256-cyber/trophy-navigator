@@ -1,8 +1,9 @@
 // Trophy Navigator Desktop — нижняя полоса виджетов, как нижняя панель Android.
 // Карточки «крупное значение + подпись», одинаковой ширины, скругление, цвета темы.
-// Настраивается в «Настройки → Виджеты»: 5 мест, у каждого свой виджет или «пусто», порядок
+// Настраивается в «Настройки → Виджеты»: 8 мест (с 0.9.32; было 5), у каждого свой виджет или «пусто», порядок
 // перетаскиванием (или стрелками), прозрачность полосы, «По умолчанию». Конфиг — localStorage
 // «tnd-widgets-config» (версия схемы), старый ключ «tnd-widgets-hidden» учитывается.
+// Правый клик по полосе — «Заменить на…», «Убрать», «Добавить виджет» прямо на месте (0.9.32).
 // Значения считаются из того, что уже есть в приложении (без GPS и без новых сетевых запросов):
 // карта Leaflet (зум, центр, курсор), выбранный/активный трек и маршрут, выбранная точка,
 // часы; высота под курсором — рельеф активной карты TrophyNav Maps (<id>.dem.mbtiles, terrarium)
@@ -12,8 +13,8 @@
   const LS_KEY = 'tnd-widgets-config';
   const LS_OLD = 'tnd-widgets-hidden';
   const SCHEMA = 1;
-  const SLOTS = 5;
-  const DEFAULT_SLOTS = ['elevAuto', 'zoom', 'trackLen', 'routeLen', 'time'];
+  const SLOTS = 8; // 0.9.32: значения больше не обрезаются — места хватает; конфиг из 5 мест дополняется пустыми
+  const DEFAULT_SLOTS = ['elevAuto', 'scale', 'trackLen', 'routeLen', 'time']; // 0.9.32: масштаб 1:N вместо «Z14»
   const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* приватный режим */ } };
   const icon = (name, cls) => (typeof window.tnIcon === 'function' ? window.tnIcon(name, cls) : '');
@@ -151,6 +152,58 @@
     return terrariumElev(img.data[i], img.data[i + 1], img.data[i + 2]);
   }
 
+  /**
+   * Крутизна склона, градусы, по 3x3 пикселям terrarium вокруг (u, v) (оператор Хорна).
+   * z — зум тайла, lat — широта (размер пикселя на местности).
+   */
+  function slopeFromImage(img, u, v, z, lat) {
+    const W = img.width, H = img.height;
+    const px = Math.min(W - 2, Math.max(1, Math.floor(u * W))), py = Math.min(H - 2, Math.max(1, Math.floor(v * H)));
+    const at = (x, y) => { const i = (y * W + x) * 4; return img.data[i + 3] === 0 ? NaN : terrariumElev(img.data[i], img.data[i + 1], img.data[i + 2]); };
+    const e = [];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) e.push(at(px + dx, py + dy));
+    if (e.some(x => !Number.isFinite(x))) return null;
+    const cell = 2 * Math.PI * 6378137 * Math.cos(lat * RAD) / (2 ** z) / W; // м на пиксель
+    const gx = ((e[2] + 2 * e[5] + e[8]) - (e[0] + 2 * e[3] + e[6])) / (8 * cell);
+    const gy = ((e[6] + 2 * e[7] + e[8]) - (e[0] + 2 * e[1] + e[2])) / (8 * cell);
+    return Math.atan(Math.hypot(gx, gy)) / RAD;
+  }
+  /** Знаменатель масштаба 1:N для зума Leaflet на широте lat (96 dpi экрана, тайлы 256 px). */
+  function scaleDenominator(zoom, lat) {
+    const mpp = 2 * Math.PI * 6378137 * Math.cos(lat * RAD) / (256 * 2 ** zoom);
+    return mpp * 96 / 0.0254;
+  }
+  /** «1:50 000»: до 10 000 — с точностью до 100, дальше две значащие цифры. */
+  function fmtScale(n) {
+    if (!Number.isFinite(n) || n <= 0) return DASH;
+    const step = n < 10000 ? 100 : 10 ** (Math.floor(Math.log10(n)) - 1);
+    const r = Math.max(step, Math.round(n / step) * step);
+    return `1:${String(r).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0')}`;
+  }
+  /**
+   * Положение точки p относительно ломаной coords ([[lat,lng]…]): offM — до ближайшей точки линии,
+   * alongM — пройдено по линии до неё от начала, totalM — длина линии. null — линия короче 2 точек.
+   */
+  function routeProgress(coords, p) {
+    if (!p || !Array.isArray(coords) || coords.length < 2) return null;
+    const pts = coords.map(c => ({ lat: c[0], lng: c[1] }));
+    let total = 0, best = null;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i];
+      const seg = haversine(a, b);
+      // проекция в локальной плоскости отрезка (эквидистантная, точности хватает на десятках км)
+      const kx = Math.cos(((a.lat + b.lat) / 2) * RAD);
+      const bx = (b.lng - a.lng) * kx, by = b.lat - a.lat, qx = (p.lng - a.lng) * kx, qy = p.lat - a.lat;
+      const L2 = bx * bx + by * by;
+      const t = L2 ? Math.max(0, Math.min(1, (qx * bx + qy * by) / L2)) : 0;
+      const foot = { lat: a.lat + by * t, lng: a.lng + (b.lng - a.lng) * t };
+      const off = haversine(p, foot);
+      if (!best || off < best.offM) best = { offM: off, alongM: total + seg * t };
+      total += seg;
+    }
+    return { ...best, totalM: total };
+  }
+
   // ─── Форматирование ───
   const fixed = (v, d) => v.toFixed(d);
   function fmtDist(m) {
@@ -204,6 +257,59 @@
     }
     return { value: fmtDuration(t - ctx.now), caption: `${label} ${hhmm(t)}` };
   }
+  function sunClock(ctx, kind) {
+    const label = kind === 'set' ? 'закат' : 'рассвет';
+    const c = ctx.center;
+    if (!c) return { value: DASH, caption: label };
+    const st = sunTimes(ctx.now, c.lat, c.lng);
+    if (st.polar) return { value: DASH, caption: st.polar === 'day' ? 'полярный день' : 'полярная ночь' };
+    const t = st[kind];
+    return { value: t == null ? DASH : hhmm(t), caption: label };
+  }
+  function dayLength(ctx) {
+    const c = ctx.center;
+    if (!c) return { value: DASH };
+    const st = sunTimes(ctx.now, c.lat, c.lng);
+    if (st.polar === 'day') return { value: '24 ч', caption: 'полярный день' };
+    if (st.polar === 'night') return { value: '0 ч', caption: 'полярная ночь' };
+    return { value: st.rise != null && st.set != null && st.set > st.rise ? fmtDuration(st.set - st.rise) : DASH };
+  }
+  // Маршрут по дорогам (OSRM): время по дорогам — оценка сервиса для легковой машины
+  const osrmNone = { value: DASH, caption: 'нет маршрута по дорогам' };
+  const osrmProgress = ctx => (ctx.osrm && ctx.cursor ? (ctx._op ||= routeProgress(ctx.osrm.coords, ctx.cursor)) : null);
+  function osrmToFinish(ctx) {
+    if (!ctx.osrm) return osrmNone;
+    const pr = osrmProgress(ctx);
+    if (!pr) return { value: DASH, caption: 'до финиша: наведите курсор' };
+    const left = Math.max(0, pr.totalM - pr.alongM);
+    const k = pr.totalM > 0 ? left / pr.totalM : 0;
+    const dur = Number.isFinite(ctx.osrm.duration) ? ctx.osrm.duration * 1000 * k : null;
+    return { value: dur != null ? `${fmtDist(left)} · ${fmtDuration(dur)}` : fmtDist(left), caption: 'до финиша по дороге' };
+  }
+  function osrmElev(ctx, kind) {
+    if (!ctx.osrm) return osrmNone;
+    const r = ctx.osrmElev;
+    if (!r) return { value: DASH, caption: 'маршрут: нет рельефа' };
+    if (r.pending) return { value: '…', caption: kind === 'up' ? 'м набор (маршрут)' : 'м сброс (маршрут)' };
+    if (r.none || r[kind] == null) return { value: DASH, caption: 'маршрут: нет рельефа' };
+    return { value: String(Math.round(r[kind])), caption: kind === 'up' ? 'м набор (маршрут)' : 'м сброс (маршрут)' };
+  }
+  function liveNearest(ctx) {
+    const c = ctx.cursor || ctx.center;
+    const list = (ctx.live || []).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+    if (!ctx.live) return { value: DASH, caption: 'Live выключен' };
+    if (!c || !list.length) return { value: DASH, caption: 'ближайший участник' };
+    let best = null;
+    for (const p of list) { const d = haversine(c, p); if (!best || d < best.d) best = { d, p }; }
+    return { value: fmtDist(best.d), caption: `${ctx.cursor ? 'от курсора' : 'от центра'}: ${best.p.name || 'участник'}` };
+  }
+  function liveLast(ctx) {
+    if (!ctx.live) return { value: DASH, caption: 'Live выключен' };
+    const ts = ctx.live.map(p => p.t).filter(Number.isFinite);
+    if (!ts.length) return { value: DASH, caption: 'последний сигнал' };
+    const ago = Math.max(0, +ctx.now - Math.max(...ts));
+    return { value: ago < 60000 ? 'сейчас' : `${fmtDuration(ago)}`, caption: 'последний сигнал' };
+  }
   const trackValue = (fn) => ctx => { const s = trackOf(ctx); const v = s ? fn(s) : null; return { value: v == null ? DASH : v }; };
   const CATALOG = {
     elevAuto: { group: 'Курсор', title: 'Высота под курсором (без рельефа — до WP)', caption: 'м высота', wide: true,
@@ -212,13 +318,28 @@
     wpDist: { group: 'Курсор', title: 'Расстояние и азимут от WP до курсора', caption: 'до WP', wide: true, compute: wpWidget },
     coords: { group: 'Курсор', title: 'Координаты курсора', caption: 'курсор', wide: true,
       compute: ctx => ({ value: ctx.cursor ? formatCoord(ctx.cursor.lat, ctx.cursor.lng, ctx.coordFormat) : DASH }) },
+    slope: { group: 'Курсор', title: 'Уклон под курсором (по рельефу)', caption: '° уклон',
+      compute: ctx => {
+        if (!ctx.relief) return { value: DASH, caption: 'уклон: нет рельефа' };
+        const v = ctx.elev?.slope;
+        return { value: Number.isFinite(v) ? String(Math.round(v)) : DASH };
+      } },
+    centerDist: { group: 'Курсор', title: 'Расстояние и азимут от центра карты до курсора', caption: 'от центра', wide: true,
+      compute: ctx => (ctx.center && ctx.cursor
+        ? { value: `${fmtDist(haversine(ctx.center, ctx.cursor))} · ${Math.round(bearing(ctx.center, ctx.cursor)) % 360}°` }
+        : { value: DASH }) },
     zoom: { group: 'Карта и время', title: 'Масштаб (зум)', caption: 'масштаб',
       compute: ctx => ({ value: Number.isFinite(ctx.zoom) ? `Z${Math.round(ctx.zoom)}` : DASH }) },
+    scale: { group: 'Карта и время', title: 'Масштаб 1:N (центр карты)', caption: 'масштаб', wide: true,
+      compute: ctx => ({ value: Number.isFinite(ctx.zoom) && ctx.center ? fmtScale(scaleDenominator(ctx.zoom, ctx.center.lat)) : DASH }) },
     time: { group: 'Карта и время', title: 'Время', caption: 'время', compute: ctx => ({ value: hhmm(+ctx.now) }) },
     date: { group: 'Карта и время', title: 'Дата', caption: 'дата',
       compute: ctx => ({ value: new Date(+ctx.now).toLocaleDateString('ru-RU', { weekday: 'short', day: '2-digit', month: '2-digit' }).replace(',', '') }) },
     sunset: { group: 'Карта и время', title: 'До заката (центр карты)', caption: 'до заката', compute: ctx => sunWidget(ctx, 'set') },
     sunrise: { group: 'Карта и время', title: 'До рассвета (центр карты)', caption: 'до рассвета', compute: ctx => sunWidget(ctx, 'rise') },
+    sunsetAt: { group: 'Карта и время', title: 'Время заката сегодня (центр карты)', caption: 'закат', compute: ctx => sunClock(ctx, 'set') },
+    sunriseAt: { group: 'Карта и время', title: 'Время рассвета сегодня (центр карты)', caption: 'рассвет', compute: ctx => sunClock(ctx, 'rise') },
+    dayLen: { group: 'Карта и время', title: 'Длина светового дня (центр карты)', caption: 'световой день', compute: dayLength },
     trackLen: { group: 'Трек', title: 'Трек — длина', caption: 'км трек',
       compute: ctx => { const s = trackOf(ctx); return s ? { value: fixed(s.km, 1), caption: ctx.track.name ? `км · ${ctx.track.name}` : 'км трек' } : { value: DASH }; } },
     trackTime: { group: 'Трек', title: 'Трек — время в пути', caption: 'в пути', compute: trackValue(s => (s.durationMs ? fmtDuration(s.durationMs) : null)) },
@@ -232,6 +353,22 @@
         : { value: DASH }) },
     routeWp: { group: 'Маршрут', title: 'Маршрут — число WP', caption: 'WP маршрут',
       compute: ctx => ({ value: ctx.route ? String(ctx.route.points.length) : DASH }) },
+    osrmLen: { group: 'По дорогам (онлайн)', title: 'По дорогам — длина', caption: 'км по дорогам',
+      compute: ctx => (ctx.osrm ? { value: fixed(ctx.osrm.distance / 1000, 1) } : osrmNone) },
+    osrmTime: { group: 'По дорогам (онлайн)', title: 'По дорогам — время в пути', caption: 'в пути по дорогам',
+      compute: ctx => (ctx.osrm ? { value: Number.isFinite(ctx.osrm.duration) ? fmtDuration(ctx.osrm.duration * 1000) : DASH } : osrmNone) },
+    osrmEta: { group: 'По дорогам (онлайн)', title: 'По дорогам — прибытие, если выехать сейчас', caption: 'прибытие',
+      compute: ctx => (ctx.osrm ? { value: Number.isFinite(ctx.osrm.duration) ? hhmm(+ctx.now + ctx.osrm.duration * 1000) : DASH } : osrmNone) },
+    osrmLeft: { group: 'По дорогам (онлайн)', title: 'По дорогам — от курсора до финиша (расстояние · время)', caption: 'до финиша по дороге', wide: true,
+      compute: osrmToFinish },
+    osrmOff: { group: 'По дорогам (онлайн)', title: 'По дорогам — курсор в стороне от маршрута', caption: 'от маршрута',
+      compute: ctx => { if (!ctx.osrm) return osrmNone; const pr = osrmProgress(ctx); return { value: pr ? fmtDist(pr.offM) : DASH }; } },
+    osrmUp: { group: 'По дорогам (онлайн)', title: 'По дорогам — набор высоты (по рельефу)', caption: 'м набор (маршрут)', compute: ctx => osrmElev(ctx, 'up') },
+    osrmDown: { group: 'По дорогам (онлайн)', title: 'По дорогам — сброс высоты (по рельефу)', caption: 'м сброс (маршрут)', compute: ctx => osrmElev(ctx, 'down') },
+    liveOnline: { group: 'Live', title: 'Live — участников в сети', caption: 'в сети',
+      compute: ctx => (ctx.live ? { value: `${ctx.live.filter(p => p.online).length} / ${ctx.live.length}` } : { value: DASH, caption: 'Live выключен' }) },
+    liveNear: { group: 'Live', title: 'Live — расстояние до ближайшего участника', caption: 'ближайший участник', wide: true, compute: liveNearest },
+    liveLast: { group: 'Live', title: 'Live — давность последнего сигнала', caption: 'последний сигнал', compute: liveLast },
   };
 
   function compute(id, ctx) {
@@ -243,7 +380,7 @@
   }
 
   // ─── Конфиг ───
-  const defaults = () => ({ v: SCHEMA, slots: DEFAULT_SLOTS.slice(), opacity: 0, hidden: false });
+  const defaults = () => ({ v: SCHEMA, slots: Array.from({ length: SLOTS }, (_, i) => DEFAULT_SLOTS[i] || ''), opacity: 0, hidden: false });
   function normalize(raw) {
     const c = defaults();
     if (raw && typeof raw === 'object') {
@@ -306,8 +443,8 @@
       const local = id ? T.localEntry?.(id) : null;
       return local?.dem ? { id, dem: local.dem } : null;
     },
-    where(info, ll) {
-      const z = Number.isFinite(info.dem.maxZoom) ? info.dem.maxZoom : 12;
+    where(info, ll, zMax = Infinity) {
+      const z = Math.min(zMax, Number.isFinite(info.dem.maxZoom) ? info.dem.maxZoom : 12);
       const t = tileXY(ll.lat, ll.lng, z);
       return { ...t, z, key: `${info.id}/${Number(info.dem.modified) || 0}/${z}/${t.x}/${t.y}` };
     },
@@ -318,7 +455,10 @@
       const w = this.where(info, ll);
       const tile = this.tiles.get(w.key);
       if (!tile || tile.pending) return { pending: true, value: null };
-      return { value: tile.img ? elevFromImage(tile.img, w.u, w.v) : null };
+      return {
+        value: tile.img ? elevFromImage(tile.img, w.u, w.v) : null,
+        slope: tile.img ? slopeFromImage(tile.img, w.u, w.v, w.z, ll.lat) : null,
+      };
     },
     /** Не чаще раза в 150 мс, последний запрос не теряется: догрузить тайл под курсором. */
     request(ll) {
@@ -350,10 +490,77 @@
     },
   };
 
+  /** Точки через каждые step м вдоль ломаной [[lat,lng]…] (с концами). */
+  function pointsAlong(coords, step) {
+    const pts = coords.map(c => ({ lat: c[0], lng: c[1] }));
+    const out = [pts[0]];
+    let carry = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i], seg = haversine(a, b);
+      let d = step - carry;
+      while (d <= seg) {
+        const t = d / seg;
+        out.push({ lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t });
+        d += step;
+      }
+      carry = seg - (d - step);
+    }
+    const last = pts[pts.length - 1];
+    if (out[out.length - 1] !== last) out.push(last);
+    return out;
+  }
+
+  // ─── Набор/сброс по онлайн-маршруту: рельеф активной карты вдоль линии ───
+  // Свой кэш и зум не выше 11 (тайл ≈ 12 км): маршрут на сотню км — десятки тайлов, не сотни,
+  // и тайлы под курсором не вытесняются. Считается один раз на маршрут и версию рельефа.
+  const ROUTE_ELEV_Z = 11, ROUTE_ELEV_MAX_POINTS = 400, ROUTE_ELEV_MAX_TILES = 120;
+  const routeElev = {
+    key: null,
+    result: null, // {up, down, min, max} | {none: true}
+    async run(key, info, coords) {
+      const total = polylineMeters(coords.map(c => ({ lat: c[0], lng: c[1] })));
+      const pts = pointsAlong(coords, Math.max(30, total / ROUTE_ELEV_MAX_POINTS));
+      const where = pts.map(p => elev.where(info, p, ROUTE_ELEV_Z));
+      const keys = [...new Set(where.map(w => w.key))];
+      if (keys.length > ROUTE_ELEV_MAX_TILES) { if (this.key === key) this.result = { none: true }; return; }
+      const imgs = new Map();
+      const v = Number(info.dem.modified) || 0;
+      for (const k of keys) {
+        const w = where.find(x => x.key === k);
+        let img = null;
+        try {
+          const resp = await elev.io.fetch(`${elev.io.base()}/extra/${info.id}.dem/${w.z}/${w.x}/${w.y}.png?v=${v}`);
+          if (resp.ok && resp.status !== 204) img = await elev.io.decode(await resp.arrayBuffer());
+        } catch { img = null; }
+        if (this.key !== key) return; // маршрут сменился, пока грузили
+        imgs.set(k, img);
+      }
+      const pd = where.map(w => { const img = imgs.get(w.key); const e = img ? elevFromImage(img, w.u, w.v) : null; return { ele: e }; });
+      const eles = pd.map(x => x.ele).filter(Number.isFinite);
+      if (eles.length < 2) { this.result = { none: true }; scheduleRefresh(); return; }
+      const st = trackStats(pts, pd);
+      this.result = { up: st.up, down: st.down, min: Math.min(...eles), max: Math.max(...eles) };
+      scheduleRefresh();
+    },
+    /** Синхронно: результат, {pending} пока считается, null — нет рельефа. */
+    get(route) {
+      const info = route && elev.info();
+      if (!info) return null;
+      const key = `${route.id}/${route.coords.length}/${route.distance}/${info.id}/${Number(info.dem.modified) || 0}`;
+      if (key !== this.key) {
+        this.key = key;
+        this.result = null;
+        this.run(key, info, route.coords);
+      }
+      return this.result || { pending: true };
+    },
+  };
+
   // ─── Данные приложения → ctx ───
   // map, tracks, routes, waypoints, selected*Id, current* — глобальные let/const основного скрипта
   // index.html (не свойства window): читаются по имени через typeof, пока скрипт ещё не дошёл — undefined.
-  /* global map, tracks, routes, waypoints, selectedTrackId, selectedRouteId, currentTrackDraw, currentTrackEdit, currentRouteDraw */
+  /* global map, tracks, routes, waypoints, selectedTrackId, selectedRouteId, currentTrackDraw, currentTrackEdit, currentRouteDraw,
+     osrmState, liveState, liveGetFilteredDevices, liveIsMyDeviceId, liveDeviceUniqueId, liveLastUpdateMs, liveIsOnline */
   const appMap = () => (typeof map !== 'undefined' ? map : null);
   let cursor = null;
   let selectedWp = null;
@@ -383,12 +590,37 @@
     return ll ? { ...ll, name: selectedWp.wpData?.name || '' } : null;
   }
 
+  /** Выбранный видимый маршрут «по дорогам» (OSRM): {id, name, coords [[lat,lng]], distance м, duration с}. */
+  function activeOsrm() {
+    try {
+      if (typeof osrmState === 'undefined') return null;
+      const r = osrmState.items.find(x => x.id === osrmState.activeId && x.visible !== false);
+      return r && Array.isArray(r.coords) && r.coords.length >= 2
+        ? { id: r.id, name: r.name, coords: r.coords, distance: Number(r.distance), duration: Number(r.duration) } : null;
+    } catch { return null; }
+  }
+  /** Участники Live текущей группы без своих устройств: [{name, lat, lng, t (мс | null), online}]; null — Live не запущен. */
+  function liveParticipants(now) {
+    try {
+      if (typeof liveState === 'undefined' || !liveState.timer && !liveState.devices?.length) return null;
+      const list = typeof liveGetFilteredDevices === 'function' ? liveGetFilteredDevices(liveState.devices || []) : (liveState.devices || []);
+      const mine = id => typeof liveIsMyDeviceId === 'function' && liveIsMyDeviceId(id);
+      return list.filter(d => !mine(typeof liveDeviceUniqueId === 'function' ? liveDeviceUniqueId(d) : d.id)).map(d => ({
+        name: d.name || '',
+        lat: Number(d.lat), lng: Number(d.lon),
+        t: typeof liveLastUpdateMs === 'function' ? liveLastUpdateMs(d) : null,
+        online: typeof liveIsOnline === 'function' ? liveIsOnline(d, +now) : d.status === 'online',
+      }));
+    } catch { return null; }
+  }
+
   function gather() {
     const m = appMap();
     const trk = activeTrack(), rte = activeRoute();
     const relief = !!elev.info();
+    const now = new Date();
     return {
-      now: new Date(),
+      now,
       zoom: m?.getZoom?.(),
       center: plain(m?.getCenter?.()),
       cursor,
@@ -398,6 +630,9 @@
       coordFormat: document.getElementById('setting-coord-format')?.value || 'dm',
       relief,
       elev: relief ? elev.at(cursor) : null,
+      osrm: activeOsrm(),
+      get osrmElev() { return this.osrm && cfg.slots.some(id => id === 'osrmUp' || id === 'osrmDown') ? routeElev.get(this.osrm) : null; },
+      live: liveParticipants(now),
     };
   }
 
@@ -406,9 +641,9 @@
 
   function renderBar() {
     if (!bar) return;
-    const ids = cfg.slots.filter(Boolean);
-    bar.innerHTML = ids.map((id, i) => `
-      <div class="tn-widget${CATALOG[id].wide ? ' wide' : ''}" data-widget="${id}" data-slot="${i}">
+    const used = cfg.slots.map((id, slot) => ({ id, slot })).filter(x => x.id);
+    bar.innerHTML = used.map(({ id, slot }) => `
+      <div class="tn-widget${CATALOG[id].wide ? ' wide' : ''}" data-widget="${id}" data-slot="${slot}" title="Правый клик — заменить или убрать">
         <div class="tn-widget-value">${DASH}</div>
         <div class="tn-widget-caption">${esc(CATALOG[id].caption)}</div>
       </div>`).join('');
@@ -510,6 +745,55 @@
     renderBar();
     apply();
     renderSettings();
+  }
+
+  // ─── Правый клик по полосе: заменить / убрать / добавить ───
+  let menu = null;
+  function closeMenu() {
+    menu?.remove();
+    menu = null;
+    document.removeEventListener('pointerdown', onOutside, true);
+    document.removeEventListener('keydown', onMenuKey, true);
+  }
+  function onOutside(e) { if (menu && !menu.contains(e.target)) closeMenu(); }
+  function onMenuKey(e) { if (e.key === 'Escape') { e.preventDefault(); closeMenu(); } }
+  /** slot — номер места под карточкой или null (клик мимо карточек: только «Добавить»). */
+  function openMenu(slot, x, y) {
+    closeMenu();
+    const free = cfg.slots.indexOf('');
+    const target = slot != null ? slot : free;
+    const groups = {};
+    for (const [id, w] of Object.entries(CATALOG)) (groups[w.group] ||= []).push([id, w]);
+    const head = slot != null
+      ? `<div class="tnw-menu-head">${esc(CATALOG[cfg.slots[slot]]?.title || 'Виджет')}</div>
+         <button type="button" class="tnw-menu-item tnw-menu-remove" data-tnw-pick="">${icon('close', 'tn-ico-xs')}Убрать</button>
+         <div class="tnw-menu-head">Заменить на…</div>`
+      : free < 0
+        ? '<div class="tnw-menu-head">Все 8 мест заняты — правый клик по виджету, чтобы заменить</div>'
+        : '<div class="tnw-menu-head">Добавить виджет</div>';
+    const list = target < 0 ? '' : Object.entries(groups).map(([g, items]) => `<div class="tnw-menu-group">${esc(g)}</div>`
+      + items.map(([id, w]) => `<button type="button" class="tnw-menu-item${cfg.slots[target] === id ? ' current' : ''}" data-tnw-pick="${id}">${esc(w.title)}</button>`).join('')).join('');
+    menu = document.createElement('div');
+    menu.className = 'tnw-menu';
+    menu.setAttribute('role', 'menu');
+    menu.innerHTML = head + `<div class="tnw-menu-list">${list}</div>`;
+    menu.addEventListener('click', e => {
+      const b = e.target.closest('[data-tnw-pick]');
+      if (!b || target < 0) return;
+      const slots = cfg.slots.slice();
+      slots[target] = b.dataset.tnwPick;
+      closeMenu();
+      setConfig({ ...cfg, slots });
+    });
+    ['mousedown', 'pointerdown', 'wheel', 'dblclick', 'contextmenu'].forEach(ev => menu.addEventListener(ev, e => e.stopPropagation()));
+    document.body.appendChild(menu);
+    // над полосой, не выходя за окно
+    const r = menu.getBoundingClientRect?.() || { width: 0, height: 0 };
+    const vw = window.innerWidth || 0, vh = window.innerHeight || 0;
+    menu.style.left = `${Math.max(8, Math.min(x, vw - r.width - 8))}px`;
+    menu.style.top = `${Math.max(8, Math.min(y - r.height, vh - r.height - 8))}px`;
+    document.addEventListener('pointerdown', onOutside, true);
+    document.addEventListener('keydown', onMenuKey, true);
   }
 
   // ─── Настройки → Виджеты ───
@@ -639,7 +923,18 @@
       .tnw-drop { box-shadow: inset 0 3px 0 var(--primary); }
       .tnw-slot .tn-icon-btn:disabled { opacity: 0.35; cursor: default; }
       .tnw-note { margin: 4px 4px 10px; line-height: 1.4; }
-      .tnw-reset { display: inline-flex; align-items: center; gap: 6px; }`;
+      .tnw-reset { display: inline-flex; align-items: center; gap: 6px; }
+      .tnw-menu { position: fixed; z-index: 3000; min-width: 260px; max-width: 360px; max-height: min(70vh, 520px);
+        display: flex; flex-direction: column; background: var(--bg-elevated); color: var(--text-primary);
+        border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-3); padding: 6px; font-size: 13px; }
+      .tnw-menu-list { overflow-y: auto; }
+      .tnw-menu-head { padding: 6px 8px 4px; color: var(--text-muted); font-size: 12px; }
+      .tnw-menu-group { padding: 8px 8px 2px; color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+      .tnw-menu-item { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; padding: 6px 8px; border: 0;
+        border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+      .tnw-menu-item:hover, .tnw-menu-item:focus-visible { background: var(--bg-hover); outline: none; }
+      .tnw-menu-item.current { color: var(--primary); font-weight: 600; }
+      .tnw-menu-remove { color: var(--error); }`;
     document.head.appendChild(st);
   }
 
@@ -668,6 +963,11 @@
       }
       el.addEventListener('contextmenu', e => e.stopPropagation());
     }
+    bar.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      const card = e.target.closest('.tn-widget');
+      openMenu(card ? +card.dataset.slot : null, e.clientX, e.clientY);
+    });
     mapEl.appendChild(bar);
     mapEl.appendChild(toggle);
     renderBar();
@@ -678,7 +978,7 @@
     if (m?.on) {
       m.on('mousemove', e => {
         cursor = plain(e.latlng);
-        if (cfg.slots.some(id => id === 'elev' || id === 'elevAuto')) elev.request(cursor);
+        if (cfg.slots.some(id => id === 'elev' || id === 'elevAuto' || id === 'slope')) elev.request(cursor);
         scheduleRefresh();
       });
       m.on('zoomend moveend', scheduleRefresh);
@@ -693,7 +993,10 @@
     /** Выбранная точка (клик по WP, окно свойств) — от неё считаются расстояние и азимут до курсора. */
     selectWp(marker) { selectedWp = marker || null; scheduleRefresh(); },
     compute, refresh, gather, renderSettings,
-    util: { haversine, bearing, trackStats, sunTimes, nextSunEvent, terrariumElev, tileXY, elevFromImage, formatCoord, fmtDist, fmtDuration },
+    util: { haversine, bearing, trackStats, sunTimes, nextSunEvent, terrariumElev, tileXY, elevFromImage, formatCoord, fmtDist, fmtDuration,
+      slopeFromImage, scaleDenominator, fmtScale, routeProgress, pointsAlong },
+    _routeElev: routeElev,
+    _openMenu: openMenu,
     _elev: elev,
     _setCursor(ll) { cursor = plain(ll); },
   };

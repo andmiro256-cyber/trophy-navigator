@@ -40,6 +40,8 @@ const values = w => cards(w).map(c => c.querySelector('.tn-widget-value').textCo
 const J = x => JSON.parse(JSON.stringify(x));
 const deepEqual = (a, b, msg) => assert.deepEqual(J(a), J(b), msg);
 const stored = w => JSON.parse(w.localStorage.getItem('tnd-widgets-config'));
+// 0.9.32: 8 мест; конфиг из 5 дополняется пустыми
+const P8 = a => [...a, ...Array(8 - a.length).fill('')];
 
 // ─── Фикстуры ───
 const T0 = Date.parse('2026-10-08T09:00:00Z');
@@ -204,14 +206,14 @@ test('высота: terrarium-пиксель, тайл, кэш и троттли
   await wait(220);
   assert.equal(urls.length, 1);
   assert.equal(urls[0], `tnmap://localhost/extra/lo.dem/12/${tl.x}/${tl.y}.png?v=7`);
-  deepEqual(E.at(p), { value: 152 });
+  deepEqual(E.at(p), { value: 152, slope: null }); // фикстура меньше 3x3 — уклон не считается
   // 204 — нет тайла рельефа → «—», без ошибок
   E.io.fetch = async url => { urls.push(url); return { ok: true, status: 204 }; };
   const far = { lat: 61.5, lng: 31.5 };
   E.request(far);
   await wait(400); // мог ещё идти интервал троттлинга от прошлых запросов
   assert.equal(urls.length, 2); // хвостовой запрос в том же тайле взят из кэша
-  deepEqual(E.at(far), { value: null });
+  deepEqual(E.at(far), { value: null, slope: null });
   // без активной карты с рельефом — нет рельефа и нет запросов
   w.TrophyNavMaps.localEntry = () => ({ id: 'lo' });
   assert.equal(E.at(p), null);
@@ -223,33 +225,33 @@ test('высота: terrarium-пиксель, тайл, кэш и троттли
 
 test('конфиг: по умолчанию, сохранение и восстановление после перезапуска, битый JSON, неизвестные виджеты', needDom, async () => {
   let w = await boot();
-  deepEqual(w.TnWidgets.getConfig(), { v: 1, slots: ['elevAuto', 'zoom', 'trackLen', 'routeLen', 'time'], opacity: 0, hidden: false });
-  deepEqual(cards(w).map(c => c.dataset.widget), ['elevAuto', 'zoom', 'trackLen', 'routeLen', 'time']);
+  deepEqual(w.TnWidgets.getConfig(), { v: 1, slots: P8(['elevAuto', 'scale', 'trackLen', 'routeLen', 'time']), opacity: 0, hidden: false });
+  deepEqual(cards(w).map(c => c.dataset.widget), ['elevAuto', 'scale', 'trackLen', 'routeLen', 'time']);
   deepEqual(cards(w).map(c => c.querySelector('.tn-widget-caption').textContent).slice(1),
     ['масштаб', 'км трек', 'км маршрут', 'время']);
   w.TnWidgets.setConfig({ slots: ['sunset', '', 'trackMax', 'date', 'coords'], opacity: 35, hidden: false });
   const saved = w.localStorage.getItem('tnd-widgets-config');
-  deepEqual(JSON.parse(saved), { v: 1, slots: ['sunset', '', 'trackMax', 'date', 'coords'], opacity: 35, hidden: false });
+  deepEqual(JSON.parse(saved), { v: 1, slots: P8(['sunset', '', 'trackMax', 'date', 'coords']), opacity: 35, hidden: false });
   w.close();
   // «перезапуск» — новое окно с тем же localStorage
   w = await boot({ storage: { 'tnd-widgets-config': saved } });
-  deepEqual(w.TnWidgets.getConfig().slots, ['sunset', '', 'trackMax', 'date', 'coords']);
+  deepEqual(w.TnWidgets.getConfig().slots, P8(['sunset', '', 'trackMax', 'date', 'coords']));
   assert.equal(w.TnWidgets.getConfig().opacity, 35);
   deepEqual(cards(w).map(c => c.dataset.widget), ['sunset', 'trackMax', 'date', 'coords']);
   w.close();
   // битый JSON и мусор → по умолчанию / пусто, прозрачность в пределах 0..100
   w = await boot({ storage: { 'tnd-widgets-config': '{oops' } });
-  deepEqual(w.TnWidgets.getConfig().slots, ['elevAuto', 'zoom', 'trackLen', 'routeLen', 'time']);
+  deepEqual(w.TnWidgets.getConfig().slots, P8(['elevAuto', 'scale', 'trackLen', 'routeLen', 'time']));
   w.close();
   w = await boot({ storage: { 'tnd-widgets-config': JSON.stringify({ v: 1, slots: ['zoom', 'gps-speed', 7], opacity: 250 }) } });
-  deepEqual(w.TnWidgets.getConfig(), { v: 1, slots: ['zoom', '', '', '', ''], opacity: 100, hidden: false });
+  deepEqual(w.TnWidgets.getConfig(), { v: 1, slots: P8(['zoom', '', '', '', '']), opacity: 100, hidden: false });
   w.close();
 });
 
 test('конфиг: миграция старого tnd-widgets-hidden и запись его обратно для отката', needDom, async () => {
   let w = await boot({ storage: { 'tnd-widgets-hidden': '1' } });
   assert.equal(w.TnWidgets.getConfig().hidden, true);
-  deepEqual(w.TnWidgets.getConfig().slots, ['elevAuto', 'zoom', 'trackLen', 'routeLen', 'time']);
+  deepEqual(w.TnWidgets.getConfig().slots, P8(['elevAuto', 'scale', 'trackLen', 'routeLen', 'time']));
   assert.equal(w.document.getElementById('tn-widgets').hidden, true);
   assert.equal(w.document.body.classList.contains('tn-widgets-on'), false);
   assert.equal(w.document.getElementById('tnw-shown').checked, false);
@@ -272,12 +274,12 @@ test('раздел «Виджеты»: выбор, «пусто», стрелк�
   const d = w.document;
   const host = d.getElementById('tn-widgets-settings');
   const selects = () => [...host.querySelectorAll('select[data-tnw-slot]')];
-  assert.equal(selects().length, 5);
-  deepEqual(selects().map(s => s.value), ['elevAuto', 'zoom', 'trackLen', 'routeLen', 'time']);
+  assert.equal(selects().length, 8);
+  deepEqual(selects().map(s => s.value), P8(['elevAuto', 'scale', 'trackLen', 'routeLen', 'time']));
   // в выпадающем списке весь каталог + «Пусто»
   assert.equal(selects()[0].querySelectorAll('option').length, Object.keys(w.TnWidgets.CATALOG).length + 1);
   assert.equal(selects()[0].querySelector('option').textContent, 'Пусто');
-  assert.equal(host.querySelectorAll('.setting-row.tnw-slot .tnw-handle svg.tn-ico').length, 5);
+  assert.equal(host.querySelectorAll('.setting-row.tnw-slot .tnw-handle svg.tn-ico').length, 8);
   // выбор виджета
   const change = (el, v) => { el.value = v; el.dispatchEvent(new w.Event('change', { bubbles: true })); };
   change(selects()[2], 'trackUp');
@@ -291,12 +293,12 @@ test('раздел «Виджеты»: выбор, «пусто», стрелк�
   assert.ok(values(w).every(v => v.length > 0));
   // стрелка «правее» у места 1 → виджет переезжает на место 2
   host.querySelector('[data-tnw-move="0:1"]').click();
-  deepEqual(stored(w).slots, ['', 'elevAuto', 'trackUp', 'routeLen', 'time']);
+  deepEqual(stored(w).slots, P8(['', 'elevAuto', 'trackUp', 'routeLen', 'time']));
   assert.equal(d.activeElement?.dataset.tnwFocus, 'down1'); // фокус едет за виджетом
   assert.equal(host.querySelector('[data-tnw-move="0:-1"]').disabled, true);
-  assert.equal(host.querySelector('[data-tnw-move="4:1"]').disabled, true);
+  assert.equal(host.querySelector('[data-tnw-move="7:1"]').disabled, true);
   host.querySelector('[data-tnw-move="4:-1"]').click();
-  deepEqual(stored(w).slots, ['', 'elevAuto', 'trackUp', 'time', 'routeLen']);
+  deepEqual(stored(w).slots, P8(['', 'elevAuto', 'trackUp', 'time', 'routeLen']));
   // перетаскивание за ручку: место 5 → место 1
   const rows = [...host.querySelectorAll('.tnw-slot')];
   d.elementFromPoint = () => rows[0].querySelector('.setting-label');
@@ -307,7 +309,7 @@ test('раздел «Виджеты»: выбор, «пусто», стрелк�
   P('pointermove', rows[4]);
   assert.ok(rows[0].classList.contains('tnw-drop'));
   P('pointerup', rows[4]);
-  deepEqual(stored(w).slots, ['routeLen', '', 'elevAuto', 'trackUp', 'time']);
+  deepEqual(stored(w).slots, P8(['routeLen', '', 'elevAuto', 'trackUp', 'time']));
   deepEqual(cards(w).map(c => c.dataset.widget), ['routeLen', 'elevAuto', 'trackUp', 'time']);
   // прозрачность: живой предпросмотр на input, сохранение, фон полосы гаснет, текст с обводкой
   const range = host.querySelector('[data-tnw="opacity"]');
@@ -333,11 +335,11 @@ test('раздел «Виджеты»: выбор, «пусто», стрелк�
   assert.equal(d.body.classList.contains('tn-widgets-on'), false);
   // «По умолчанию»
   host.querySelector('[data-tnw="reset"]').click();
-  deepEqual(stored(w), { v: 1, slots: ['elevAuto', 'zoom', 'trackLen', 'routeLen', 'time'], opacity: 0, hidden: false });
-  deepEqual(selects().map(s => s.value), ['elevAuto', 'zoom', 'trackLen', 'routeLen', 'time']);
+  deepEqual(stored(w), { v: 1, slots: P8(['elevAuto', 'scale', 'trackLen', 'routeLen', 'time']), opacity: 0, hidden: false });
+  deepEqual(selects().map(s => s.value), P8(['elevAuto', 'scale', 'trackLen', 'routeLen', 'time']));
   assert.equal(bar.hidden, false);
   w.TnWidgets.refresh();
-  assert.equal(values(w)[1], 'Z9');
+  assert.equal(values(w)[1], w.TnWidgets.util.fmtScale(w.TnWidgets.util.scaleDenominator(9.4, 59.9))); // 0.9.32: 1:N вместо Z9
   w.close();
 });
 
