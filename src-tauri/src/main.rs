@@ -16,6 +16,8 @@ use tauri_plugin_updater::{Update, UpdaterExt};
 mod gpu_env;
 mod pinch;
 mod vector_maps;
+mod voice;
+mod places;
 
 const MAX_TILE_BYTES: u64 = 2 * 1024 * 1024;
 const OFFLINE_DOWNLOAD_BATCH_SIZE: u64 = 250;
@@ -1795,7 +1797,13 @@ fn main() {
             vector_maps::tnmaps_catalog,
             vector_maps::tnmaps_download,
             vector_maps::tnmaps_cancel,
-            vector_maps::tnmaps_delete
+            vector_maps::tnmaps_delete,
+            vector_maps::tnmaps_places,
+            voice::voice_status,
+            voice::voice_download_model,
+            voice::voice_start,
+            voice::voice_stop,
+            voice::voice_cancel
         ])
         // TrophyNav Maps: векторные тайлы, рельеф и файлы стиля (отдельно от растровых офлайн-карт)
         .register_asynchronous_uri_scheme_protocol(
@@ -1804,6 +1812,7 @@ fn main() {
         )
         .setup(|app| {
             vector_maps::init(app.handle());
+            voice::init(app.handle());
             // Щипок тачпада зумит карту, а не страницу (Linux, WebKitGTK)
             #[cfg(target_os = "linux")]
             for window in app.webview_windows().values() {

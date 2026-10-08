@@ -57,7 +57,7 @@ test('Android palette: the same base tokens in both themes, values from colors.x
 });
 
 test('every var(--…) used by the UI is defined in theme.css', () => {
-  const sources = [html, read('../ui/trophynav-maps.js'), read('../ui/trophynav-3d.js'), read('../ui/tn-icons.js'), read('../ui/tn-widgets.js')];
+  const sources = [html, read('../ui/trophynav-maps.js'), read('../ui/trophynav-3d.js'), read('../ui/tn-icons.js'), read('../ui/tn-widgets.js'), read('../ui/tn-voice.js')];
   const missing = new Set();
   for (const src of sources) {
     for (const m of src.matchAll(/var\((--[\w-]+)/g)) if (!light.has(m[1])) missing.add(m[1]);
@@ -74,6 +74,7 @@ test('no hex/rgb colours outside theme.css (data colours are marked)', () => {
     ...leaks(read('../ui/trophynav-symbols.js'), 'ui/trophynav-symbols.js'),
     ...leaks(read('../ui/tn-icons.js'), 'ui/tn-icons.js'),
     ...leaks(read('../ui/tn-widgets.js'), 'ui/tn-widgets.js'),
+    ...leaks(read('../ui/tn-voice.js'), 'ui/tn-voice.js'),
   ];
   assert.deepEqual(found, []);
 });
