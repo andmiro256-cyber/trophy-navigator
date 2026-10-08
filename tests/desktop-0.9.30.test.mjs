@@ -319,3 +319,28 @@ test('версия 0.9.30 везде одна', () => {
   assert.match(html, /id="about-version"[^>]*>0\.9\.30</);
   assert.doesNotMatch(html, /0\.9\.29/);
 });
+
+test('ревью 2582 P3: удержание щипка без движения не крутит нулевые таймеры', needDom, async () => {
+  const { dom, w, frames, sz } = setup();
+  try {
+    let count = 0;
+    const orig = w.setTimeout;
+    w.setTimeout = (f, ms, ...a) => { count++; return orig(f, ms, ...a); };
+    sz.pinch(0, 1, 400, 300);
+    sz.pinch(1, 1.2, 400, 300);
+    frames(100);
+    await new Promise(r => setTimeout(r, 600));
+    assert.ok(count < 10, `таймеров за 600 мс удержания: ${count}`);
+    sz.pinch(2, 1.2, 400, 300);
+    frames(50);
+    w.setTimeout = orig;
+  } finally { dom.window.close(); }
+});
+
+test('ревью 2582 P1: первая перестройка списка карт — после инициализации скрипта (TRIAL_DAYS)', () => {
+  const at = html.indexOf('setTimeout(buildLayerUI, 0);\nloadTileCatalog();');
+  assert.ok(at > 0, 'первый buildLayerUI отложен');
+  const trial = html.indexOf('const TRIAL_DAYS = ');
+  assert.ok(trial > at, 'TRIAL_DAYS объявлен ниже — синхронный вызов упал бы');
+  assert.doesNotMatch(html, /\nbuildLayerUI\(\);\nloadTileCatalog\(\);/);
+});
