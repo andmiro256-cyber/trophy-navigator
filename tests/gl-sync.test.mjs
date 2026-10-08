@@ -44,3 +44,17 @@ test('холсты отдельных pane (радиусы точек) — то�
   assert.match(html, /map\._createRenderer = options => L\.canvas\(\{ padding: TND_CANVAS_PADDING, \.\.\.options \}\);/);
   assert.match(html, /const trackCanvasRenderer = L\.canvas\(\{ padding: TND_CANVAS_PADDING \}\);/);
 });
+
+test('холсты Leaflet создаются без ускорения на видеокарте (willReadFrequently)', () => {
+  const block = html.match(/\(function tndCpuLeafletCanvas\(\) \{[\s\S]*?\}\)\(\);/)[0];
+  const seen = [];
+  function Canvas() {}
+  Canvas.prototype._initContainer = function () { this._ctx = this.c.getContext('2d'); };
+  class HTMLCanvasElement { getContext(type, opts) { seen.push([type, opts]); return { type }; } }
+  vm.runInNewContext(block, { L: { Canvas }, HTMLCanvasElement });
+  const r = new Canvas(); r.c = new HTMLCanvasElement();
+  r._initContainer();
+  assert.equal(JSON.stringify(seen), JSON.stringify([['2d', { willReadFrequently: true }]]));
+  r.c.getContext('webgl');
+  assert.equal(JSON.stringify(seen[1]), JSON.stringify(['webgl', null]), 'вне _initContainer getContext не тронут');
+});
