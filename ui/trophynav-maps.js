@@ -19,6 +19,7 @@
   const LS_THEME = 'tnd-tnmaps-theme';
   const LS_RELIEF = 'tnd-tnmaps-relief';
   const LS_POI = 'tnd-tnmaps-poi';
+  const LS_AUTO = 'tnd-tnmaps-autoswitch';
   const ATTRIBUTION = '© OpenMapTiles © OpenStreetMap contributors';
 
   const state = {
@@ -405,6 +406,96 @@
     return state.activeLayer && leafletMap()?.hasLayer?.(state.activeLayer) ? state.activeLayer.mapId : null;
   }
 
+  // ─── автоподгрузка областей (bounds — запасной способ без обзорной карты) ───
+  const auto = { timer: null, busy: false, moving: false, retryAt: 0, dismissed: new Set(), prompt: null };
+  const autoEnabled = () => lsGet(LS_AUTO) !== 'false';
+  function clearRegionPrompt() {
+    auto.prompt?.remove();
+    auto.prompt = null;
+  }
+  function autoContext() {
+    const m = leafletMap();
+    if (auto.moving || !autoEnabled() || !m || m.getZoom() < 6 || !isLayerName(currentLayerName())) return null;
+    // Офлайн sqlitedb может лежать поверх векторной основы, включая гоночную карту.
+    if (typeof offlineBaseModeActive !== 'undefined' && offlineBaseModeActive) return null;
+    if (typeof hasActiveOfflineMaps === 'function' && hasActiveOfflineMaps()) return null;
+    const id = activeId();
+    return id && id === idOf(currentLayerName()) ? { id, center: m.getCenter() } : null;
+  }
+  function targetRegion() {
+    const c = autoContext();
+    return c ? regionAt(c.center.lat, c.center.lng, c.id, true) : null;
+  }
+  function switchRegion(id) {
+    if (!id || targetRegion() !== id || activeId() === id || !localEntry(id) || localEntry(id).error) return;
+    if (typeof window.setLayer !== 'function') return;
+    window.setLayer(LAYER_PREFIX + id, null, { quiet: true });
+    if (activeId() === id) {
+      toast(`Карта: ${regionName(id)}`);
+      renderLayerSection();
+      window.TnLayers?.refresh();
+    }
+  }
+  function offerRegion(id) {
+    if (auto.prompt?.dataset.id === id) return;
+    clearRegionPrompt();
+    const entry = catalogEntry(id);
+    const el = document.createElement('div');
+    el.className = 'tnmaps-region-prompt';
+    el.dataset.id = id;
+    el.setAttribute('role', 'status');
+    const size = (Number(entry.size) || 0) + (entry.terrain || []).reduce((n, t) => n + (Number(t.size) || 0), 0);
+    el.innerHTML = `<span>Здесь нет карты. Скачать ${esc(regionName(id))} (${formatSize(size)})?</span>
+      <button type="button" class="tnmaps-btn primary" data-download>Скачать</button>
+      <button type="button" class="tnmaps-btn" data-dismiss>Не сейчас</button>`;
+    el.querySelector('[data-dismiss]').addEventListener('click', () => {
+      auto.dismissed.add(id);
+      clearRegionPrompt();
+    });
+    el.querySelector('[data-download]').addEventListener('click', async () => {
+      if (targetRegion() !== id) { clearRegionPrompt(); return; }
+      clearRegionPrompt();
+      await startDownload(id);
+      switchRegion(id); // Перепроверить камеру и выбранную подложку после загрузки.
+    });
+    L.DomEvent.disableClickPropagation(el);
+    L.DomEvent.disableScrollPropagation(el);
+    document.body.appendChild(el);
+    auto.prompt = el;
+  }
+  async function checkAutoRegion() {
+    if (auto.busy) return;
+    if (!autoContext()) { clearRegionPrompt(); return; }
+    auto.busy = true;
+    try {
+      let id = targetRegion();
+      if (id && id !== activeId() && localEntry(id) && !localEntry(id).error) {
+        clearRegionPrompt();
+        switchRegion(id);
+        return;
+      }
+      if (!state.catalog && Date.now() >= auto.retryAt) {
+        await loadCatalog();
+        if (!state.catalog) {
+          auto.retryAt = Date.now() + 60000;
+          clearTimeout(auto.timer);
+          auto.timer = setTimeout(checkAutoRegion, 60000);
+        }
+      }
+      // Каталог отвечает асинхронно: пользователь уже мог уйти или выбрать другую карту.
+      id = targetRegion();
+      if (!id || id === activeId()) { clearRegionPrompt(); return; }
+      if (localEntry(id) && !localEntry(id).error) { clearRegionPrompt(); switchRegion(id); return; }
+      if (catalogEntry(id) && !auto.dismissed.has(id) && !state.downloads[id]) offerRegion(id);
+      else clearRegionPrompt();
+    } finally { auto.busy = false; }
+  }
+  function scheduleAutoRegion() {
+    clearTimeout(auto.timer);
+    clearRegionPrompt();
+    auto.timer = setTimeout(checkAutoRegion, 1000);
+  }
+
   // ─── настройки активной карты ───
   function setTheme(themeId) {
     const id = activeId();
@@ -492,6 +583,7 @@
       .tnmaps-foot { font-size:10px; color:var(--text-muted); display:flex; justify-content:space-between; gap:8px; align-items:center; }
       .tnmaps-poi { grid-column:2; display:flex; flex-direction:column; gap:2px; padding:0 0 4px; }
       .tnmaps-poi label { display:flex; align-items:center; gap:6px; min-height:24px; font-size:11px; color:var(--text-primary); cursor:pointer; }
+      .tnmaps-region-prompt { position:fixed; top:112px; left:50%; transform:translateX(-50%); z-index:5000; display:flex; align-items:center; flex-wrap:wrap; gap:8px; max-width:calc(100vw - 32px); padding:10px 18px; background:var(--modal-bg); color:var(--text-primary); border:1px solid var(--card-stroke); border-left:4px solid var(--primary); border-radius:var(--radius-m); box-shadow:var(--shadow-2); font-size:var(--fs-s); }
       .tnmaps-poi[hidden] { display:none; }
     `;
     document.head.appendChild(st);
@@ -557,7 +649,8 @@
       </div>`;
     }
     const hint = state.local.length ? '' : '<div class="tnmaps-empty">Нет скачанных областей. Векторные карты работают без интернета.</div>';
-    const html = items + controls + hint;
+    const setting = `<div class="tnmaps-checks"><label><input type="checkbox" data-tnmaps-auto ${autoEnabled() ? 'checked' : ''}>Автопереключение карт областей</label></div>`;
+    const html = items + controls + setting + hint;
     // Та же разметка — узлы не трогать: пересоздание строки под нажатой кнопкой мыши съедает click
     // (WebKit не шлёт click, если элемент mousedown удалён до mouseup)
     if (box.__tnmapsHtml === html && box.childElementCount) return;
@@ -628,6 +721,12 @@
       if (e.detail !== 0 && press.doneKey === act.key && Date.now() - press.doneAt < 1000) { press.doneKey = null; return; }
       press.doneKey = null;
       runClickAction(act);
+      return;
+    }
+    if (t.matches?.('[data-tnmaps-auto]') && e.type === 'change') {
+      lsSet(LS_AUTO, String(t.checked));
+      scheduleAutoRegion();
+      renderLayerSection();
       return;
     }
     if (t.matches?.('[data-tnmaps-relief]') && e.type === 'change') { setRelief({ [t.dataset.tnmapsRelief]: t.checked }); return; }
@@ -893,6 +992,10 @@
   // ─── запуск ───
   function init() {
     injectCss();
+    const m = leafletMap();
+    m?.on('moveend', () => { auto.moving = false; scheduleAutoRegion(); });
+    m?.on('layeradd layerremove', scheduleAutoRegion);
+    m?.on('movestart', () => { auto.moving = true; clearTimeout(auto.timer); clearRegionPrompt(); });
     const box = document.getElementById('tnmaps-layers');
     if (box) ['pointerdown', 'pointerup', 'click', 'change', 'input'].forEach(t => box.addEventListener(t, onLayerSectionEvent));
     // Окно «Карта и слои» открылось — обновить список скачанных
@@ -915,16 +1018,19 @@
     }
   }
 
-  /** Скачанная область, в которую попадает точка (для 3D с растровой карты на экране). */
-  function regionAt(lat, lng, prefer) {
+  /** Область по bounds: по умолчанию скачанные (3D), includeCatalog — также доступные для загрузки. */
+  function regionAt(lat, lng, prefer, includeCatalog = false) {
     const inside = m => {
-      if (!m || m.error) return false;
+      if (!m || m.error || m.kind === 'overview') return false;
       const b = catalogEntry(m.id)?.bounds || m.bounds;
       return Array.isArray(b) && b.length === 4 && lng >= b[0] && lng <= b[2] && lat >= b[1] && lat <= b[3];
     };
     // Границы областей пересекаются — сначала та, что уже на экране
-    if (prefer && inside(localEntry(prefer))) return prefer;
-    return state.local.find(inside)?.id || null;
+    const entries = includeCatalog
+      ? [...state.local, ...(state.catalog?.maps || []).filter(m => !localEntry(m.id) || localEntry(m.id).error)]
+      : state.local;
+    if (prefer && inside(entries.find(m => m.id === prefer))) return prefer;
+    return entries.find(inside)?.id || null;
   }
 
   window.TrophyNavMaps = {
