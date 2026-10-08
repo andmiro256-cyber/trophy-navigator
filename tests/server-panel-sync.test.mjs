@@ -377,6 +377,36 @@ test('КП→WP контроль: «Точки» включены — ссылк
   assert.deepEqual(state.waypoints.find(p => p.id === 'wp-1'), local.waypoints[0], 'локальная wp-1 не тронута');
 });
 
+// ─── ревью 2587: точка без координат не доказывает связь; повтор id — по всем записям ответа ───
+const t2587 = (serverWaypoints) => ({
+  local: { waypointSets: [{ id: 1, name: 'Основной' }], activeSetId: 1, counters: {},
+    waypoints: [{ id: 'local-A', name: 'A', lat: 60, lng: 30, setId: 1 }], tracks: [], routes: [], gpxFiles: [] },
+  remote: { waypointSets: [{ id: 1, name: 'Основной' }], waypoints: serverWaypoints,
+    routes: [{ id: 1, name: 'Импорт', points: [{ lat: 61, lng: 31 }, { lat: 62, lng: 32 }], pointWaypointIds: ['server-1', null] }] },
+});
+
+test('КП→WP: серверная точка без координат с тем же названием, что у локальной, — ссылка null при обеих галочках', needDom, () => {
+  const { w } = makeDom();
+  for (const waypoints of [false, true]) {
+    const { local, remote } = t2587([{ id: 'server-1', name: 'A', lat: null, lng: 31, setId: 1 }]);
+    const { state } = plain(w.TNServer.mergeAddOnly(local, remote, { routes: true, waypoints }));
+    assert.deepEqual(state.routes[0].pointWaypointIds, [null, null], `waypoints=${waypoints}`);
+    assert.deepEqual(state.waypoints, local.waypoints);
+  }
+});
+
+test('КП→WP: один server id у валидной и невалидной точки — неоднозначно, ссылка null при обеих галочках', needDom, () => {
+  const { w } = makeDom();
+  for (const waypoints of [false, true]) {
+    for (const order of [0, 1]) {
+      const pts = [{ id: 'server-1', name: 'A', lat: 61, lng: 31, setId: 1 }, { id: 'server-1', name: 'B', lat: null, lng: 32, setId: 1 }];
+      const { local, remote } = t2587(order ? pts.reverse() : pts);
+      const { state } = plain(w.TNServer.mergeAddOnly(local, remote, { routes: true, waypoints }));
+      assert.deepEqual(state.routes[0].pointWaypointIds, [null, null], `waypoints=${waypoints}, порядок ${order}`);
+    }
+  }
+});
+
 /** syncPull из index.html с заглушками: ответ сервера, collectState/applyState — память. */
 function runSyncPull(w, { localState, payload, silent = false, confirm = true }) {
   const out = { applied: null, toasts: [], saved: 0, files: null, status: [] };

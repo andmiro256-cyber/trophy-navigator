@@ -148,8 +148,8 @@
    * Ссылки КП→WP в добавленных маршрутах переводятся только через доказанное соответствие серверной точки
    * из этого ответа и итоговой точки на устройстве: добавленная — её новый id; пропущенная по названию
    * (или при снятых «Точках») — локальная точка с тем же названием. Всё неподтверждённое (точки нет в ответе,
-   * она без координат, id в ответе неоднозначен) — null: серверный id в локальном пространстве может
-   * совпасть с чужой точкой.
+   * она без координат — даже при совпадении названия, id повторяется в ответе хотя бы дважды, включая
+   * невалидные записи) — null: серверный id в локальном пространстве может совпасть с чужой точкой.
    * @returns {{ state, stats, added }} added — только добавленные объекты (для файлов в рабочей папке).
    */
   function mergeAddOnly(localState, remoteState, checks = {}, opts = {}) {
@@ -176,10 +176,18 @@
     const remoteCounters = remote.counters || {};
     const maxNum = (...values) => Math.max(0, ...values.filter(finite));
 
-    // Точки: server id → итоговый id на устройстве (для ссылок КП→WP); null — неоднозначно
+    // Точки: server id → итоговый id на устройстве (для ссылок КП→WP); null — не доказано.
+    // Повтор id в ответе считается по всем записям, включая отброшенные: любой повтор → null.
+    // Серверная точка без координат не подтверждает соответствие ни в одном режиме → null.
     const wpIdMap = new Map();
+    const serverIdCount = new Map();
+    list(remote.waypoints).forEach(sw => {
+      const k = sw.id == null ? '' : String(sw.id);
+      if (k) serverIdCount.set(k, (serverIdCount.get(k) || 0) + 1);
+    });
     const proveWaypoint = (serverId, id) => {
       if (!serverId) return;
+      if (serverIdCount.get(serverId) > 1) { wpIdMap.set(serverId, null); return; }
       if (!wpIdMap.has(serverId)) wpIdMap.set(serverId, id);
       else if (wpIdMap.get(serverId) !== id) wpIdMap.set(serverId, null);
     };
@@ -219,7 +227,8 @@
       list(remote.waypoints).forEach(sw => {
         const key = nameKey(sw.name);
         const serverId = sw.id == null ? '' : String(sw.id);
-        const mapId = id => proveWaypoint(serverId, id);
+        const hasCoords = finite(sw.lat) && finite(sw.lng);
+        const mapId = id => proveWaypoint(serverId, hasCoords ? id : null);
         if (seen.has(key)) { stats.waypoints.duplicates++; mapId(seen.get(key)); return; }
         if (localByKey.has(key)) {
           stats.waypoints.skipped++;
@@ -227,7 +236,7 @@
           mapId(localByKey.get(key).id);
           return;
         }
-        if (!finite(sw.lat) || !finite(sw.lng)) { stats.waypoints.invalid++; return; }
+        if (!hasCoords) { stats.waypoints.invalid++; mapId(null); return; }
         const id = serverId && !usedIds.has(serverId) ? sw.id : makeWaypointId();
         usedIds.add(String(id));
         const wp = mark({ ...sw, id, setId: resolveSet(sw.setId) });
@@ -242,7 +251,7 @@
       // «Точки» сняты: ссылка — только на уже имеющуюся точку с названием серверной точки из ответа
       list(remote.waypoints).forEach(sw => {
         const serverId = sw.id == null ? '' : String(sw.id);
-        const same = localWpByKey.get(nameKey(sw.name));
+        const same = finite(sw.lat) && finite(sw.lng) ? localWpByKey.get(nameKey(sw.name)) : null;
         proveWaypoint(serverId, same ? same.id : null);
       });
     }
