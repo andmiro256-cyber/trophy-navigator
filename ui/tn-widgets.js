@@ -56,9 +56,10 @@
     const durationMs = first != null && last > first ? last - first : null;
     let maxMs = null;
     if (durationMs) {
-      for (let i = 1; i < pts.length; i++) {
+      // с первой точки: записанная скорость есть и у неё (ревью 2578); по отрезку — только с i ≥ 1
+      for (let i = 0; i < pts.length; i++) {
         let v = pd[i]?.speed == null ? NaN : Number(pd[i].speed);
-        if (!Number.isFinite(v)) {
+        if (!Number.isFinite(v) && i > 0) {
           const t0 = timeAt(i - 1), t1 = timeAt(i);
           v = t0 != null && t1 != null && t1 > t0 ? haversine(pts[i - 1], pts[i]) / ((t1 - t0) / 1000) : NaN;
         }

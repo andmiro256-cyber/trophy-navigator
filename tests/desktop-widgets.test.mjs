@@ -86,6 +86,15 @@ test('расчёты: расстояние, азимут, координаты, 
   w.close();
 });
 
+test('ревью 2578: максимальная скорость учитывает первую точку трека', async t => {
+  if (!JSDOM) return t.skip('jsdom не найден (NODE_PATH)');
+  const w = await boot();
+  const { trackStats } = w.TnWidgets.util;
+  const pts = [{ lat: 60, lng: 30 }, { lat: 60.001, lng: 30 }, { lat: 60.002, lng: 30 }];
+  const pd = [0, 60, 120].map((s, i) => ({ time: new Date(Date.UTC(2026, 9, 8, 10, 0, s)).toISOString(), speed: [20, 1, 1][i] }));
+  assert.equal(Math.round(trackStats(pts, pd).maxKmh), 72, '20 м/с в первой точке = 72 км/ч');
+});
+
 test('солнце: восход и закат для Петербурга, Москвы и полярной ночи совпадают с NOAA ±2 мин', async t => {
   if (!JSDOM) return t.skip('jsdom не найден (NODE_PATH)');
   const w = await boot();
