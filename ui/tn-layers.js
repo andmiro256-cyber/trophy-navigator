@@ -590,8 +590,6 @@
         <button type="button" class="tn-icon-btn tn-icon-btn-s tnst-drag" data-act="drag" data-iid="${esc(item.iid)}" title="Перетащите, чтобы поменять порядок" aria-label="Перетащить ${esc(label)}">${ico('swap-vert')}</button>
         <button type="button" class="tn-icon-btn tn-icon-btn-s" data-act="toggle" data-iid="${esc(item.iid)}" aria-pressed="${item.enabled}" title="${item.enabled ? 'Скрыть слой' : 'Показать слой'}" aria-label="${item.enabled ? 'Скрыть' : 'Показать'} ${esc(label)}">${ico(item.enabled ? 'eye' : 'eye-off')}</button>
         <span class="tnst-name" title="${esc(label)}">${ico(kindIcon(item.source, label), 'tn-ico-t tn-ico-m')}<span>${esc(label)}</span>${isTn ? `<span class="tnst-badge">${item.tn.mode === 'full' ? 'целиком' : 'дороги'}</span>` : ''}</span>
-        <button type="button" class="tn-icon-btn tn-icon-btn-s" data-act="up" data-iid="${esc(item.iid)}" ${top ? 'disabled' : ''} title="Выше" aria-label="Поднять ${esc(label)}">${ico('chevron-up')}</button>
-        <button type="button" class="tn-icon-btn tn-icon-btn-s" data-act="down" data-iid="${esc(item.iid)}" ${bottom ? 'disabled' : ''} title="Ниже" aria-label="Опустить ${esc(label)}">${ico('chevron-down')}</button>
         <button type="button" class="tn-icon-btn tn-icon-btn-s${open ? ' on' : ''}" data-act="settings" data-iid="${esc(item.iid)}" aria-expanded="${open}" title="Настроить" aria-label="Настроить ${esc(label)}">${ico('sliders')}</button>
         <button type="button" class="tn-icon-btn tn-icon-btn-s danger" data-act="remove" data-iid="${esc(item.iid)}" title="Убрать слой" aria-label="Убрать ${esc(label)}">${ico('delete')}</button>
       </div>
@@ -599,6 +597,8 @@
         <span class="tnst-op-label">Прозрачность</span>
         <input type="range" min="0" max="100" step="5" value="${Math.round(item.opacity * 100)}" data-act="opacity" data-iid="${esc(item.iid)}" aria-label="Прозрачность ${esc(label)}">
         <span class="tnst-pct" data-opacity-val>${pct(item.opacity)}</span>
+        <button type="button" class="tn-icon-btn tn-icon-btn-s" data-act="up" data-iid="${esc(item.iid)}" ${top ? 'disabled' : ''} title="Выше" aria-label="Поднять ${esc(label)}">${ico('chevron-up')}</button>
+        <button type="button" class="tn-icon-btn tn-icon-btn-s" data-act="down" data-iid="${esc(item.iid)}" ${bottom ? 'disabled' : ''} title="Ниже" aria-label="Опустить ${esc(label)}">${ico('chevron-down')}</button>
       </div>
       <div class="tnst-note${note?.cls ? ' ' + note.cls : ''}" data-note${note ? '' : ' hidden'}>${esc(note?.text || '')}</div>
       ${open ? (isTn ? tnSettingsHtml(item) : adjustHtml(item.iid, item.raster)) : ''}
