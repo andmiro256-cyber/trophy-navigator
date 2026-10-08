@@ -1,6 +1,6 @@
 // 0.9.30: «Карта и слои» — без повторов зашитых карт и карт серверного каталога (зашитая с эквивалентом
 // в каталоге не показывается, сохранённый выбор переводится на карту каталога), «Яндекс Гибрид (точный)»
-// показывается как «Яндекс Гибрид».
+// показывается как «Яндекс Гибрид»; скрытые карты — режим глаза в заголовке, возврат по одной.
 // DOM-проверки — jsdom (NODE_PATH=…/node_modules) на кусках настоящего ui/index.html.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -34,7 +34,7 @@ const CATALOG = {
 
 function setup({ session = 'OpenStreetMap', hidden = [] } = {}) {
   const body = between('<div id="catalog-free-layers">', '<div class="layer-section-title" style="margin-top:8px">Оверлейные слои</div>');
-  const header = '';
+  const header = html.match(/<button type="button" class="tn-icon-btn" id="btn-show-hidden-layers"[^>]*>/)[0] + '</button>';
   const dom = new JSDOM(`<!doctype html><body>${header}<div class="modal-body">${body}</div></body>`,
     { url: 'https://review.invalid/', runScripts: 'dangerously' });
   const w = dom.window;
@@ -63,7 +63,8 @@ function setup({ session = 'OpenStreetMap', hidden = [] } = {}) {
     `window.__t = {
        get name() { return currentBaseLayerName; }, get crs() { return currentCRS; }, toasts, added,
        loadCatalog(data) { tileCatalog = normalizeCatalog(JSON.parse(JSON.stringify(data))); buildLayerUI(); migrateBaseLayerToCatalog(); },
-       buildLayerUI, setLayer, toggleLayerHidden, layerDisplayName, getHiddenLayers };`,
+       buildLayerUI, setLayer, toggleLayerHidden, showHiddenLayersManager, layerDisplayName, getHiddenLayers,
+       get mode() { return showHiddenLayersMode; } };`,
   ].join('\n');
   w.eval(code);
   const rows = () => [...w.document.querySelectorAll('#catalog-free-layers .base-layer, #catalog-base-layers .base-layer')]
@@ -142,8 +143,47 @@ test('без каталога выбор по зашитому имени ост
   } finally { dom.window.close(); }
 });
 
-test('скачивание областей: отображаемые имена, значения — label каталога; старого списка SPECIAL_PREMIUM нет', () => {
+test('скрытые карты: глаз в заголовке показывает обе серыми с «Показать», вернуть одну — вторая скрыта; повторный глаз — выход', needDom, () => {
+  const { dom, w, t, rows } = setup();
+  try {
+    t.loadCatalog(CATALOG);
+    t.showHiddenLayersManager();
+    assert.equal(t.toasts.at(-1), 'Нет скрытых карт');
+    assert.equal(t.mode, false);
+    t.toggleLayerHidden('bing_sat');
+    t.toggleLayerHidden('Гибрид Bing');   // зашитая карта без ключа каталога скрывается по имени
+    let names = rows().map(r => r.layer);
+    assert.ok(!names.includes('Bing Спутник') && !names.includes('Гибрид Bing'));
+    t.showHiddenLayersManager();
+    assert.equal(t.mode, true);
+    const eye = w.document.getElementById('btn-show-hidden-layers');
+    assert.ok(eye.classList.contains('active'));
+    assert.equal(eye.getAttribute('aria-pressed'), 'true');
+    let shown = rows().filter(r => r.hidden);
+    assert.deepEqual(shown.map(r => r.layer).sort(), ['Bing Спутник', 'Гибрид Bing'].sort());
+    assert.ok(shown.every(r => r.btn === 'Показать в списке'));
+    assert.ok(rows().filter(r => !r.hidden).every(r => r.btn === 'Скрыть из списка'));
+    // вернуть одну
+    w.document.querySelector('.base-layer.layer-hidden[data-layer="Bing Спутник"] button').click();
+    assert.deepEqual([...t.getHiddenLayers()], ['Гибрид Bing']);
+    shown = rows().filter(r => r.hidden);
+    assert.deepEqual(shown.map(r => r.layer), ['Гибрид Bing'], 'вторая осталась скрытой');
+    assert.equal(rows().find(r => r.layer === 'Bing Спутник').hidden, false);
+    // выйти из режима
+    t.showHiddenLayersManager();
+    assert.equal(t.mode, false);
+    names = rows().map(r => r.layer);
+    assert.ok(names.includes('Bing Спутник') && !names.includes('Гибрид Bing'));
+    assert.equal(eye.getAttribute('aria-pressed'), 'false');
+  } finally { dom.window.close(); }
+});
+
+test('режим «показывать скрытые» не запоминается; стили и кнопка в заголовке', () => {
+  assert.match(html, /let showHiddenLayersMode = false;/);
+  assert.doesNotMatch(html, /localStorage\.setItem\([^)]*showHidden/i);
+  assert.match(html, /\.base-layer\.layer-hidden > span \{ opacity: 0\.5; \}/);
   assert.doesNotMatch(html, /SPECIAL_PREMIUM_LAYER_NAMES/);
+  // скачивание областей: радиокнопки и второй слой — отображаемые имена, значения — label каталога
   assert.match(html, /`\$\{layerDisplayName\(entry\.label\)\} \(z\$\{maxZ\}\)`/);
   assert.match(html, /opt\.value = name; opt\.textContent = layerDisplayName\(name\);/);
 });

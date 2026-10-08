@@ -40,6 +40,7 @@
   .tn-icon-btn .tn-ico { width: 20px; height: 20px; }
   .tn-icon-btn.tn-icon-btn-s .tn-ico { width: 18px; height: 18px; }
   .tn-icon-btn:hover { color: var(--primary); }
+  .tn-icon-btn.active { color: var(--primary); }
   .tn-icon-btn.danger:hover { color: var(--error-text); }
   .tn-icon-btn:disabled { opacity: 0.35; cursor: default; color: var(--text-secondary); }
   .tn-ico.tn-ico-t { width: 16px; height: 16px; display: inline-block; vertical-align: -3px; margin-right: 6px; }
@@ -54,6 +55,8 @@
   .base-layer .tn-icon-btn .tn-ico { width: 16px; height: 16px; }
   .base-layer .tn-icon-btn:hover { color: var(--primary); }
   .base-layer .tn-icon-btn.danger:hover { color: var(--error-text); }
+  /* скрытая карта в режиме «показывать скрытые» — серая, кнопка «Показать» яркая */
+  .base-layer.layer-hidden > span { opacity: 0.5; }
   .base-layer > .tn-ico-t { margin-right: -2px; }
   .tn-ico.tn-ico-xl { width: 32px; height: 32px; margin: 0 auto 8px; }
 
@@ -2398,7 +2401,7 @@
     <div class="modal-header" onmousedown="startDrag(event,'modal-layers-win')">
       <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-layers"/></svg>Карта и слои</span>
       <span style="display:flex;align-items:center;gap:2px">
-        <button type="button" class="tn-icon-btn" onclick="event.stopPropagation();showHiddenLayersManager()" title="Показать скрытые карты" aria-label="Показать скрытые карты"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-eye"/></svg></button>
+        <button type="button" class="tn-icon-btn" id="btn-show-hidden-layers" aria-pressed="false" onclick="event.stopPropagation();showHiddenLayersManager()" title="Показать скрытые карты" aria-label="Показать скрытые карты"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-eye"/></svg></button>
         <button type="button" class="tn-icon-btn" onclick="event.stopPropagation();refreshTileCatalog()" title="Обновить каталог с сервера" aria-label="Обновить каталог с сервера"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-cloud-sync"/></svg></button>
         <button type="button" class="modal-close" onclick="closeModal('modal-layers')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
       </span>
@@ -4835,26 +4838,22 @@ function getHiddenLayers() {
 function saveHiddenLayers(arr) {
   localStorage.setItem('tnd-hidden-layers', JSON.stringify(arr));
 }
+// Режим «показывать скрытые» (глаз в заголовке «Карта и слои»): скрытые карты видны серыми с кнопкой «Показать».
+// Не запоминается — после перезапуска списки снова без скрытых.
+let showHiddenLayersMode = false;
 function toggleLayerHidden(key) {
   const hidden = getHiddenLayers();
   const idx = hidden.indexOf(key);
   if (idx >= 0) { hidden.splice(idx, 1); showToast('Карта показана'); }
   else { hidden.push(key); showToast('Карта скрыта'); }
   saveHiddenLayers(hidden);
+  if (showHiddenLayersMode && !hidden.length) showHiddenLayersMode = false;
   buildLayerUI();
 }
-async function showHiddenLayersManager() {
-  const hidden = getHiddenLayers();
-  if (hidden.length === 0) { showToast('Нет скрытых карт'); return; }
-  const names = hidden.map(k => {
-    const e = tileCatalog?.base?.find(b => b.key === k) || tileCatalog?.overlays?.find(o => o.key === k);
-    return e ? layerDisplayName(e.label) : k;
-  });
-  if (await tndConfirm('Скрытые карты:\n\n' + names.join('\n') + '\n\nПоказать все?')) {
-    saveHiddenLayers([]);
-    buildLayerUI();
-    showToast('Все карты показаны');
-  }
+function showHiddenLayersManager() {
+  if (!showHiddenLayersMode && getHiddenLayers().length === 0) { showToast('Нет скрытых карт'); return; }
+  showHiddenLayersMode = !showHiddenLayersMode;
+  buildLayerUI();
 }
 
 let currentBaseLayer = makeBaseLayer('OpenStreetMap');
@@ -5091,16 +5090,18 @@ function applyDownloadZoomLimit() {
   return limit;
 }
 
-/** Строка карты в «Карта и слои». */
-function baseLayerRowHtml(row, premium) {
+/** Строка карты в «Карта и слои»; скрытая (режим «показывать скрытые») — серая, с кнопкой «Показать». */
+function baseLayerRowHtml(row, premium, isHidden) {
   const pick = premium ? 'setLayerPremium' : 'setLayer';
-  const btn = `<button type="button" class="tn-icon-btn tn-icon-btn-s" data-layer-key="${escapeHtml(row.id)}" onclick="event.stopPropagation();toggleLayerHidden(this.dataset.layerKey)" title="Скрыть из списка" aria-label="Скрыть из списка">${tnIcon('eye-off')}</button>`;
+  const btn = isHidden
+    ? `<button type="button" class="tn-icon-btn tn-icon-btn-s" data-layer-key="${escapeHtml(row.id)}" onclick="event.stopPropagation();toggleLayerHidden(this.dataset.layerKey)" title="Показать в списке" aria-label="Показать в списке">${tnIcon('eye')}</button>`
+    : `<button type="button" class="tn-icon-btn tn-icon-btn-s" data-layer-key="${escapeHtml(row.id)}" onclick="event.stopPropagation();toggleLayerHidden(this.dataset.layerKey)" title="Скрыть из списка" aria-label="Скрыть из списка">${tnIcon('eye-off')}</button>`;
   return `<span onclick="${pick}(this.parentElement.dataset.layer, this.parentElement)"
     style="flex:1;cursor:pointer">${tnIcon(getLayerIcon(row.label), 'tn-ico-t tn-ico-m')}${escapeHtml(row.text)}</span>${btn}`;
 }
 
 function renderBaseLayerSection(container, rows, premium, hidden) {
-  const visible = rows.filter(r => r.title || !hidden.includes(r.id));
+  const visible = rows.filter(r => r.title || showHiddenLayersMode || !hidden.includes(r.id));
   // подзаголовок без карт под ним не показываем
   const list = visible.filter((r, i) => !r.title || (visible[i + 1] && !visible[i + 1].title));
   container.innerHTML = '';
@@ -5113,11 +5114,12 @@ function renderBaseLayerSection(container, rows, premium, hidden) {
       container.appendChild(t);
       return;
     }
+    const isHidden = hidden.includes(r.id);
     const div = document.createElement('div');
-    div.className = 'base-layer' + (premium ? ' premium-layer' : '') + (r.label === currentBaseLayerName ? ' active' : '');
+    div.className = 'base-layer' + (premium ? ' premium-layer' : '') + (isHidden ? ' layer-hidden' : '') + (r.label === currentBaseLayerName ? ' active' : '');
     div.dataset.layer = r.label;
     div.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
-    div.innerHTML = baseLayerRowHtml(r, premium);
+    div.innerHTML = baseLayerRowHtml(r, premium, isHidden);
     container.appendChild(div);
   });
 }
@@ -5125,6 +5127,8 @@ function renderBaseLayerSection(container, rows, premium, hidden) {
 function buildLayerUI() {
   const hidden = getHiddenLayers();
   const catalogBase = tileCatalog?.base || [];
+  const eyeBtn = document.getElementById('btn-show-hidden-layers');
+  if (eyeBtn) { eyeBtn.classList.toggle('active', showHiddenLayersMode); eyeBtn.setAttribute('aria-pressed', String(showHiddenLayersMode)); }
 
   // --- Бесплатные и Premium карты: зашитые + каталог без повторов ---
   const freeContainer = document.getElementById('catalog-free-layers');
