@@ -27,6 +27,8 @@ const TARGET_RATE: u32 = 16_000;
 static MODELS_DIR: OnceLock<PathBuf> = OnceLock::new();
 static CONTEXT: OnceLock<Mutex<Option<Arc<whisper_rs::WhisperContext>>>> = OnceLock::new();
 static RECORDER: OnceLock<Mutex<Option<Recording>>> = OnceLock::new();
+/// Отмена распознавания (кнопка 🎤 или Esc во время «Распознаю…»): whisper проверяет флаг между шагами.
+static CANCEL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 struct Recording {
     stop: mpsc::Sender<()>,
@@ -286,6 +288,10 @@ pub async fn voice_stop(prompt: Option<String>) -> Result<VoiceResult, String> {
             .done
             .recv_timeout(Duration::from_secs(10))
             .map_err(|_| "запись не завершилась".to_string())??;
+        CANCEL.store(false, std::sync::atomic::Ordering::SeqCst);
+        if !has_speech(&raw, rate) {
+            return Ok(VoiceResult { text: String::new(), ms: 0, seconds: 0.0 });
+        }
         let audio = prepare(resample(&raw, rate));
         let seconds = audio.len() as f32 / TARGET_RATE as f32;
         if audio.is_empty() {
@@ -293,18 +299,41 @@ pub async fn voice_stop(prompt: Option<String>) -> Result<VoiceResult, String> {
         }
         let t = Instant::now();
         let text = transcribe(&audio, prompt.as_deref())?;
+        let text = if plausible_russian(&text) { text } else { String::new() };
         Ok(VoiceResult { text, ms: t.elapsed().as_millis() as u64, seconds })
     })
     .await
     .map_err(|e| e.to_string())?
 }
 
-/// Отменить запись без распознавания.
+/// Отменить запись или уже идущее распознавание.
 #[tauri::command]
 pub fn voice_cancel() {
+    CANCEL.store(true, std::sync::atomic::Ordering::SeqCst);
     if let Some(rec) = RECORDER.get().and_then(|m| m.lock().ok().and_then(|mut g| g.take())) {
         let _ = rec.stop.send(());
     }
+}
+
+/// Речь ли это: громкость выше шума (после выравнивания по пику шум тоже «громкий»,
+/// поэтому смотрим на исходную запись — доля 20-мс окон заметно громче тихих).
+pub fn has_speech(raw: &[f32], rate: u32) -> bool {
+    let win = (rate / 50).max(1) as usize;
+    let mut rms: Vec<f32> = raw.chunks(win).map(|c| (c.iter().map(|v| v * v).sum::<f32>() / c.len() as f32).sqrt()).collect();
+    if rms.len() < 10 {
+        return false;
+    }
+    rms.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let floor = rms[rms.len() / 10].max(1e-4); // тише 90 % окон — шум
+    let loud = rms[rms.len() * 95 / 100];
+    loud > 0.01 && loud / floor > 4.0
+}
+
+/// В ответе нет русских букв — Whisper «додумал» по шуму (бывает английское «Thank you»): не берём.
+pub fn plausible_russian(text: &str) -> bool {
+    let cyr = text.chars().filter(|c| ('а'..='я').contains(&c.to_lowercase().next().unwrap_or(*c)) || *c == 'ё' || *c == 'Ё').count();
+    let letters = text.chars().filter(|c| c.is_alphabetic()).count();
+    letters > 0 && cyr * 2 >= letters
 }
 
 fn context() -> Result<Arc<whisper_rs::WhisperContext>, String> {
@@ -331,8 +360,19 @@ fn transcribe(audio: &[f32], prompt: Option<&str>) -> Result<String, String> {
     use whisper_rs::{FullParams, SamplingStrategy};
     let ctx = context()?;
     let mut state = ctx.create_state().map_err(|e| e.to_string())?;
-    let mut p = FullParams::new(SamplingStrategy::BeamSearch { beam_size: 5, patience: -1.0 });
+    // Один проход (greedy) вместо перебора 5 вариантов и окно кодировщика по длине фразы, а не 30 с:
+    // на Windows-ноутбуке beam 5 + полное окно распознавали «очень долго» (Андрей 09.10).
+    let mut p = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
     p.set_language(Some("ru"));
+    p.set_detect_language(false);
+    p.set_translate(false);
+    p.set_temperature_inc(0.0); // без повторов с «температурой» — повтор удваивал время
+    let secs = audio.len() as f32 / TARGET_RATE as f32;
+    p.set_audio_ctx(((secs * 50.0).ceil() as i32 + 64).clamp(128, 1500));
+    p.set_abort_callback_safe(|| CANCEL.load(std::sync::atomic::Ordering::SeqCst));
+    // фраза в пару слов: окно кодировщика по длине фразы склонно зацикливать текст («Тума Тума Тума…») —
+    // ограничиваем длину ответа и ниже обрезаем повтор
+    p.set_max_tokens(24);
     p.set_no_timestamps(true);
     p.set_single_segment(true);
     p.set_print_progress(false);
@@ -345,14 +385,34 @@ fn transcribe(audio: &[f32], prompt: Option<&str>) -> Result<String, String> {
     let base = "Название населённого пункта, деревни или урочища.";
     let full_prompt = if hint.is_empty() { base.to_string() } else { format!("{base} {hint}") };
     p.set_initial_prompt(&full_prompt);
-    state.full(p, audio).map_err(|e| format!("распознавание не удалось: {e}"))?;
+    let r = state.full(p, audio);
+    if CANCEL.load(std::sync::atomic::Ordering::SeqCst) {
+        return Err("распознавание отменено".into());
+    }
+    r.map_err(|e| format!("распознавание не удалось: {e}"))?;
     let mut out = String::new();
     for i in 0..state.full_n_segments() {
         if let Some(seg) = state.get_segment(i) {
             out.push_str(&seg.to_str_lossy().unwrap_or_default());
         }
     }
-    Ok(out.trim().to_string())
+    Ok(dedupe_repeats(out.trim()))
+}
+
+/// «Солотча, Солотча, Солотча…» → «Солотча»: оставить фразу до первого повтора.
+pub fn dedupe_repeats(text: &str) -> String {
+    let parts: Vec<&str> = text.split(|c| c == ',' || c == '.' || c == '!' || c == '?').map(str::trim).filter(|p| !p.is_empty()).collect();
+    if parts.len() > 1 && parts.iter().skip(1).all(|p| p.eq_ignore_ascii_case(parts[0]) || parts[0].starts_with(p)) {
+        return parts[0].to_string();
+    }
+    // повтор слов без знаков: «Тума Тума Тума»
+    let words: Vec<&str> = text.split_whitespace().collect();
+    for n in 1..=3usize.min(words.len() / 2) {
+        if words.len() >= 2 * n && words[..n] == words[n..2 * n] {
+            return words[..n].join(" ");
+        }
+    }
+    text.to_string()
 }
 
 #[cfg(test)]
@@ -365,6 +425,24 @@ mod tests {
         let r = resample(&s, 48_000);
         assert!((r.len() as i64 - 16_000).abs() <= 1, "{}", r.len());
         assert_eq!(resample(&s[..100], 16_000).len(), 100);
+    }
+
+    #[test]
+    fn speech_detection_and_russian_filter() {
+        let quiet: Vec<f32> = (0..32_000).map(|i| 0.002 * ((i * 7919) % 13) as f32 / 13.0).collect();
+        assert!(!has_speech(&quiet, 16_000), "ровный шум — не речь");
+        let mut talk = quiet.clone();
+        for (i, v) in talk[8_000..16_000].iter_mut().enumerate() { *v += 0.2 * ((i as f32) / 6.0).sin(); }
+        assert!(has_speech(&talk, 16_000));
+        assert!(plausible_russian("Поехали в Касимов."));
+        assert!(plausible_russian("деревни у шмор"));
+        assert!(!plausible_russian("Thank you for watching!"));
+        assert!(!plausible_russian("..."));
+        assert_eq!(dedupe_repeats("Солотча, Солотча, Солотча, Солотч"), "Солотча");
+        assert_eq!(dedupe_repeats("Тума Тума Тума Тума Т"), "Тума");
+        assert_eq!(dedupe_repeats("Поехали в Касимов. Поехали в Касимов. Поехали"), "Поехали в Касимов");
+        assert_eq!(dedupe_repeats("деревни Ушмор, деревни Ушмор, деревни У"), "деревни Ушмор");
+        assert_eq!(dedupe_repeats("Спас-Клепики"), "Спас-Клепики");
     }
 
     #[test]

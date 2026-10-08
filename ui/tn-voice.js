@@ -131,9 +131,30 @@
 
   // ─── Голос ───
   const MIC_SVG = '<svg class="tn-ico tn-ico-s" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
-  const v = { state: 'idle', timer: 0, btn: null };
+  const v = { state: 'idle', timer: 0, btn: null, bar: null, tick: 0, until: 0, hide: 0 };
+  /** Плашка под строкой поиска: что сейчас происходит и как отменить (09.10: цвета микрофона мало). */
+  function showBar(html, kind = 'info', ms = 0) {
+    if (!v.bar) return;
+    clearTimeout(v.hide);
+    v.bar.className = `tnv-bar tnv-${kind}`;
+    v.bar.innerHTML = html;
+    v.bar.hidden = false;
+    if (ms) v.hide = setTimeout(() => { v.bar.hidden = true; }, ms);
+  }
+  function hideBar() { if (v.bar) { clearTimeout(v.hide); v.bar.hidden = true; } }
+  const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const CANCEL_BTN = '<button type="button" class="tnv-x" data-tnv-cancel title="Отменить (Esc)" aria-label="Отменить">✕</button>';
   function setState(s, title) {
     v.state = s;
+    clearInterval(v.tick);
+    if (s === 'rec') {
+      const draw = () => {
+        const left = Math.max(0, Math.ceil((v.until - Date.now()) / 1000));
+        showBar(`<span class="tnv-dot"></span><b>Слушаю…</b> скажите название · ещё ${left} с · 🎤 или Enter — готово ${CANCEL_BTN}`, 'rec');
+      };
+      draw(); v.tick = setInterval(draw, 250);
+    } else if (s === 'busy') showBar(`<span class="tnv-spin"></span><b>Распознаю…</b> Esc — отменить ${CANCEL_BTN}`, 'busy');
+    else if (s === 'download') showBar(`<span class="tnv-spin"></span>${esc(title || 'Скачиваю модель распознавания…')} ${CANCEL_BTN}`, 'busy');
     if (!v.btn) return;
     v.btn.classList.toggle('tnv-rec', s === 'rec');
     v.btn.classList.toggle('tnv-busy', s === 'busy' || s === 'download');
@@ -151,18 +172,19 @@
     setState('download', 'Скачиваю модель распознавания…');
     const ev = window.__TAURI__?.event;
     let un = null;
-    if (ev?.listen) un = await ev.listen('voice-model-progress', e => { const p = e.payload || {}; if (p.total) setState('download', `Скачиваю модель: ${Math.round(p.done / p.total * 100)}%`); });
-    try { await invoke('voice_download_model'); toast('✓ Голосовой поиск готов'); return true; } finally { if (un) un(); setState('idle'); }
+    if (ev?.listen) un = await ev.listen('voice-model-progress', e => { const p = e.payload || {}; if (p.total) setState('download', `Скачиваю модель распознавания: ${Math.round(p.done / p.total * 100)}%`); });
+    try { await invoke('voice_download_model'); showBar('✓ Голосовой поиск готов — нажмите 🎤 и скажите название', 'ok', 4000); return true; } finally { if (un) un(); setState('idle'); }
   }
   async function start() {
     if (v.state !== 'idle') return;
     try {
       if (!(await ensureModel())) return;
       await invoke('voice_start');
+      v.until = Date.now() + 4500;
       setState('rec');
       clearTimeout(v.timer);
       v.timer = setTimeout(stop, 4500); // фраза — пара слов; дольше не ждём
-    } catch (e) { setState('idle'); toast(`⚠ Голосовой поиск: ${e?.message || e}`, 'warning'); }
+    } catch (e) { setState('idle'); showBar(`⚠ ${esc(e?.message || e)}`, 'err', 6000); }
   }
   async function stop() {
     clearTimeout(v.timer);
@@ -171,10 +193,22 @@
     try {
       const hint = (await nearbyNames(40).catch(() => [])).join(', ');
       const r = await invoke('voice_stop', { prompt: hint });
+      if (v.state !== 'busy') return; // отменили, пока распознавалось
       const said = String(r?.text || '').trim();
-      if (!said) { toast('Не расслышал — скажите название ещё раз'); return; }
+      setState('idle');
+      if (!said) { showBar('Не расслышал — нажмите 🎤 и скажите название ещё раз, чуть громче', 'err', 5000); return; }
       await applyPhrase(said);
-    } catch (e) { toast(`⚠ Голосовой поиск: ${e?.message || e}`, 'warning'); } finally { setState('idle'); }
+    } catch (e) {
+      const msg = String(e?.message || e);
+      if (!/отменено/.test(msg)) showBar(`⚠ ${esc(msg)}`, 'err', 6000);
+    } finally { if (v.state === 'busy') setState('idle'); }
+  }
+  async function cancel() {
+    clearTimeout(v.timer);
+    if (v.state === 'idle') return;
+    setState('idle');
+    showBar('Отменено', 'info', 1500);
+    try { await invoke('voice_cancel'); } catch { /* уже закончилось */ }
   }
   /** Распознанная фраза → строка поиска: лучшее совпадение со скачанной картой или очищенная фраза. */
   async function applyPhrase(said) {
@@ -186,13 +220,17 @@
     input.value = query;
     const clear = document.getElementById('search-clear');
     if (clear) clear.style.display = 'block';
-    toast(`🎤 «${said.replace(/[.!?]+$/, '')}»`);
+    const heard = said.replace(/[.!?]+$/, '');
     // голосом ищут, чтобы туда посмотреть: сразу к лучшему результату (Андрей 09.10)
     if (typeof window.nominatimSearch === 'function') {
       await window.nominatimSearch(query);
       const first = document.querySelector('#search-results .search-result-item');
       if (first && typeof window.goToSearchResult === 'function' && typeof window.searchResultArgs === 'function') {
-        window.goToSearchResult(...window.searchResultArgs(first));
+        const args = window.searchResultArgs(first);
+        window.goToSearchResult(...args);
+        showBar(`🎤 «${esc(heard)}» → <b>${esc(args[2])}</b>`, 'ok', 4000);
+      } else {
+        showBar(`🎤 «${esc(heard)}» — ничего не нашлось. Скажите иначе или впишите вручную`, 'err', 6000);
       }
     } else {
       input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -211,21 +249,71 @@
       #search-voice.tnv-rec { color: var(--error); animation: tnv-pulse 1s ease-in-out infinite; }
       #search-voice.tnv-busy { color: var(--primary); opacity: 0.7; cursor: progress; }
       @keyframes tnv-pulse { 50% { background: var(--error-soft); } }
-      .search-local-tag { font-size: 10px; color: var(--text-muted); margin-left: 6px; }`;
+      .search-local-tag { font-size: 10px; color: var(--text-muted); margin-left: 6px; }
+      .tnv-bar { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 4050; display: flex; align-items: center; gap: 8px;
+        padding: 8px 10px; border-radius: var(--radius-m); background: var(--modal-bg); color: var(--text-primary);
+        border: 1px solid var(--card-stroke); border-left: 4px solid var(--primary); box-shadow: var(--panel-shadow); font-size: 12px; line-height: 1.35; }
+      .tnv-bar[hidden] { display: none; }
+      .tnv-bar.tnv-rec { border-left-color: var(--error); }
+      .tnv-bar.tnv-ok { border-left-color: var(--success); }
+      .tnv-bar.tnv-err { border-left-color: var(--warning); }
+      .tnv-x { margin-left: auto; appearance: none; border: 0; background: transparent; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: var(--radius-xs); }
+      .tnv-x:hover { background: var(--bg-hover); color: var(--text-primary); }
+      .tnv-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--error); flex: none; animation: tnv-blink 1s ease-in-out infinite; }
+      .tnv-spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--primary); border-right-color: transparent; flex: none; animation: tnv-rot 0.8s linear infinite; }
+      @keyframes tnv-blink { 50% { opacity: 0.25; } }
+      @keyframes tnv-rot { to { transform: rotate(360deg); } }`;
     document.head.appendChild(st);
     const b = document.createElement('button');
     b.type = 'button'; b.id = 'search-voice'; b.innerHTML = MIC_SVG;
     b.setAttribute('aria-label', 'Голосовой поиск');
-    b.addEventListener('click', () => (v.state === 'rec' ? stop() : start()));
+    b.addEventListener('click', () => (v.state === 'rec' ? stop() : v.state === 'idle' ? start() : cancel()));
     box.appendChild(b);
+    const bar = document.createElement('div');
+    bar.className = 'tnv-bar'; bar.hidden = true; bar.setAttribute('role', 'status'); bar.setAttribute('aria-live', 'polite');
+    bar.addEventListener('click', e => { if (e.target.closest('[data-tnv-cancel]')) cancel(); });
+    (box.parentElement || box).appendChild(bar);
+    v.bar = bar;
+    document.addEventListener('keydown', e => {
+      if (v.state === 'idle') return;
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancel(); }
+      else if (e.key === 'Enter' && v.state === 'rec') { e.preventDefault(); e.stopPropagation(); stop(); }
+    }, true);
     v.btn = b; setState('idle');
+    pinUnderSearch(box);
     // загрузить названия заранее, без спешки: первый поиск не ждёт
     setTimeout(() => loadPlaces().catch(() => {}), 4000);
   }
-  if (!window.__TAURI_INTERNALS__) {
-    // в браузере без приложения — только поиск по названиям (для тестов)
+  /**
+   * Список результатов и плашка голоса — position: fixed под строкой поиска. Панель инструментов обрезает
+   * всё ниже себя (#toolbar overflow-y: hidden — защита от переполнения на узких экранах), и список
+   * результатов с position: absolute лежал ПОД картой: поиск «не работал вообще», находил только Enter (09.10).
+   */
+  function pinUnderSearch(box) {
+    const results = document.getElementById('search-results');
+    const place = () => {
+      const r = box.getBoundingClientRect();
+      if (!r.width) return;
+      if (results) {
+        const w = Math.max(r.width, Math.min(380, window.innerWidth - 16));
+        const left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8));
+        Object.assign(results.style, { position: 'fixed', top: `${Math.round(r.bottom + 2)}px`, left: `${Math.round(left)}px`, right: 'auto', width: `${Math.round(w)}px`, zIndex: '4060' });
+      }
+      if (v.bar) {
+        const w = Math.max(r.width, 300);
+        const left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8));
+        Object.assign(v.bar.style, { position: 'fixed', top: `${Math.round(r.bottom + 4)}px`, left: `${Math.round(left)}px`, right: 'auto', width: `${Math.round(w)}px` });
+      }
+    };
+    place();
+    window.addEventListener('resize', place);
+    if (typeof ResizeObserver === 'function') new ResizeObserver(place).observe(box);
+    // строка раздвигается при вводе и панель прокручивается на узком окне — пересчитать
+    box.addEventListener('focusin', () => setTimeout(place, 200));
+    document.getElementById('toolbar')?.addEventListener('scroll', place, { passive: true });
+    if (results && typeof MutationObserver === 'function') new MutationObserver(place).observe(results, { attributes: true, attributeFilter: ['class'] });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount); else mount();
 
-  window.TnPlaces = { searchLocal, loadPlaces, nearbyNames, cleanPhrase, caseVariants, soundKey, similarity, _places: places, _applyPhrase: applyPhrase };
+  window.TnPlaces = { searchLocal, loadPlaces, nearbyNames, cleanPhrase, caseVariants, soundKey, similarity, _places: places, _applyPhrase: applyPhrase, _voice: v, _cancel: cancel };
 })();
