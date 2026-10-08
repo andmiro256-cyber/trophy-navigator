@@ -199,12 +199,145 @@
     return layers;
   }
 
+  // ─── Обзорная карта России (Z0–Z8, та же схема + слой regions: полигоны субъектов, iso и name) ───
+  const OVERVIEW_ID = 'russia-overview';
+  const OVERVIEW_PREFIX = 'ov_';
+  const OVERVIEW_SOURCE = 'overview';
+  // Фон за пределами всех карт (за границей России, без обзорной — за краем области): не белый лист
+  const NEUTRAL_BACKGROUND = 'rgb(214,211,204)';  // theme-check: data (цвет на карте)
+  // ISO 3166-2 субъекта → id карты области в каталоге (mapbuild-overview/regions-iso.json)
+  const REGION_ISO = {
+    'RU-SPE': 'leningrad', 'RU-LEN': 'leningrad', 'RU-KR': 'karelia', 'RU-PSK': 'pskov', 'RU-NGR': 'novgorod',
+    'RU-VLG': 'vologda', 'RU-ARK': 'arkhangelsk', 'RU-MUR': 'murmansk', 'RU-KGD': 'kaliningrad', 'RU-TVE': 'tver',
+    'RU-MOW': 'moscow', 'RU-MOS': 'moscow', 'RU-YAR': 'yaroslavl', 'RU-SMO': 'smolensk', 'RU-KLU': 'kaluga',
+    'RU-TUL': 'tula', 'RU-RYA': 'ryazan', 'RU-VLA': 'vladimir', 'RU-IVA': 'ivanovo', 'RU-KOS': 'kostroma',
+    'RU-NIZ': 'nizhny', 'RU-KDA': 'krasnodar', 'RU-KO': 'komi', 'RU-NEN': 'nenets', 'RU-BEL': 'belgorod',
+    'RU-BRY': 'bryansk', 'RU-VOR': 'voronezh', 'RU-KRS': 'kursk', 'RU-LIP': 'lipetsk', 'RU-ORL': 'oryol',
+    'RU-TAM': 'tambov', 'RU-AD': 'adygea', 'RU-KL': 'kalmykia', 'RU-AST': 'astrakhan', 'RU-VGG': 'volgograd',
+    'RU-ROS': 'rostov', 'UA-43': 'crimea', 'UA-40': 'crimea', 'RU-CR': 'crimea', 'RU-SEV': 'crimea',
+    'RU-DA': 'dagestan', 'RU-IN': 'ingushetia', 'RU-KB': 'kbr', 'RU-KC': 'kchr', 'RU-SE': 'ossetia',
+    'RU-CE': 'chechnya', 'RU-STA': 'stavropol', 'RU-BA': 'bashkortostan', 'RU-ME': 'mari', 'RU-MO': 'mordovia',
+    'RU-TA': 'tatarstan', 'RU-UD': 'udmurtia', 'RU-CU': 'chuvashia', 'RU-PER': 'perm', 'RU-KIR': 'kirov',
+    'RU-ORE': 'orenburg', 'RU-PNZ': 'penza', 'RU-SAM': 'samara', 'RU-SAR': 'saratov', 'RU-ULY': 'ulyanovsk',
+    'RU-KGN': 'kurgan', 'RU-SVE': 'sverdlovsk', 'RU-TYU': 'tyumen', 'RU-KHM': 'khmao', 'RU-YAN': 'yanao',
+    'RU-CHE': 'chelyabinsk', 'RU-AL': 'altai_rep', 'RU-TY': 'tuva', 'RU-KK': 'khakassia', 'RU-ALT': 'altai_krai',
+    'RU-KYA': 'krasnoyarsk', 'RU-IRK': 'irkutsk', 'RU-KEM': 'kemerovo', 'RU-NVS': 'novosibirsk', 'RU-OMS': 'omsk',
+    'RU-TOM': 'tomsk', 'RU-BU': 'buryatia', 'RU-SA': 'yakutia', 'RU-ZAB': 'zabaykalsky', 'RU-KAM': 'kamchatka',
+    'RU-PRI': 'primorye', 'RU-KHA': 'khabarovsk', 'RU-AMU': 'amur', 'RU-MAG': 'magadan', 'RU-SAK': 'sakhalin',
+    'RU-YEV': 'jewish', 'RU-CHU': 'chukotka',
+  };
+  const regionOfIso = iso => (iso && Object.prototype.hasOwnProperty.call(REGION_ISO, iso) ? REGION_ISO[iso] : null);
+  const isosOfRegion = id => Object.keys(REGION_ISO).filter(iso => REGION_ISO[iso] === id);
+
+  /** Заливка суши России (полигоны regions) цветом фона темы: за границей остаётся нейтральный фон. */
+  const landLayer = (source, color) => ({
+    id: `${OVERVIEW_PREFIX}land`, type: 'fill', source, 'source-layer': 'regions',
+    paint: { 'fill-color': clone(color), 'fill-antialias': false },
+  });
+
+  /**
+   * Обзорная карта под картой области: источник «overview» (maxzoom файла, дальше — overzoom), копии слоёв
+   * области (уже с темой, значками и рельефом) с префиксом ov_ сразу над фоном, затем «маска» — полигон
+   * своей области цветом суши. Маска закрывает обзорную внутри области (подписи и обобщённые дороги/леса не
+   * дублируют подробные), за её краем обзорная видна на любом масштабе. Фон стиля — нейтральный.
+   */
+  function addOverview(style, { tiles, minzoom, maxzoom, regionId, regionMinZoom }) {
+    const bgAt = style.layers.findIndex(l => l.type === 'background');
+    const bg = bgAt >= 0 ? style.layers[bgAt] : null;
+    const landColor = bg?.paint?.['background-color'] ?? 'rgb(239,239,239)';  // theme-check: data (цвет на карте)
+    const copies = style.layers
+      .filter(l => l.source === 'openmaptiles' && l.type !== 'fill-extrusion')
+      .map(l => Object.assign(clone(l), { id: OVERVIEW_PREFIX + l.id, source: OVERVIEW_SOURCE }));
+    const isos = isosOfRegion(regionId);
+    const added = [landLayer(OVERVIEW_SOURCE, landColor), ...copies];
+    if (isos.length) {
+      const mask = {
+        id: `${OVERVIEW_PREFIX}mask`, type: 'fill', source: OVERVIEW_SOURCE, 'source-layer': 'regions',
+        filter: ['in', 'iso', ...isos],
+        paint: { 'fill-color': clone(landColor), 'fill-antialias': false },
+      };
+      if (Number.isFinite(regionMinZoom) && regionMinZoom > 0) mask.minzoom = regionMinZoom;
+      added.push(mask);
+    }
+    style.layers.splice(bgAt + 1, 0, ...added);
+    if (bg) { bg.paint = isObj(bg.paint) ? bg.paint : {}; bg.paint['background-color'] = NEUTRAL_BACKGROUND; }
+    style.sources[OVERVIEW_SOURCE] = {
+      type: 'vector', tiles: [tiles],
+      minzoom: Number.isFinite(minzoom) ? minzoom : 0,
+      maxzoom: Number.isFinite(maxzoom) ? maxzoom : 8,
+      attribution: '© OpenMapTiles © OpenStreetMap contributors',
+    };
+    return style;
+  }
+
+  /** Сама обзорная карта основой: суша России — цветом фона темы, вокруг — нейтральный фон. */
+  function decorateOverviewMain(style) {
+    const bgAt = style.layers.findIndex(l => l.type === 'background');
+    if (bgAt < 0) return style;
+    const bg = style.layers[bgAt];
+    const landColor = bg.paint?.['background-color'] ?? 'rgb(239,239,239)';  // theme-check: data (цвет на карте)
+    style.layers.splice(bgAt + 1, 0, landLayer('openmaptiles', landColor));
+    bg.paint = Object.assign({}, bg.paint, { 'background-color': NEUTRAL_BACKGROUND });
+    return style;
+  }
+
+  // ─── Область под точкой по полигонам regions (GeoJSON из querySourceFeatures) ───
+  function inRing(ring, x, y) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i], [xj, yj] = ring[j];
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  const polygonsOf = g => (!g ? [] : g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : []);
+  /** Чёт-нечет по всем кольцам: дырка (анклав) — не внутри. */
+  function pointInGeometry(geometry, lng, lat) {
+    return polygonsOf(geometry).some(rings => rings.reduce((n, ring) => n + (inRing(ring, lng, lat) ? 1 : 0), 0) % 2 === 1);
+  }
+  /** Расстояние до границы в градусах широты (долгота сжата на cos широты). */
+  function distanceToGeometry(geometry, lng, lat) {
+    const k = Math.cos(lat * Math.PI / 180);
+    let best = Infinity;
+    polygonsOf(geometry).forEach(rings => rings.forEach(ring => {
+      for (let i = 1; i < ring.length; i++) {
+        const ax = ring[i - 1][0] * k, ay = ring[i - 1][1], bx = ring[i][0] * k, by = ring[i][1];
+        const px = lng * k, py = lat, dx = bx - ax, dy = by - ay;
+        const len = dx * dx + dy * dy;
+        const t = len ? clampUnit(((px - ax) * dx + (py - ay) * dy) / len) : 0;
+        best = Math.min(best, Math.hypot(px - ax - t * dx, py - ay - t * dy));
+      }
+    }));
+    return best;
+  }
+  const clampUnit = v => Math.max(0, Math.min(1, v));
+  const SEAM_TOLERANCE = 0.02;  // ≈ 2 км: на стыке и в щели между упрощёнными полигонами остаётся текущая
+  /**
+   * id области под точкой по полигонам слоя regions или null (полигонов под точкой нет — решает запасной
+   * способ по bounds). На стыке побеждает prefer: точка в его полигоне или ближе SEAM_TOLERANCE к нему.
+   */
+  function regionFromFeatures(features, lng, lat, opts = {}) {
+    const prefer = opts.prefer || null;
+    const tolerance = Number.isFinite(opts.tolerance) ? opts.tolerance : SEAM_TOLERANCE;
+    const hits = [];
+    let preferNear = false;
+    (features || []).forEach(f => {
+      const id = regionOfIso(f?.properties?.iso);
+      if (!id || !f.geometry) return;
+      if (pointInGeometry(f.geometry, lng, lat)) { if (!hits.includes(id)) hits.push(id); }
+      else if (id === prefer && !preferNear && tolerance > 0) preferNear = distanceToGeometry(f.geometry, lng, lat) <= tolerance;
+    });
+    if (prefer && (hits.includes(prefer) || preferNear)) return prefer;
+    return hits[0] || null;
+  }
+
   // ─── Сборка стиля (MapFragment.buildVectorStyleJson) ───
   /**
    * template — текст style-liberty.json с {{TILES}}/{{BASE}}; map — запись tnmaps_local
-   * ({id, modified, dem?, slope?}); base — «tnmap://localhost»; theme — JSON темы или null («Обычная»).
+   * ({id, modified, dem?, slope?}); base — «tnmap://localhost»; theme — JSON темы или null («Обычная»);
+   * overview — запись tnmaps_local обзорной карты или null (тогда стиль как раньше).
    */
-  function buildStyle({ template, map, base, theme, relief, poi }) {
+  function buildStyle({ template, map, base, theme, relief, poi, overview }) {
     const version = Number(map.modified) || 0;
     const style = JSON.parse(String(template)
       .split('{{TILES}}').join(`${base}/vector/${map.id}/{z}/{x}/{y}.pbf?v=${version}`)
@@ -228,6 +361,13 @@
     applyPoiFilter(style, poi);
     applyBuildings(style.layers, false);
     dropLayersWithoutSource(style);
+    if (map.id === OVERVIEW_ID) decorateOverviewMain(style);
+    else if (overview && overview.id && !overview.error) {
+      addOverview(style, {
+        tiles: `${base}/vector/${overview.id}/{z}/{x}/{y}.pbf?v=${Number(overview.modified) || 0}`,
+        minzoom: overview.minZoom, maxzoom: overview.maxZoom, regionId: map.id, regionMinZoom: map.minZoom,
+      });
+    }
     return style;
   }
 
@@ -429,6 +569,8 @@
     POI_GROUPS, POI_ALL, POI_LAYERS, parsePoi, formatPoi, poiSummary, poiCondition, combineFilter, applyPoiFilter,
     DEFAULT_RELIEF, normalizeRelief, scalePaint, applyRelief, dropLayersWithoutSource, applyBuildings,
     buildStyle, requiredAppImages,
+    OVERVIEW_ID, OVERVIEW_PREFIX, OVERVIEW_SOURCE, NEUTRAL_BACKGROUND, REGION_ISO, regionOfIso, isosOfRegion,
+    addOverview, pointInGeometry, distanceToGeometry, regionFromFeatures, SEAM_TOLERANCE,
     EXAGGERATION_MIN, EXAGGERATION_MAX, EXAGGERATION_DEFAULT, MAX_PITCH, normalizeExaggeration, to3dStyle,
     looksLikeTouchpad, wheelGesture, GESTURE_HOLD_MS,
   };
