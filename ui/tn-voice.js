@@ -182,9 +182,21 @@
     const local = await searchLocal(said, { limit: 1, min: 0.8 }).catch(() => []);
     const best = local[0];
     const input = document.getElementById('search-input');
-    input.value = best ? best.name : q.replace(/(^|\s)\S/g, s => s.toUpperCase());
-    input.dispatchEvent(new Event('input', { bubbles: true }));
+    const query = best ? best.name : q.replace(/(^|\s)\S/g, s => s.toUpperCase());
+    input.value = query;
+    const clear = document.getElementById('search-clear');
+    if (clear) clear.style.display = 'block';
     toast(`🎤 «${said.replace(/[.!?]+$/, '')}»`);
+    // голосом ищут, чтобы туда посмотреть: сразу к лучшему результату (Андрей 09.10)
+    if (typeof window.nominatimSearch === 'function') {
+      await window.nominatimSearch(query);
+      const first = document.querySelector('#search-results .search-result-item');
+      if (first && typeof window.goToSearchResult === 'function' && typeof window.searchResultArgs === 'function') {
+        window.goToSearchResult(...window.searchResultArgs(first));
+      }
+    } else {
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
   }
 
   function mount() {
