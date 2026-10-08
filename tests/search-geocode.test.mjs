@@ -29,7 +29,7 @@ test('Photon: найдено, имя для списка, приоритет о�
   const r = JSON.parse(JSON.stringify(await geocode('Солотча', 5)));
   assert.deepEqual(r, [{ lat: 54.8012, lon: 39.8387, display_name: 'Солотча, Рязань, Рязанская область, Россия' }]);
   assert.equal(urls.length, 1);
-  assert.match(urls[0], /^https:\/\/photon\.komoot\.io\/api\/\?q=%D0%A1.*&limit=5&lat=54\.6200&lon=39\.7200$/);
+  assert.match(urls[0], /^https:\/\/photon\.komoot\.io\/api\/\?q=%D0%A1.*&limit=5&lang=default&lat=54\.6200&lon=39\.7200$/);
 });
 
 test('Photon недоступен → Nominatim; оба недоступны → ошибка с причинами', async () => {

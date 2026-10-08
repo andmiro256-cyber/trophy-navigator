@@ -145,7 +145,10 @@
     flex-shrink: 0;
   }
   .toolbar-spacer { margin-left: auto; flex: 1 0 12px; min-width: 12px; }
-  .toolbar-search { position: relative; display: flex; align-items: center; flex: 0 1 230px; min-width: 140px; flex-shrink: 1; }
+  /* 09.10: в строке поиска ещё лупа, крестик и микрофон — на текст оставалось ~120 px, «Разметелево» не влезало.
+     Шире по умолчанию и раздвигается при вводе (пока поле в фокусе). */
+  .toolbar-search { position: relative; display: flex; align-items: center; flex: 0 1 300px; min-width: 210px; flex-shrink: 1; transition: flex-basis 0.15s; }
+  .toolbar-search:focus-within { flex-basis: 380px; min-width: 260px; }
   .toolbar-search-box {
     display: flex;
     align-items: center;
@@ -886,7 +889,7 @@
     .toolbar-search-box { height: 42px; }
     .tb-sep { height: 32px; margin: 0 2px; }
     .tb-group, .tb-segment { gap: 4px; }
-    .toolbar-search { flex-basis: 180px; min-width: 130px; }
+    .toolbar-search { flex-basis: 250px; min-width: 190px; }
     #btn-map-layer { min-width: 160px; }
     #btn-map-layer .layer-name { max-width: 118px; }
   }
@@ -935,7 +938,7 @@
     .tb-group, .tb-segment { gap: 4px; }
     #btn-map-layer { min-width: 140px; font-size: 11px; }
     #btn-map-layer .layer-name { max-width: 100px; }
-    .toolbar-search { flex-basis: 150px; min-width: 120px; }
+    .toolbar-search { flex-basis: 220px; min-width: 180px; }
     #statusbar { height: 22px; font-size: 10px; padding: 2px 10px; gap: 14px; }
     .tb-btn.tb-captioned { min-width: 40px; padding: 0 6px; }
     .offline-btn .tb-text,
@@ -961,7 +964,7 @@
     .tb-group, .tb-segment { gap: 3px; }
     #btn-map-layer { min-width: 120px; font-size: 10px; }
     #btn-map-layer .layer-name { max-width: 90px; }
-    .toolbar-search { flex-basis: 120px; min-width: 100px; }
+    .toolbar-search { flex-basis: 190px; min-width: 170px; }
     #search-input { font-size: 11px; }
     .desktop-overflow-tool,
     .tools-sep { display: none !important; }
@@ -15150,7 +15153,9 @@ async function geocode(query, limit = 5) {
   try {
     const c = typeof map !== 'undefined' && map?.getCenter ? map.getCenter() : null;
     const bias = c ? `&lat=${c.lat.toFixed(4)}&lon=${c.lng.toFixed(4)}` : '';
-    const resp = await geocodeFetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=${limit}${bias}`);
+    // lang=default — местные (русские) названия: иначе Photon берёт язык системы, и на английской Windows
+    // выдавал «Razmetelevo, Leningrad Oblast» (Андрей 09.10)
+    const resp = await geocodeFetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=${limit}&lang=default${bias}`);
     if (!resp.ok) throw new Error(`Photon ${resp.status}`);
     const data = await resp.json();
     return (data.features || []).filter(f => f?.geometry?.coordinates?.length === 2 && f.properties?.name).map(f => ({
