@@ -2622,6 +2622,18 @@ const formatZoomLevel = z => String(Math.round(Number(z) || 0));
 // жеста, и с запасом 10% линии и радиусы «пропадали» по краям (Андрей 09.10). Но холст = окно·(1+2·запас)²:
 // на HP 3440×1440 запас 0.5 давал 6880×2700 px на КАЖДЫЙ холст, и WebKitGTK переставал их рисовать —
 // маршрут из файла был в списке, а линии не было. Запас — сколько влезает в ~8 Мп, от 0.1 до 0.5.
+// Холсты Leaflet (маршруты, треки, точки, радиусы) — без ускорения на видеокарте: на HP (NVIDIA + Wayland,
+// вывод через видеокарту WEBKIT_FORCE_DMABUF_RENDERER — см. src-tauri gpu_env.rs) они хаотично пропадали,
+// а с TND_NO_GPU_TWEAKS=1 всё рисовалось (Андрей 09.10). willReadFrequently оставляет 2D-холст в памяти
+// процессора; векторная основа (WebGL MapLibre) по-прежнему идёт на видеокарте.
+(function tndCpuLeafletCanvas() {
+  const init = L.Canvas.prototype._initContainer;
+  L.Canvas.prototype._initContainer = function () {
+    const proto = HTMLCanvasElement.prototype, get = proto.getContext;
+    proto.getContext = function (type, opts) { return get.call(this, type, type === '2d' ? { ...(opts || {}), willReadFrequently: true } : opts); };
+    try { return init.apply(this, arguments); } finally { proto.getContext = get; }
+  };
+})();
 const TND_CANVAS_PADDING = (() => {
   const dpr = window.devicePixelRatio || 1;
   const px = Math.max(1, (window.innerWidth || 1280) * (window.innerHeight || 800) * dpr * dpr);
