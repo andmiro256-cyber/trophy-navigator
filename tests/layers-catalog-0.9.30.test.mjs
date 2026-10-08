@@ -187,3 +187,21 @@ test('режим «показывать скрытые» не запоминае
   assert.match(html, /`\$\{layerDisplayName\(entry\.label\)\} \(z\$\{maxZ\}\)`/);
   assert.match(html, /opt\.value = name; opt\.textContent = layerDisplayName\(name\);/);
 });
+
+test('ревью 2582 P2: скрытие под зашитым именем действует после загрузки каталога и наоборот; вернуть — снимает оба', needDom, () => {
+  const { dom, t, rows } = setup({ hidden: ['OpenStreetMap', 'Спутник Bing'] });
+  try {
+    t.buildLayerUI();
+    let names = rows().map(r => r.layer);
+    assert.ok(!names.includes('OpenStreetMap') && !names.includes('Спутник Bing'), 'без каталога скрыты');
+    t.loadCatalog(CATALOG);
+    names = rows().map(r => r.layer);
+    assert.ok(!names.includes('OpenStreetMap'), 'OSM каталога остаётся скрытой');
+    assert.ok(!names.includes('Bing Спутник'), 'эквивалент каталога зашитого «Спутник Bing» остаётся скрытым');
+    t.showHiddenLayersManager();
+    const shown = rows().filter(r => r.hidden).map(r => r.layer);
+    assert.ok(shown.includes('OpenStreetMap') && shown.includes('Bing Спутник'), 'режим глаза показывает их');
+    t.toggleLayerHidden('bing_sat');
+    assert.ok(!t.getHiddenLayers().includes('Спутник Bing'), 'вернуть по ключу каталога снимает и старое имя');
+  } finally { dom.window.close(); }
+});

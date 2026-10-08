@@ -129,7 +129,10 @@
       s.endTimer = setTimeout(() => {
         s.endTimer = 0;
         if (!s.active || s.raf) return;
-        if (s.pinchStart !== null || now() - s.lastEventAt < o.endIdleMs - 1) { scheduleEnd(); return; }
+        // пальцы ещё держат щипок: конец придёт фазой 2/3; редкая проверка на случай потерянного конца,
+        // без нулевых таймеров подряд (ревью 2582, P3)
+        if (s.pinchStart !== null) { s.endTimer = setTimeout(() => { s.endTimer = 0; scheduleEnd(); }, 500); return; }
+        if (now() - s.lastEventAt < o.endIdleMs - 1) { scheduleEnd(); return; }
         finish();
       }, wait);
     }

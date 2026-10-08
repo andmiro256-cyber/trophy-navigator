@@ -4842,10 +4842,12 @@ function saveHiddenLayers(arr) {
 // Не запоминается — после перезапуска списки снова без скрытых.
 let showHiddenLayersMode = false;
 function toggleLayerHidden(key) {
-  const hidden = getHiddenLayers();
-  const idx = hidden.indexOf(key);
-  if (idx >= 0) { hidden.splice(idx, 1); showToast('Карта показана'); }
-  else { hidden.push(key); showToast('Карта скрыта'); }
+  let hidden = getHiddenLayers();
+  if (isLayerHidden(key, hidden)) {
+    const aliases = new Set(hiddenAliases(key));
+    hidden = hidden.filter(h => !aliases.has(h));   // показать — снять скрытие под любым из имён
+    showToast('Карта показана');
+  } else { hidden.push(key); showToast('Карта скрыта'); }
   saveHiddenLayers(hidden);
   if (showHiddenLayersMode && !hidden.length) showHiddenLayersMode = false;
   buildLayerUI();
@@ -4971,6 +4973,24 @@ function catalogEquivalentOf(name) {
 /** Имя для выбора: зашитая карта с эквивалентом в загруженном каталоге → карта каталога. */
 function resolveBaseLayerName(name) {
   return catalogEquivalentOf(name)?.label || name;
+}
+/**
+ * Все имена, под которыми карта могла быть скрыта: ключ каталога, его label и зашитые имена-эквиваленты (и наоборот).
+ * Скрытие, сохранённое без каталога (имя зашитой карты) или с каталогом (key), действует в обоих режимах (ревью 2582, P2).
+ */
+function hiddenAliases(id) {
+  const out = new Set([id]);
+  const keyOfBuiltin = BUILTIN_LAYER_CATALOG_KEYS[id];
+  if (keyOfBuiltin) out.add(keyOfBuiltin);
+  for (const [name, key] of Object.entries(BUILTIN_LAYER_CATALOG_KEYS)) if (key === id || key === keyOfBuiltin) out.add(name);
+  const all = [...(tileCatalog?.base || []), ...(tileCatalog?.overlays || [])];
+  for (const e of all) {
+    if (e.key === id || e.label === id || (keyOfBuiltin && e.key === keyOfBuiltin)) { out.add(e.key); out.add(e.label); }
+  }
+  return [...out];
+}
+function isLayerHidden(id, hidden = getHiddenLayers()) {
+  return hiddenAliases(id).some(a => hidden.includes(a));
 }
 // Зашитые строки списков (порядок и подзаголовки) — снимок статичного HTML до первой перестройки
 function snapshotBuiltinLayerRows(id) {
@@ -5101,7 +5121,7 @@ function baseLayerRowHtml(row, premium, isHidden) {
 }
 
 function renderBaseLayerSection(container, rows, premium, hidden) {
-  const visible = rows.filter(r => r.title || showHiddenLayersMode || !hidden.includes(r.id));
+  const visible = rows.filter(r => r.title || showHiddenLayersMode || !isLayerHidden(r.id, hidden));
   // подзаголовок без карт под ним не показываем
   const list = visible.filter((r, i) => !r.title || (visible[i + 1] && !visible[i + 1].title));
   container.innerHTML = '';
@@ -5114,7 +5134,7 @@ function renderBaseLayerSection(container, rows, premium, hidden) {
       container.appendChild(t);
       return;
     }
-    const isHidden = hidden.includes(r.id);
+    const isHidden = isLayerHidden(r.id, hidden);
     const div = document.createElement('div');
     div.className = 'base-layer' + (premium ? ' premium-layer' : '') + (isHidden ? ' layer-hidden' : '') + (r.label === currentBaseLayerName ? ' active' : '');
     div.dataset.layer = r.label;
@@ -5262,8 +5282,10 @@ function loadTileCatalog() {
     });
 }
 
-// зашитые списки — сразу с кнопками «Скрыть» и без скрытых карт; каталог дополнит их, когда загрузится
-buildLayerUI();
+// зашитые списки — с кнопками «Скрыть» и без скрытых карт; каталог дополнит их, когда загрузится.
+// Не синхронно: buildLayerUI → updatePremiumUI → проверка триала читает const TRIAL_DAYS, объявленный ниже
+// в этом же скрипте (ревью 2582, P1 — свежий запуск без лицензии падал ReferenceError).
+setTimeout(buildLayerUI, 0);
 loadTileCatalog();
 
 function refreshTileCatalog() {
