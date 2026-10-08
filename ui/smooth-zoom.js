@@ -88,8 +88,11 @@
       z = limit(z);
       const base = s.active ? s.target : map.getZoom();
       if (!s.active && Math.abs(z - base) < 1e-9) return false;
+      const wasActive = s.active;
       begin();
-      if (keepAnchor && s.anchorLL) s.anchorPt = pt; else setAnchor(pt);
+      // курсор на месте — точка карты та же: пересчёт с округлённого вида копил бы ошибку по пикселю за событие
+      const samePoint = wasActive && s.anchorLL && s.anchorPt && pt.distanceTo(s.anchorPt) < 1;
+      if ((keepAnchor || samePoint) && s.anchorLL) s.anchorPt = pt; else setAnchor(pt);
       s.target = z;
       s.lastEventAt = now();
       if (s.endTimer) { clearTimeout(s.endTimer); s.endTimer = 0; }

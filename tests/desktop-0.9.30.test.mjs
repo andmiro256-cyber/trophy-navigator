@@ -180,10 +180,11 @@ test('точка под курсором остаётся на месте (±1 p
       const p = map.latLngToContainerPoint(ll);
       assert.ok(Math.abs(p.x - at.x) <= 1 && Math.abs(p.y - at.y) <= 1, `${label}: ${p.x}, ${p.y}`);
     };
-    for (let i = 0; i < 6; i++) { wheel({ deltaY: -9.3, clientX: 200, clientY: 150 }); frames(1); check(`кадр ${i}`); }
+    // 40 событий одного жеста: точка карты под курсором не пересчитывается с округлённого вида — ошибка не копится
+    for (let i = 0; i < 40; i++) { wheel({ deltaY: -2.31, ctrlKey: true, clientX: 200, clientY: 150 }); frames(1); check(`кадр ${i}`); }
     await settle();
     check('конец');
-    assert.ok(map.getZoom() > 10.4);
+    assert.ok(map.getZoom() > 11.2, `${map.getZoom()}`);
     // отдаление колесом — тоже вокруг курсора
     wheel({ deltaY: 100, clientX: 200, clientY: 150 });
     frames(3); check('отдаление');
