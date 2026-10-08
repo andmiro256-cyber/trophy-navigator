@@ -467,7 +467,10 @@
     el.querySelector('[data-download]').addEventListener('click', async () => {
       if (targetRegion() !== id) { clearRegionPrompt(); return; }
       clearRegionPrompt();
-      await startDownload(id);
+      const ok = await startDownload(id);
+      // Не скачалось (нет лицензии, ошибка, остановка) — до перезапуска больше не предлагать эту область,
+      // иначе каждое движение карты снова выводит то же предложение.
+      if (!ok) { auto.dismissed.add(id); return; }
       switchRegion(id); // Перепроверить камеру и выбранную подложку после загрузки.
     });
     L.DomEvent.disableClickPropagation(el);
@@ -498,7 +501,7 @@
       id = targetRegion();
       if (!id || id === activeId()) { clearRegionPrompt(); return; }
       if (localEntry(id) && !localEntry(id).error) { clearRegionPrompt(); switchRegion(id); return; }
-      if (catalogEntry(id) && !auto.dismissed.has(id) && !state.downloads[id]) offerRegion(id);
+      if (catalogEntry(id) && !auto.dismissed.has(id) && !state.downloads[id] && canDownload(id)) offerRegion(id);
       else clearRegionPrompt();
     } finally { auto.busy = false; }
   }
@@ -917,10 +920,14 @@
     renderLayerSection();
   }
 
+  function canDownload(id) {
+    return id === OVERVIEW_ID || typeof window.isPremiumAvailable !== 'function' || !!window.isPremiumAvailable();
+  }
+  // true — карта на диске и совпадает с сервером; false — не скачана (лицензия, ошибка, остановка).
   async function startDownload(id) {
-    if (id !== OVERVIEW_ID && typeof window.isPremiumAvailable === 'function' && !window.isPremiumAvailable()) {
+    if (!canDownload(id)) {
       toast('⚠ Скачивание TrophyNav Maps — по лицензии или в триал-периоде', 'warning');
-      return;
+      return false;
     }
     state.downloads[id] = { phase: 'start', done: 0, total: 0 };
     delete state.fetched[id];
@@ -932,10 +939,12 @@
       toast(downloaded ? `✓ ${regionName(id)}: карта скачана` : `✓ ${regionName(id)}: карта проверена, совпадает с сервером`);
       // Обновлённая карта на экране — перечитать (тот же стиль, новые тайлы)
       if (activeId() === id || (id === OVERVIEW_ID && activeId())) state.activeLayer.reloadStyle();
+      return true;
     } catch (e) {
       const msg = String(e?.message || e);
       if (!/остановлена/i.test(msg)) toast(`⚠ ${regionName(id)}: ${msg}`);
       await refreshLocal().catch(() => {});
+      return false;
     } finally {
       if (state.downloads[id] && state.downloads[id].phase !== 'error') delete state.downloads[id];
       renderWindow();

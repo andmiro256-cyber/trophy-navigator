@@ -366,3 +366,21 @@ test('полоса берёт данные приложения: выбранн�
   deepEqual(values(w).slice(2), ['—', '—', '—']);
   w.close();
 });
+
+test('ревью 2648: смена состава виджетов — ширины карточек пересчитываются под новый набор', needDom, async () => {
+  // jsdom не раскладывает: ширина текста = 8 px на символ, полоса 1000 px
+  const w = await boot({ globals: `
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, get() { return this.id === 'tn-widgets' ? 1000 : 0; } });
+    document.createRange = () => { let el; return { selectNodeContents(n) { el = n; }, getBoundingClientRect: () => ({ width: (el.textContent || '').length * 8 }) }; };` });
+  w.TnWidgets.setConfig({ slots: ['date', 'time', '', '', ''], opacity: 0, hidden: false });
+  await wait(60);
+  const before = cards(w).map(c => c.style.minWidth);
+  assert.ok(before.every(Boolean), 'после первой подгонки у всех карточек есть ширина');
+  w.TnWidgets.setConfig({ slots: ['coords', 'zoom', 'trackLen', '', ''], opacity: 0, hidden: false });
+  await wait(60);
+  const after = cards(w);
+  deepEqual(after.map(c => c.dataset.widget), ['coords', 'zoom', 'trackLen']);
+  after.forEach(c => assert.equal(c.style.minWidth,
+    `${Math.ceil(Math.ceil(c.querySelector('.tn-widget-value').textContent.length * 8) + 1)}px`, c.dataset.widget));
+  w.close();
+});

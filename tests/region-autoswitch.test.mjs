@@ -120,3 +120,22 @@ test('ручной выбор держится внутри bounds выбран�
   await s.checkAutoRegion();
   assert.equal(s.switches.length, 0); assert.equal(s.nodes.length, 0);
 });
+
+test('без лицензии предложения нет; неудачное скачивание гасит предложение до перезапуска', async () => {
+  const s = setup(); s.state.local.pop();
+  s.ctx.isPremiumAvailable = () => false;
+  await s.checkAutoRegion(); await s.checkAutoRegion();
+  assert.equal(s.nodes.length, 0);
+
+  const f = setup(); f.state.local.pop();
+  f.ctx.__TAURI_INTERNALS__ = { invoke: async cmd => {
+    if (cmd === 'tnmaps_download') throw new Error('сеть недоступна');
+    if (cmd === 'tnmaps_local') return { maps: f.state.local, partial: {}, dir: '' };
+  } };
+  await f.checkAutoRegion();
+  await f.nodes[0].querySelector('[data-download]').listeners.click();
+  assert.equal(f.auto.dismissed.has('nov'), true);
+  await f.checkAutoRegion(); await f.checkAutoRegion();
+  assert.equal(f.nodes.length, 1);
+  assert.equal(f.switches.length, 0);
+});

@@ -416,6 +416,7 @@
     bar.classList.toggle('tn-widgets-clear', cfg.opacity > 0);
     last = {};
     fitKey = '';
+    scheduleFit(); // новые карточки — без minWidth от прежнего состава, подогнать заново
   }
 
   // ─── Подгонка: значение не обрезается (как на Android) ───
