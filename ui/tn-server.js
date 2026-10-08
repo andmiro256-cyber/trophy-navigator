@@ -502,7 +502,8 @@
   .srv-state .server-state-dot { margin-right: 6px; }
   .srv-section { padding-bottom: 6px; border-bottom: 1px solid var(--row-border); }
   .srv-section:last-child { border-bottom: none; }
-  .srv-title { display: flex; align-items: center; gap: 6px; }
+  .srv-title { display: flex; align-items: center; gap: 6px; margin: 10px 0 4px; }
+  .srv-footer { margin: 0; padding: 10px 18px 14px; border-top: 1px solid var(--row-border); flex-shrink: 0; }
   .srv-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 3px 0; font-size: var(--fs-s); }
   .srv-k { color: var(--text-secondary); }
   .srv-v { color: var(--text-primary); font-weight: 600; text-align: right; overflow-wrap: anywhere; }
@@ -515,7 +516,7 @@
   .srv-when { color: var(--text-muted); font-weight: 500; }
   .srv-note { font-size: var(--fs-xs); color: var(--text-muted); margin: 2px 0; min-height: 0; }
   .srv-actions { display: flex; gap: 8px; margin: 8px 0 4px; flex-wrap: wrap; }
-  .srv-actions .btn-secondary { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+  .srv-actions .btn-secondary { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
   `;
 
   function ensureStyle() {
@@ -533,17 +534,15 @@
     overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.id = 'modal-server';
-    overlay.innerHTML = `<div class="modal" id="modal-server-win" role="dialog" aria-labelledby="modal-server-title" style="top:60px;right:70px;left:auto;width:400px">
+    overlay.innerHTML = `<div class="modal" id="modal-server-win" role="dialog" aria-labelledby="modal-server-title" style="top:60px;right:70px;left:auto;width:440px">
       <div class="modal-header" onmousedown="startDrag(event,'modal-server-win')">
         <span class="modal-title" id="modal-server-title">${ico('server', '')}Связь с сервером</span>
         <button type="button" class="modal-close" onclick="closeModal('modal-server')" aria-label="Закрыть">${ico('close', '')}</button>
       </div>
-      <div class="modal-body">
-        <div id="srv-body"></div>
-        <div class="btn-row">
-          <button type="button" class="btn-primary" data-srv="refresh">${ico('refresh')}Обновить состояние</button>
-          <button type="button" class="btn-secondary" onclick="closeModal('modal-server')">Закрыть</button>
-        </div>
+      <div class="modal-body"><div id="srv-body"></div></div>
+      <div class="btn-row srv-footer">
+        <button type="button" class="btn-primary" data-srv="refresh">${ico('refresh')}Обновить состояние</button>
+        <button type="button" class="btn-secondary" onclick="closeModal('modal-server')">Закрыть</button>
       </div>
     </div>`;
     overlay.addEventListener('click', onPanelClick);
