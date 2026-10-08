@@ -304,7 +304,14 @@
     flex-direction: column;
     max-height: 80vh;
     color: var(--text-primary);
+    /* 09.10 (Андрей): окна меняют размер мышью за правый нижний угол; размер запоминается (tndModalSizes) */
+    resize: both;
+    overflow: hidden;
+    min-height: 120px;
   }
+  .modal.tnd-resized { max-height: calc(100vh - 16px); max-width: calc(100vw - 16px); }
+  /* список КП строящегося маршрута — тянется вниз за нижний край */
+  #route-build-kp-list { resize: vertical; min-height: 48px; }
   .modal-overlay.active .modal {
     border-color: var(--primary-ring);
     box-shadow: var(--modal-active-shadow);
@@ -1823,7 +1830,7 @@
             <option value="2 8">Точки</option>
           </select>
         </div>
-        <div id="route-build-kp-list" style="max-height:150px;overflow-y:auto;margin-bottom:6px"></div>
+        <div id="route-build-kp-list" style="height:150px;overflow-y:auto;margin-bottom:6px"></div>
         <div class="btn-row">
           <button class="btn-secondary btn-danger" onclick="cancelRouteDraw()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-close"/></svg>Отмена</button>
           <button class="btn-primary" onclick="finishRouteDraw()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-check"/></svg>Сохранить</button>
@@ -2607,7 +2614,9 @@ let currentCRS = 'EPSG3857';
 const TND_MAP_ZOOM_OPTIONS = { zoomSnap: 0, zoomDelta: 0.5, scrollWheelZoom: false };
 /** Зум для подписей: дробный уровень показываем целым. */
 const formatZoomLevel = z => String(Math.round(Number(z) || 0));
-const map = L.map('map', { zoomControl: true, attributionControl: false, maxZoom: 22, preferCanvas: true, ...TND_MAP_ZOOM_OPTIONS }).setView([55.75, 37.62], 10);
+// renderer: холст точек/маршрутов с запасом в пол-экрана (по умолчанию 10%) — при плавном отдалении
+// колесом холст сжимается до зума-конца, и с запасом 10% линии маршрута «пропадали» по краям (Андрей 09.10)
+const map = L.map('map', { zoomControl: true, attributionControl: false, maxZoom: 22, preferCanvas: true, renderer: L.canvas({ padding: 0.5 }), ...TND_MAP_ZOOM_OPTIONS }).setView([55.75, 37.62], 10);
 const trackCanvasRenderer = L.canvas({ padding: 0.5 });
 const trackPointCanvasRenderer = L.canvas({ padding: 0.5, tolerance: 8 });
 function createTrackPolylineLayer(points, options = {}) {
@@ -5550,6 +5559,37 @@ function setOverlayOpacity(name, slider) {
 // ─────────────────────────────────────────────
 let lastOpenDir = localStorage.getItem('tnd-last-open-dir') || undefined;
 let lastSaveDir = localStorage.getItem('tnd-last-save-dir') || undefined;
+// 09.10 (Андрей): окна «Открыть»/«Сохранить» кидали «чёрт-те куда». Теперь по умолчанию — подпапка рабочей
+// папки по типу файла (Документы/TrophyNavigator/gpx, tracks, routes, waypoints, maps), а «последняя папка»
+// помнится отдельно для каждого типа и только если она ещё существует.
+const TND_TYPE_DIR = { wpt: 'waypoints', gpx: 'gpx', plt: 'tracks', rte: 'routes', kml: 'gpx', kmz: 'gpx', geojson: 'gpx', json: 'backup',
+  sqlitedb: 'maps', mbtiles: 'maps', rmap: 'maps', sqlite: 'maps', db: 'maps', csv: 'waypoints', txt: 'waypoints' };
+function tndTypeDir(ext) {
+  const sub = TND_TYPE_DIR[String(ext || '').toLowerCase()];
+  return appDataPath ? (sub ? appDataPath + '/' + sub : appDataPath) : undefined;
+}
+function tndLastDirKey(kind, ext) { return `tnd-last-${kind}-dir:${String(ext || '').toLowerCase()}`; }
+async function tndDirExists(dir) {
+  const exists = window.__TAURI__?.fs?.exists;
+  if (!dir || typeof exists !== 'function') return !!dir;
+  try {
+    return !!(await Promise.race([exists(dir), new Promise(r => setTimeout(() => r(false), 2000))]));
+  } catch { return false; }
+}
+/** Папка для окна выбора: последняя для этого типа (если жива) → подпапка рабочей папки → рабочая папка. */
+async function tndDialogDir(kind, ext) {
+  let last = null;
+  try { last = localStorage.getItem(tndLastDirKey(kind, ext)); } catch { /* приватный режим */ }
+  if (last && await tndDirExists(last)) return last;
+  const typed = tndTypeDir(ext);
+  if (typed && await tndDirExists(typed)) return typed;
+  return appDataPath || undefined;
+}
+function tndRememberDir(kind, ext, path) {
+  const dir = String(path || '').replace(/[\\/][^\\/]+$/, '');
+  if (!dir) return;
+  try { localStorage.setItem(tndLastDirKey(kind, ext), dir); } catch { /* приватный режим */ }
+}
 
 function openFile(accept, callback) {
   // Tauri v2: try global Tauri JS API first, then HTML fallback
@@ -5559,15 +5599,12 @@ function openFile(accept, callback) {
       const { readTextFile } = window.__TAURI__.fs;
       const extensions = accept.split(',').map(s => s.trim().replace(/^\./, '').toLowerCase()).filter(Boolean);
       // Подбираем директорию по типу файла
-      const typeDir = { wpt: 'waypoints', gpx: 'gpx', plt: 'tracks', rte: 'routes' };
-      const subDir = typeDir[extensions[0]] || '';
-      const defPath = lastOpenDir || (appDataPath && subDir ? appDataPath + '/' + subDir : undefined);
-      open({
+      tndDialogDir('open', extensions[0]).then(defPath => open({
         multiple: true,
         directory: false,
         defaultPath: defPath,
         filters: [{ name: 'Files', extensions }]
-      }).then(async selection => {
+      })).then(async selection => {
         if (!selection) return;
         const paths = Array.isArray(selection) ? selection : [selection];
         for (const item of paths) {
@@ -5575,6 +5612,7 @@ function openFile(accept, callback) {
           if (!p) continue;
           const dir = p.replace(/[\\/][^\\/]+$/, '');
           if (dir) { lastOpenDir = dir; localStorage.setItem('tnd-last-open-dir', dir); }
+          tndRememberDir('open', extensions[0], p);
           const fname = p.split(/[\\/]/).pop();
           const text = await readTextFile(p);
           callback(text, fname, { path: p, format: normalizeFileFormat(fname) });
@@ -5792,6 +5830,10 @@ function clearLastSaveDir() {
 }
 
 async function getExportDefaultPath(filename) {
+  // своя папка для типа (последняя живая или подпапка рабочей); общий lastSaveDir — запасной путь
+  const ext = String(filename).split('.').pop();
+  const typed = await tndDialogDir('save', ext);
+  if (typed) return await joinExportPath(typed, filename);
   if (!lastSaveDir) return filename;
   const exists = window.__TAURI__?.fs?.exists;
   if (typeof exists !== 'function') return filename;
@@ -5939,6 +5981,7 @@ async function handleLateExportDialogOutcome(outcomePromise, context) {
     if (dir) {
       lastSaveDir = dir;
       localStorage.setItem('tnd-last-save-dir', dir);
+      tndRememberDir('save', extension, selectedPath);
     }
     const selectedFileName = await getExportFileName(selectedPath);
     await appendExportLog('dialog_late_success', { exportType, extension, chars: charCount });
@@ -6054,6 +6097,7 @@ async function downloadText(filename, mimeType, textOrBuilder) {
     if (dir) {
       lastSaveDir = dir;
       localStorage.setItem('tnd-last-save-dir', dir);
+      tndRememberDir('save', extension, selectedPath);
     }
     await appendExportLog('success', { exportType, extension, chars: charCount });
     showToast(`✓ Сохранено и проверено: ${selectedFileName}`);
@@ -7040,6 +7084,43 @@ function closeAllModals() {
   });
   if (returnFocus?.isConnected) requestAnimationFrame(() => returnFocus.focus({ preventScroll: true }));
 }
+
+// Размеры окон (.modal) после изменения мышью — запоминаются в localStorage и возвращаются при следующем открытии.
+// ResizeObserver срабатывает и на открытие/закрытие окна (display), поэтому пишем только при видимом окне,
+// а «изменено пользователем» — когда размер отличается от исходного CSS.
+function tndModalSizes() {
+  const KEY = 'tnd-modal-sizes';
+  const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch { return {}; } };
+  const save = v => { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch { /* приватный режим */ } };
+  const sizes = load();
+  const ids = [...document.querySelectorAll('.modal[id], #route-build-kp-list')];
+  for (const el of ids) {
+    const v = sizes[el.id];
+    if (v) {
+      if (v.w && el.classList.contains('modal')) el.style.width = v.w + 'px';
+      if (v.h) el.style.height = v.h + 'px';
+      el.classList.add('tnd-resized');
+    }
+  }
+  if (typeof ResizeObserver !== 'function') return;
+  let pending = 0;
+  const ro = new ResizeObserver(entries => {
+    for (const en of entries) {
+      const el = en.target;
+      // скрыто или не трогали: изменение мышью ставит inline height; ширина у части окон задана в разметке
+      if (!el.offsetParent || !el.style.height) continue;
+      const w = Math.round(el.offsetWidth), h = Math.round(el.offsetHeight);
+      if (w < 50 || h < 30) continue;
+      sizes[el.id] = el.classList.contains('modal') ? { w, h } : { h };
+      el.classList.add('tnd-resized');
+    }
+    clearTimeout(pending);
+    pending = setTimeout(() => save(sizes), 300);
+  });
+  ids.forEach(el => ro.observe(el));
+}
+// окна объявлены и ниже этого скрипта (Race Report, Live, …) — после разбора всей страницы
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tndModalSizes); else tndModalSizes();
 
 function startDrag(e, winId) {
   if (e.target.closest?.('button, input, select, textarea, [role="button"]')) return;
@@ -10151,8 +10232,7 @@ async function downloadTiles() {
   if (window.__TAURI__) {
     try {
       const { save } = window.__TAURI__.dialog;
-      const mapsDir = appDataPath ? appDataPath + '/maps' : lastSaveDir;
-      const defaultDir = lastSaveDir || mapsDir;
+      const defaultDir = await tndDialogDir('save', 'sqlitedb'); // карты — в maps/, а не в последнюю папку экспорта GPX
       savePath = await save({
         defaultPath: defaultDir ? defaultDir + '/' + filename : filename,
         filters: [{ name: 'SQLiteDB', extensions: ['sqlitedb'] }]
@@ -10161,7 +10241,7 @@ async function downloadTiles() {
       if (typeof savePath === 'object' && savePath.path) savePath = savePath.path;
       savePath = String(savePath);
       const dir = savePath.replace(/[\\/][^\\/]+$/, '');
-      if (dir) { lastSaveDir = dir; localStorage.setItem('tnd-last-save-dir', dir); }
+      if (dir) tndRememberDir('save', 'sqlitedb', savePath);
     } catch (e) {
       console.warn('Tauri save dialog error:', e);
     }
@@ -10657,11 +10737,13 @@ async function chooseOfflineMapPaths() {
   const selection = await open({
     multiple: true,
     directory: false,
-    defaultPath: lastOpenDir || (appDataPath ? appDataPath + '/maps' : undefined),
+    defaultPath: await tndDialogDir('open', 'mbtiles'),
     filters: [{ name: 'Offline maps', extensions: OFFLINE_MAP_EXTENSIONS }]
   });
   if (!selection) return [];
-  return Array.isArray(selection) ? selection : [selection];
+  const list = Array.isArray(selection) ? selection : [selection];
+  const first = list[0]; tndRememberDir('open', 'mbtiles', typeof first === 'object' && first?.path ? first.path : first);
+  return list;
 }
 
 async function importOfflineMapFile() {
