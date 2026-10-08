@@ -45,7 +45,7 @@ static DOWNLOADS: OnceLock<Mutex<HashMap<String, Arc<AtomicBool>>>> = OnceLock::
 /// Вызывается из `setup`: папка карт внутри Documents/TrophyNavigator, как у остальных данных десктопа.
 pub fn init<R: Runtime>(app: &AppHandle<R>) {
     if let Ok(docs) = app.path().document_dir() {
-        let dir = docs.join("TrophyNavigator").join("maps").join("vector");
+        let dir = docs.join("TrophyNavigatorTest").join("maps").join("vector");
         let _ = fs::create_dir_all(&dir);
         let _ = MAPS_DIR.set(dir);
     }

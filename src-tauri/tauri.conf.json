@@ -1,9 +1,9 @@
 {
-  "productName": "Trophy Navigator Desktop",
+  "productName": "TN Desktop тест",
 
 
-  "version": "0.9.30",
-  "identifier": "ru.trophy-nav.desktop",
+  "version": "0.9.33",
+  "identifier": "ru.trophy-nav.desktop.test",
   "build": {
     "frontendDist": "../ui"
   },
@@ -11,7 +11,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Trophy Navigator Desktop",
+        "title": "Trophy Navigator Desktop 0.9.33 — ТЕСТ (TrophyNavigatorTest)",
         "width": 1280,
         "height": 800,
         "minWidth": 900,
@@ -30,13 +30,13 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDk1NjExQzVFNzJBODA5QzAKUldUQUNhaHlYaHhobFJHZjlxUS9XNDRCUlQ0Sys4SE83K2huWUpTUkkvRTAxVzhQK25FOExRMW4K",
       "endpoints": [
-        "https://trophynav.ru/api/updates/latest.json"
+        "https://127.0.0.1:9/tn-desktop-test-no-updates.json"
       ]
     }
   },
   "bundle": {
     "active": true,
-    "createUpdaterArtifacts": true,
+    "createUpdaterArtifacts": false,
     "targets": "all",
     "icon": [
       "icons/32x32.png",

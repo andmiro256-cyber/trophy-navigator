@@ -239,6 +239,11 @@ fn install_deb_update(bytes: &[u8]) -> Result<(), String> {
 
 #[tauri::command]
 async fn check_app_update<R: Runtime>(webview: Webview<R>) -> Result<Option<UpdateInfo>, String> {
+    // ТЕСТОВАЯ СБОРКА: обновления выключены, ничего не проверяем и не качаем.
+    if true {
+        let _ = &webview;
+        return Ok(None);
+    }
     let install_kind = update_install_kind();
     let updater = if install_kind == UpdateInstallKind::LinuxDeb {
         webview
@@ -290,6 +295,10 @@ struct DownloadProgress {
 
 #[tauri::command]
 async fn install_app_update<R: Runtime>(webview: Webview<R>, rid: u32) -> Result<(), String> {
+    if true {
+        let _ = webview.resources_table().close(rid);
+        return Err("Тестовая сборка: обновления выключены".into());
+    }
     let install_kind = update_install_kind();
     if !install_kind.can_auto_install() {
         let _ = webview.resources_table().close(rid);
