@@ -42,8 +42,8 @@ test('Photon недоступен → Nominatim; оба недоступны →
 });
 
 test('index.html: оба места поиска идут через geocode, ошибка понятная', () => {
-  assert.match(html, /const data = await geocode\(query, 5\);/);
+  assert.match(html, /const onlineP = geocode\(query, 5\)/);
   assert.match(html, /const data = await geocode\(val, 1\);/);
   assert.equal((html.match(/nominatim\.openstreetmap\.org\/search/g) || []).length, 1);
-  assert.match(html, /Поиск недоступен: нет связи с сервисом поиска/);
+  assert.match(html, /Нет связи с сервисом поиска, а на скачанных картах такого названия нет\./);
 });

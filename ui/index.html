@@ -16,6 +16,7 @@
 <script src="trophynav-3d.js"></script>
 <script src="tn-icons.js"></script>
 <script src="tn-widgets.js"></script>
+<script src="tn-voice.js"></script>
 <script src="tn-layers.js"></script>
 <script src="tn-layer-order.js"></script>
 <script src="tn-server.js"></script>
@@ -15143,25 +15144,40 @@ async function geocode(query, limit = 5) {
   throw err;
 }
 
+// Поиск: названия скачанных карт TrophyNav Maps (без интернета, нечётко — tn-voice.js) + онлайн (Photon).
+// Скачанные — сверху с пометкой «на карте»; онлайн-совпадения ближе 1 км к ним не дублируются.
+let searchSeq = 0;
 async function nominatimSearch(query) {
   const resultsEl = document.getElementById('search-results');
+  const seq = ++searchSeq;
   resultsEl.innerHTML = '<div style="padding:10px 12px;color:var(--text-muted);font-size:12px">Поиск...</div>';
   resultsEl.classList.add('has-results');
-  try {
-    const data = await geocode(query, 5);
-    if (!data.length) {
-      resultsEl.innerHTML = '<div style="padding:10px 12px;color:var(--text-muted);font-size:12px">Ничего не найдено</div>';
-      return;
-    }
-    resultsEl.innerHTML = data.map((r, i) => {
-      // Ответ Nominatim — чужие данные: имя и координаты только в data-атрибутах (escapeHtml), обработчики читают их через searchResultArgs(this)
-      const displayName = String(r.display_name ?? '');
-      const name = escapeHtml(displayName.split(',')[0]);
-      const rest = escapeHtml(displayName.split(',').slice(1, 3).join(','));
-      return `<div class="search-result-item" style="justify-content:space-between" data-lat="${safeNum(r.lat)}" data-lon="${safeNum(r.lon)}" data-name="${name}">
+  const localP = window.TnPlaces ? window.TnPlaces.searchLocal(query, { limit: 4 }).catch(() => []) : Promise.resolve([]);
+  const onlineP = geocode(query, 5).then(d => ({ ok: true, d }), err => ({ ok: false, err }));
+  const [local, online] = await Promise.all([localP, onlineP]);
+  if (seq !== searchSeq) return; // уже ищем другое
+  const items = local.map(r => ({ lat: r.lat, lon: r.lon, name: r.name, rest: r.km ? `${Math.round(r.km)} км от центра карты` : '', local: true }));
+  const near = (a, b) => Math.abs(a.lat - b.lat) < 0.01 && Math.abs(a.lon - b.lon) < 0.015;
+  for (const r of (online.ok ? online.d : [])) {
+    const displayName = String(r.display_name ?? '');
+    const it = { lat: Number(r.lat), lon: Number(r.lon), name: displayName.split(',')[0], rest: displayName.split(',').slice(1, 3).join(','), local: false };
+    if (!items.some(x => x.name === it.name && near(x, it))) items.push(it);
+  }
+  if (!items.length) {
+    if (!online.ok) console.warn('search failed:', online.err);
+    resultsEl.innerHTML = online.ok
+      ? '<div style="padding:10px 12px;color:var(--text-muted);font-size:12px">Ничего не найдено</div>'
+      : '<div class="status-err" style="padding:10px 12px;font-size:12px">Нет связи с сервисом поиска, а на скачанных картах такого названия нет.</div>';
+    return;
+  }
+  resultsEl.innerHTML = items.map(r => {
+    // Ответ сервиса — чужие данные: имя и координаты только в data-атрибутах (escapeHtml), обработчики читают их через searchResultArgs(this)
+    const name = escapeHtml(r.name);
+    const rest = escapeHtml(r.rest || '');
+    return `<div class="search-result-item" style="justify-content:space-between" data-lat="${safeNum(r.lat)}" data-lon="${safeNum(r.lon)}" data-name="${name}">
         <div style="display:flex;gap:8px;flex:1;cursor:pointer" onclick="goToSearchResult(...searchResultArgs(this))">
           <span style="color:var(--primary-text);font-size:14px">📍</span>
-          <div><div class="search-result-name">${name}</div><div class="search-result-type">${rest}</div></div>
+          <div><div class="search-result-name">${name}${r.local ? '<span class="search-local-tag">на карте</span>' : ''}</div><div class="search-result-type">${rest}</div></div>
         </div>
         <div style="display:flex;gap:3px;flex-shrink:0;align-items:center">
           <span title="Маршрут отсюда" style="cursor:pointer;font-size:11px;background:var(--bg-success);color:var(--accent-green);border-radius:3px;padding:2px 5px" onclick="event.stopPropagation();setRoutePoint('A', ...searchResultArgs(this))">A</span>
@@ -15169,11 +15185,7 @@ async function nominatimSearch(query) {
           <span title="Добавить точку" style="cursor:pointer;font-size:11px;background:var(--bg-selected-soft);color:var(--text-link);border-radius:3px;padding:2px 5px" onclick="event.stopPropagation();addWaypointFromSearch(...searchResultArgs(this))">+</span>
         </div>
       </div>`;
-    }).join('');
-  } catch (err) {
-    console.warn('search failed:', err);
-    resultsEl.innerHTML = '<div class="status-err" style="padding:10px 12px;font-size:12px">Поиск недоступен: нет связи с сервисом поиска. Проверьте интернет.</div>';
-  }
+  }).join('');
 }
 
 function searchResultArgs(el) {

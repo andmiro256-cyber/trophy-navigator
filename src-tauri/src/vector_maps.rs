@@ -1509,3 +1509,16 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 }
+
+/// Названия скачанной карты области — для поиска без интернета (src/places.rs). Долго только в первый
+/// раз (~1–2 с на область), потом из кэша `<id>.places.json`.
+#[tauri::command]
+pub async fn tnmaps_places(id: String) -> Result<Vec<crate::places::Place>, String> {
+    if !valid_id(&id) {
+        return Err("неверный идентификатор карты".into());
+    }
+    let path = map_file(maps_dir()?, &id);
+    tauri::async_runtime::spawn_blocking(move || crate::places::places_for(&path))
+        .await
+        .map_err(|e| e.to_string())?
+}
