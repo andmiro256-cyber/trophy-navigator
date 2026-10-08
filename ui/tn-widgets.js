@@ -415,19 +415,74 @@
     bar.style.setProperty('--widget-fill', String((100 - cfg.opacity) / 100));
     bar.classList.toggle('tn-widgets-clear', cfg.opacity > 0);
     last = {};
+    fitKey = '';
+  }
+
+  // ─── Подгонка: значение не обрезается (как на Android) ───
+  // Единый размер шрифта значений для всей полосы: от FIT_MAX вниз шагом 1px до FIT_MIN, пока сумма
+  // ширин значений (+ поля карточек и зазоры) не влезет в полосу без правого отступа под кнопку.
+  // Не влезает и на минимуме — перенос на вторую строку (.tn-widgets-wrap). Ширины меряются в базовом
+  // размере (пересчёт из текущего), так что выбор шага не зависит от себя самого и не дребезжит;
+  // пересчёт — только при смене текстов значений или ширины полосы (ResizeObserver).
+  const FIT_MAX = 18, FIT_MIN = 13, CAPTION_BASE = 10.5, CAPTION_MIN = 9;
+  let fitKey = '', fitRaf = 0, fitFs = FIT_MAX;
+  function textWidth(el) {
+    if (typeof document.createRange !== 'function') return 0;
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    const w = typeof r.getBoundingClientRect === 'function' ? r.getBoundingClientRect().width : 0;
+    return Number.isFinite(w) ? w : 0;
+  }
+  function fit() {
+    fitRaf = 0;
+    if (!bar || bar.hidden) return;
+    const cardsEl = [...bar.querySelectorAll('.tn-widget')];
+    const barCs = getComputedStyle(bar);
+    const inner = bar.clientWidth - (parseFloat(barCs.paddingLeft) || 0) - (parseFloat(barCs.paddingRight) || 0);
+    if (!cardsEl.length || !(inner > 0)) return;
+    const gap = parseFloat(barCs.columnGap) || parseFloat(barCs.gap) || 0;
+    // ширина значения при FIT_MAX, с запасом 1px на округление; поля карточки — отдельно
+    const base = cardsEl.map(c => Math.ceil(textWidth(c.querySelector('.tn-widget-value')) * FIT_MAX / fitFs) + 1);
+    const pads = cardsEl.map(c => { const cs = getComputedStyle(c); return (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0); });
+    const key = `${Math.round(inner)}|${base.join(',')}|${pads.join(',')}`;
+    if (key === fitKey) return;
+    fitKey = key;
+    if (!base.some(Boolean)) return; // нет раскладки (jsdom, скрытое окно) — оставить CSS по умолчанию
+    const room = inner - gap * (cardsEl.length - 1) - pads.reduce((a, b) => a + b, 0);
+    const sum = base.reduce((a, b) => a + b, 0);
+    let fs = FIT_MAX;
+    while (fs > FIT_MIN && sum * fs / FIT_MAX > room) fs -= 1;
+    fitFs = fs;
+    const capFs = Math.max(CAPTION_MIN, Math.round(CAPTION_BASE * fs / FIT_MAX * 2) / 2);
+    bar.style.setProperty('--tnw-value-fs', `${fs}px`);
+    bar.style.setProperty('--tnw-caption-fs', `${capFs}px`);
+    bar.classList.toggle('tn-widgets-wrap', sum * fs / FIT_MAX > room);
+    cardsEl.forEach((c, i) => { c.style.minWidth = `${Math.ceil(base[i] * fs / FIT_MAX + pads[i])}px`; });
+    // в две строки полоса выше — поднять над ней нижние кнопки Leaflet
+    const wrapped = bar.classList.contains('tn-widgets-wrap');
+    if (wrapped) document.body.style.setProperty('--tn-widgets-bottom', `${Math.ceil(bar.offsetHeight) + 4}px`);
+    else document.body.style.removeProperty('--tn-widgets-bottom');
+  }
+  function scheduleFit() {
+    if (fitRaf || !bar) return;
+    fitRaf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame(fit) : setTimeout(fit, 16);
   }
 
   function refresh() {
     if (!bar || bar.hidden) return;
     const ctx = gather();
+    let changed = false;
     bar.querySelectorAll('.tn-widget').forEach((card, i) => {
       const r = compute(card.dataset.widget, ctx);
       const key = `${r.value}\u0000${r.caption}`;
       if (last[i] === key) return;
+      const valueEl = card.querySelector('.tn-widget-value');
+      if (valueEl.textContent !== r.value) changed = true;
       last[i] = key;
-      card.querySelector('.tn-widget-value').textContent = r.value;
+      valueEl.textContent = r.value;
       card.querySelector('.tn-widget-caption').textContent = r.caption;
     });
+    if (changed) scheduleFit();
   }
   let raf = 0;
   function scheduleRefresh() {
@@ -444,7 +499,7 @@
     toggle.setAttribute('aria-pressed', String(!cfg.hidden));
     toggle.title = cfg.hidden ? 'Показать виджеты' : 'Скрыть виджеты';
     toggle.innerHTML = icon(cfg.hidden ? 'gauge' : 'close', 'tn-ico-xs');
-    if (!hidden) { last = {}; refresh(); }
+    if (!hidden) { last = {}; refresh(); scheduleFit(); }
     window.dispatchEvent(new Event('resize'));
   }
 
@@ -616,6 +671,8 @@
     mapEl.appendChild(toggle);
     renderBar();
     apply();
+    if (typeof ResizeObserver === 'function') new ResizeObserver(scheduleFit).observe(bar);
+    else window.addEventListener('resize', scheduleFit);
     const m = appMap();
     if (m?.on) {
       m.on('mousemove', e => {
