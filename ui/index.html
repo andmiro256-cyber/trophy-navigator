@@ -238,17 +238,31 @@
   }
   #statusbar span { display: flex; align-items: center; gap: 4px; }
   /* ─── Виджеты внизу карты (tn-widgets.js) — как нижняя панель Android ─── */
+  /* Фон полосы и карточек — подложки ::before с opacity var(--widget-fill): прозрачность из настроек
+     «Виджеты» гасит только фон, текст остаётся непрозрачным (как прозрачный режим Android) */
   #tn-widgets {
     position: absolute; left: 0; right: 0; bottom: 0; z-index: 900;
     display: flex; gap: 6px; padding: 5px 44px 5px 6px;
-    background: var(--widget-bar-bg); border-top: 1px solid var(--card-stroke);
-    backdrop-filter: blur(6px); cursor: default; user-select: none;
+    cursor: default; user-select: none;
+  }
+  #tn-widgets::before {
+    content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: var(--widget-fill);
+    background: var(--widget-bar-bg); border-top: 1px solid var(--card-stroke); backdrop-filter: blur(6px);
   }
   #tn-widgets[hidden] { display: none; }
   .tn-widget {
-    flex: 1 1 0; min-width: 0; padding: 4px 8px; text-align: center;
-    background: var(--widget-bg); border: 1px solid var(--widget-stroke); border-radius: var(--radius-m);
+    position: relative; z-index: 0;
+    flex: 1 1 0; min-width: 0; padding: 5px 9px; text-align: center; border-radius: var(--radius-m);
   }
+  .tn-widget::before {
+    content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: var(--widget-fill);
+    background: var(--widget-bg); border: 1px solid var(--widget-stroke); border-radius: inherit;
+  }
+  /* на прозрачной полосе — обводка цветом фона темы, чтобы значения читались поверх карты */
+  #tn-widgets.tn-widgets-clear .tn-widget-value, #tn-widgets.tn-widgets-clear .tn-widget-caption {
+    text-shadow: 0 0 2px var(--background), 0 0 2px var(--background), 0 0 4px var(--background), 0 1px 3px var(--background);
+  }
+  #tn-widgets.tn-widgets-clear .tn-widget-caption { color: var(--text-primary); }
   .tn-widget.wide { flex-grow: 1.6; }
   .tn-widget-value { font-size: 18px; font-weight: 700; line-height: 1.2; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
   .tn-widget-caption { font-size: 10.5px; line-height: 1.2; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1905,6 +1919,7 @@
         <button type="button" role="tab" aria-selected="true" aria-controls="tab-display" class="tab-btn active" onclick="switchTab(this,'tab-display')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-monitor"/></svg><span>Отображение</span></button>
         <button type="button" role="tab" aria-selected="false" aria-controls="tab-colors" class="tab-btn" onclick="switchTab(this,'tab-colors')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-palette"/></svg><span>Цвета</span></button>
         <button type="button" role="tab" aria-selected="false" aria-controls="tab-cache" class="tab-btn" onclick="switchTab(this,'tab-cache');updateCacheUI()"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-layers-o"/></svg><span>Кэш карт</span></button>
+        <button type="button" role="tab" aria-selected="false" aria-controls="tab-widgets" class="tab-btn" onclick="switchTab(this,'tab-widgets')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-gauge"/></svg><span>Виджеты</span></button>
       </div>
       <div class="tab-content active" id="tab-display">
         <div class="setting-group-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-monitor"/></svg> Отображение</div>
@@ -2072,6 +2087,9 @@
           <button class="btn-secondary" style="flex:1;font-size:11px;color:var(--accent-red)" onclick="clearTileCache()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-delete"/></svg>Очистить весь кэш</button>
         </div>
       </div>
+
+      <!-- ВКЛАДКА: ВИДЖЕТЫ — содержимое рисует ui/tn-widgets.js -->
+      <div class="tab-content" id="tab-widgets"><div id="tn-widgets-settings"></div></div>
 
       <div class="setting-card settings-workdir">
         <div class="setting-card-title"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-folder"/></svg>Рабочая папка</div>
@@ -3726,6 +3744,7 @@ function refreshWaypoint(marker, options = {}) {
 let quickRenamePopup = null;
 
 function openQuickRename(marker) {
+  window.TnWidgets?.selectWp(marker);
   const popupId = `wp-rename-${safeNum(marker.wpData.num)}`;
   const value = escapeHtml(marker.wpData.name);
   if (quickRenamePopup && map.hasLayer(quickRenamePopup)) {
@@ -3862,6 +3881,7 @@ function updateWptTable() {
 
 function showWptPopup(marker) {
   activeWaypoint = marker;
+  window.TnWidgets?.selectWp(marker);
   document.getElementById('prop-name').value = marker.wpData.name;
   document.getElementById('prop-desc').value = marker.wpData.desc || '';
   document.getElementById('prop-color').value = marker.wpData.color;

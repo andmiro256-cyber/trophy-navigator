@@ -10,7 +10,7 @@ test('toolbar list actions, modal closes and tabs use keyboard controls', () => 
   assert.equal((html.match(/class="modal-close"[^>]+aria-label="Закрыть"/g) || []).length, 20);
   assert.equal((html.match(/<button type="button" class="tb-group-label"/g) || []).length, 3);
   assert.equal((html.match(/role="tablist"/g) || []).length, 2);
-  assert.equal((html.match(/role="tab" aria-selected=/g) || []).length, 6);
+  assert.equal((html.match(/role="tab" aria-selected=/g) || []).length, 7); // + «Виджеты» (0.9.30)
   assert.match(html, /id="search-clear" class="search-clear-btn"[^>]+aria-label="Очистить поиск"/);
 });
 
