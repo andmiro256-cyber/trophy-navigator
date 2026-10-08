@@ -16,6 +16,7 @@
 <script src="trophynav-3d.js"></script>
 <script src="tn-icons.js"></script>
 <script src="tn-widgets.js"></script>
+<script src="tn-track-analysis.js"></script>
 <script src="tn-layers.js"></script>
 <script src="tn-layer-order.js"></script>
 <script src="tn-server.js"></script>
@@ -1768,6 +1769,9 @@
           <button class="btn-secondary" onclick="reverseSelectedTrack()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-swap-horiz"/></svg>Развернуть</button>
           <button class="btn-secondary" onclick="continueSelectedTrack()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-add"/></svg>Продолжить</button>
         </div>
+        <div class="btn-row" style="margin-top:4px">
+          <button class="btn-primary" id="btn-track-analysis" onclick="closeModal('modal-tracks');window.TnTrackAnalysis?.open(selectedTrackId)" style="font-size:11px" title="Графики высоты, скорости и уклона, полная статистика, участки"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-gauge"/></svg>Анализ трека</button>
+        </div>
       </div>
       <!-- Плеер треков -->
       <div id="track-player-panel" style="background:var(--bg-interactive);border:1px solid var(--border-normal);border-radius:6px;padding:8px;margin-top:8px">
@@ -2808,6 +2812,13 @@ function undoLastAction() {
     restoreTrackGeometry(action.track, action.snapshot);
     updateTrackList();
     showToast('↩ Отменено: геометрия трека');
+  } else if (action.type === 'createTrack') {
+    // «Сохранить отдельно» из анализа трека (0.9.33)
+    if (!action.track) return;
+    removeTrackObject(action.track);
+    updateTrackList();
+    saveState();
+    showToast('↩ Отменено: участок отдельным треком');
   } else if (action.type === 'splitTrack') {
     const originalTrack = action.originalTrack;
     if (!originalTrack || !action.snapshot) return;
@@ -8144,6 +8155,7 @@ function selectTrackById(id) {
   document.getElementById('track-controls').style.display = 'block';
   trackPropsPreviewId = t.id;
   updateTrackList();
+  window.TnTrackAnalysis?.onSelect(id); // открытый анализ переходит на выбранный трек
 }
 
 function previewTrackProps() {
