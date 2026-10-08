@@ -144,9 +144,12 @@
   /**
    * Слить ответ сервера с локальным состоянием, только добавляя.
    * Локальные точки/треки/маршруты/GPX, наборы, настройки, вид карты и активный набор не меняются.
-   * Номера (id) добавленных объектов, совпавшие с локальными, заменяются свободными; ссылки КП→WP в
-   * добавленных маршрутах переводятся на итоговые id (точка, пропущенная из-за совпадения названия, —
-   * на локальную точку с этим названием).
+   * Номера (id) добавленных объектов, совпавшие с локальными, заменяются свободными.
+   * Ссылки КП→WP в добавленных маршрутах переводятся только через доказанное соответствие серверной точки
+   * из этого ответа и итоговой точки на устройстве: добавленная — её новый id; пропущенная по названию
+   * (или при снятых «Точках») — локальная точка с тем же названием. Всё неподтверждённое (точки нет в ответе,
+   * она без координат, id в ответе неоднозначен) — null: серверный id в локальном пространстве может
+   * совпасть с чужой точкой.
    * @returns {{ state, stats, added }} added — только добавленные объекты (для файлов в рабочей папке).
    */
   function mergeAddOnly(localState, remoteState, checks = {}, opts = {}) {
@@ -173,8 +176,15 @@
     const remoteCounters = remote.counters || {};
     const maxNum = (...values) => Math.max(0, ...values.filter(finite));
 
-    // Точки: server id → итоговый id на устройстве (для ссылок КП→WP)
+    // Точки: server id → итоговый id на устройстве (для ссылок КП→WP); null — неоднозначно
     const wpIdMap = new Map();
+    const proveWaypoint = (serverId, id) => {
+      if (!serverId) return;
+      if (!wpIdMap.has(serverId)) wpIdMap.set(serverId, id);
+      else if (wpIdMap.get(serverId) !== id) wpIdMap.set(serverId, null);
+    };
+    const localWpByKey = new Map();
+    list(local.waypoints).forEach(w => { const k = nameKey(w.name); if (!localWpByKey.has(k)) localWpByKey.set(k, w); });
     if (checks.waypoints) {
       const localByKey = new Map();
       state.waypoints.forEach(w => { const k = nameKey(w.name); if (!localByKey.has(k)) localByKey.set(k, w); });
@@ -209,7 +219,7 @@
       list(remote.waypoints).forEach(sw => {
         const key = nameKey(sw.name);
         const serverId = sw.id == null ? '' : String(sw.id);
-        const mapId = id => { if (serverId && !wpIdMap.has(serverId)) wpIdMap.set(serverId, id); };
+        const mapId = id => proveWaypoint(serverId, id);
         if (seen.has(key)) { stats.waypoints.duplicates++; mapId(seen.get(key)); return; }
         if (localByKey.has(key)) {
           stats.waypoints.skipped++;
@@ -228,6 +238,13 @@
       });
       counters.waypointSetIdCounter = Math.max(nextSetId, maxNum(counters.waypointSetIdCounter));
       counters.wpCounter = maxNum(counters.wpCounter, remoteCounters.wpCounter) || counters.wpCounter;
+    } else {
+      // «Точки» сняты: ссылка — только на уже имеющуюся точку с названием серверной точки из ответа
+      list(remote.waypoints).forEach(sw => {
+        const serverId = sw.id == null ? '' : String(sw.id);
+        const same = localWpByKey.get(nameKey(sw.name));
+        proveWaypoint(serverId, same ? same.id : null);
+      });
     }
 
     // Треки и маршруты: id — целые; совпавший с локальным получает следующий свободный
@@ -258,7 +275,7 @@
     if (checks.routes) {
       addLines('routes', 'routeIdCounter', lineValid, r => {
         if (!Array.isArray(r.pointWaypointIds)) return r;
-        return { ...r, pointWaypointIds: r.pointWaypointIds.map(v => (v != null && wpIdMap.has(String(v)) ? wpIdMap.get(String(v)) : (v ?? null))) };
+        return { ...r, pointWaypointIds: r.pointWaypointIds.map(v => (v != null && v !== '' && wpIdMap.has(String(v)) ? (wpIdMap.get(String(v)) ?? null) : null)) };
       });
     }
 

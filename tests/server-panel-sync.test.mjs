@@ -324,6 +324,59 @@ test('addMissingByName повторяет SyncMerge.addMissingByName (Android)',
   assert.deepEqual([r.added, r.skipped, r.duplicates], [2, 2, 1]);
 });
 
+// ─── ссылки КП→WP: только доказанное соответствие (ревью 2576) ───
+const tim = () => ({
+  local: { waypointSets: [{ id: 1, name: 'Основной' }], activeSetId: 1, counters: {},
+    waypoints: [{ id: 'wp-1', name: 'Локальная точка', lat: 60, lng: 30, setId: 1 }], tracks: [], routes: [], gpxFiles: [] },
+  remote: { waypointSets: [{ id: 1, name: 'Основной' }],
+    waypoints: [{ id: 'wp-1', name: 'Серверная точка', lat: 61, lng: 31, setId: 1 }],
+    routes: [{ id: 1, name: 'Импорт', points: [{ lat: 61, lng: 31 }, { lat: 62, lng: 32 }], pointWaypointIds: ['wp-1', null] }] },
+});
+const linkTarget = (state, route) => route.pointWaypointIds.map(id => (id == null ? null : state.waypoints.find(p => p.id === id)?.name ?? `?${id}`));
+
+test('КП→WP: маршруты без точек, id сервера совпал с чужой локальной точкой — ссылка не на «Локальная точка»', needDom, () => {
+  const { w } = makeDom();
+  const { local, remote } = tim();
+  const { state } = plain(w.TNServer.mergeAddOnly(local, remote, { routes: true, waypoints: false }));
+  const route = state.routes.find(r => r.name === 'Импорт');
+  assert.deepEqual(route.pointWaypointIds, [null, null], 'неподтверждённая ссылка обнулена');
+  assert.deepEqual(state.waypoints, local.waypoints, 'точки не добавлялись');
+  // при снятых «Точках» допустима связь с уже имеющейся точкой того же названия
+  const r2 = tim();
+  r2.local.waypoints.push({ id: 'wp-7', name: 'серверная ТОЧКА ', lat: 61, lng: 31, setId: 1 });
+  const linked = plain(w.TNServer.mergeAddOnly(r2.local, r2.remote, { routes: true, waypoints: false })).state;
+  assert.deepEqual(linkTarget(linked, linked.routes[0]), ['серверная ТОЧКА ', null]);
+});
+
+test('КП→WP: серверной точки нет в ответе или она без координат — ссылка null (и при включённых «Точках»)', needDom, () => {
+  const { w } = makeDom();
+  for (const checks of [{ routes: true, waypoints: true }, { routes: true, waypoints: false }]) {
+    const missing = tim();
+    missing.remote.waypoints = [];
+    const a = plain(w.TNServer.mergeAddOnly(missing.local, missing.remote, checks)).state;
+    assert.deepEqual(a.routes[0].pointWaypointIds, [null, null], `нет в ответе: ${JSON.stringify(checks)}`);
+    const invalid = tim();
+    invalid.remote.waypoints[0].lat = null;
+    const b = plain(w.TNServer.mergeAddOnly(invalid.local, invalid.remote, checks)).state;
+    assert.deepEqual(b.routes[0].pointWaypointIds, [null, null], `без координат: ${JSON.stringify(checks)}`);
+    assert.ok(!b.waypoints.some(p => p.name === 'Серверная точка'));
+  }
+  // один server id у двух разных точек — неоднозначно
+  const amb = tim();
+  amb.remote.waypoints.push({ id: 'wp-1', name: 'Другая', lat: 63, lng: 33, setId: 1 });
+  const c = plain(w.TNServer.mergeAddOnly(amb.local, amb.remote, { routes: true, waypoints: true }, { makeWaypointId: (() => { let n = 0; return () => `wp-n${++n}`; })() })).state;
+  assert.deepEqual(c.routes[0].pointWaypointIds, [null, null]);
+});
+
+test('КП→WP контроль: «Точки» включены — ссылка на добавленную серверную точку с новым id', needDom, () => {
+  const { w } = makeDom();
+  const { local, remote } = tim();
+  const { state } = plain(w.TNServer.mergeAddOnly(local, remote, { routes: true, waypoints: true }, { makeWaypointId: () => 'wp-new' }));
+  assert.deepEqual(state.routes[0].pointWaypointIds, ['wp-new', null]);
+  assert.deepEqual(linkTarget(state, state.routes[0]), ['Серверная точка', null]);
+  assert.deepEqual(state.waypoints.find(p => p.id === 'wp-1'), local.waypoints[0], 'локальная wp-1 не тронута');
+});
+
 /** syncPull из index.html с заглушками: ответ сервера, collectState/applyState — память. */
 function runSyncPull(w, { localState, payload, silent = false, confirm = true }) {
   const out = { applied: null, toasts: [], saved: 0, files: null, status: [] };
