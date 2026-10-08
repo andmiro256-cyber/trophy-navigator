@@ -1,0 +1,13 @@
+# whisper.cpp (голосовой поиск, whisper-rs-sys) по умолчанию собирается с -march=native — под процессор
+# машины сборки. Приложение падало на HP (i7-4960X: AVX без AVX2/FMA) при загрузке модели (09.10).
+# Переносимый набор: AVX + F16C без AVX2/FMA/AVX-512 — процессоры x86-64 примерно с 2011 года.
+# На arm64 (macOS) эти флаги cmake игнорирует.
+[env]
+GGML_NATIVE = "OFF"
+GGML_AVX = "ON"
+GGML_F16C = "ON"
+GGML_AVX2 = "OFF"
+GGML_FMA = "OFF"
+GGML_BMI2 = "OFF"
+GGML_AVX512 = "OFF"
+GGML_AVX_VNNI = "OFF"
