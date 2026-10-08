@@ -319,6 +319,64 @@
     toast(message, 'warning');
   }
 
+  /**
+   * Векторная карта области слоем поверх другой карты (ui/tn-layers.js, «Слои поверх»): свой экземпляр
+   * моста в своём pane, не основная карта — state.activeLayer, тема/рельеф основы и откат на растр не
+   * трогаются. mode 'roads-labels' — стиль без фона, заливок и рельефа (Core.roadsLabelsStyle),
+   * poi — значки в этом режиме. Ошибки — в opts.onError (строка слоя показывает причину, нижние карты на месте).
+   */
+  const TnStackLayer = L.Layer.extend({
+    initialize(id, opts) {
+      this.mapId = id;
+      this.opts = opts || {};
+      this._gl = null;
+      this._token = 0;
+    },
+    onAdd(map) {
+      this._map = map;
+      this._build(++this._token);
+    },
+    onRemove(map) {
+      this._token++;
+      if (this._gl) {
+        try { map.removeLayer(this._gl); } catch (e) { console.warn('TrophyNav Maps (слой поверх): снятие', e); }
+        this._gl = null;
+      }
+    },
+    getAttribution() { return ATTRIBUTION; },
+    glMap() { return this._gl?.getMaplibreMap?.() || null; },
+    async _build(token) {
+      const fail = msg => { if (token === this._token) this.opts.onError?.(msg); };
+      try {
+        if (!hasWebGL()) throw new Error('нет WebGL');
+        await ensureLibs();
+        let style = await buildStyleFor(this.mapId, { theme: themeFor(this.mapId) });
+        if (this.opts.mode === 'roads-labels') style = Core.roadsLabelsStyle(style, { poi: !!this.opts.poi });
+        if (token !== this._token || !this._map) return;
+        const gl = L.maplibreGL({ style, interactive: false, pane: this.opts.pane || 'tilePane', attributionControl: false, padding: 0.05 });
+        this._gl = gl;
+        gl.addTo(this._map);
+        const mlMap = gl.getMaplibreMap();
+        if (!mlMap) throw new Error('WebGL недоступен');
+        mlMap.on('styleimagemissing', e => addTopoImage(mlMap, e.id));
+        mlMap.on('error', e => {
+          if (e?.error instanceof TnNoTile || e?.error?.name === 'TnNoTile') return;
+          console.warn('TrophyNav Maps (слой поверх):', e?.error?.message || e);
+        });
+        mlMap.getCanvas().addEventListener('webglcontextlost', ev => {
+          if (token !== this._token) return;
+          ev.preventDefault();
+          fail('видеокарта сбросила векторную карту (WebGL)');
+        }, { once: true });
+        if (typeof mlMap.once === 'function') mlMap.once('idle', () => { if (token === this._token) this.opts.onReady?.(); });
+      } catch (e) {
+        console.warn('TrophyNav Maps (слой поверх): не открылась', e);
+        fail(e?.message || String(e));
+      }
+    },
+  });
+  function makeStackLayer(id, opts) { return new TnStackLayer(id, opts); }
+
   /** Вызывается из makeBaseLayer(). null — карту показать нельзя (останется текущая). */
   function makeLayer(name) {
     const id = idOf(name);
@@ -869,6 +927,8 @@
 
   window.TrophyNavMaps = {
     isLayerName, labelFor, makeLayer, openWindow, showRegion, renderLayerSection, hasWebGL,
+    // слой поверх другой карты (ui/tn-layers.js)
+    makeStackLayer,
     // для 3D-вида (ui/trophynav-3d.js)
     activeId, regionAt, regionName, localEntry, refreshLocal, ensureLibs, buildStyleFor, addTopoImage,
     STYLE_BASE,
