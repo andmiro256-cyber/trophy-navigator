@@ -32,9 +32,15 @@ test('syncGl: сдвиг без throttle, перерисовка MapLibre в т�
 });
 
 test('холст точек и маршрутов карты — с запасом в пол-экрана', () => {
-  assert.match(html, /const map = L\.map\('map', \{[^}]*preferCanvas: true, renderer: L\.canvas\(\{ padding: 0\.5 \}\)/);
+  assert.match(html, /const map = L\.map\('map', \{[^}]*preferCanvas: true, renderer: L\.canvas\(\{ padding: TND_CANVAS_PADDING \}\)/);
+  // запас по бюджету ~8 Мп: ноутбук 1920×1080 — 0.5 не влезает, HP 3440×1440 — ~0.15, мелкое окно — 0.5
+  const f = vm.runInNewContext(`(w, h, d) => { const window = { innerWidth: w, innerHeight: h, devicePixelRatio: d }; return ${html.match(/const TND_CANVAS_PADDING = (\(\(\) => \{[\s\S]*?\}\)\(\));/)[1]}; }`);
+  assert.equal(f(1000, 700, 1), 0.5);
+  assert.ok(Math.abs(f(3440, 1360, 1) - 0.153) < 0.01, String(f(3440, 1360, 1)));
+  assert.equal(f(3840, 2160, 2), 0.1);
 });
 
 test('холсты отдельных pane (радиусы точек) — тоже с запасом в пол-экрана', () => {
-  assert.match(html, /map\._createRenderer = options => L\.canvas\(\{ padding: 0\.5, \.\.\.options \}\);/);
+  assert.match(html, /map\._createRenderer = options => L\.canvas\(\{ padding: TND_CANVAS_PADDING, \.\.\.options \}\);/);
+  assert.match(html, /const trackCanvasRenderer = L\.canvas\(\{ padding: TND_CANVAS_PADDING \}\);/);
 });
