@@ -15,6 +15,7 @@
 <script src="trophynav-3d.js"></script>
 <script src="tn-icons.js"></script>
 <script src="tn-widgets.js"></script>
+<script src="tn-server.js"></script>
 <style>
   /* Цвета, радиусы и шрифт — токены в theme.css (палитра Android). Здесь только var(--…). */
 
@@ -1317,7 +1318,7 @@
     <div class="search-results" id="search-results" style="position:absolute;top:100%;right:0;width:340px;margin-top:2px"></div>
   </div>
 
-  <button class="tb-btn tb-captioned server-btn desktop-overflow-tool" onclick="showToast('Сервер — в разработке')" title="Подключение к серверу"><span class="tb-icon"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-server"/></svg></span><span class="tb-text">Сервер</span></button>
+  <button class="tb-btn tb-captioned server-btn desktop-overflow-tool" onclick="openServerPanel()" title="Связь с сервером"><span class="tb-icon"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-server"/></svg><span class="server-state-dot unknown" id="server-state-dot"></span></span><span class="tb-text">Сервер</span></button>
   <button class="tb-btn" id="btn-toggle-work-objects" onclick="toggleAllWorkObjectsVisible()" title="Скрыть все рабочие объекты с карты" aria-label="Скрыть или показать рабочие объекты"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-eye"/></svg></button>
   <button class="tb-btn danger-btn" onclick="showClearConfirm()" title="Очистить рабочие данные с карты" aria-label="Очистить рабочие данные"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-delete"/></svg></button>
   <button class="tb-btn tb-captioned settings-btn settings-main-btn" onclick="openModal('modal-settings')" title="Настройки программы"><span class="tb-icon"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-settings"/></svg></span><span class="tb-text">Настройки</span></button>
@@ -1335,7 +1336,7 @@
   <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openModal('modal-offline');scanOfflineMaps()"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-download"/></svg> Офлайн-карты</button>
   <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openSyncModal()"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-cloud-sync"/></svg> Облачная синхронизация</button>
   <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();toggleLive()"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-signal"/></svg> Мониторинг участников</button>
-  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();showToast('Сервер — в разработке')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-server"/></svg> Подключение к серверу</button>
+  <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openServerPanel()"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-server"/></svg> Связь с сервером</button>
   <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openModal('modal-about')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-info"/></svg> О программе</button>
 </div>
 
