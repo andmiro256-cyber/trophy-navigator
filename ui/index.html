@@ -4925,16 +4925,28 @@ function updateBaseLayerStatusText() {
   setLayerStatusText(label);
 }
 
+/**
+ * Онлайн-подложку можно держать под офлайн-картой: офлайн-карты в EPSG3857, Яндекс (EPSG3395) — нет.
+ * За краем офлайн-файла тогда видна онлайн-карта (pane offlineTiles выше tilePane), а не пустой лист.
+ */
+function onlineBaseFitsOfflineMaps() {
+  return !yandexLayers.has(currentBaseLayerName);
+}
+
 function updateOnlineBaseForOfflineState() {
   const offlineActive = hasActiveOfflineMaps();
   if (offlineActive) {
     offlineBaseModeActive = true;
-    if (currentBaseLayer && map.hasLayer(currentBaseLayer)) {
+    const keepUnder = onlineBaseFitsOfflineMaps();
+    if (!keepUnder && currentBaseLayer && map.hasLayer(currentBaseLayer)) {
       map.removeLayer(currentBaseLayer);
     }
     if (currentCRS !== 'EPSG3857') {
       removeActiveOverlaysForCRSChange();
       switchCRS(false);
+    }
+    if (keepUnder && currentBaseLayer && !map.hasLayer(currentBaseLayer)) {
+      currentBaseLayer.addTo(map);
     }
   } else if (offlineBaseModeActive) {
     offlineBaseModeActive = false;
@@ -5415,6 +5427,8 @@ function migrateBaseLayerToCatalog() {
     if (currentBaseLayer && map.hasLayer(currentBaseLayer)) map.removeLayer(currentBaseLayer);
     currentBaseLayer = layer;
     currentBaseLayerName = target;
+    // онлайн-подложка под офлайн-картой остаётся видна за краем файла (кроме Яндекс 3395)
+    if (onlineBaseFitsOfflineMaps() && currentCRS === 'EPSG3857') layer.addTo(map);
     updateBaseLayerStatusText();
     window.TnLayers?.refresh();
     return true;
@@ -10761,6 +10775,7 @@ async function scanOfflineMaps() {
       emptyEl.style.display = 'block';
       updateOfflineLayersList();
       updateOnlineBaseForOfflineState();
+      restoreOfflineMapsFromState();
       return;
     }
     emptyEl.style.display = 'none';
@@ -10820,6 +10835,7 @@ async function scanOfflineMaps() {
     }
     updateOfflineLayersList();
     updateOnlineBaseForOfflineState();
+    restoreOfflineMapsFromState();
   } catch (e) {
     console.warn('scanOfflineMaps error:', e);
     document.getElementById('offline-maps-empty').style.display = 'block';
@@ -10829,6 +10845,39 @@ async function scanOfflineMaps() {
 /** Подпись кнопки «Вкл/Выкл» офлайн-карты: включённая — со значком check. */
 function offlineMapToggleLabel(active) {
   return active ? `${tnIcon('check', 'tn-ico-t')}Вкл` : 'Выкл';
+}
+
+// Включённые офлайн-карты из сессии (map.offline): ждут первого scanOfflineMaps, затем включаются тихо.
+let pendingOfflineMapRestore = null;
+let offlineMapsRestoreConsumed = false;
+
+/** Пути включённых офлайн-карт в порядке включения (нижняя первой); до восстановления — пути из сессии. */
+function getOfflineMapPathsForState() {
+  if (pendingOfflineMapRestore) return [...pendingOfflineMapRestore];
+  return getActiveOfflineMapEntries()
+    .sort((a, b) => L.stamp(a.layer) - L.stamp(b.layer))
+    .map(entry => entry._path)
+    .filter(Boolean);
+}
+
+/** Один раз после первого сканирования: включить карты из сессии; отсутствующий файл тихо пропускается. */
+async function restoreOfflineMapsFromState() {
+  if (offlineMapsRestoreConsumed) return;
+  offlineMapsRestoreConsumed = true;
+  const paths = pendingOfflineMapRestore || [];
+  try {
+    for (const raw of paths) {
+      const key = normalizeOfflineMapPath(raw);
+      const entry = offlineMaps[key];
+      if (!entry || entry.missing || entry._loading || isOfflineMapActive(entry)) continue;
+      const btn = [...document.querySelectorAll('.offline-map-card [data-offline-key]')]
+        .find(node => node.dataset.offlineKey === key) || null;
+      try { await toggleOfflineMap(key, btn, { quiet: true }); }
+      catch (e) { console.warn('restore offline map failed:', key, e); }
+    }
+  } finally {
+    pendingOfflineMapRestore = null;
+  }
 }
 
 function isOfflineMapActive(entry) {
@@ -10947,9 +10996,10 @@ async function makeOfflineStackLayer(path, opts = {}) {
   return createOfflineTileLayer(entry, info, opts);
 }
 
-async function toggleOfflineMap(fname, btn) {
+async function toggleOfflineMap(fname, btn, opts = {}) {
   const entry = offlineMaps[fname];
   if (!entry || entry._loading) return;
+  const quiet = opts.quiet === true;  // восстановление при запуске: без тостов и без перехода к границам файла
 
   if (isOfflineMapActive(entry) || entry.active) {
     deactivateOfflineMap(fname);
@@ -10958,7 +11008,7 @@ async function toggleOfflineMap(fname, btn) {
   }
 
   if (!isTauriRuntime()) {
-    showToast('Офлайн карты доступны только в desktop-приложении');
+    if (!quiet) showToast('Офлайн карты доступны только в desktop-приложении');
     return;
   }
 
@@ -10967,7 +11017,7 @@ async function toggleOfflineMap(fname, btn) {
   entry._cancelActivation = false;
   if (btn) btn.disabled = true;
   try {
-    showToast('Загрузка карты...');
+    if (!quiet) showToast('Загрузка карты...');
     const info = await tauriInvoke('inspect_offline_map', { path: entry._path });
     if (entry._cancelActivation) {
       entry.active = false;
@@ -10991,12 +11041,14 @@ async function toggleOfflineMap(fname, btn) {
 
     updateOfflineMapCardState(fname);
     updateOnlineBaseForOfflineState();
-    showToast(`✅ Карта ${entry.name || getFileNameFromPath(entry._path)} подключена (z${minZ}-${maxZ})`);
-    fitOfflineMapBounds(info.bounds, maxZ);
+    if (!quiet) {
+      showToast(`✅ Карта ${entry.name || getFileNameFromPath(entry._path)} подключена (z${minZ}-${maxZ})`);
+      fitOfflineMapBounds(info.bounds, maxZ);
+    }
     updateOfflineLayersList();
   } catch (e) {
     console.error('toggleOfflineMap error:', e);
-    showToast('Ошибка загрузки карты: ' + e.message);
+    if (!quiet) showToast('Ошибка загрузки карты: ' + e.message);
   } finally {
     entry._loading = false;
     entry._cancelActivation = false;
@@ -11221,6 +11273,8 @@ function collectState(options = {}) {
       center: { lat: map.getCenter().lat, lng: map.getCenter().lng },
       zoom: map.getZoom(),
       layer: currentBaseLayerName,
+      // Включённые офлайн-карты (пути) — аддитивное поле; старые версии его не читают
+      offline: getOfflineMapPathsForState(),
       // Слои поверх (ui/tn-layers.js) — аддитивное поле; старые версии его не читают
       ...(window.TnLayers ? { stack: window.TnLayers.serialize() } : {})
     },
@@ -12163,6 +12217,10 @@ function applyState(state) {
       setLayer(state.map.layer);
     }
     if (state.map.stack) window.TnLayers?.restore(state.map.stack);
+    // офлайн-карты включаются после scanOfflineMaps (список файлов ещё не прочитан) — только при запуске
+    if (!offlineMapsRestoreConsumed && Array.isArray(state.map.offline)) {
+      pendingOfflineMapRestore = state.map.offline.filter(path => typeof path === 'string' && path);
+    }
     if (state.map.center && state.map.zoom != null) {
       map.setView([state.map.center.lat, state.map.center.lng], state.map.zoom);
     }
