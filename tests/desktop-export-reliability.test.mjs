@@ -66,7 +66,8 @@ function makeExportContext(save) {
     }
   });
 
-  let exportSource = sourceBetween('let exportSaveInFlight = false;', 'function downloadTextFallback');
+  // 09.10: папки окон по типу файла (tndDialogDir) — объявлены у openFile, нужны getExportDefaultPath
+  let exportSource = sourceBetween('const TND_TYPE_DIR', 'function openFile') + sourceBetween('let exportSaveInFlight = false;', 'function downloadTextFallback');
   exportSource = exportSource
     .replace('const EXPORT_DIALOG_TIMEOUT_MS = 30000;', 'const EXPORT_DIALOG_TIMEOUT_MS = 20;')
     .replace('const EXPORT_DIALOG_HARD_TIMEOUT_MS = 90000;', 'const EXPORT_DIALOG_HARD_TIMEOUT_MS = 60;')

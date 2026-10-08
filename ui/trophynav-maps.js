@@ -116,6 +116,21 @@
 
   // ─── WebGL и библиотеки ───
   let webglChecked = null;
+  /**
+   * Мост MapLibre ↔ Leaflet рисует векторную основу в своём кадре: jumpTo только просит перерисовку
+   * (следующий requestAnimationFrame), а сдвиг ещё и с throttle 32 мс. Точки, треки и маршруты Leaflet
+   * двигаются сразу — при зуме и перетаскивании они «пляшут» относительно основы (Андрей 09.10).
+   * Здесь: без throttle и синхронная перерисовка MapLibre в том же кадре, что и слои Leaflet.
+   */
+  function syncGl(gl) {
+    const redraw = () => { const m = gl._glMap; if (m && typeof m.redraw === 'function') m.redraw(); };
+    const upd = gl._update, pinch = gl._pinchZoom;
+    gl._update = function (e) { upd.call(this, e); if (!this._zooming) redraw(); };
+    gl._pinchZoom = function (e) { pinch.call(this, e); redraw(); };
+    gl._throttledUpdate = gl._update; // getEvents() берёт его на addTo
+    return gl;
+  }
+
   function hasWebGL() {
     if (webglChecked !== null) return webglChecked;
     try {
@@ -251,6 +266,7 @@
         // padding 0.05: холст больше окна на 5% с каждой стороны (было 10%) — меньше пикселей на кадр
         const gl = L.maplibreGL({ style, interactive: false, pane: 'tilePane', attributionControl: false, padding: 0.05 });
         this._gl = gl;
+        syncGl(gl);
         gl.addTo(this._map);
         const mlMap = gl.getMaplibreMap();
         if (!mlMap) throw new Error('WebGL недоступен');
@@ -367,6 +383,7 @@
         if (token !== this._token || !this._map) return;
         const gl = L.maplibreGL({ style, interactive: false, pane: this.opts.pane || 'tilePane', attributionControl: false, padding: 0.05 });
         this._gl = gl;
+        syncGl(gl);
         gl.addTo(this._map);
         const mlMap = gl.getMaplibreMap();
         if (!mlMap) throw new Error('WebGL недоступен');
@@ -1102,6 +1119,7 @@
   }
 
   window.TrophyNavMaps = {
+    _syncGl: syncGl,
     isLayerName, labelFor, makeLayer, openWindow, showRegion, renderLayerSection, hasWebGL,
     // слой поверх другой карты (ui/tn-layers.js)
     makeStackLayer,
