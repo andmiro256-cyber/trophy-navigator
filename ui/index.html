@@ -17,6 +17,7 @@
 <script src="tn-icons.js"></script>
 <script src="tn-widgets.js"></script>
 <script src="tn-layers.js"></script>
+<script src="tn-layer-order.js"></script>
 <script src="tn-server.js"></script>
 <style>
   /* Цвета, радиусы и шрифт — токены в theme.css (палитра Android). Здесь только var(--…). */
@@ -541,6 +542,8 @@
 
   /* ─── СЛОИ ─── */
   .layer-section-title { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px; padding: 10px 0 6px; }
+  /* «Мои карты» без своих карт — одна компактная строка с «+ Добавить» */
+  .layer-section-title.custom-layers-empty { padding: 6px 0 2px; }
   .base-layer { min-height: 38px; padding: 7px 10px; display: flex; align-items: center; gap: 10px; cursor: pointer; border-radius: var(--radius-s); font-size: var(--fs-m); transition: background 0.15s; }
   .base-layer::before { content: ''; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--text-secondary); flex: none; box-sizing: border-box; }
   .base-layer:hover { background: var(--row-hover); }
@@ -2439,7 +2442,7 @@
       <!-- Слои поверх основной карты: спутник с яркостью, TrophyNav Maps «дороги и подписи», наборы (ui/tn-layers.js) -->
       <div id="tn-stack-section"></div>
       <!-- Пользовательские карты (всегда доступны) -->
-      <div class="layer-section-title" style="display:flex;justify-content:space-between;align-items:center">
+      <div class="layer-section-title" id="custom-layers-title" style="display:flex;justify-content:space-between;align-items:center">
         <span>Мои карты</span>
         <span style="font-size:12px;cursor:pointer;color:var(--accent)" onclick="showAddCustomLayer()">+ Добавить</span>
       </div>
@@ -4660,6 +4663,62 @@ async function cacheTileUrl(url, layerName) {
   } catch {}
 }
 
+// ─── Есть ли тайл на сервере (img.onerror статуса не знает) ───
+/**
+ * 'ok' — тайл есть; 'missing' — сервер ответил, но тайла нет (404/410/204 или пустой ответ): нет покрытия;
+ * 'error' — сеть, CORS, 5xx, таймаут. Один запрос; nakarte и прокси trophynav.ru отдают CORS и на 404.
+ */
+async function probeTileStatus(url, timeoutMs = 6000) {
+  if (!/^https?:\/\//i.test(String(url || ''))) return 'error';
+  const MISSING = [404, 410, 204];
+  const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+  try {
+    const resp = await fetch(url, { cache: 'no-store', signal: ctrl?.signal });
+    if (MISSING.includes(resp.status)) return 'missing';
+    if (!resp.ok) return 'error';
+    const blob = await resp.blob();
+    return blob && blob.size > 0 ? 'ok' : 'missing';
+  } catch {
+    // CORS/сеть в браузере — в приложении тот же запрос через Rust (ureq: «… status code 404»)
+    if (typeof isTauriRuntime === 'function' && isTauriRuntime()) {
+      try {
+        const bytes = await tauriInvoke('fetch_tile_bytes', { url });
+        return bytes && bytes.length ? 'ok' : 'missing';
+      } catch (e) {
+        return /\b(404|410|204)\b/.test(String(e?.message || e)) ? 'missing' : 'error';
+      }
+    }
+    return 'error';
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+// Семейство карт одного источника с разным покрытием: где нет одной, часто есть соседняя
+const TILE_COVERAGE_FAMILY = ['ГГЦ 250м', 'ГГЦ 500м', 'ГГЦ 1км', 'ГГЦ 2км', 'Генштаб 250м'];
+/**
+ * Карты семейства ГГЦ/Генштаб (кроме name), у которых есть тайл под точкой — по одному запросу на карту.
+ * null — name не из семейства или проверить не удалось (сеть); [] — проверено, нигде нет.
+ */
+async function coverageAlternatives(name, lat, lng, zoom) {
+  const own = new Set(hiddenAliases(name));
+  const family = TILE_COVERAGE_FAMILY.filter(n => hiddenAliases(n).some(a => own.has(a)));
+  if (!family.length || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const candidates = TILE_COVERAGE_FAMILY.filter(n => !family.includes(n)).map(resolveBaseLayerName);
+  const results = await Promise.all(candidates.map(label => {
+    const z = Math.max(0, Math.min(Math.round(zoom || 10), getLayerAvailableMaxZoom(label)));
+    const n = 2 ** z;
+    const x = Math.floor((lng + 180) / 360 * n);
+    const r = lat * Math.PI / 180;
+    const y = Math.floor((1 - Math.asinh(Math.tan(r)) / Math.PI) / 2 * n);
+    const url = getTileUrl(label, Math.max(0, Math.min(n - 1, x)), Math.max(0, Math.min(n - 1, y)), z);
+    return url ? probeTileStatus(url, 5000) : Promise.resolve('error');
+  }));
+  if (results.every(r => r === 'error')) return null;
+  return candidates.filter((_, i) => results[i] === 'ok').map(layerDisplayName);
+}
+
 // ─── Cached TileLayer ───
 const CachedTileLayer = L.TileLayer.extend({
   createTile: function(coords, done) {
@@ -4696,7 +4755,8 @@ const CachedTileLayer = L.TileLayer.extend({
         objectUrl = null;
       }
       tile.onload = () => finish(null);
-      tile.onerror = () => finish(new Error('tile'));
+      // url — для «Слоёв поверх»: по нему одним запросом отличают «нет покрытия» (404) от сети (probeTileStatus)
+      tile.onerror = () => { const err = new Error('tile'); err.url = url; finish(err); };
       tile.src = url;
     };
 
@@ -5167,6 +5227,10 @@ function baseLayerRowHtml(row, premium, isHidden) {
 }
 
 function renderBaseLayerSection(container, rows, premium, hidden) {
+  // Свой порядок карт (перетаскивание, ui/tn-layer-order.js) — внутри групп между подзаголовками
+  const section = premium ? 'premium' : 'free';
+  const order = window.TnLayerOrder;
+  if (order) rows = order.apply(section, rows, hiddenAliases);
   const visible = rows.filter(r => r.title || showHiddenLayersMode || !isLayerHidden(r.id, hidden));
   // подзаголовок без карт под ним не показываем
   const list = visible.filter((r, i) => !r.title || (visible[i + 1] && !visible[i + 1].title));
@@ -5184,13 +5248,17 @@ function renderBaseLayerSection(container, rows, premium, hidden) {
     const div = document.createElement('div');
     div.className = 'base-layer' + (premium ? ' premium-layer' : '') + (isHidden ? ' layer-hidden' : '') + (r.label === currentBaseLayerName ? ' active' : '');
     div.dataset.layer = r.label;
+    div.dataset.orderKey = r.id;
     div.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
     div.innerHTML = baseLayerRowHtml(r, premium, isHidden);
     container.appendChild(div);
   });
+  if (order) { order.bind(container, section, buildLayerUI); order.appendReset(container, section); }
 }
 
 function buildLayerUI() {
+  // Мышь нажата на строке списка — не пересоздавать строки под ней (WebKit съест click); после отпускания
+  if (window.TnLayerOrder?.whenIdle(buildLayerUI)) return;
   const hidden = getHiddenLayers();
   const catalogBase = tileCatalog?.base || [];
   const eyeBtn = document.getElementById('btn-show-hidden-layers');
@@ -13606,17 +13674,23 @@ function deleteCustomLayer(id) {
 function renderCustomLayers() {
   const el = document.getElementById('custom-layers-list');
   if (!el) return;
+  if (window.TnLayerOrder?.whenIdle(renderCustomLayers)) return;
+  // Своих карт нет — раздел в одну строку «Мои карты · + Добавить», без пояснения
+  document.getElementById('custom-layers-title')?.classList.toggle('custom-layers-empty', customLayers.length === 0);
   if (customLayers.length === 0) {
-    el.innerHTML = '<div style="font-size:11px;color:var(--text-muted);padding:4px 10px;margin-bottom:4px">Нет добавленных карт. Нажмите «+ Добавить»</div>';
+    el.innerHTML = '';
     return;
   }
-  el.innerHTML = customLayers.map(l => `
-    <div class="base-layer" data-layer="custom:${safeNum(l.id)}" onclick="setCustomLayer(${safeNum(l.id)}, this)" style="position:relative">
+  const order = window.TnLayerOrder;
+  const list = order ? order.apply('custom', customLayers.map(l => ({ id: String(l.id), l }))).map(r => r.l) : customLayers;
+  el.innerHTML = list.map(l => `
+    <div class="base-layer" data-layer="custom:${safeNum(l.id)}" data-order-key="${safeNum(l.id)}" onclick="setCustomLayer(${safeNum(l.id)}, this)" style="position:relative">
       ${tnIcon('map', 'tn-ico-t tn-ico-m')}${escapeHtml(l.name)}
       <span style="margin-left:auto;font-size:11px;color:var(--text-muted)">${l.tms ? 'TMS' : 'XYZ'} z${escapeHtml(l.maxZoom)}</span>
       <button type="button" class="tn-icon-btn tn-icon-btn-s danger" onclick="event.stopPropagation();deleteCustomLayer(${safeNum(l.id)})" title="Удалить карту" aria-label="Удалить карту">${tnIcon('delete')}</button>
     </div>
   `).join('');
+  if (order) { order.bind(el, 'custom', renderCustomLayers); order.appendReset(el, 'custom'); }
 }
 
 function setCustomLayer(id, el) {
