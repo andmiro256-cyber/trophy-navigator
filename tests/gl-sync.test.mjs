@@ -34,3 +34,7 @@ test('syncGl: сдвиг без throttle, перерисовка MapLibre в т�
 test('холст точек и маршрутов карты — с запасом в пол-экрана', () => {
   assert.match(html, /const map = L\.map\('map', \{[^}]*preferCanvas: true, renderer: L\.canvas\(\{ padding: 0\.5 \}\)/);
 });
+
+test('холсты отдельных pane (радиусы точек) — тоже с запасом в пол-экрана', () => {
+  assert.match(html, /map\._createRenderer = options => L\.canvas\(\{ padding: 0\.5, \.\.\.options \}\);/);
+});

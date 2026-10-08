@@ -2621,6 +2621,9 @@ const formatZoomLevel = z => String(Math.round(Number(z) || 0));
 // renderer: холст точек/маршрутов с запасом в пол-экрана (по умолчанию 10%) — при плавном отдалении
 // колесом холст сжимается до зума-конца, и с запасом 10% линии маршрута «пропадали» по краям (Андрей 09.10)
 const map = L.map('map', { zoomControl: true, attributionControl: false, maxZoom: 22, preferCanvas: true, renderer: L.canvas({ padding: 0.5 }), ...TND_MAP_ZOOM_OPTIONS }).setView([55.75, 37.62], 10);
+// Холсты отдельных pane (радиусы точек — waypointRadius, точки маршрута по дорогам — markerPane) Leaflet
+// создаёт сам через _createRenderer с запасом 10% — радиусы точек тоже «терялись» при отдалении (Андрей 09.10)
+map._createRenderer = options => L.canvas({ padding: 0.5, ...options });
 const trackCanvasRenderer = L.canvas({ padding: 0.5 });
 const trackPointCanvasRenderer = L.canvas({ padding: 0.5, tolerance: 8 });
 function createTrackPolylineLayer(points, options = {}) {
