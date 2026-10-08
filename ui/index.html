@@ -2618,14 +2618,21 @@ let currentCRS = 'EPSG3857';
 const TND_MAP_ZOOM_OPTIONS = { zoomSnap: 0, zoomDelta: 0.5, scrollWheelZoom: false };
 /** Зум для подписей: дробный уровень показываем целым. */
 const formatZoomLevel = z => String(Math.round(Number(z) || 0));
-// renderer: холст точек/маршрутов с запасом в пол-экрана (по умолчанию 10%) — при плавном отдалении
-// колесом холст сжимается до зума-конца, и с запасом 10% линии маршрута «пропадали» по краям (Андрей 09.10)
-const map = L.map('map', { zoomControl: true, attributionControl: false, maxZoom: 22, preferCanvas: true, renderer: L.canvas({ padding: 0.5 }), ...TND_MAP_ZOOM_OPTIONS }).setView([55.75, 37.62], 10);
+// Запас холстов точек/маршрутов/треков вокруг окна: при плавном отдалении колесом холст сжимается до конца
+// жеста, и с запасом 10% линии и радиусы «пропадали» по краям (Андрей 09.10). Но холст = окно·(1+2·запас)²:
+// на HP 3440×1440 запас 0.5 давал 6880×2700 px на КАЖДЫЙ холст, и WebKitGTK переставал их рисовать —
+// маршрут из файла был в списке, а линии не было. Запас — сколько влезает в ~8 Мп, от 0.1 до 0.5.
+const TND_CANVAS_PADDING = (() => {
+  const dpr = window.devicePixelRatio || 1;
+  const px = Math.max(1, (window.innerWidth || 1280) * (window.innerHeight || 800) * dpr * dpr);
+  return Math.max(0.1, Math.min(0.5, (Math.sqrt(8e6 / px) - 1) / 2));
+})();
+const map = L.map('map', { zoomControl: true, attributionControl: false, maxZoom: 22, preferCanvas: true, renderer: L.canvas({ padding: TND_CANVAS_PADDING }), ...TND_MAP_ZOOM_OPTIONS }).setView([55.75, 37.62], 10);
 // Холсты отдельных pane (радиусы точек — waypointRadius, точки маршрута по дорогам — markerPane) Leaflet
-// создаёт сам через _createRenderer с запасом 10% — радиусы точек тоже «терялись» при отдалении (Андрей 09.10)
-map._createRenderer = options => L.canvas({ padding: 0.5, ...options });
-const trackCanvasRenderer = L.canvas({ padding: 0.5 });
-const trackPointCanvasRenderer = L.canvas({ padding: 0.5, tolerance: 8 });
+// создаёт сам через _createRenderer с запасом 10% — с тем же запасом, что и остальные
+map._createRenderer = options => L.canvas({ padding: TND_CANVAS_PADDING, ...options });
+const trackCanvasRenderer = L.canvas({ padding: TND_CANVAS_PADDING });
+const trackPointCanvasRenderer = L.canvas({ padding: TND_CANVAS_PADDING, tolerance: 8 });
 function createTrackPolylineLayer(points, options = {}) {
   return L.polyline(points, {
     color: options.color || '#4adf7a',  // theme-check: data
