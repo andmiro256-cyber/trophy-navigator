@@ -15002,15 +15002,49 @@ document.getElementById('search-input').addEventListener('keydown', function(e) 
   if (e.key === 'Escape') { toggleSearch(); e.stopPropagation(); }
 });
 
+// Геокодер: Photon (komoot, данные OSM) — основной: Nominatim отвечает 403 «Access denied» на запросы
+// из российских сетей (проверено 08.10.2026 с домашнего HP), и поиск молча ничего не находил.
+// Photon ранжирует ближе к центру карты; Nominatim — запасной. Результат: [{lat, lon, display_name}].
+const GEOCODE_TIMEOUT_MS = 10000;
+function geocodeFetch(url) {
+  const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), GEOCODE_TIMEOUT_MS) : 0;
+  return fetch(url, ctl ? { signal: ctl.signal } : {}).finally(() => clearTimeout(timer));
+}
+function photonDisplayName(p) {
+  const parts = [p.name, p.city !== p.name ? p.city : null, p.county, p.state, p.country].filter(Boolean);
+  return [...new Set(parts)].join(', ');
+}
+async function geocode(query, limit = 5) {
+  const errors = [];
+  try {
+    const c = typeof map !== 'undefined' && map?.getCenter ? map.getCenter() : null;
+    const bias = c ? `&lat=${c.lat.toFixed(4)}&lon=${c.lng.toFixed(4)}` : '';
+    const resp = await geocodeFetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=${limit}${bias}`);
+    if (!resp.ok) throw new Error(`Photon ${resp.status}`);
+    const data = await resp.json();
+    return (data.features || []).filter(f => f?.geometry?.coordinates?.length === 2 && f.properties?.name).map(f => ({
+      lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], display_name: photonDisplayName(f.properties)
+    }));
+  } catch (e) { errors.push(String(e?.message || e)); }
+  try {
+    const resp = await geocodeFetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=${limit}&accept-language=ru`);
+    if (!resp.ok) throw new Error(`Nominatim ${resp.status}`);
+    const data = await resp.json();
+    if (Array.isArray(data)) return data;
+    throw new Error('Nominatim: неожиданный ответ');
+  } catch (e) { errors.push(String(e?.message || e)); }
+  const err = new Error(errors.join('; '));
+  err.geocodeFailed = true;
+  throw err;
+}
+
 async function nominatimSearch(query) {
   const resultsEl = document.getElementById('search-results');
   resultsEl.innerHTML = '<div style="padding:10px 12px;color:var(--text-muted);font-size:12px">Поиск...</div>';
   resultsEl.classList.add('has-results');
   try {
-    const resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&accept-language=ru`, {
-      headers: { 'User-Agent': 'TrophyNavigator/0.6' }
-    });
-    const data = await resp.json();
+    const data = await geocode(query, 5);
     if (!data.length) {
       resultsEl.innerHTML = '<div style="padding:10px 12px;color:var(--text-muted);font-size:12px">Ничего не найдено</div>';
       return;
@@ -15033,7 +15067,8 @@ async function nominatimSearch(query) {
       </div>`;
     }).join('');
   } catch (err) {
-    resultsEl.innerHTML = '<div class="status-err" style="padding:10px 12px;font-size:12px">Ошибка поиска</div>';
+    console.warn('search failed:', err);
+    resultsEl.innerHTML = '<div class="status-err" style="padding:10px 12px;font-size:12px">Поиск недоступен: нет связи с сервисом поиска. Проверьте интернет.</div>';
   }
 }
 
@@ -15221,10 +15256,7 @@ async function resolveEndpoint(inputId, currentLatLng) {
   const m = val.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
   if (m) return L.latLng(parseFloat(m[1]), parseFloat(m[2]));
   try {
-    const resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=1&accept-language=ru`, {
-      headers: { 'User-Agent': 'TrophyNavigator/0.6' }
-    });
-    const data = await resp.json();
+    const data = await geocode(val, 1);
     if (data.length) {
       document.getElementById(inputId).value = data[0].display_name.split(',')[0] + ' (' + parseFloat(data[0].lat).toFixed(4) + ', ' + parseFloat(data[0].lon).toFixed(4) + ')';
       return L.latLng(parseFloat(data[0].lat), parseFloat(data[0].lon));
