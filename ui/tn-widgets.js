@@ -574,8 +574,8 @@
     st.id = 'tn-widgets-css';
     st.textContent = `
       .tnw-slot { gap: 8px; }
-      .tnw-slot .setting-label { flex: 1 1 auto; }
-      .tnw-slot .setting-control select { width: 300px; max-width: 100%; }
+      .tnw-slot .setting-label { flex: 1 1 auto; white-space: nowrap; }
+      .tnw-slot .setting-control select { width: 290px; max-width: 100%; }
       .tnw-handle { display: inline-flex; align-items: center; color: var(--text-muted); cursor: grab; touch-action: none; padding: 4px 0; }
       .tnw-dragging { outline: 2px solid var(--primary); outline-offset: -2px; }
       .tnw-dragging .tnw-handle { cursor: grabbing; }
