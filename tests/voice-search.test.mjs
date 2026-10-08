@@ -80,3 +80,25 @@ test('голос: распознанная фраза ставит в строк
   await T._applyPhrase('Поехали в Нижнеудинск');
   assert.equal(input.value, 'Нижнеудинск', 'нет на карте — очищенная фраза для онлайн-поиска');
 });
+
+test('голос: после распознавания карта сразу переходит к первому результату', async () => {
+  const T = boot({ ryazan: RYAZAN });
+  const g = T.__ctx;
+  const input = { value: '', dispatchEvent() {} };
+  const item = { dataset: { lat: '55.1783', lon: '40.1051', name: 'Ушмор' } };
+  const went = [];
+  g.document.getElementById = id => (id === 'search-input' ? input : { style: {} });
+  g.document.querySelector = sel => (sel === '#search-results .search-result-item' ? item : null);
+  g.showToast = () => {};
+  g.nominatimSearch = async q => { g.searched = q; };
+  g.searchResultArgs = el => [Number(el.dataset.lat), Number(el.dataset.lon), el.dataset.name];
+  g.goToSearchResult = (...a) => went.push(a);
+  await T._applyPhrase('деревни у шмор.');
+  assert.equal(g.searched, 'Ушмор');
+  assert.equal(JSON.stringify(went), JSON.stringify([[55.1783, 40.1051, 'Ушмор']]));
+});
+
+test('index.html: Enter в строке поиска — переход к первому результату', () => {
+  const html = fs.readFileSync(new URL('../ui/index.html', import.meta.url), 'utf8');
+  assert.match(html, /if \(e\.key === 'Enter'\) \{[\s\S]{0,400}await nominatimSearch\(q\);[\s\S]{0,200}if \(first\) goToSearchResult\(\.\.\.searchResultArgs\(first\)\);/);
+});

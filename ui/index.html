@@ -15103,8 +15103,21 @@ document.getElementById('search-input').addEventListener('input', function() {
   searchTimeout = setTimeout(() => nominatimSearch(q), 400);
 });
 
-document.getElementById('search-input').addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') { toggleSearch(); e.stopPropagation(); }
+document.getElementById('search-input').addEventListener('keydown', async function(e) {
+  if (e.key === 'Escape') { toggleSearch(); e.stopPropagation(); return; }
+  // Enter — сразу к первому результату (как голосом); если поиск ещё не прошёл — найти и перейти
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const q = this.value.trim();
+    if (!q) return;
+    let first = document.querySelector('#search-results.has-results .search-result-item');
+    if (!first) {
+      clearTimeout(searchTimeout);
+      await nominatimSearch(q);
+      first = document.querySelector('#search-results .search-result-item');
+    }
+    if (first) goToSearchResult(...searchResultArgs(first));
+  }
 });
 
 // Геокодер: Photon (komoot, данные OSM) — основной: Nominatim отвечает 403 «Access denied» на запросы
