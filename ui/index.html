@@ -15,6 +15,7 @@
 <script src="trophynav-3d.js"></script>
 <script src="tn-icons.js"></script>
 <script src="tn-widgets.js"></script>
+<script src="tn-layers.js"></script>
 <style>
   /* Цвета, радиусы и шрифт — токены в theme.css (палитра Android). Здесь только var(--…). */
 
@@ -2403,6 +2404,8 @@
       </span>
     </div>
     <div class="modal-body">
+      <!-- Слои поверх основной карты: спутник с яркостью, TrophyNav Maps «дороги и подписи», наборы (ui/tn-layers.js) -->
+      <div id="tn-stack-section"></div>
       <!-- Пользовательские карты (всегда доступны) -->
       <div class="layer-section-title" style="display:flex;justify-content:space-between;align-items:center">
         <span>Мои карты</span>
@@ -4967,6 +4970,7 @@ function updateOnlineBaseForOfflineState() {
     }
   }
   updateBaseLayerStatusText();
+  window.TnLayers?.refresh();
 }
 
 function deactivateActiveOfflineMapsForOnlineBase() {
@@ -5184,6 +5188,8 @@ function buildLayerUI() {
 
   // Update premium UI if function exists
   if (typeof updatePremiumUI === 'function') updatePremiumUI();
+  // Галочки оверлеев и ползунки — из стека «Слои поверх»; карты каталога для слоёв появились
+  window.TnLayers?.refresh();
 }
 
 function normalizeCatalog(data) {
@@ -5294,16 +5300,14 @@ function switchCRS(needYandex) {
       layer.setLatLngs(layer.getLatLngs());
     }
   });
+  // Слои поверх в другой проекции временно скрываются (и возвращаются) — ui/tn-layers.js
+  window.TnLayers?.refresh();
 }
 
 function removeActiveOverlaysForCRSChange() {
-  // При смене CRS убираем оверлеи — тайлы всё равно невалидны
-  document.querySelectorAll('.overlay-layer input[type=checkbox]:checked').forEach(cb => {
-    cb.checked = false;
-    const name = cb.dataset.overlay;
-    const layer = overlayLayers[name];
-    if (layer && map.hasLayer(layer)) map.removeLayer(layer);
-  });
+  // Оверлеи — элементы стека «Слои поверх»: при смене проекции они не снимаются, а временно скрываются
+  // с подсказкой, включённость и прозрачность сохраняются (правило CRS, план v3 K3)
+  window.TnLayers?.refresh();
 }
 
 function setLayer(name, el) {
@@ -5330,6 +5334,7 @@ function setLayer(name, el) {
   // TrophyNav Maps: окно остаётся открытым — под выбранной картой сразу виден блок темы и рельефа
   if (!window.TrophyNavMaps?.isLayerName(name)) closeModal('modal-layers');
   showToast('Карта: ' + (window.TrophyNavMaps?.labelFor(name) || name));
+  window.TnLayers?.refresh();
 }
 
 // ─────────────────────────────────────────────
@@ -5356,26 +5361,14 @@ const overlayLayers = {
 // Пересоздаём Bing дороги с quadkey
 overlayLayers['Bing дороги'] = new BingTileLayer('https://ecn.t0.tiles.virtualearth.net/tiles/r{q}?g=14000&mkt=ru-RU&shading=hill', { maxZoom: 19, opacity: 0.7, pane: 'overlayTiles', _cacheName: 'Bing дороги' });
 
+// Оверлеи — элементы того же стека, что «Слои поверх» (ui/tn-layers.js): галочка добавляет/убирает слой,
+// ползунок — его прозрачность. На основе Яндекс (3395) слой временно скрыт с подсказкой, а не отклоняется.
 function toggleOverlay(name, cb) {
-  const layer = overlayLayers[name];
-  if (!layer) return;
-  if (cb.checked) {
-    const isYandexBase = currentCRS === 'EPSG3395';
-    if (isYandexBase) {
-      showToast('⚠ Оверлеи работают только с OSM/Google/Bing картами');
-      cb.checked = false;
-      return;
-    }
-    const slider = cb.parentElement.querySelector('.opacity-slider');
-    if (layer.setOpacity) layer.setOpacity((slider ? slider.value : 100) / 100);
-    layer.addTo(map);
-  } else {
-    map.removeLayer(layer);
-  }
+  const slider = cb.parentElement?.querySelector('.opacity-slider');
+  cb.checked = window.TnLayers.setOverlay(name, cb.checked, slider ? slider.value / 100 : undefined);
 }
 function setOverlayOpacity(name, slider) {
-  const layer = overlayLayers[name];
-  if (layer && map.hasLayer(layer)) layer.setOpacity(slider.value / 100);
+  window.TnLayers.setOverlayOpacity(name, slider.value / 100);
   slider.nextElementSibling.textContent = slider.value + '%';
 }
 
@@ -10794,6 +10787,80 @@ function fitOfflineMapBounds(bounds, maxZoom) {
   }
 }
 
+/**
+ * Слой Leaflet из SQLite офлайн-карты (тайлы по одному запросом к Rust). pane — 'offlineTiles' для
+ * офлайн-карты как основы, свой pane — для неё же слоем поверх (ui/tn-layers.js).
+ */
+function createOfflineTileLayer(entry, info, { pane = 'offlineTiles', opacity = 1 } = {}) {
+  const minZ = Math.min(info.minZoom, info.maxZoom);
+  const maxZ = Math.max(info.minZoom, info.maxZoom);
+  const OfflineTileLayer = L.TileLayer.extend({
+    createTile: function(coords, done) {
+      const tile = document.createElement('img');
+      tile.setAttribute('role', 'presentation');
+      let active = true;
+      tile._abortLoad = () => { active = false; };
+
+      tauriInvoke('read_offline_tile', {
+        path: entry._path,
+        x: coords.x,
+        y: coords.y,
+        z: coords.z
+      }).then(raw => {
+        if (!active) return;
+        const data = toUint8Array(raw);
+        if (!data.length) {
+          tile.src = OFFLINE_EMPTY_TILE;
+          done(null, tile);
+          return;
+        }
+        const blobUrl = URL.createObjectURL(new Blob([data], { type: info.mime || 'image/png' }));
+        tile.onload = () => { URL.revokeObjectURL(blobUrl); done(null, tile); };
+        tile.onerror = () => {
+          URL.revokeObjectURL(blobUrl);
+          tile.src = OFFLINE_EMPTY_TILE;
+          done(null, tile);
+        };
+        tile.src = blobUrl;
+      }).catch(() => {
+        tile.src = OFFLINE_EMPTY_TILE;
+        done(null, tile);
+      });
+      return tile;
+    },
+    _removeTile: function(key) {
+      const tileObj = this._tiles[key];
+      if (tileObj) {
+        const el = tileObj.el || tileObj;
+        if (el && typeof el._abortLoad === 'function') {
+          el._abortLoad();
+        }
+      }
+      L.TileLayer.prototype._removeTile.call(this, key);
+    }
+  });
+  return new OfflineTileLayer('', {
+    minZoom: minZ,
+    maxZoom: 22,
+    minNativeZoom: minZ,
+    maxNativeZoom: maxZ,
+    pane,
+    opacity,
+    tms: false,
+    errorTileUrl: ''
+  });
+}
+
+/** Офлайн-карта слоем поверх (ui/tn-layers.js): отдельный экземпляр слоя, основа и галочка списка не трогаются. */
+async function makeOfflineStackLayer(path, opts = {}) {
+  const entry = offlineMaps[path];
+  if (!entry || entry.missing) throw new Error('нет файла');
+  if (!isTauriRuntime()) throw new Error('только в приложении');
+  const info = entry.info || await tauriInvoke('inspect_offline_map', { path: entry._path });
+  entry.info = info;
+  return createOfflineTileLayer(entry, info, opts);
+}
+
 async function toggleOfflineMap(fname, btn) {
   const entry = offlineMaps[fname];
   if (!entry || entry._loading) return;
@@ -10830,63 +10897,7 @@ async function toggleOfflineMap(fname, btn) {
       switchCRS(false);
     }
 
-    // Create custom Leaflet TileLayer from SQLite
-    const OfflineTileLayer = L.TileLayer.extend({
-      createTile: function(coords, done) {
-        const tile = document.createElement('img');
-        tile.setAttribute('role', 'presentation');
-        let active = true;
-        tile._abortLoad = () => { active = false; };
-
-        tauriInvoke('read_offline_tile', {
-          path: entry._path,
-          x: coords.x,
-          y: coords.y,
-          z: coords.z
-        }).then(raw => {
-          if (!active) return;
-          const data = toUint8Array(raw);
-          if (!data.length) {
-            tile.src = OFFLINE_EMPTY_TILE;
-            done(null, tile);
-            return;
-          }
-          const blobUrl = URL.createObjectURL(new Blob([data], { type: info.mime || 'image/png' }));
-          tile.onload = () => { URL.revokeObjectURL(blobUrl); done(null, tile); };
-          tile.onerror = () => {
-            URL.revokeObjectURL(blobUrl);
-            tile.src = OFFLINE_EMPTY_TILE;
-            done(null, tile);
-          };
-          tile.src = blobUrl;
-        }).catch(() => {
-          tile.src = OFFLINE_EMPTY_TILE;
-          done(null, tile);
-        });
-        return tile;
-      },
-      _removeTile: function(key) {
-        const tileObj = this._tiles[key];
-        if (tileObj) {
-          const el = tileObj.el || tileObj;
-          if (el && typeof el._abortLoad === 'function') {
-            el._abortLoad();
-          }
-        }
-        L.TileLayer.prototype._removeTile.call(this, key);
-      }
-    });
-
-    const layer = new OfflineTileLayer('', {
-      minZoom: minZ,
-      maxZoom: 22,
-      minNativeZoom: minZ,
-      maxNativeZoom: maxZ,
-      pane: 'offlineTiles',
-      opacity: entry.opacity ?? 1,
-      tms: false,
-      errorTileUrl: ''
-    });
+    const layer = createOfflineTileLayer(entry, info, { pane: 'offlineTiles', opacity: entry.opacity ?? 1 });
 
     layer.addTo(map);
     entry.layer = layer;
@@ -10942,6 +10953,7 @@ async function deleteOfflineMap(fname) {
 
 // ─── Обновление списка офлайн-карт в переключателе слоёв ───
 function updateOfflineLayersList() {
+  window.TnLayers?.refresh();  // офлайн-карта как слой поверх: появилась, пропала или стала основой
   const section = document.getElementById('offline-layers-section');
   const list = document.getElementById('offline-layers-list');
   if (!section || !list) return;
@@ -11122,7 +11134,9 @@ function collectState(options = {}) {
     map: {
       center: { lat: map.getCenter().lat, lng: map.getCenter().lng },
       zoom: map.getZoom(),
-      layer: currentBaseLayerName
+      layer: currentBaseLayerName,
+      // Слои поверх (ui/tn-layers.js) — аддитивное поле; старые версии его не читают
+      ...(window.TnLayers ? { stack: window.TnLayers.serialize() } : {})
     },
     counters: { wpCounter, trackIdCounter, routeIdCounter, waypointSetIdCounter },
     waypointSets: waypointSets.map(s => ({ id: s.id, name: s.name, visible: s.visible })),
@@ -12062,6 +12076,7 @@ function applyState(state) {
     if (state.map.layer && state.map.layer !== currentBaseLayerName) {
       setLayer(state.map.layer);
     }
+    if (state.map.stack) window.TnLayers?.restore(state.map.stack);
     if (state.map.center && state.map.zoom != null) {
       map.setView([state.map.center.lat, state.map.center.lng], state.map.zoom);
     }
@@ -12260,7 +12275,8 @@ function buildSyncPayload(fullState, checks) {
     version: APP_STATE_VERSION,
     settings: {
       settings: fullState.settings,
-      map: fullState.map,
+      // Слои поверх не синхронизируются: пути офлайн-карт и свои карты — локальные для машины
+      map: fullState.map ? (({ stack, ...rest }) => rest)(fullState.map) : fullState.map,
       counters: fullState.counters,
       updatedAt
     }
@@ -13595,6 +13611,7 @@ function setCustomLayer(id, el) {
   if (el) el.classList.add('active');
   closeModal('modal-layers');
   showToast('Карта: ' + layer.name);
+  window.TnLayers?.refresh();
 }
 
 function importLocusXml(text, fname) {
@@ -13912,6 +13929,7 @@ function waitForFirstPaint() {
   try { initLinuxClickFallback(); } catch (e) { console.warn('initLinuxClickFallback failed:', e); }
   try { setTheme(getTheme()); } catch (e) { console.warn('setTheme failed:', e); }
   await waitForFirstPaint();
+  try { window.TnLayers?.init(); } catch (e) { console.warn('TnLayers.init failed:', e); }
   await initWorkingDirectory();
   // Пробуем восстановить: сначала из файла, если нет — из localStorage
   const restoredFromFile = await loadStateFromFile();
