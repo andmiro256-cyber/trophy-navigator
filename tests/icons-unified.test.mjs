@@ -48,7 +48,7 @@ test('заголовок «Карта и слои»: кнопки-значки s
   assert.match(header, /class="modal-close"[^>]*aria-label="Закрыть"><svg class="tn-ico"[^>]*><use href="#tn-i-close"\/>/);
   // строки слоёв: значок из набора, «Скрыть» — кнопка-значок
   assert.doesNotMatch(html, /getLayerEmoji|layerEmoji/);
-  assert.match(html, /\$\{tnIcon\(getLayerIcon\(e\.label\), 'tn-ico-t tn-ico-m'\)\}/);
+  assert.match(html, /\$\{tnIcon\(getLayerIcon\(row\.label\), 'tn-ico-t tn-ico-m'\)\}/);
   assert.match(html, /class="tn-icon-btn tn-icon-btn-s" data-layer-key="[^"]*"[^>]*title="Скрыть из списка"[^>]*>\$\{tnIcon\('eye-off'\)\}<\/button>/);
 });
 

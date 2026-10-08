@@ -116,7 +116,7 @@ test('п.2: reloadStyle получает тему аргументом; setStyle
 });
 
 test('п.3: выбор карты TrophyNav Maps не закрывает «Карту и слои», остальные слои — закрывают', () => {
-  const body = html.slice(html.indexOf('function setLayer(name, el) {'));
+  const body = html.slice(html.indexOf('function setLayer(name, el, opts = {}) {'));
   const fn = body.slice(0, body.indexOf('\n}\n'));
   assert.match(fn, /if \(!window\.TrophyNavMaps\?\.isLayerName\(name\)\) closeModal\('modal-layers'\);/);
   assert.doesNotMatch(fn.replace(/if \(!window\.TrophyNavMaps\?\.isLayerName\(name\)\) closeModal\('modal-layers'\);/, ''),

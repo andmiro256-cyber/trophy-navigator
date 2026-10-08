@@ -4828,7 +4828,7 @@ function makeBaseLayer(name) {
 
 let tileCatalog = null;
 
-// Пользовательские предпочтения: скрытые слои из каталога
+// Пользовательские предпочтения: скрытые карты (ключ каталога, у зашитой карты без ключа — её имя)
 function getHiddenLayers() {
   try { return JSON.parse(localStorage.getItem('tnd-hidden-layers') || '[]'); } catch { return []; }
 }
@@ -4848,7 +4848,7 @@ async function showHiddenLayersManager() {
   if (hidden.length === 0) { showToast('Нет скрытых карт'); return; }
   const names = hidden.map(k => {
     const e = tileCatalog?.base?.find(b => b.key === k) || tileCatalog?.overlays?.find(o => o.key === k);
-    return e ? e.label : k;
+    return e ? layerDisplayName(e.label) : k;
   });
   if (await tndConfirm('Скрытые карты:\n\n' + names.join('\n') + '\n\nПоказать все?')) {
     saveHiddenLayers([]);
@@ -4892,7 +4892,7 @@ function updateBaseLayerStatusText() {
   }
   const label = currentBaseLayerName.startsWith('custom:')
     ? currentBaseLayerName.replace(/^custom:/, '')
-    : currentBaseLayerName;
+    : layerDisplayName(currentBaseLayerName);
   setLayerStatusText(label);
 }
 
@@ -4948,7 +4948,61 @@ function deactivateActiveOfflineMapsForOnlineBase() {
 
 // Free layer keys (not premium)
 const FREE_LAYER_KEYS = new Set(['osm_standard', 'opentopomap', 'cyclosm', 'osm_hot']);
-const SPECIAL_PREMIUM_LAYER_NAMES = ['Яндекс Схема', 'Яндекс Гибрид', 'Спутник Bing', 'Гибрид Bing'];
+// Зашитые в код карты → ключ той же карты в серверном каталоге (/api/tiles-catalog.json). Когда каталог загружен,
+// зашитая копия не показывается (на её месте в списке — карта каталога), а выбранная по старому имени
+// (сессия, последняя карта) переводится на карту каталога. Без каталога зашитые — запас.
+const BUILTIN_LAYER_CATALOG_KEYS = {
+  'OpenStreetMap': 'osm_standard', 'OpenTopoMap': 'opentopomap', 'CyclOSM': 'cyclosm', 'OSM Humanitarian': 'osm_hot',
+  'Яндекс Схема': 'yandex_map', 'Яндекс Гибрид': 'yandex_hybrid_wgs',
+  'Спутник Bing': 'bing_sat',
+  'Спутник Google': 'google_sat', 'Карты Google': 'google_map', 'Гибрид Google': 'google_hybrid',
+  'Спутник ESRI': 'esri_sat',
+  'ГГЦ 250м': 'ggc_250', 'ГГЦ 500м': 'ggc_500', 'ГГЦ 1км': 'ggc_1000', 'ГГЦ 2км': 'ggc_2000',
+};
+// Отображаемые имена карт каталога (серверный label не меняем — он же ключ выбора, кэша и скачивания)
+const LAYER_DISPLAY_NAMES = { 'Яндекс Гибрид (точный)': 'Яндекс Гибрид' };
+function layerDisplayName(label) {
+  return LAYER_DISPLAY_NAMES[label] || label;
+}
+/** Карта каталога, которая повторяет зашитую карту name; null — эквивалента нет или каталог не загружен. */
+function catalogEquivalentOf(name) {
+  const key = BUILTIN_LAYER_CATALOG_KEYS[name];
+  return key && tileCatalog ? (tileCatalog.base || []).find(e => e.key === key) || null : null;
+}
+/** Имя для выбора: зашитая карта с эквивалентом в загруженном каталоге → карта каталога. */
+function resolveBaseLayerName(name) {
+  return catalogEquivalentOf(name)?.label || name;
+}
+// Зашитые строки списков (порядок и подзаголовки) — снимок статичного HTML до первой перестройки
+function snapshotBuiltinLayerRows(id) {
+  return [...(document.getElementById(id)?.children || [])].map(n => n.classList.contains('base-layer')
+    ? { label: n.dataset.layer, text: n.textContent.trim() }
+    : { title: n.textContent.trim() });
+}
+const BUILTIN_LAYER_ROWS = {
+  free: snapshotBuiltinLayerRows('catalog-free-layers'),
+  premium: snapshotBuiltinLayerRows('catalog-base-layers'),
+};
+/**
+ * Строки раздела: зашитые по порядку, у которых есть эквивалент в каталоге, — заменены картой каталога;
+ * остальные карты каталога раздела — сверху. id — ключ скрытия (ключ каталога или имя зашитой карты).
+ */
+function layerSectionRows(builtinRows, catalogEntries) {
+  const used = new Set();
+  const rows = [];
+  const fromCatalog = e => ({ id: e.key, label: e.label, text: layerDisplayName(e.label) });
+  for (const r of builtinRows) {
+    if (r.title) { rows.push(r); continue; }
+    const eq = catalogEquivalentOf(r.label) || catalogEntries.find(e => e.label === r.label);
+    if (eq) {
+      if (catalogEntries.includes(eq) && !used.has(eq)) { used.add(eq); rows.push(fromCatalog(eq)); }
+      continue;
+    }
+    rows.push({ id: r.label, label: r.label, text: r.text });
+  }
+  const rest = catalogEntries.filter(e => !used.has(e)).map(fromCatalog);
+  return [...rest, ...rows];
+}
 
 /** Значок слоя в списке «Карта и слои» (набор tn-icons.js): спутник, рельеф, велокарта или обычная карта. */
 function getLayerIcon(label) {
@@ -5037,52 +5091,55 @@ function applyDownloadZoomLimit() {
   return limit;
 }
 
+/** Строка карты в «Карта и слои». */
+function baseLayerRowHtml(row, premium) {
+  const pick = premium ? 'setLayerPremium' : 'setLayer';
+  const btn = `<button type="button" class="tn-icon-btn tn-icon-btn-s" data-layer-key="${escapeHtml(row.id)}" onclick="event.stopPropagation();toggleLayerHidden(this.dataset.layerKey)" title="Скрыть из списка" aria-label="Скрыть из списка">${tnIcon('eye-off')}</button>`;
+  return `<span onclick="${pick}(this.parentElement.dataset.layer, this.parentElement)"
+    style="flex:1;cursor:pointer">${tnIcon(getLayerIcon(row.label), 'tn-ico-t tn-ico-m')}${escapeHtml(row.text)}</span>${btn}`;
+}
+
+function renderBaseLayerSection(container, rows, premium, hidden) {
+  const visible = rows.filter(r => r.title || !hidden.includes(r.id));
+  // подзаголовок без карт под ним не показываем
+  const list = visible.filter((r, i) => !r.title || (visible[i + 1] && !visible[i + 1].title));
+  container.innerHTML = '';
+  list.forEach(r => {
+    if (r.title) {
+      const t = document.createElement('div');
+      t.className = 'layer-section-title';
+      t.style.cssText = 'margin-top:4px;font-size:9px;border:none;padding:0';
+      t.textContent = r.title;
+      container.appendChild(t);
+      return;
+    }
+    const div = document.createElement('div');
+    div.className = 'base-layer' + (premium ? ' premium-layer' : '') + (r.label === currentBaseLayerName ? ' active' : '');
+    div.dataset.layer = r.label;
+    div.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
+    div.innerHTML = baseLayerRowHtml(r, premium);
+    container.appendChild(div);
+  });
+}
+
 function buildLayerUI() {
-  if (!tileCatalog) return;
-
   const hidden = getHiddenLayers();
+  const catalogBase = tileCatalog?.base || [];
 
-  // --- Free base layers ---
+  // --- Бесплатные и Premium карты: зашитые + каталог без повторов ---
   const freeContainer = document.getElementById('catalog-free-layers');
   if (freeContainer) {
-    const freeLayers = tileCatalog.base.filter(e => FREE_LAYER_KEYS.has(e.key) && !hidden.includes(e.key));
-    if (freeLayers.length > 0) {
-      freeContainer.innerHTML = '';
-      freeLayers.forEach(e => {
-        const div = document.createElement('div');
-        div.className = 'base-layer' + (e.label === currentBaseLayerName ? ' active' : '');
-        div.dataset.layer = e.label;
-        div.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
-        div.innerHTML = `<span onclick="setLayer(this.parentElement.dataset.layer, this.parentElement)"
-          style="flex:1;cursor:pointer">${tnIcon(getLayerIcon(e.label), 'tn-ico-t tn-ico-m')}${escapeHtml(e.label)}</span>
-          <button type="button" class="tn-icon-btn tn-icon-btn-s" data-layer-key="${escapeHtml(e.key)}" onclick="event.stopPropagation();toggleLayerHidden(this.dataset.layerKey)" title="Скрыть из списка" aria-label="Скрыть из списка">${tnIcon('eye-off')}</button>`;
-        freeContainer.appendChild(div);
-      });
-    }
+    renderBaseLayerSection(freeContainer,
+      layerSectionRows(BUILTIN_LAYER_ROWS.free, catalogBase.filter(e => FREE_LAYER_KEYS.has(e.key))), false, hidden);
   }
-
-  // --- Premium base layers ---
   const premiumContainer = document.getElementById('catalog-base-layers');
   if (premiumContainer) {
-    const catalogPremiumLayers = tileCatalog.base.filter(e => !FREE_LAYER_KEYS.has(e.key) && !hidden.includes(e.key));
-    const catalogLabels = new Set(tileCatalog.base.map(e => e.label));
-    const specialPremiumLayers = SPECIAL_PREMIUM_LAYER_NAMES
-      .filter(label => !catalogLabels.has(label))
-      .map(label => ({ key: null, label }));
-    const premiumLayers = [...specialPremiumLayers, ...catalogPremiumLayers];
-    if (premiumLayers.length > 0) {
-      premiumContainer.innerHTML = '';
-      premiumLayers.forEach(e => {
-        const div = document.createElement('div');
-        div.className = 'base-layer premium-layer' + (e.label === currentBaseLayerName ? ' active' : '');
-        div.dataset.layer = e.label;
-        div.style.cssText = 'display:flex;justify-content:space-between;align-items:center';
-        div.innerHTML = `<span onclick="setLayerPremium(this.parentElement.dataset.layer, this.parentElement)"
-          style="flex:1;cursor:pointer">${tnIcon(getLayerIcon(e.label), 'tn-ico-t tn-ico-m')}${escapeHtml(e.label)}</span>` + (e.key ? `
-          <button type="button" class="tn-icon-btn tn-icon-btn-s" data-layer-key="${escapeHtml(e.key)}" onclick="event.stopPropagation();toggleLayerHidden(this.dataset.layerKey)" title="Скрыть из списка" aria-label="Скрыть из списка">${tnIcon('eye-off')}</button>` : '');
-        premiumContainer.appendChild(div);
-      });
-    }
+    renderBaseLayerSection(premiumContainer,
+      layerSectionRows(BUILTIN_LAYER_ROWS.premium, catalogBase.filter(e => !FREE_LAYER_KEYS.has(e.key))), true, hidden);
+  }
+  if (!tileCatalog) {
+    if (typeof updatePremiumUI === 'function') updatePremiumUI();
+    return;
   }
 
   // --- Overlay layers ---
@@ -5194,12 +5251,15 @@ function loadTileCatalog() {
       tileCatalog = normalizeCatalog(data);
       console.log('Tile catalog loaded:', tileCatalog.base.length, 'base,', (tileCatalog.overlays || []).length, 'overlays');
       buildLayerUI();
+      migrateBaseLayerToCatalog();
     })
     .catch(err => {
       console.warn('Failed to load tile catalog, using hardcoded layers:', err);
     });
 }
 
+// зашитые списки — сразу с кнопками «Скрыть» и без скрытых карт; каталог дополнит их, когда загрузится
+buildLayerUI();
 loadTileCatalog();
 
 function refreshTileCatalog() {
@@ -5217,6 +5277,7 @@ function refreshTileCatalog() {
         delete overlayLayers[name];
       });
       buildLayerUI();
+      migrateBaseLayerToCatalog();
       showToast(`✅ Каталог обновлён: ${tileCatalog.base.length} карт, ${(tileCatalog.overlays || []).length} оверлеев`);
     })
     .catch(err => {
@@ -5255,7 +5316,10 @@ function removeActiveOverlaysForCRSChange() {
   });
 }
 
-function setLayer(name, el) {
+function setLayer(name, el, opts = {}) {
+  // зашитая карта, которая есть в каталоге, — выбираем карту каталога (тот же список, кэш и скачивание)
+  const resolved = resolveBaseLayerName(name);
+  if (resolved !== name) { name = resolved; el = null; }
   const layer = makeBaseLayer(name);
   if (!layer) { console.warn('Layer not found:', name); return; }
   deactivateActiveOfflineMapsForOnlineBase();
@@ -5276,9 +5340,30 @@ function setLayer(name, el) {
   document.querySelectorAll('.base-layer').forEach(d => d.classList.remove('active'));
   const layerEl = el || [...document.querySelectorAll('.base-layer')].find(node => node.dataset.layer === name);
   if (layerEl) layerEl.classList.add('active');
+  if (opts.quiet) return;
   // TrophyNav Maps: окно остаётся открытым — под выбранной картой сразу виден блок темы и рельефа
   if (!window.TrophyNavMaps?.isLayerName(name)) closeModal('modal-layers');
-  showToast('Карта: ' + (window.TrophyNavMaps?.labelFor(name) || name));
+  showToast('Карта: ' + (window.TrophyNavMaps?.labelFor(name) || layerDisplayName(name)));
+}
+
+/**
+ * Каталог загрузился: выбранная зашитая карта (сессия, последний выбор) переводится на ту же карту каталога —
+ * тихо, без тоста; активные офлайн-карты не трогаем (подменяем только онлайн-подложку под ними).
+ */
+function migrateBaseLayerToCatalog() {
+  const target = resolveBaseLayerName(currentBaseLayerName);
+  if (target === currentBaseLayerName) return false;
+  if (offlineBaseModeActive || hasActiveOfflineMaps()) {
+    const layer = makeBaseLayer(target);
+    if (!layer) return false;
+    if (currentBaseLayer && map.hasLayer(currentBaseLayer)) map.removeLayer(currentBaseLayer);
+    currentBaseLayer = layer;
+    currentBaseLayerName = target;
+    updateBaseLayerStatusText();
+    return true;
+  }
+  setLayer(target, null, { quiet: true });
+  return true;
 }
 
 // ─────────────────────────────────────────────
@@ -9474,7 +9559,7 @@ function openDownloadSettings(bounds) {
     lbl.appendChild(rb);
     const maxZ = catalogMaxZoom(entry, 18);
     lbl.appendChild(document.createTextNode(
-      `${entry.label} (z${maxZ})`
+      `${layerDisplayName(entry.label)} (z${maxZ})`
     ));
     radioBox.appendChild(lbl);
   });
@@ -9498,7 +9583,7 @@ function openDownloadSettings(bounds) {
   sel2.innerHTML = '<option value="">— нет —</option>';
   (baseList.length > 0 ? baseList.map(e => e.label) : dlLayerList).forEach(name => {
     const opt = document.createElement('option');
-    opt.value = name; opt.textContent = name;
+    opt.value = name; opt.textContent = layerDisplayName(name);
     sel2.appendChild(opt);
   });
   sel2.onchange = () => {
