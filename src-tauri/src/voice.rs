@@ -273,6 +273,31 @@ pub struct VoiceResult {
     pub text: String,
     pub ms: u64,
     pub seconds: f32,
+    /// частота микрофона и пик громкости исходной записи — для разбора «распознаёт ерунду»
+    pub rate: u32,
+    pub peak: f32,
+}
+
+/// Последняя запись (как пришла с микрофона, моно) — `voice-last.wav` в папке приложения, только на этом
+/// компьютере: по ней видно, что слышит распознаватель (Windows: ерунда вместо названий, 09.10).
+fn save_last_wav(raw: &[f32], rate: u32) {
+    let Some(dir) = MODELS_DIR.get().and_then(|d| d.parent()) else { return };
+    let data: Vec<u8> = raw.iter().flat_map(|v| ((v.clamp(-1.0, 1.0) * 32767.0) as i16).to_le_bytes()).collect();
+    let mut w = Vec::with_capacity(44 + data.len());
+    w.extend_from_slice(b"RIFF");
+    w.extend_from_slice(&(36 + data.len() as u32).to_le_bytes());
+    w.extend_from_slice(b"WAVEfmt ");
+    w.extend_from_slice(&16u32.to_le_bytes());
+    w.extend_from_slice(&1u16.to_le_bytes()); // PCM
+    w.extend_from_slice(&1u16.to_le_bytes()); // моно
+    w.extend_from_slice(&rate.to_le_bytes());
+    w.extend_from_slice(&(rate * 2).to_le_bytes());
+    w.extend_from_slice(&2u16.to_le_bytes());
+    w.extend_from_slice(&16u16.to_le_bytes());
+    w.extend_from_slice(b"data");
+    w.extend_from_slice(&(data.len() as u32).to_le_bytes());
+    w.extend_from_slice(&data);
+    let _ = fs::write(dir.join("voice-last.wav"), w);
 }
 
 /// Остановить запись и распознать. `prompt` — подсказка Whisper (названия рядом с картой).
@@ -289,18 +314,20 @@ pub async fn voice_stop(prompt: Option<String>) -> Result<VoiceResult, String> {
             .recv_timeout(Duration::from_secs(10))
             .map_err(|_| "запись не завершилась".to_string())??;
         CANCEL.store(false, std::sync::atomic::Ordering::SeqCst);
+        save_last_wav(&raw, rate);
+        let peak = raw.iter().fold(0.0f32, |m, v| m.max(v.abs()));
         if !has_speech(&raw, rate) {
-            return Ok(VoiceResult { text: String::new(), ms: 0, seconds: 0.0 });
+            return Ok(VoiceResult { text: String::new(), ms: 0, seconds: 0.0, rate, peak });
         }
         let audio = prepare(resample(&raw, rate));
         let seconds = audio.len() as f32 / TARGET_RATE as f32;
         if audio.is_empty() {
-            return Ok(VoiceResult { text: String::new(), ms: 0, seconds: 0.0 });
+            return Ok(VoiceResult { text: String::new(), ms: 0, seconds: 0.0, rate, peak });
         }
         let t = Instant::now();
         let text = transcribe(&audio, prompt.as_deref())?;
         let text = if plausible_russian(&text) { text } else { String::new() };
-        Ok(VoiceResult { text, ms: t.elapsed().as_millis() as u64, seconds })
+        Ok(VoiceResult { text, ms: t.elapsed().as_millis() as u64, seconds, rate, peak })
     })
     .await
     .map_err(|e| e.to_string())?
