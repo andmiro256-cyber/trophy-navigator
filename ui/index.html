@@ -343,6 +343,15 @@
     min-height: 120px;
   }
   .modal.tnd-resized { max-height: calc(100vh - 16px); max-width: calc(100vw - 16px); }
+  /* Своя ручка размера в правом нижнем углу: на Linux (WebKitGTK) за уголок CSS resize не ухватиться —
+     его перекрывает содержимое окна (Андрей 09.10); на Windows и macOS ручка та же */
+  .modal.tnd-has-grip { resize: none; }
+  .tnd-grip { position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; z-index: 20; cursor: nwse-resize;
+    touch-action: none; opacity: .75; color: var(--text-secondary); }
+  .tnd-grip::before { content: ''; position: absolute; right: 4px; bottom: 4px; width: 12px; height: 12px;
+    background: linear-gradient(135deg, transparent 0 45%, currentColor 45% 53%, transparent 53% 65%,
+      currentColor 65% 73%, transparent 73% 85%, currentColor 85% 93%, transparent 93%); }
+  .tnd-grip:hover { opacity: 1; }
   /* список КП строящегося маршрута — тянется вниз за нижний край */
   #route-build-kp-list { resize: vertical; min-height: 48px; }
   .modal-overlay.active .modal {
@@ -7156,12 +7165,44 @@ function closeAllModals() {
 // Размеры окон (.modal) после изменения мышью — запоминаются в localStorage и возвращаются при следующем открытии.
 // ResizeObserver срабатывает и на открытие/закрытие окна (display), поэтому пишем только при видимом окне,
 // а «изменено пользователем» — когда размер отличается от исходного CSS.
+/** Ручка размера окна (правый нижний угол): тянется мышью, размер запоминает ResizeObserver в tndModalSizes. */
+function tndAddResizeGrip(el) {
+  if (el.querySelector(':scope > .tnd-grip')) return;
+  const grip = document.createElement('div');
+  grip.className = 'tnd-grip';
+  grip.title = 'Потяните, чтобы изменить размер окна';
+  el.appendChild(grip);
+  el.classList.add('tnd-has-grip');
+  el.style.resize = 'none';  // родной уголок (в т. ч. заданный в разметке) — выключен, чтобы не было двух ручек
+  grip.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    const r = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    const minW = parseFloat(cs.minWidth) || 200, minH = parseFloat(cs.minHeight) || 120;
+    // окно, прижатое справа или по центру (transform), — к левому верхнему углу, чтобы тянулся правый нижний
+    el.style.left = r.left + 'px'; el.style.top = r.top + 'px'; el.style.right = 'auto'; el.style.transform = 'none';
+    const x0 = e.clientX, y0 = e.clientY;
+    grip.setPointerCapture?.(e.pointerId);
+    const move = ev => {
+      const w = Math.max(minW, Math.min(window.innerWidth - r.left - 8, r.width + ev.clientX - x0));
+      const h = Math.max(minH, Math.min(window.innerHeight - r.top - 8, r.height + ev.clientY - y0));
+      el.style.width = w + 'px'; el.style.height = h + 'px';
+      el.classList.add('tnd-resized');
+    };
+    const up = ev => { grip.releasePointerCapture?.(ev.pointerId); grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', up); grip.removeEventListener('pointercancel', up); };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', up);
+    grip.addEventListener('pointercancel', up);
+  });
+}
 function tndModalSizes() {
   const KEY = 'tnd-modal-sizes';
   const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch { return {}; } };
   const save = v => { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch { /* приватный режим */ } };
   const sizes = load();
   const ids = [...document.querySelectorAll('.modal[id], #route-build-kp-list')];
+  ids.filter(el => el.classList.contains('modal')).forEach(tndAddResizeGrip);
   for (const el of ids) {
     const v = sizes[el.id];
     if (v) {
