@@ -7195,6 +7195,9 @@ function tndAddResizeGrip(el) {
     el.style.left = r.left + 'px'; el.style.top = r.top + 'px'; el.style.right = 'auto'; el.style.transform = 'none';
     const x0 = e.clientX, y0 = e.clientY;
     grip.setPointerCapture?.(e.pointerId);
+    // Край окна держится под курсором (как у окон Windows/GNOME): размер = исходный + сдвиг от точки захвата.
+    // Упёрлись в минимум и пошли обратно — окно растёт, когда курсор снова дошёл до края, а не сразу (ревью Тома 2714:
+    // поведение намеренное, иначе край отрывается от курсора и при каждом упоре окно «уплывает» от мыши).
     const move = ev => {
       const w = Math.max(minW, Math.min(window.innerWidth - r.left - 8, r.width + ev.clientX - x0));
       const h = Math.max(minH, Math.min(window.innerHeight - r.top - 8, r.height + ev.clientY - y0));
@@ -8330,6 +8333,25 @@ function splitSelectedTrackPoint() {
   ctxTrackAction('split');
 }
 
+/**
+ * Клик по треку в списке — карта переходит к нему (Андрей 09.10). Открытое окно не закрывает трек:
+ * отступ с той стороны, где окно. Скрытый трек показываем — по нему кликнули, чтобы посмотреть.
+ */
+function focusTrackOnMap(id) {
+  const t = tracks.find(item => item.id === id);
+  if (!t || !t.points?.length) return;
+  if (t.visible === false) toggleTrackVisible(id);
+  const mapRect = map.getContainer().getBoundingClientRect();
+  let left = 30, right = 30;
+  const win = document.getElementById('modal-tracks-win');
+  const wr = win && win.offsetParent ? win.getBoundingClientRect() : null;
+  if (wr && wr.width < mapRect.width * 0.7) {
+    if (wr.left + wr.width / 2 > mapRect.left + mapRect.width / 2) right = Math.max(30, mapRect.right - wr.left + 20);
+    else left = Math.max(30, wr.right - mapRect.left + 20);
+  }
+  map.fitBounds(L.latLngBounds(t.points), { paddingTopLeft: [left, 30], paddingBottomRight: [right, 30], maxZoom: 16 });
+}
+
 function selectTrackById(id) {
   if (trackPropsPreviewId != null && trackPropsPreviewId !== id) revertTrackPropsPreview();
   selectedTrackId = id;
@@ -8476,7 +8498,7 @@ function updateTrackList() {
       : (isLargeTrack(t) && (t.pointSize ?? 3) > 0
         ? ` · <span style="font-size:10px;color:var(--text-muted)" title="Точки появятся с z${TRACK_MARKER_DETAIL_ZOOM}">точки с z${TRACK_MARKER_DETAIL_ZOOM}</span>`
         : '');
-    return `<div class="track-item${sel ? ' selected' : ''}" onclick="selectTrackById(${t.id})">
+    return `<div class="track-item${sel ? ' selected' : ''}" onclick="selectTrackById(${t.id});focusTrackOnMap(${t.id})">
       <input type="checkbox" class="track-play-cb" data-track-id="${escapeHtml(t.id)}" onclick="event.stopPropagation()" style="accent-color:${safeCssColor(t.color)};margin-right:4px" title="Выбрать для плеера">
       <div class="track-color" style="background:${safeCssColor(t.color)}"></div>
       <div class="track-info">
