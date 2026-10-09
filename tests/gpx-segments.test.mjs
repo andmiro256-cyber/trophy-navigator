@@ -34,3 +34,7 @@ test('loadGPXTracks собирает точки по trkseg и даёт част
   assert.match(html, /const parts = chainTrackSegments\(segs\)\.filter\(part => part\.points\.length >= 2\);/);
   assert.match(html, /`\$\{name\} — часть \$\{partIndex \+ 1\}`/);
 });
+
+test('кнопки окна переносятся на следующую строку, а не уезжают за край (редактор трека, Андрей 09.10)', () => {
+  assert.match(html, /\.btn-row \{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; justify-content: flex-end; \}/);
+});
