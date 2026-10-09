@@ -5170,10 +5170,14 @@ function layerSectionRows(builtinRows, catalogEntries) {
       if (catalogEntries.includes(eq) && !used.has(eq)) { used.add(eq); rows.push(fromCatalog(eq)); }
       continue;
     }
-    rows.push({ id: r.label, label: r.label, text: r.text });
+    // 09.10 (Андрей): как в Android — при загруженном каталоге только его карты; зашитые без эквивалента
+    // (2GIS, LoMaps, Thunderforest без ключа, Michelin…) часто не работали и засоряли список
+    if (!tileCatalog) rows.push({ id: r.label, label: r.label, text: r.text });
   }
   const rest = catalogEntries.filter(e => !used.has(e)).map(fromCatalog);
-  return [...rest, ...rows];
+  // заголовок подраздела без карт под ним не показываем
+  const out = [...rest, ...rows];
+  return out.filter((r, i) => !r.title || (out[i + 1] && !out[i + 1].title));
 }
 
 /** Значок слоя в списке «Карта и слои» (набор tn-icons.js): спутник, рельеф, велокарта или обычная карта. */
