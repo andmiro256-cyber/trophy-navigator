@@ -637,7 +637,8 @@
   .external-map-btn:hover { background-image: linear-gradient(var(--hover), var(--hover)); }
 
   /* ─── КНОПКИ — RaceNavButton (залитая оранжевая «пилюля») и RaceNavPlainButton (плоская нейтральная) ─── */
-  .btn-row { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; }
+  /* 09.10 (Андрей): кнопкам тесно — переносятся на следующую строку, а не уезжают за край окна («Отмена» в редакторе трека) */
+  .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; justify-content: flex-end; }
   /* белый на оранжевом: светлая 4.6:1, тёмная 3.2:1 — поэтому текст полужирный и 13px */
   .btn-primary { min-height:34px; background: var(--primary); border: 0; color: var(--on-primary); border-radius: var(--radius-pill); padding: 7px 16px; cursor: pointer; font: 700 var(--fs-m) var(--font); }
   .btn-primary:hover { background: var(--primary-variant); }
