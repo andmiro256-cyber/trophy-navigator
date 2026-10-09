@@ -19,6 +19,7 @@
 <script src="tn-voice.js"></script>
 <script src="tn-layers.js"></script>
 <script src="tn-layer-order.js"></script>
+<script src="tn-section-order.js"></script>
 <script src="tn-server.js"></script>
 <style>
   /* Цвета, радиусы и шрифт — токены в theme.css (палитра Android). Здесь только var(--…). */
@@ -2485,14 +2486,14 @@
       <!-- Слои поверх основной карты: спутник с яркостью, TrophyNav Maps «дороги и подписи», наборы (ui/tn-layers.js) -->
       <div id="tn-stack-section"></div>
       <!-- TrophyNav Maps: векторные карты областей (ui/trophynav-maps.js) -->
-      <div class="layer-section-title tnmaps-title-row" style="margin-top:8px">
+      <div class="layer-section-title tnmaps-title-row" data-sec="tnmaps" style="margin-top:8px">
         <span>TrophyNav Maps</span>
         <button type="button" class="tnmaps-link" onclick="window.TrophyNavMaps?.openWindow()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-cloud-download"/></svg>Карты областей</button>
       </div>
       <div id="tnmaps-layers"></div>
 
       <!-- Бесплатные карты (всегда доступны) -->
-      <div class="layer-section-title" style="margin-top:8px">Бесплатные карты</div>
+      <div class="layer-section-title" data-sec="free" style="margin-top:8px">Бесплатные карты</div>
       <div id="catalog-free-layers">
         <div class="base-layer active" data-layer="OpenStreetMap" onclick="setLayer('OpenStreetMap', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>OpenStreetMap</div>
         <div class="base-layer" data-layer="OpenTopoMap" onclick="setLayer('OpenTopoMap', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-terrain"/></svg>OpenTopoMap</div>
@@ -2501,7 +2502,7 @@
       </div>
 
       <!-- Premium карты (требуют лицензию) -->
-      <div class="layer-section-title" style="margin-top:8px" id="premium-layers-title">Premium карты <span style="font-size:9px;color:var(--accent-amber)" id="premium-badge"></span></div>
+      <div class="layer-section-title" data-sec="premium" style="margin-top:8px" id="premium-layers-title">Premium карты <span style="font-size:9px;color:var(--accent-amber)" id="premium-badge"></span></div>
       <div id="premium-layers-container">
         <div id="catalog-base-layers">
           <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">Яндекс</div>
@@ -2538,7 +2539,7 @@
         </div>
       </div>
 
-      <div class="layer-section-title" style="margin-top:8px">Оверлейные слои</div>
+      <div class="layer-section-title" data-sec="overlay" style="margin-top:8px">Оверлейные слои</div>
       <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">Ползунок = прозрачность</div>
       <div id="catalog-overlay-layers">
         <!-- Заполняется из серверного каталога -->
@@ -2546,13 +2547,13 @@
       </div>
 
       <!-- Скачанные офлайн-карты -->
-      <div id="offline-layers-section" style="display:none">
+      <div id="offline-layers-section" data-sec="offline" style="display:none">
         <div class="layer-section-title" style="margin-top:8px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-download"/></svg>Скачанные карты</div>
         <div id="offline-layers-list"></div>
       </div>
 
       <!-- Пользовательские карты — в самом низу списка (Андрей 09.10) -->
-      <div class="layer-section-title" id="custom-layers-title" style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+      <div class="layer-section-title" id="custom-layers-title" data-sec="custom" style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
         <span>Мои карты</span>
         <span style="font-size:12px;cursor:pointer;color:var(--accent)" onclick="showAddCustomLayer()">+ Добавить</span>
       </div>
