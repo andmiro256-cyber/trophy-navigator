@@ -153,7 +153,7 @@ test('п.3: в окне «TrophyNav Maps по областям» у активн
     box.innerHTML = t.itemHtml('lo') + t.itemHtml('kar');
     const rows = box.querySelectorAll('[data-tnmaps-item-theme]');
     assert.equal(rows.length, 1, 'только у карты на экране');
-    assert.deepEqual([...rows[0].querySelectorAll('[data-tnmaps-theme]')].map(b => b.textContent), ['Обычная', 'Контраст', 'Топо']);
+    assert.deepEqual([...rows[0].querySelectorAll('[data-tnmaps-theme]')].map(b => b.textContent), ['Обычная', 'Контраст', 'Топо', 'Офф-роуд']);
     let chosen = null;
     t.state.activeLayer.reloadStyle = th => { chosen = th; };
     t.onWindowClick({ target: rows[0].querySelector('[data-tnmaps-theme="topo"]') });
@@ -173,7 +173,7 @@ test('п.4: блок под картой — две колонки, тема о�
     assert.ok(c, 'блок есть');
     assert.deepEqual([...c.querySelectorAll(':scope > .tnmaps-label')].map(e => e.textContent), ['Тема', 'Рельеф', 'Отмывка', 'Значки', '3D']);
     const seg = c.querySelectorAll('.tnmaps-seg > [data-tnmaps-theme]');
-    assert.equal(seg.length, 3);
+    assert.equal(seg.length, 4); // 09.10: + «Офф-роуд»
     assert.equal(c.querySelector('.tnmaps-seg-btn.active').dataset.tnmapsTheme, 'topo');
     const slope = c.querySelector('[data-tnmaps-relief="slope"]');
     assert.equal(slope.checked, false, 'нет файла крутизны — не отмечена');
