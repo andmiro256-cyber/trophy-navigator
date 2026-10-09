@@ -38,3 +38,10 @@ test('loadGPXTracks собирает точки по trkseg и даёт част
 test('кнопки окна переносятся на следующую строку, а не уезжают за край (редактор трека, Андрей 09.10)', () => {
   assert.match(html, /\.btn-row \{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; justify-content: flex-end; \}/);
 });
+
+test('своя ручка размера окна (Linux: за уголок CSS resize не ухватиться, Андрей 09.10)', () => {
+  assert.match(html, /function tndAddResizeGrip\(el\)/);
+  assert.match(html, /ids\.filter\(el => el\.classList\.contains\('modal'\)\)\.forEach\(tndAddResizeGrip\);/);
+  assert.match(html, /\.tnd-grip \{ position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; z-index: 20; cursor: nwse-resize;/);
+  assert.match(html, /el\.style\.resize = 'none';/);
+});
