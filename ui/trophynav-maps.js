@@ -615,6 +615,13 @@
       .tnmaps-foot { font-size:10px; color:var(--text-muted); display:flex; justify-content:space-between; gap:8px; align-items:center; }
       .tnmaps-poi { grid-column:2; display:flex; flex-direction:column; gap:2px; padding:0 0 4px; }
       .tnmaps-poi label { display:flex; align-items:center; gap:6px; min-height:24px; font-size:11px; color:var(--text-primary); cursor:pointer; }
+      .sb-download { display:inline-flex; align-items:center; gap:10px; color:var(--text-primary); }
+      .sb-download[hidden] { display:none; }
+      .sb-dl-item { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+      .sb-dl-track { width:90px; height:5px; border-radius:3px; background:var(--border-normal); overflow:hidden; }
+      .sb-dl-fill { display:block; height:100%; background:var(--primary); transition:width 0.25s; }
+      .sb-dl-x { appearance:none; border:0; background:transparent; color:var(--text-muted); cursor:pointer; font-size:12px; padding:0 4px; border-radius:var(--radius-xs); }
+      .sb-dl-x:hover { background:var(--bg-hover); color:var(--text-primary); }
       .tnmaps-region-prompt { position:fixed; top:112px; left:50%; transform:translateX(-50%); z-index:5000; display:flex; align-items:center; flex-wrap:wrap; gap:8px; max-width:calc(100vw - 32px); padding:10px 18px; background:var(--modal-bg); color:var(--text-primary); border:1px solid var(--card-stroke); border-left:4px solid var(--primary); border-radius:var(--radius-m); box-shadow:var(--shadow-2); font-size:var(--fs-s); }
       .tnmaps-poi[hidden] { display:none; }
     `;
@@ -949,6 +956,7 @@
     state.downloads[id] = { phase: 'start', done: 0, total: 0 };
     delete state.fetched[id];
     renderWindow();
+    renderStatusDownloads();
     try {
       await invoke('tnmaps_download', { id });
       const downloaded = !!state.fetched[id];
@@ -966,6 +974,7 @@
       if (state.downloads[id] && state.downloads[id].phase !== 'error') delete state.downloads[id];
       renderWindow();
       renderLayerSection();
+      renderStatusDownloads();
     }
   }
 
@@ -1009,9 +1018,42 @@
     }
   }
 
+  /**
+   * Прогресс скачивания карт — в нижней строке состояния (Андрей 09.10: «нажал Скачать, меню пропало, и
+   * непонятно, что происходит»). Видно всегда, пока качается; ✕ — остановить (докачается потом).
+   */
+  function renderStatusDownloads() {
+    const bar = document.getElementById('statusbar');
+    if (!bar) return;
+    let el = document.getElementById('sb-download');
+    const active = Object.entries(state.downloads).filter(([, d]) => d && d.phase !== 'error');
+    if (!active.length) { if (el) el.hidden = true; return; }
+    if (!el) {
+      el = document.createElement('span');
+      el.id = 'sb-download';
+      el.className = 'sb-download';
+      el.setAttribute('role', 'status');
+      el.addEventListener('click', e => {
+        const b = e.target.closest('[data-sb-cancel]');
+        if (b) invoke('tnmaps_cancel', { id: b.dataset.sbCancel }).catch(() => {});
+      });
+      bar.insertBefore(el, document.getElementById('app-version-label'));
+    }
+    el.hidden = false;
+    el.innerHTML = active.map(([id, d]) => {
+      const pct = progressPct(d);
+      return `<span class="sb-dl-item" title="${esc(progressText(d, d.total))}">⬇ ${esc(regionName(id))}: ${d.phase === 'start' ? 'подключение…' : d.phase === 'verify' ? 'проверка…' : `${pct}% · ${formatSize(d.done)} из ${formatSize(d.total)}`}
+        <span class="sb-dl-track"><span class="sb-dl-fill" style="width:${pct}%"></span></span>
+        <button type="button" class="sb-dl-x" data-sb-cancel="${esc(id)}" title="Остановить (можно докачать)" aria-label="Остановить скачивание">✕</button></span>`;
+    }).join('');
+  }
+
   function onDownloadEvent(ev) {
     const p = ev?.payload;
     if (!p?.id) return;
+    try { onDownloadEventInner(p); } finally { renderStatusDownloads(); }
+  }
+  function onDownloadEventInner(p) {
     if (p.phase === 'done') delete state.downloads[p.id];
     else if (p.phase === 'cancelled') { delete state.downloads[p.id]; toast(`Загрузка «${regionName(p.id)}» остановлена — её можно докачать`); }
     else {
