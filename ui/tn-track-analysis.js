@@ -37,7 +37,7 @@
     const dist = new Array(n), t = new Array(n), ele = new Array(n), speed = new Array(n), slope = new Array(n);
     let d = 0;
     for (let i = 0; i < n; i++) {
-      if (i > 0) d += haversine(pts[i - 1], pts[i]);
+      if (i > 0 && !pd[i]?.seg) d += haversine(pts[i - 1], pts[i]);  // разрыв куска трека (GPX trkseg) — без прыжка
       dist[i] = d;
       const tm = pd[i]?.time ? Date.parse(pd[i].time) : NaN;
       t[i] = Number.isFinite(tm) ? tm : null;
