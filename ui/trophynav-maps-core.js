@@ -62,11 +62,12 @@
   }
 
   const THEMES = [
-    { id: 'normal', title: 'Обычная' },
-    { id: 'contrast', title: 'Контраст' },
+    // 09.10: короткие названия, как в Android (Базовая / Яркая / Топо / Офф)
+    { id: 'normal', title: 'Базовая' },
+    { id: 'contrast', title: 'Яркая' },
     { id: 'topo', title: 'Топо' },
     // 09.10: как в Android (theme-offroad.json из racenav-android, стиль Генштаба: грунтовки по проходимости)
-    { id: 'offroad', title: 'Офф-роуд' },
+    { id: 'offroad', title: 'Офф' },
   ];
   /** Темы, в которых рисуются отмывка, крутизна и горизонтали. */
   const RELIEF_THEMES = new Set(['topo', 'offroad']);

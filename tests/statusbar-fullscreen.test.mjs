@@ -49,10 +49,25 @@ test('настройки карты TrophyNav Maps — под спойлером
   assert.match(mapsSrc, /<span>Настройки карты<\/span><span class="tnmaps-sum">/);
 });
 
-test('подсказка про полный экран: при развёрнутом окне, не больше 3 раз, «Больше не показывать»; кнопка ⛶ в строке состояния', () => {
-  assert.match(html, /<button type="button" id="sb-fullscreen" class="sb-fs-btn" onclick="toggleFullscreen\(\)" title="Во весь экран \(F11\)"/);
+test('подсказка про полный экран: при развёрнутом окне, не больше 3 раз, «Больше не показывать»; кнопка «Экран» в тулбаре между Live и поиском', () => {
+  assert.match(html, /id="btn-live"[\s\S]{0,400}<button type="button" class="tb-btn tb-captioned" id="btn-fullscreen" onclick="toggleFullscreen\(\)"[\s\S]{0,800}<div class="toolbar-spacer"><\/div>\s*\n\s*<!-- Поиск встроенный -->/);
+  assert.doesNotMatch(html, /id="sb-fullscreen"/);
   assert.match(html, /if \(st\.never \|\| st\.used \|\| \(st\.shown \|\| 0\) >= 3\) return;/);
   assert.match(html, /window\.outerWidth >= screen\.availWidth - 16 && window\.outerHeight >= screen\.availHeight - 16/);
   assert.match(html, /data-fs-never>Больше не показывать<\/button>/);
   assert.match(html, /if \(on\) fsHintSave\(\{ \.\.\.fsHintState\(\), used: true \}\);/);
+});
+
+test('полный экран: панель «Свернуть / Выйти / Закрыть» — на 1 с при входе, потом по наведению на язычок', () => {
+  assert.match(html, /if \(on && !was\) showFsBar\(1000\);/);
+  assert.match(html, /data-fs-min title="Свернуть"/);
+  assert.match(html, /data-fs-close title="Закрыть программу"/);
+  assert.ok(caps.permissions.includes('core:window:allow-minimize'));
+  assert.ok(caps.permissions.includes('core:window:allow-close'));
+});
+
+test('«Мои карты» — в самом низу окна «Карта и слои»', () => {
+  const body = html.slice(html.indexOf('id="modal-layers"'), html.indexOf('<!-- УВЕДОМЛЕНИЕ -->'));
+  assert.ok(body.indexOf('id="custom-layers-title"') > body.indexOf('id="offline-layers-section"'));
+  assert.ok(body.indexOf('id="custom-layers-title"') > body.indexOf('id="premium-layers-container"'));
 });
