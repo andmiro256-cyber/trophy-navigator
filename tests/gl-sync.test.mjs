@@ -45,16 +45,29 @@ test('холсты отдельных pane (радиусы точек) — то�
   assert.match(html, /const trackCanvasRenderer = L\.canvas\(\{ padding: TND_CANVAS_PADDING \}\);/);
 });
 
-test('холсты Leaflet создаются без ускорения на видеокарте (willReadFrequently)', () => {
+function runCanvasPatch(userAgent) {
   const block = html.match(/\(function tndCpuLeafletCanvas\(\) \{[\s\S]*?\}\)\(\);/)[0];
   const seen = [];
   function Canvas() {}
   Canvas.prototype._initContainer = function () { this._ctx = this.c.getContext('2d'); };
   class HTMLCanvasElement { getContext(type, opts) { seen.push([type, opts]); return { type }; } }
-  vm.runInNewContext(block, { L: { Canvas }, HTMLCanvasElement });
+  vm.runInNewContext(block, { L: { Canvas }, HTMLCanvasElement, navigator: { userAgent } });
   const r = new Canvas(); r.c = new HTMLCanvasElement();
   r._initContainer();
+  return { seen, r };
+}
+
+test('Linux: холсты Leaflet без ускорения на видеокарте (willReadFrequently)', () => {
+  const { seen, r } = runCanvasPatch('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/605.1.15');
   assert.equal(JSON.stringify(seen), JSON.stringify([['2d', { willReadFrequently: true }]]));
   r.c.getContext('webgl');
   assert.equal(JSON.stringify(seen[1]), JSON.stringify(['webgl', null]), 'вне _initContainer getContext не тронут');
+});
+
+test('Windows и macOS: холсты Leaflet как в 0.9.30 — на видеокарте (зум тачпадом на Windows тормозил, Андрей 09.10)', () => {
+  for (const ua of ['Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/129.0 Safari/537.36 Edg/129.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15']) {
+    const { seen } = runCanvasPatch(ua);
+    assert.equal(JSON.stringify(seen), JSON.stringify([['2d', null]]), ua);
+  }
 });
