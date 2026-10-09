@@ -40,6 +40,26 @@ jobs:
             src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/msi/*.msi.sig
 
+  voice-check-windows:
+    # Только тестовая ветка (вручную): распознавание эталонных фраз whisper на Windows (MSVC)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Model
+        shell: pwsh
+        run: Invoke-WebRequest -Uri https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin -OutFile src-tauri/tests-data/voice/ggml-base-q5_1.bin
+      - name: Voice model test
+        env:
+          LIBCLANG_PATH: C:\Program Files\LLVM\bin
+          TND_VOICE_TEST_DIR: ${{ github.workspace }}\src-tauri\tests-data\voice
+        run: cargo test --release voice -- --nocapture
+        working-directory: src-tauri
+
   build-linux:
     runs-on: ubuntu-24.04
     steps:
