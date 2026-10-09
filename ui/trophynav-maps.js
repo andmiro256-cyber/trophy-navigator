@@ -666,7 +666,7 @@
       // Нет файла крутизны — галка не отмечена и неактивна, что бы ни было сохранено для других областей
       const slopeOn = r.slope && hasSlope;
       // 09.10 (Андрей): настройки один раз выставил — постоянно видеть не нужно: под спойлером, состояние помнится
-      const themeTitle = { topo: 'Топо', contrast: 'Контраст', normal: 'Обычная' }[theme] || theme;
+      const themeTitle = (Core.THEMES.find(t => t.id === theme) || {}).title || theme;
       const summary = [`тема «${themeTitle}»`, r.on ? 'рельеф' : 'без рельефа', `значки: ${Core.poiSummary(poi)}`].join(' · ');
       controls = `<details class="tnmaps-settings" data-tnmaps-settings${settingsOpen() ? ' open' : ''}>
         <summary>${ico('settings', 'tn-ico-t')}<span>Настройки карты</span><span class="tnmaps-sum">${esc(summary)}</span></summary>
@@ -685,7 +685,7 @@
           <input type="range" min="0" max="15" step="1" value="${r.strength}" data-tnmaps-strength ${on(r.on && (hasDem || hasSlope))} aria-label="Сила отмывки">
           <span class="tnmaps-pct">${r.strength * 10}%</span>
         </div>
-        ${theme !== 'topo' ? '<div class="tnmaps-hint tnmaps-sub">Отмывка, крутизна и горизонтали рисуются в теме «Топо».</div>'
+        ${!Core.RELIEF_THEMES.has(theme) ? '<div class="tnmaps-hint tnmaps-sub">Отмывка, крутизна и горизонтали рисуются в темах «Топо» и «Офф-роуд».</div>'
           : hasDem || hasSlope ? '' : '<div class="tnmaps-hint tnmaps-sub">У этой области нет файлов рельефа — горизонтали только из самой карты.</div>'}
         <span class="tnmaps-label">Значки</span>
         <div class="tnmaps-val">

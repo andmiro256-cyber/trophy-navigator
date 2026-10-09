@@ -1,5 +1,5 @@
 {
- "name": "Топо",
+ "name": "offroad",
  "layers": {
   "background": {
    "paint": {
@@ -8,8 +8,8 @@
   },
   "landcover_wood": {
    "paint": {
-    "fill-color": "#7FBF6A",
-    "fill-opacity": 0.75
+    "fill-color": "#A9D79B",
+    "fill-opacity": 0.6
    }
   },
   "landcover_grass": {
@@ -95,8 +95,8 @@
   },
   "building": {
    "paint": {
-    "fill-color": "#D6CCC2",
-    "fill-outline-color": "#9C8F83"
+    "fill-color": "#E6E0DA",
+    "fill-outline-color": "#C9C0B6"
    }
   },
   "building-3d": {
@@ -264,27 +264,27 @@
   },
   "road_secondary_tertiary": {
    "paint": {
-    "line-color": "#FFD25A"
+    "line-color": "#CFCFCF"
    }
   },
   "road_trunk_primary": {
    "paint": {
-    "line-color": "#FFD25A"
+    "line-color": "#CFCFCF"
    }
   },
   "road_link": {
    "paint": {
-    "line-color": "#FFD25A"
+    "line-color": "#CFCFCF"
    }
   },
   "road_motorway": {
    "paint": {
-    "line-color": "#FF9A3C"
+    "line-color": "#A7A7A7"
    }
   },
   "road_motorway_link": {
    "paint": {
-    "line-color": "#FF9A3C"
+    "line-color": "#A7A7A7"
    }
   },
   "road_path_pedestrian": {
@@ -436,27 +436,27 @@
   },
   "bridge_secondary_tertiary": {
    "paint": {
-    "line-color": "#FFD25A"
+    "line-color": "#CFCFCF"
    }
   },
   "bridge_trunk_primary": {
    "paint": {
-    "line-color": "#FFD25A"
+    "line-color": "#CFCFCF"
    }
   },
   "bridge_link": {
    "paint": {
-    "line-color": "#FFD25A"
+    "line-color": "#CFCFCF"
    }
   },
   "bridge_motorway": {
    "paint": {
-    "line-color": "#FF9A3C"
+    "line-color": "#A7A7A7"
    }
   },
   "bridge_motorway_link": {
    "paint": {
-    "line-color": "#FF9A3C"
+    "line-color": "#A7A7A7"
    }
   },
   "bridge_path_pedestrian": {
@@ -608,12 +608,12 @@
   },
   "tunnel_secondary_tertiary": {
    "paint": {
-    "line-color": "#FFD25A"
+    "line-color": "#CFCFCF"
    }
   },
   "tunnel_trunk_primary": {
    "paint": {
-    "line-color": "#FFD25A"
+    "line-color": "#CFCFCF"
    }
   },
   "tunnel_link": {
@@ -623,7 +623,7 @@
   },
   "tunnel_motorway": {
    "paint": {
-    "line-color": "#FF9A3C"
+    "line-color": "#A7A7A7"
    }
   },
   "tunnel_motorway_link": {
@@ -1163,7 +1163,7 @@
    "type": "line",
    "source": "openmaptiles",
    "source-layer": "outdoor",
-   "minzoom": 11,
+   "minzoom": 10,
    "filter": [
     "==",
     "class",
@@ -1171,28 +1171,83 @@
    ],
    "paint": {
     "line-color": "#FFFFFF",
-    "line-opacity": 0.9,
+    "line-opacity": 0.8,
     "line-width": {
      "base": 1.3,
      "stops": [
       [
        11,
-       1.8
+       3.06
       ],
       [
        14,
-       4.5
+       7.65
       ],
       [
        16,
-       8
+       13.6
       ],
       [
        20,
-       16
+       27.2
       ]
      ]
     }
+   },
+   "layout": {
+    "line-cap": "round",
+    "line-join": "round"
+   }
+  },
+  {
+   "id": "offroad_track_unknown",
+   "type": "line",
+   "source": "openmaptiles",
+   "source-layer": "outdoor",
+   "minzoom": 10,
+   "filter": [
+    "all",
+    [
+     "==",
+     "class",
+     "track"
+    ],
+    [
+     "!has",
+     "tracktype"
+    ],
+    [
+     "!has",
+     "4wd"
+    ]
+   ],
+   "paint": {
+    "line-color": "#1E1E1E",
+    "line-width": {
+     "base": 1.3,
+     "stops": [
+      [
+       11,
+       1.6
+      ],
+      [
+       14,
+       4.16
+      ],
+      [
+       16,
+       8.0
+      ],
+      [
+       20,
+       17.6
+      ]
+     ]
+    },
+    "line-dasharray": [
+     5,
+     1.5
+    ]
    },
    "layout": {
     "line-cap": "round",
@@ -1204,7 +1259,7 @@
    "type": "line",
    "source": "openmaptiles",
    "source-layer": "outdoor",
-   "minzoom": 11,
+   "minzoom": 10,
    "filter": [
     "all",
     [
@@ -1213,17 +1268,10 @@
      "track"
     ],
     [
-     "any",
-     [
-      "!has",
-      "tracktype"
-     ],
-     [
-      "in",
-      "tracktype",
-      "grade1",
-      "grade2"
-     ]
+     "in",
+     "tracktype",
+     "grade1",
+     "grade2"
     ],
     [
      "!has",
@@ -1231,25 +1279,25 @@
     ]
    ],
    "paint": {
-    "line-color": "#7A3B10",
+    "line-color": "#1E1E1E",
     "line-width": {
      "base": 1.3,
      "stops": [
       [
        11,
-       1
+       1.6
       ],
       [
        14,
-       2.6
+       4.16
       ],
       [
        16,
-       5
+       8.0
       ],
       [
        20,
-       11
+       17.6
       ]
      ]
     }
@@ -1264,7 +1312,7 @@
    "type": "line",
    "source": "openmaptiles",
    "source-layer": "outdoor",
-   "minzoom": 11,
+   "minzoom": 10,
    "filter": [
     "all",
     [
@@ -1283,31 +1331,31 @@
     ]
    ],
    "paint": {
-    "line-color": "#8B4A1C",
+    "line-color": "#1E1E1E",
     "line-width": {
      "base": 1.3,
      "stops": [
       [
        11,
-       1
+       1.6
       ],
       [
        14,
-       2.4
+       3.84
       ],
       [
        16,
-       4.5
+       7.2
       ],
       [
        20,
-       10
+       16.0
       ]
      ]
     },
     "line-dasharray": [
      3,
-     1.2
+     1.5
     ]
    }
   },
@@ -1316,7 +1364,7 @@
    "type": "line",
    "source": "openmaptiles",
    "source-layer": "outdoor",
-   "minzoom": 11,
+   "minzoom": 10,
    "filter": [
     "all",
     [
@@ -1336,31 +1384,31 @@
     ]
    ],
    "paint": {
-    "line-color": "#9A5A2A",
+    "line-color": "#1E1E1E",
     "line-width": {
      "base": 1.3,
      "stops": [
       [
        11,
-       0.9
+       1.44
       ],
       [
        14,
-       2.2
+       3.52
       ],
       [
        16,
-       4
+       6.4
       ],
       [
        20,
-       9
+       14.4
       ]
      ]
     },
     "line-dasharray": [
-     1.5,
-     1.5
+     1.2,
+     1.2
     ]
    }
   },
@@ -1369,7 +1417,7 @@
    "type": "line",
    "source": "openmaptiles",
    "source-layer": "outdoor",
-   "minzoom": 11,
+   "minzoom": 10,
    "filter": [
     "all",
     [
@@ -1383,31 +1431,31 @@
     ]
    ],
    "paint": {
-    "line-color": "#B3261E",
+    "line-color": "#1E1E1E",
     "line-width": {
      "base": 1.3,
      "stops": [
       [
        11,
-       1
+       1.7
       ],
       [
        14,
-       2.6
+       4.42
       ],
       [
        16,
-       5
+       8.5
       ],
       [
        20,
-       11
+       18.7
       ]
      ]
     },
     "line-dasharray": [
-     2,
-     1
+     0.6,
+     1.1
     ]
    }
   },
@@ -1423,10 +1471,10 @@
     "path"
    ],
    "paint": {
-    "line-color": "#B3261E",
+    "line-color": "#1E1E1E",
     "line-dasharray": [
-     2.2,
-     1.2
+     1.5,
+     1.5
     ],
     "line-width": {
      "base": 1.3,
@@ -1478,17 +1526,17 @@
    ],
    "paint": {
     "line-color": "#1E6FD9",
-    "line-opacity": 0.55,
+    "line-opacity": 0.85,
     "line-width": {
      "base": 1.3,
      "stops": [
       [
        12,
-       3
+       4.2
       ],
       [
        16,
-       9
+       12.6
       ]
      ]
     }
@@ -1738,25 +1786,25 @@
    ],
    "paint": {
     "line-color": "#A23CA0",
-    "line-opacity": 0.85,
+    "line-opacity": 1,
     "line-width": {
      "base": 1.3,
      "stops": [
       [
        12,
-       0.8
+       1.12
       ],
       [
        14,
-       1.6
+       2.24
       ],
       [
        16,
-       3
+       4.2
       ],
       [
        20,
-       6
+       8.4
       ]
      ]
     },
