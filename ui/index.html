@@ -2365,6 +2365,7 @@
       <div class="sync-section-title" style="margin-top:12px">⬇ Загрузить из облака</div>
       <div id="sync-server-info" style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Нажмите «Проверить» для просмотра данных</div>
       <button class="btn-primary" style="width:100%;background:var(--accent-green);border-color:var(--border-success)" onclick="syncPull()">⬇ Загрузить из облака</button>
+      <button class="btn-secondary" style="width:100%;margin-top:8px;color:var(--accent-red)" onclick="syncWipeServer()">Очистить данные на сервере</button>
 
       <div style="font-size:10px;color:var(--text-muted);margin-top:10px;text-align:center;line-height:1.6">
         Облачная синхронизация через trophynav.ru<br>
@@ -12020,110 +12021,84 @@ function buildSyncPayload(fullState, checks) {
   return payload;
 }
 
-function toSyncTimestamp(value) {
-  const ts = Date.parse(value || '');
-  return Number.isFinite(ts) ? ts : 0;
+// Andre 07.10.2026: pull only adds; names are compared within each type.
+function syncNameKey(name) {
+  return String(name || '').replace(/\s+/gu, '').toLowerCase();
 }
 
-function mergeSyncCounters(localCounters = {}, remoteCounters = {}) {
-  const result = { ...(localCounters || {}) };
-  Object.entries(remoteCounters || {}).forEach(([key, value]) => {
-    const localValue = result[key];
-    if (typeof localValue === 'number' && typeof value === 'number') {
-      result[key] = Math.max(localValue, value);
-    } else {
-      result[key] = value;
+function mergeSyncState(localState, remoteState, checks, result = {}) {
+  const merged = { ...localState, counters: { ...(localState.counters || {}) } };
+  result.added = { waypoints: [], tracks: [], routes: [], gpxFiles: [] };
+  result.skipped = 0;
+  const waypointIds = new Map();
+  const setIds = new Map();
+  const sets = [...(localState.waypointSets || [])];
+  const allocateId = (items, counter) => {
+    let id = Math.max(1, Number(merged.counters[counter]) || 1);
+    const ids = new Set(items.map(item => String(item.id)));
+    while (ids.has(String(id))) id++;
+    merged.counters[counter] = id + 1;
+    return id;
+  };
+  const addSet = remoteId => {
+    if (setIds.has(remoteId)) return setIds.get(remoteId);
+    const remote = (remoteState.waypointSets || []).find(set => set.id === remoteId);
+    const name = remote?.name || 'Получено с сервера';
+    let target = sets.find(set => syncNameKey(set.name) === syncNameKey(name));
+    if (!target) {
+      target = { ...remote, name, id: allocateId(sets, 'waypointSetIdCounter') };
+      sets.push(target);
     }
-  });
-  return result;
-}
-
-function getSyncEntityKey(item, type) {
-  if (!item || typeof item !== 'object') return null;
-  if (item.id != null && item.id !== '') return `${type}:id:${item.id}`;
-
-  if (type === 'waypoints' && Number.isFinite(item.lat) && Number.isFinite(item.lng)) {
-    return `${type}:geo:${String(item.name || '').trim()}:${item.lat.toFixed(6)}:${item.lng.toFixed(6)}`;
+    setIds.set(remoteId, target.id);
+    return target.id;
+  };
+  for (const [type, check, counter] of [
+    ['waypoints', 'waypoints', 'wpCounter'], ['tracks', 'tracks', 'trackIdCounter'],
+    ['routes', 'routes', 'routeIdCounter'], ['gpxFiles', 'gpx', 'gpxIdCounter']
+  ]) {
+    const local = localState[type] || [];
+    merged[type] = [...local];
+    if (!checks[check]) continue;
+    const byName = new Map(local.map(item => [syncNameKey(item.name), item]));
+    const localNames = new Set(byName.keys());
+    // Never deduplicate or modify local items, including existing duplicate names.
+    for (const remote of remoteState[type] || []) {
+      if (!remote || typeof remote !== 'object') continue;
+      const key = syncNameKey(remote.name);
+      const existing = byName.get(key);
+      if (existing) {
+        if (localNames.has(key)) result.skipped++;
+        if (type === 'waypoints' && remote.id != null) waypointIds.set(String(remote.id), existing.id);
+        continue;
+      }
+      const item = { ...remote };
+      const used = new Set(merged[type].map(value => String(value.id)));
+      if (item.id == null || item.id === '' || used.has(String(item.id))) {
+        item.id = allocateId(merged[type], counter);
+      }
+      if (typeof item.id === 'number') merged.counters[counter] = Math.max(Number(merged.counters[counter]) || 1, item.id + 1);
+      if (type === 'waypoints') {
+        item.setId = addSet(remote.setId);
+        if (remote.id != null) waypointIds.set(String(remote.id), item.id);
+        merged.counters.wpCounter = Math.max(Number(merged.counters.wpCounter) || 1, (Number(item.num) || 0) + 1);
+      }
+      if (type === 'routes' && Array.isArray(item.pointWaypointIds)) {
+        item.pointWaypointIds = item.pointWaypointIds.map(id => waypointIds.get(String(id))
+          ?? (localState.waypoints || []).find(wp => String(wp.id) === String(id))?.id ?? null);
+      }
+      merged[type].push(item);
+      byName.set(key, item);
+      result.added[type].push(item);
+    }
   }
-
-  const createdAt = String(item.createdAt || item.importedAt || '').trim();
-  const name = String(item.name || '').trim();
-  if (createdAt || name) return `${type}:meta:${createdAt}:${name}`;
-  return null;
-}
-
-function mergeSyncItems(localItems = [], remoteItems = [], type) {
-  const merged = new Map();
-  const extras = [];
-
-  const put = (item, sourceTag) => {
-    if (!item || typeof item !== 'object') return;
-    const key = getSyncEntityKey(item, type);
-    if (!key) {
-      extras.push(item);
-      return;
-    }
-    const prev = merged.get(key);
-    if (!prev) {
-      merged.set(key, item);
-      return;
-    }
-
-    const prevTs = toSyncTimestamp(prev.updatedAt || prev.syncedAt || prev.createdAt || prev.importedAt);
-    const nextTs = toSyncTimestamp(item.updatedAt || item.syncedAt || item.createdAt || item.importedAt);
-    if (nextTs >= prevTs || sourceTag === 'remote') {
-      merged.set(key, { ...prev, ...item });
-    }
-  };
-
-  localItems.forEach(item => put(item, 'local'));
-  remoteItems.forEach(item => put(item, 'remote'));
-
-  return [...Array.from(merged.values()), ...extras];
-}
-
-function mergeWaypointSets(localSets = [], remoteSets = []) {
-  const merged = new Map();
-  localSets.forEach(set => {
-    if (set && set.id != null) merged.set(set.id, { ...set });
-  });
-  remoteSets.forEach(set => {
-    if (!set || set.id == null) return;
-    const prev = merged.get(set.id) || {};
-    merged.set(set.id, { ...prev, ...set });
-  });
-  return Array.from(merged.values());
-}
-
-function mergeSyncState(localState, remoteState, checks) {
-  const merged = {
-    ...localState,
-    version: APP_STATE_VERSION,
-    _source: remoteState?._source || localState?._source || 'desktop',
-    settings: { ...(localState.settings || {}), ...(remoteState.settings || {}) },
-    map: { ...(localState.map || {}), ...(remoteState.map || {}) },
-    counters: mergeSyncCounters(localState.counters || {}, remoteState.counters || {}),
-    waypointSets: checks.waypoints
-      ? mergeWaypointSets(localState.waypointSets || [], remoteState.waypointSets || [])
-      : (localState.waypointSets || []),
-    activeSetId: checks.waypoints
-      ? (remoteState.activeSetId ?? localState.activeSetId ?? null)
-      : (localState.activeSetId ?? null),
-    waypoints: checks.waypoints
-      ? mergeSyncItems(localState.waypoints || [], remoteState.waypoints || [], 'waypoints')
-      : (localState.waypoints || []),
-    tracks: checks.tracks
-      ? mergeSyncItems(localState.tracks || [], remoteState.tracks || [], 'tracks')
-      : (localState.tracks || []),
-    routes: checks.routes
-      ? mergeSyncItems(localState.routes || [], remoteState.routes || [], 'routes')
-      : (localState.routes || []),
-    gpxFiles: checks.gpx
-      ? mergeSyncItems(localState.gpxFiles || [], remoteState.gpxFiles || [], 'gpx')
-      : (localState.gpxFiles || [])
-  };
-
+  merged.waypointSets = sets;
+  result.added.waypointSets = sets;
   return merged;
+}
+
+function formatSyncPullResult(result) {
+  const added = result.added;
+  return `Добавлено: точки ${added.waypoints.length}, треки ${added.tracks.length}, маршруты ${added.routes.length}, GPX ${added.gpxFiles.length}. Уже было, не тронуто: ${result.skipped}`;
 }
 
 function normalizeSyncPullState(payload, fallbackState = null) {
@@ -12454,11 +12429,40 @@ async function syncPush() {
   }
 }
 
+async function writeNewSyncFile(path, content) {
+  const api = window.__TAURI__.fs;
+  const dot = path.lastIndexOf('.');
+  for (let suffix = 0; suffix < 10000; suffix++) {
+    const candidate = suffix === 0 ? path : path.slice(0, dot) + ` (${suffix})` + path.slice(dot);
+    if (await api.exists(candidate)) continue;
+    let file;
+    try {
+      file = await api.open(candidate, { write: true, createNew: true });
+    } catch (e) {
+      if (await api.exists(candidate)) continue;
+      throw e;
+    }
+    try {
+      const bytes = new TextEncoder().encode(content);
+      let offset = 0;
+      while (offset < bytes.length) {
+        const written = await file.write(bytes.subarray(offset));
+        if (!written) throw new Error('GPX write made no progress');
+        offset += written;
+      }
+    } finally {
+      await file.close();
+    }
+    return candidate;
+  }
+  throw new Error('No free GPX filename');
+}
+
 // ─── Сохранение синхронизированных данных как GPX файлы ───
 async function saveSyncedGPXFiles(state, checks) {
   if (!window.__TAURI__ || !appDataPath) return;
   try {
-    const { writeTextFile } = window.__TAURI__.fs;
+    const writeTextFile = writeNewSyncFile;
     const escXml = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
     // Сохраняем точки
@@ -12546,8 +12550,10 @@ async function saveSyncedGPXFiles(state, checks) {
     }
 
     console.log('Synced GPX files saved to', appDataPath);
+    return true;
   } catch (e) {
     console.warn('Failed to save synced GPX files:', e);
+    return false;
   }
 }
 
@@ -12558,7 +12564,7 @@ async function syncPull(silent) {
   if (!cfg.email || !cfg.syncKey) { if (!silent) showToast('Привяжите email для синхронизации'); return; }
   const checks = getSyncChecks();
 
-  if (!silent && !await tndConfirm('Загрузить данные с сервера? Выбранные типы будут объединены с локальными данными, при конфликте победит более новая версия.')) return;
+  if (!silent && !await tndConfirm('Получить данные с сервера? Добавятся только новые имена выбранных типов. Уже существующие объекты не изменятся; регистр и пробелы в именах не учитываются.')) return;
 
   updateSyncStatus('Загрузка...', false);
   try {
@@ -12576,7 +12582,7 @@ async function syncPull(silent) {
     }
 
     const localState = collectState();
-    let state = normalizeSyncPullState(payload, localState);
+    let state = normalizeSyncPullState(payload);
     const syncTime = new Date().toISOString();
     const serverSource = state._source || 'sync';
 
@@ -12612,21 +12618,55 @@ async function syncPull(silent) {
       }));
     }
 
-    state = mergeSyncState(localState, state, checks);
+    const result = {};
+    state = mergeSyncState(localState, state, checks, result);
 
     applyState(state);
     saveState();
 
     // Сохраняем синхронизированные данные как GPX файлы
-    saveSyncedGPXFiles(state, checks);
+    const filesSaved = await saveSyncedGPXFiles(result.added, checks);
 
     updateSyncStatus('Подключено', true);
     document.getElementById('sync-last-time').textContent = new Date().toLocaleString('ru-RU');
     localStorage.setItem('tnd-sync-last', new Date().toISOString());
-    if (!silent) showToast('Данные загружены с trophynav.ru');
+    const summary = formatSyncPullResult(result);
+    document.getElementById('sync-server-info').textContent = summary;
+    if (!silent) showToast(summary + (filesSaved === false ? '. Не удалось сохранить GPX-копии' : ''));
   } catch (e) {
     updateSyncStatus('Нет связи', false);
     if (!silent) showToast('Не удалось загрузить данные');
+  }
+}
+
+async function syncWipeServer() {
+  if (!isPremiumAvailable()) { showToast('Синхронизация доступна по лицензии'); return; }
+  saveSyncConfig();
+  const cfg = getSyncConfig();
+  if (!cfg.email || !cfg.syncKey) { showToast('Привяжите email для синхронизации'); return; }
+  if (!await tndConfirmDanger('Очистить данные на сервере? Локальные точки, треки, маршруты и файлы останутся без изменений.', 'Очистить сервер')) return;
+  try {
+    const updatedAt = getIsoNow();
+    const empty = { items: [], replace: true, updatedAt };
+    const resp = await fetch(syncApiUrl('/api/sync/push'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...syncHeaders() },
+      body: JSON.stringify({
+        deviceType: 'desktop', timestamp: updatedAt,
+        data: {
+          version: APP_STATE_VERSION,
+          waypoints: { ...empty, waypointSets: [], activeSetId: null },
+          tracks: empty, routes: empty, gpx: empty, gpxFiles: []
+        }
+      })
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error || data.ok !== true) throw new Error(data.error || String(resp.status));
+    updateSyncStatus('Подключено', true);
+    document.getElementById('sync-server-info').textContent = 'Сервер очищен. Локальные данные сохранены';
+    showToast('Сервер очищен. Локальные данные сохранены');
+  } catch (e) {
+    showToast('Не удалось очистить сервер');
   }
 }
 

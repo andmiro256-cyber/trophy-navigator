@@ -134,3 +134,6 @@ Trophy Navigator — экосистема навигации для трофи-�
 - [2026-03-17 утро] Waypoint & Route Manager, GO/STOP. v2.4.4→v2.5.1
 - [2026-03-16 вечер] Bearing freeze, easeCamera, фильтры трека. v2.4.2→v2.4.4
 - [2026-03-16] GPS StateFlow, компас, лицензия, админка. v2.2.0→v2.4.2
+
+## Sync rule — Andre 2026-10-07, Agent Bus #2402
+Pull is add-only by name within each selected type, ignoring case and whitespace. Existing local entities, settings, map and active set stay local. Empty remote snapshots do not delete anything. GPX copies are written only for additions using exclusive create and collision suffixes. Server wipe sends empty replace documents to the existing push endpoint without applying local state or pulling afterwards. Implemented locally; not released.
