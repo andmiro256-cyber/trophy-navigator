@@ -2692,6 +2692,19 @@ const map = L.map('map', { zoomControl: true, attributionControl: false, maxZoom
 map._createRenderer = options => L.canvas({ padding: TND_CANVAS_PADDING, ...options });
 const trackCanvasRenderer = L.canvas({ padding: TND_CANVAS_PADDING });
 const trackPointCanvasRenderer = L.canvas({ padding: TND_CANVAS_PADDING, tolerance: 8 });
+/**
+ * Трек из нескольких кусков (trkseg в GPX): начало куска — pointsData[i].seg = 1 (i > 0). Трек один, а между
+ * кусками линии нет — ни «лучей» плана из nakarte, ни прямых через потерю сигнала GPS (Андрей 09.10).
+ * Пометка живёт в данных точки и переезжает с ней при правках.
+ */
+function isTrackSegStart(t, i) { return i > 0 && !!t?.pointsData?.[i]?.seg; }
+function trackLatLngs(t) {
+  const pts = t?.points || [];
+  if (!t?.pointsData || !t.pointsData.some((d, i) => i > 0 && d?.seg)) return pts;
+  const out = [[]];
+  pts.forEach((p, i) => { if (isTrackSegStart(t, i) && out[out.length - 1].length) out.push([]); out[out.length - 1].push(p); });
+  return out;
+}
 function createTrackPolylineLayer(points, options = {}) {
   return L.polyline(points, {
     color: options.color || '#4adf7a',  // theme-check: data
@@ -2866,7 +2879,7 @@ function undoLastAction() {
     if (t && t.points.length > 0) {
       t.points.pop();
       if (t.pointsData) t.pointsData.pop();
-      if (t.polyline) t.polyline.setLatLngs(t.points);
+      if (t.polyline) t.polyline.setLatLngs(trackLatLngs(t));
       syncTrackMarkers(t);
       updateTrackBuildPanel(t);
       showToast('↩ Отменено: точка трека');
@@ -6427,6 +6440,7 @@ function buildGPXWithData(selWaypoints, selTracks, selRoutes) {
   selTracks.forEach(t => {
     gpx += `<trk><name>${escapeXml(t.name)}</name><extensions><tnd:color>${escapeXml(t.color || '#4a8adf')}</tnd:color><tnd:width>${Number(t.width) || 3}</tnd:width><tnd:pointSize>${Number(t.pointSize ?? 3)}</tnd:pointSize></extensions><trkseg>`;  // theme-check: data
     t.points.forEach((p, i) => {
+      if (isTrackSegStart(t, i)) gpx += '</trkseg><trkseg>';
       gpx += `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
       const d = t.pointsData?.[i];
       if (d) {
@@ -6843,10 +6857,15 @@ async function ctxTrackAction(action) {
     if (marker) map.removeLayer(marker);
     if (track.markers?.length > idx) track.markers.splice(idx, 1);
     track.points.splice(idx, 1);
-    if (track.pointsData?.length) track.pointsData.splice(idx, 1);
+    if (track.pointsData?.length) {
+      const wasSeg = track.pointsData[idx]?.seg;
+      track.pointsData.splice(idx, 1);
+      // удалили первую точку куска — разрыв переходит на следующую
+      if (wasSeg && track.pointsData[idx]) track.pointsData[idx] = { ...track.pointsData[idx], seg: 1 };
+    }
     // Обновляем _trackIdx для оставшихся маркеров
     track.markers?.forEach((m, i) => { m._trackIdx = i; });
-    if (track.polyline) track.polyline.setLatLngs(track.points);
+    if (track.polyline) track.polyline.setLatLngs(trackLatLngs(track));
     syncTrackMarkers(track);
     closeTrackPointPopup();
     if (currentTrackEdit?.track?.id === track.id) currentTrackEdit.selectedPointIdx = null;
@@ -7472,7 +7491,7 @@ function restoreTrackGeometry(track, snapshot) {
   if (Number.isFinite(snapshot.width)) track.width = snapshot.width;
   if (Number.isFinite(snapshot.pointSize)) track.pointSize = snapshot.pointSize;
   if (track.polyline) {
-    track.polyline.setLatLngs(track.points);
+    track.polyline.setLatLngs(trackLatLngs(track));
   } else if (track.points.length > 0) {
     track.polyline = createTrackPolylineLayer(track.points, {
       color: track.color,
@@ -7591,7 +7610,7 @@ function beginTrackPointDrag(track, idx, options = {}) {
     const marker = getTrackMarker(track, idx);
     if (marker) marker.setLatLng(latlng);
     track.points[idx] = latlng;
-    if (track.polyline) track.polyline.setLatLngs(track.points);
+    if (track.polyline) track.polyline.setLatLngs(trackLatLngs(track));
     moved = true;
   };
   const onUp = () => {
@@ -8050,7 +8069,7 @@ function removeDuplicateTrackDoubleClickPoint() {
   if (previous.distanceTo(last) > 6) return false;
   track.points.pop();
   if (track.pointsData?.length) track.pointsData.pop();
-  if (track.polyline) track.polyline.setLatLngs(track.points);
+  if (track.polyline) track.polyline.setLatLngs(trackLatLngs(track));
   syncTrackMarkers(track);
   for (let i = undoStack.length - 1; i >= 0; i--) {
     const action = undoStack[i];
@@ -8118,7 +8137,7 @@ function renameTrack(id, newName) {
 
 function trackLen(t) {
   let d = 0;
-  for (let i = 1; i < t.points.length; i++) d += t.points[i-1].distanceTo(t.points[i]);
+  for (let i = 1; i < t.points.length; i++) if (!isTrackSegStart(t, i)) d += t.points[i-1].distanceTo(t.points[i]);
   return d / 1000;
 }
 function updateTrackBuildPanel(t) {
@@ -8216,7 +8235,7 @@ function insertTrackPointIntoSegment(track, latlng, options = {}) {
   track.points.splice(insertIndex, 0, latlng);
   if (!track.pointsData) track.pointsData = [];
   track.pointsData.splice(insertIndex, 0, {});
-  if (track.polyline) track.polyline.setLatLngs(track.points);
+  if (track.polyline) track.polyline.setLatLngs(trackLatLngs(track));
   if (currentTrackEdit?.track?.id === track.id) currentTrackEdit.selectedPointIdx = insertIndex;
   syncTrackMarkers(track);
   return insertIndex;
@@ -8414,9 +8433,17 @@ function reverseSelectedTrack() {
   const t = tracks.find(track => track.id === selectedTrackId);
   if (!t || t.points.length < 2) return;
   pushUndo({ type: 'trackGeometry', track: t, snapshot: snapshotTrackGeometry(t) });
+  const nPts = t.points.length;
+  const segAt = new Set((t.pointsData || []).map((d, i) => (i > 0 && d?.seg ? i : -1)).filter(i => i > 0));
   t.points = [...t.points].reverse();
-  if (t.pointsData) t.pointsData = [...t.pointsData].reverse();
-  if (t.polyline) t.polyline.setLatLngs(t.points);
+  if (t.pointsData) {
+    // разрыв между точками j−1 и j после разворота — между n−1−j и n−j: начало куска — n−j
+    t.pointsData = [...t.pointsData].reverse().map((d, i) => {
+      const { seg, ...rest } = d || {};
+      return segAt.has(nPts - i) ? { ...rest, seg: 1 } : rest;
+    });
+  }
+  if (t.polyline) t.polyline.setLatLngs(trackLatLngs(t));
   syncTrackMarkers(t);
   touchTrack(t);
   if (currentTrackDraw?.id === t.id) {
@@ -8508,6 +8535,7 @@ function saveTracksGPX() {
     tracks.forEach(t => {
       gpx += `<trk><name>${escapeXml(t.name)}</name><extensions><tnd:color>${escapeXml(t.color || '#4a8adf')}</tnd:color><tnd:width>${Number(t.width) || 3}</tnd:width><tnd:pointSize>${Number(t.pointSize ?? 3)}</tnd:pointSize></extensions><trkseg>`;  // theme-check: data
       t.points.forEach((p, i) => {
+        if (isTrackSegStart(t, i)) gpx += '</trkseg><trkseg>';
         gpx += `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
         const d = t.pointsData?.[i];
         if (d) {
@@ -8598,39 +8626,6 @@ function saveTracksPLT() {
     return rows.join('\r\n');
   });
 }
-/**
- * Куски трека → непрерывные линии: кусок, начало которого у конца собранной линии (или конец — у её начала)
- * в пределах joinM метров, продолжает её; остальное — отдельные части. Порядок кусков в файле не важен.
- * segs: [{points: [L.LatLng], pointsData: [...]}] → [{points, pointsData}].
- */
-function chainTrackSegments(segs, joinM = 50) {
-  const rest = segs.filter(s => s.points.length).map(s => ({ points: s.points.slice(), pointsData: s.pointsData.slice() }));
-  const near = (a, b, m) => a.distanceTo(b) <= m;
-  const out = [];
-  while (rest.length) {
-    const cur = rest.shift();
-    for (let grown = true; grown;) {
-      grown = false;
-      const end = cur.points[cur.points.length - 1], start = cur.points[0];
-      let i = rest.findIndex(s => near(end, s.points[0], joinM));
-      if (i >= 0) {
-        const s = rest.splice(i, 1)[0];
-        const skip = near(end, s.points[0], 1) ? 1 : 0;  // общая точка стыка — одна
-        cur.points.push(...s.points.slice(skip)); cur.pointsData.push(...s.pointsData.slice(skip));
-        grown = true; continue;
-      }
-      i = rest.findIndex(s => near(s.points[s.points.length - 1], start, joinM));
-      if (i >= 0) {
-        const s = rest.splice(i, 1)[0];
-        const cut = near(s.points[s.points.length - 1], start, 1) ? 1 : 0;
-        cur.points.unshift(...s.points.slice(0, s.points.length - cut)); cur.pointsData.unshift(...s.pointsData.slice(0, s.pointsData.length - cut));
-        grown = true;
-      }
-    }
-    out.push(cur);
-  }
-  return out;
-}
 function loadGPXTracks(text, fname, options = {}) {
   const doc = new DOMParser().parseFromString(normalizeText(text), 'application/xml');
   const meta = options.meta || options || {};
@@ -8640,9 +8635,8 @@ function loadGPXTracks(text, fname, options = {}) {
   const importedTrackIds = [];
   xmlDescendantsByLocalName(doc, 'trk').forEach(trk => {
     const name = xmlTextByLocalNames(trk, 'name', { direct: true }) || ('Трек ' + (trackIdCounter));
-    // Куски трека (trkseg) не склеиваем подряд: nakarte режет нарисованный план на части в местах правок,
-    // и прямые от конца одного куска к началу другого рисовали «лучи» через всю карту (Андрей 09.10).
-    // Куски, продолжающие друг друга, — одна линия; разрывы и развилки — отдельные части трека.
+    // Куски трека (trkseg) не соединяем прямыми: nakarte режет нарисованный план в местах правок, GPS-запись
+    // рвётся при потере сигнала — прямые рисовали «лучи» через всю карту (Андрей 09.10). Трек остаётся одним.
     const segNodes = xmlDescendantsByLocalName(trk, 'trkseg');
     const segs = [];
     (segNodes.length ? segNodes : [trk]).forEach(node => {
@@ -8687,11 +8681,17 @@ function loadGPXTracks(text, fname, options = {}) {
       });
       if (seg.points.length) segs.push(seg);
     });
-    const parts = chainTrackSegments(segs).filter(part => part.points.length >= 2);
-    parts.forEach((part, partIndex) => {
+    // один трек; начало каждого следующего куска — разрыв линии (pointsData.seg), без прямой через карту
+    const flat = { points: [], pointsData: [] };
+    segs.forEach((seg, si) => seg.points.forEach((p, k) => {
+      flat.pointsData.push(si > 0 && k === 0 && flat.points.length ? { ...seg.pointsData[k], seg: 1 } : seg.pointsData[k]);
+      flat.points.push(p);
+    }));
+    const parts = flat.points.length >= 2 ? [flat] : [];
+    parts.forEach(part => {
     const points = part.points;
     const pointsData = part.pointsData;
-    const partName = parts.length > 1 && partIndex > 0 ? `${name} — часть ${partIndex + 1}` : name;
+    const partName = name;
     const trkColor = xmlExtensionText(trk, ['color', 'displaycolor']) || null;
     const trkWidth = parseInt(xmlExtensionText(trk, 'width'), 10) || 3;
     const trkPointSize = parseInt(xmlExtensionText(trk, 'pointSize'), 10);
@@ -8702,7 +8702,7 @@ function loadGPXTracks(text, fname, options = {}) {
     });
     // Вычислить скорость из расстояния/времени если нет в данных
     for (let i = 1; i < pointsData.length; i++) {
-      if (pointsData[i].speed == null && pointsData[i].time && pointsData[i-1].time) {
+      if (pointsData[i].speed == null && !pointsData[i].seg && pointsData[i].time && pointsData[i-1].time) {  // через разрыв куска скорость не считаем
         try {
           const dt = (new Date(pointsData[i].time) - new Date(pointsData[i-1].time)) / 1000; // секунды
           if (dt > 0) {
@@ -8717,6 +8717,7 @@ function loadGPXTracks(text, fname, options = {}) {
       }
     }
     t.pointsData = pointsData;
+    if (t.polyline) t.polyline.setLatLngs(trackLatLngs(t));
     importedTracks.push(t);
     importedTrackIds.push(String(t.id));
     count++;
@@ -13173,6 +13174,7 @@ async function saveSyncedGPXFiles(state, checks) {
         if (t.syncedAt) gpx += `      <tnd:syncedAt>${escXml(t.syncedAt)}</tnd:syncedAt>\n`;
         gpx += `    </extensions>\n    <trkseg>\n`;
         (t.points || []).forEach((p, i) => {
+          if (isTrackSegStart(t, i)) gpx += `    </trkseg>\n    <trkseg>\n`;
           gpx += `      <trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
           const d = t.pointsData?.[i];
           if (d?.ele != null) gpx += `<ele>${d.ele.toFixed(1)}</ele>`;
