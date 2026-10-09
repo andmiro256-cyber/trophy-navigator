@@ -1375,6 +1375,7 @@
   <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openSyncModal()"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-cloud-sync"/></svg> Синхронизация с сервером</button>
   <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();toggleLive()"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-signal"/></svg> Мониторинг участников</button>
   <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openServerPanel()"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-server"/></svg> Связь с сервером</button>
+  <button type="button" class="toolbar-more-item" role="menuitem" id="menu-fullscreen" onclick="closeToolbarMore();toggleFullscreen()"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-map"/></svg> <span data-fs-label>Во весь экран</span> <span class="kbd-hint">F11</span></button>
   <button type="button" class="toolbar-more-item" role="menuitem" onclick="closeToolbarMore();openModal('modal-about')"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-info"/></svg> О программе</button>
 </div>
 
@@ -15085,6 +15086,37 @@ function toggleSearch() {
   if (document.activeElement === input) { input.blur(); clearSearch(); }
   else input.focus();
 }
+
+// ─── Полный экран (Андрей 09.10: на Windows окно «развернуть» оставляет панель задач) ───
+// F11 или «⋯ → Во весь экран»; выбор запоминается, и приложение так же открывается в следующий раз.
+const TND_FS_KEY = 'tnd-fullscreen';
+function tndAppWindow() {
+  try { return window.__TAURI__?.window?.getCurrentWindow?.() || null; } catch { return null; }
+}
+async function tndIsFullscreen() {
+  const w = tndAppWindow();
+  if (w?.isFullscreen) { try { return await w.isFullscreen(); } catch { /* нет права */ } }
+  return !!document.fullscreenElement;
+}
+async function setFullscreen(on, { remember = true } = {}) {
+  const w = tndAppWindow();
+  try {
+    if (w?.setFullscreen) await w.setFullscreen(!!on);
+    else if (on) await document.documentElement.requestFullscreen?.();
+    else if (document.fullscreenElement) await document.exitFullscreen?.();
+  } catch (e) { console.warn('fullscreen:', e); showToast('Полноэкранный режим недоступен'); return; }
+  if (remember) { try { localStorage.setItem(TND_FS_KEY, on ? '1' : '0'); } catch { /* приватный режим */ } }
+  const label = document.querySelector('#menu-fullscreen [data-fs-label]');
+  if (label) label.textContent = on ? 'Выйти из полного экрана' : 'Во весь экран';
+  setTimeout(() => map.invalidateSize(), 150);
+}
+async function toggleFullscreen() { await setFullscreen(!(await tndIsFullscreen())); }
+document.addEventListener('keydown', e => {
+  if (e.key !== 'F11' || e.ctrlKey || e.altKey || e.metaKey) return;
+  e.preventDefault();
+  toggleFullscreen();
+});
+try { if (localStorage.getItem(TND_FS_KEY) === '1') setTimeout(() => setFullscreen(true, { remember: false }), 300); } catch { /* приватный режим */ }
 
 function clearSearch() {
   document.getElementById('search-input').value = '';
