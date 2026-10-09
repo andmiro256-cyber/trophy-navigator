@@ -2665,6 +2665,8 @@ const formatZoomLevel = z => String(Math.round(Number(z) || 0));
 // а с TND_NO_GPU_TWEAKS=1 всё рисовалось (Андрей 09.10). willReadFrequently оставляет 2D-холст в памяти
 // процессора; векторная основа (WebGL MapLibre) по-прежнему идёт на видеокарте.
 (function tndCpuLeafletCanvas() {
+  // только Linux (WebKitGTK): на Windows (WebView2) холсты в памяти процессора тормозили зум тачпадом (Андрей 09.10)
+  if (!/Linux/i.test(navigator.userAgent || '') || /Android/i.test(navigator.userAgent || '')) return;
   const init = L.Canvas.prototype._initContainer;
   L.Canvas.prototype._initContainer = function () {
     const proto = HTMLCanvasElement.prototype, get = proto.getContext;
