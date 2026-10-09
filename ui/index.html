@@ -8542,6 +8542,39 @@ function saveTracksPLT() {
     return rows.join('\r\n');
   });
 }
+/**
+ * Куски трека → непрерывные линии: кусок, начало которого у конца собранной линии (или конец — у её начала)
+ * в пределах joinM метров, продолжает её; остальное — отдельные части. Порядок кусков в файле не важен.
+ * segs: [{points: [L.LatLng], pointsData: [...]}] → [{points, pointsData}].
+ */
+function chainTrackSegments(segs, joinM = 50) {
+  const rest = segs.filter(s => s.points.length).map(s => ({ points: s.points.slice(), pointsData: s.pointsData.slice() }));
+  const near = (a, b, m) => a.distanceTo(b) <= m;
+  const out = [];
+  while (rest.length) {
+    const cur = rest.shift();
+    for (let grown = true; grown;) {
+      grown = false;
+      const end = cur.points[cur.points.length - 1], start = cur.points[0];
+      let i = rest.findIndex(s => near(end, s.points[0], joinM));
+      if (i >= 0) {
+        const s = rest.splice(i, 1)[0];
+        const skip = near(end, s.points[0], 1) ? 1 : 0;  // общая точка стыка — одна
+        cur.points.push(...s.points.slice(skip)); cur.pointsData.push(...s.pointsData.slice(skip));
+        grown = true; continue;
+      }
+      i = rest.findIndex(s => near(s.points[s.points.length - 1], start, joinM));
+      if (i >= 0) {
+        const s = rest.splice(i, 1)[0];
+        const cut = near(s.points[s.points.length - 1], start, 1) ? 1 : 0;
+        cur.points.unshift(...s.points.slice(0, s.points.length - cut)); cur.pointsData.unshift(...s.pointsData.slice(0, s.pointsData.length - cut));
+        grown = true;
+      }
+    }
+    out.push(cur);
+  }
+  return out;
+}
 function loadGPXTracks(text, fname, options = {}) {
   const doc = new DOMParser().parseFromString(normalizeText(text), 'application/xml');
   const meta = options.meta || options || {};
@@ -8551,51 +8584,62 @@ function loadGPXTracks(text, fname, options = {}) {
   const importedTrackIds = [];
   xmlDescendantsByLocalName(doc, 'trk').forEach(trk => {
     const name = xmlTextByLocalNames(trk, 'name', { direct: true }) || ('Трек ' + (trackIdCounter));
-    const points = [];
-    const pointsData = [];
-    xmlDescendantsByLocalName(trk, 'trkpt').forEach(pt => {
-      const latlng = parseTrackLatLng(pt.getAttribute('lat'), pt.getAttribute('lon'));
-      if (latlng) {
-        points.push(latlng);
-        const data = {};
-        const ele = xmlDirectChildByLocalName(pt, 'ele');
-        if (ele) data.ele = parseFloat(ele.textContent);
-        const time = xmlDirectChildByLocalName(pt, 'time');
-        if (time) data.time = time.textContent.trim();
-        const pointName = xmlDirectChildByLocalName(pt, 'name');
-        if (pointName) data.name = pointName.textContent.trim();
-        const desc = xmlDirectChildByLocalName(pt, 'desc');
-        if (desc) data.desc = desc.textContent.trim();
-        const hdop = xmlDirectChildByLocalName(pt, 'hdop');
-        if (hdop) data.hdop = parseFloat(hdop.textContent);
-        const vdop = xmlDirectChildByLocalName(pt, 'vdop');
-        if (vdop) data.vdop = parseFloat(vdop.textContent);
-        const pdop = xmlDirectChildByLocalName(pt, 'pdop');
-        if (pdop) data.pdop = parseFloat(pdop.textContent);
-        const sat = xmlDirectChildByLocalName(pt, 'sat');
-        if (sat) data.sat = parseInt(sat.textContent);
-        const speed = xmlDirectChildByLocalName(pt, 'speed');
-        if (speed) data.speed = parseFloat(speed.textContent);
-        const course = xmlDirectChildByLocalName(pt, 'course');
-        if (course) data.course = parseFloat(course.textContent);
-        const hr = xmlExtensionText(pt, 'hr');
-        if (hr) data.hr = parseInt(hr, 10);
-        const cad = xmlExtensionText(pt, 'cad');
-        if (cad) data.cad = parseInt(cad, 10);
-        const temp = xmlExtensionText(pt, 'atemp');
-        if (temp) data.temp = parseFloat(temp);
-        const power = xmlExtensionText(pt, 'power');
-        if (power) data.power = parseInt(power, 10);
-        pointsData.push(data);
-      } else {
-        skippedPoints++;
-      }
+    // Куски трека (trkseg) не склеиваем подряд: nakarte режет нарисованный план на части в местах правок,
+    // и прямые от конца одного куска к началу другого рисовали «лучи» через всю карту (Андрей 09.10).
+    // Куски, продолжающие друг друга, — одна линия; разрывы и развилки — отдельные части трека.
+    const segNodes = xmlDescendantsByLocalName(trk, 'trkseg');
+    const segs = [];
+    (segNodes.length ? segNodes : [trk]).forEach(node => {
+      const seg = { points: [], pointsData: [] };
+      xmlDescendantsByLocalName(node, 'trkpt').forEach(pt => {
+        const latlng = parseTrackLatLng(pt.getAttribute('lat'), pt.getAttribute('lon'));
+        if (latlng) {
+          seg.points.push(latlng);
+          const data = {};
+          const ele = xmlDirectChildByLocalName(pt, 'ele');
+          if (ele) data.ele = parseFloat(ele.textContent);
+          const time = xmlDirectChildByLocalName(pt, 'time');
+          if (time) data.time = time.textContent.trim();
+          const pointName = xmlDirectChildByLocalName(pt, 'name');
+          if (pointName) data.name = pointName.textContent.trim();
+          const desc = xmlDirectChildByLocalName(pt, 'desc');
+          if (desc) data.desc = desc.textContent.trim();
+          const hdop = xmlDirectChildByLocalName(pt, 'hdop');
+          if (hdop) data.hdop = parseFloat(hdop.textContent);
+          const vdop = xmlDirectChildByLocalName(pt, 'vdop');
+          if (vdop) data.vdop = parseFloat(vdop.textContent);
+          const pdop = xmlDirectChildByLocalName(pt, 'pdop');
+          if (pdop) data.pdop = parseFloat(pdop.textContent);
+          const sat = xmlDirectChildByLocalName(pt, 'sat');
+          if (sat) data.sat = parseInt(sat.textContent);
+          const speed = xmlDirectChildByLocalName(pt, 'speed');
+          if (speed) data.speed = parseFloat(speed.textContent);
+          const course = xmlDirectChildByLocalName(pt, 'course');
+          if (course) data.course = parseFloat(course.textContent);
+          const hr = xmlExtensionText(pt, 'hr');
+          if (hr) data.hr = parseInt(hr, 10);
+          const cad = xmlExtensionText(pt, 'cad');
+          if (cad) data.cad = parseInt(cad, 10);
+          const temp = xmlExtensionText(pt, 'atemp');
+          if (temp) data.temp = parseFloat(temp);
+          const power = xmlExtensionText(pt, 'power');
+          if (power) data.power = parseInt(power, 10);
+          seg.pointsData.push(data);
+        } else {
+          skippedPoints++;
+        }
+      });
+      if (seg.points.length) segs.push(seg);
     });
-    if (points.length < 2) return;
+    const parts = chainTrackSegments(segs).filter(part => part.points.length >= 2);
+    parts.forEach((part, partIndex) => {
+    const points = part.points;
+    const pointsData = part.pointsData;
+    const partName = parts.length > 1 && partIndex > 0 ? `${name} — часть ${partIndex + 1}` : name;
     const trkColor = xmlExtensionText(trk, ['color', 'displaycolor']) || null;
     const trkWidth = parseInt(xmlExtensionText(trk, 'width'), 10) || 3;
     const trkPointSize = parseInt(xmlExtensionText(trk, 'pointSize'), 10);
-    const t = createTrackFromPoints(points, name, {
+    const t = createTrackFromPoints(points, partName, {
       color: trkColor || undefined,
       width: trkWidth,
       pointSize: Number.isFinite(trkPointSize) ? trkPointSize : 3
@@ -8620,6 +8664,7 @@ function loadGPXTracks(text, fname, options = {}) {
     importedTracks.push(t);
     importedTrackIds.push(String(t.id));
     count++;
+    });
   });
   updateTrackList();
   if (count > 0 && !options.skipSourceRegistry) {
