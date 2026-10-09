@@ -249,6 +249,11 @@
     align-items: center;
   }
   #statusbar span { display: flex; align-items: center; gap: 4px; }
+  /* 09.10: координаты меняют ширину при движении мыши — всё правее дёргалось. Цифры одинаковой ширины,
+     место под самый длинный формат (ГГ°ММ'СС.С"N  ГГГ°ММ'СС.С"E) зарезервировано; зум — под две цифры. */
+  #statusbar .highlight { font-variant-numeric: tabular-nums; }
+  #sb-coords { display: inline-block; min-width: 31ch; white-space: pre; }
+  #sb-zoom { display: inline-block; min-width: 2.2ch; }
   /* ─── Виджеты внизу карты (tn-widgets.js) — как нижняя панель Android ─── */
   /* Фон полосы и карточек — подложки ::before с opacity var(--widget-fill): прозрачность из настроек
      «Виджеты» гасит только фон, текст остаётся непрозрачным (как прозрачный режим Android) */
