@@ -344,6 +344,28 @@
     min-height: 120px;
   }
   .modal.tnd-resized { max-height: calc(100vh - 16px); max-width: calc(100vw - 16px); }
+  /* Своя ручка размера в правом нижнем углу: на Linux (WebKitGTK) за уголок CSS resize не ухватиться —
+     его перекрывает содержимое окна (Андрей 09.10); на Windows и macOS ручка та же */
+  /* Спойлер в окнах (свойства трека, плеер): свёрнут по умолчанию, состояние помнится (tndSpoilers) */
+  .tnd-spoiler { margin: 4px 0; }
+  .tnd-spoiler > summary { display: flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; padding: 6px 8px;
+    border-radius: var(--radius-m); color: var(--text-secondary); font-size: var(--fs-s); }
+  .tnd-spoiler > summary::-webkit-details-marker { display: none; }
+  .tnd-spoiler > summary:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .tnd-spoiler > summary::after { content: '▾'; margin-left: auto; transition: transform .15s; }
+  .tnd-spoiler:not([open]) > summary::after { transform: rotate(-90deg); }
+  .tnd-spoiler-sum { color: var(--text-muted); font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .tnd-spoiler[open] > summary .tnd-spoiler-sum { display: none; }
+  .tnd-spoiler[open] > summary { margin-bottom: 6px; }
+  .tnd-spoiler-box { background: var(--bg-interactive); border: 1px solid var(--border-normal); border-radius: 6px; padding: 2px 6px; margin-top: 8px; }
+  .tnd-spoiler-box[open] { padding-bottom: 8px; }
+  .modal.tnd-has-grip { resize: none; }
+  .tnd-grip { position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; z-index: 20; cursor: nwse-resize;
+    touch-action: none; opacity: .75; color: var(--text-secondary); }
+  .tnd-grip::before { content: ''; position: absolute; right: 4px; bottom: 4px; width: 12px; height: 12px;
+    background: linear-gradient(135deg, transparent 0 45%, currentColor 45% 53%, transparent 53% 65%,
+      currentColor 65% 73%, transparent 73% 85%, currentColor 85% 93%, transparent 93%); }
+  .tnd-grip:hover { opacity: 1; }
   /* список КП строящегося маршрута — тянется вниз за нижний край */
   #route-build-kp-list { resize: vertical; min-height: 48px; }
   .modal-overlay.active .modal {
@@ -1786,6 +1808,9 @@
       <div id="track-list"></div>
       <!-- Свойства выбранного трека -->
       <div id="track-controls" class="track-controls" style="display:none;margin-top:8px;border-top:1px solid var(--row-border);padding-top:8px">
+        <!-- 09.10 (Андрей): свойства и плеер под спойлером — не всегда нужны; раскрыто/свёрнуто помнится -->
+        <details class="tnd-spoiler" data-spoiler-key="track-props">
+        <summary><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-settings"/></svg><span>Свойства трека</span><span class="tnd-spoiler-sum">название, цвет, толщина, точки</span></summary>
         <div class="ctrl-row">
           <span style="min-width:60px;font-size:12px">Название</span>
           <input id="track-name-input" type="text" style="flex:1;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:3px 6px;font-size:12px">
@@ -1808,6 +1833,7 @@
           <button class="btn-secondary btn-danger" onclick="deleteSelectedTrack()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-delete"/></svg>Удалить трек</button>
           <button class="btn-primary" onclick="applyTrackProps()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-check"/></svg>Сохранить свойства</button>
         </div>
+        </details>
         <div class="btn-row" style="margin-top:4px">
           <button class="btn-secondary" onclick="centerSelectedTrack()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-my-location"/></svg>Центрировать</button>
           <button class="btn-secondary" onclick="startTrackEdit()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-edit"/></svg>Редактировать</button>
@@ -1819,8 +1845,8 @@
         </div>
       </div>
       <!-- Плеер треков -->
-      <div id="track-player-panel" style="background:var(--bg-interactive);border:1px solid var(--border-normal);border-radius:6px;padding:8px;margin-top:8px">
-        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-play"/></svg>Плеер треков</div>
+      <details id="track-player-panel" class="tnd-spoiler tnd-spoiler-box" data-spoiler-key="track-player">
+        <summary><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-play"/></svg><span>Плеер треков</span><span class="tnd-spoiler-sum">воспроизведение отмеченных треков</span></summary>
         <div class="btn-row" style="margin-bottom:6px">
           <button class="btn-primary" onclick="playSelectedTracks()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-play"/></svg>Старт</button>
           <button class="btn-secondary" onclick="pauseTrackPlayer()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-pause"/></svg>Пауза</button>
@@ -1832,7 +1858,7 @@
           <span id="track-speed-val" style="font-size:12px;color:var(--text-primary);min-width:28px">1x</span>
         </div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:4px">отметьте треки чекбоксами для воспроизведения</div>
-      </div>
+      </details>
       <button class="btn-secondary" style="width:100%;margin-top:8px;color:var(--accent);border-color:var(--accent)" onclick="rrOpenDialog()">Race Report</button>
       <button class="btn-primary" style="width:100%;margin-top:8px" onclick="startNewTrack()">+ Новый трек</button>
     </div>
@@ -2653,7 +2679,9 @@ let currentCRS = 'EPSG3857';
 // Зум без снапа: колесо, тачпад и щипок ведёт плавный зум (smooth-zoom.js) — дробный уровень остаётся как есть
 // (снап 0,25 после жеста дал бы скачок, а setView/panTo с текущим зумом дёргали бы его к сетке). Кнопки и
 // клавиши +/− — полуровня. Растровые тайлы на дробном зуме масштабируются — так задумано.
-const TND_MAP_ZOOM_OPTIONS = { zoomSnap: 0, zoomDelta: 0.5, scrollWheelZoom: false };
+// minZoom задан явно: иначе Leaflet берёт нижний предел из слоёв, и офлайн-карта с тайлами от z11 (слой ГГЦ,
+// растровая область) над векторной основой не давала отдалиться меньше 11 (Андрей 09.10, Linux)
+const TND_MAP_ZOOM_OPTIONS = { zoomSnap: 0, zoomDelta: 0.5, scrollWheelZoom: false, minZoom: 1 };
 /** Зум для подписей: дробный уровень показываем целым. */
 const formatZoomLevel = z => String(Math.round(Number(z) || 0));
 // Запас холстов точек/маршрутов/треков вокруг окна: при плавном отдалении колесом холст сжимается до конца
@@ -2685,6 +2713,19 @@ const map = L.map('map', { zoomControl: true, attributionControl: false, maxZoom
 map._createRenderer = options => L.canvas({ padding: TND_CANVAS_PADDING, ...options });
 const trackCanvasRenderer = L.canvas({ padding: TND_CANVAS_PADDING });
 const trackPointCanvasRenderer = L.canvas({ padding: TND_CANVAS_PADDING, tolerance: 8 });
+/**
+ * Трек из нескольких кусков (trkseg в GPX): начало куска — pointsData[i].seg = 1 (i > 0). Трек один, а между
+ * кусками линии нет — ни «лучей» плана из nakarte, ни прямых через потерю сигнала GPS (Андрей 09.10).
+ * Пометка живёт в данных точки и переезжает с ней при правках.
+ */
+function isTrackSegStart(t, i) { return i > 0 && !!t?.pointsData?.[i]?.seg; }
+function trackLatLngs(t) {
+  const pts = t?.points || [];
+  if (!t?.pointsData || !t.pointsData.some((d, i) => i > 0 && d?.seg)) return pts;
+  const out = [[]];
+  pts.forEach((p, i) => { if (isTrackSegStart(t, i) && out[out.length - 1].length) out.push([]); out[out.length - 1].push(p); });
+  return out;
+}
 function createTrackPolylineLayer(points, options = {}) {
   return L.polyline(points, {
     color: options.color || '#4adf7a',  // theme-check: data
@@ -2859,7 +2900,7 @@ function undoLastAction() {
     if (t && t.points.length > 0) {
       t.points.pop();
       if (t.pointsData) t.pointsData.pop();
-      if (t.polyline) t.polyline.setLatLngs(t.points);
+      if (t.polyline) t.polyline.setLatLngs(trackLatLngs(t));
       syncTrackMarkers(t);
       updateTrackBuildPanel(t);
       showToast('↩ Отменено: точка трека');
@@ -6427,6 +6468,7 @@ function buildGPXWithData(selWaypoints, selTracks, selRoutes) {
   selTracks.forEach(t => {
     gpx += `<trk><name>${escapeXml(t.name)}</name><extensions><tnd:color>${escapeXml(t.color || '#4a8adf')}</tnd:color><tnd:width>${Number(t.width) || 3}</tnd:width><tnd:pointSize>${Number(t.pointSize ?? 3)}</tnd:pointSize></extensions><trkseg>`;  // theme-check: data
     t.points.forEach((p, i) => {
+      if (isTrackSegStart(t, i)) gpx += '</trkseg><trkseg>';
       gpx += `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
       const d = t.pointsData?.[i];
       if (d) {
@@ -6843,10 +6885,15 @@ async function ctxTrackAction(action) {
     if (marker) map.removeLayer(marker);
     if (track.markers?.length > idx) track.markers.splice(idx, 1);
     track.points.splice(idx, 1);
-    if (track.pointsData?.length) track.pointsData.splice(idx, 1);
+    if (track.pointsData?.length) {
+      const wasSeg = track.pointsData[idx]?.seg;
+      track.pointsData.splice(idx, 1);
+      // удалили первую точку куска — разрыв переходит на следующую
+      if (wasSeg && track.pointsData[idx]) track.pointsData[idx] = { ...track.pointsData[idx], seg: 1 };
+    }
     // Обновляем _trackIdx для оставшихся маркеров
     track.markers?.forEach((m, i) => { m._trackIdx = i; });
-    if (track.polyline) track.polyline.setLatLngs(track.points);
+    if (track.polyline) track.polyline.setLatLngs(trackLatLngs(track));
     syncTrackMarkers(track);
     closeTrackPointPopup();
     if (currentTrackEdit?.track?.id === track.id) currentTrackEdit.selectedPointIdx = null;
@@ -7165,12 +7212,62 @@ function closeAllModals() {
 // Размеры окон (.modal) после изменения мышью — запоминаются в localStorage и возвращаются при следующем открытии.
 // ResizeObserver срабатывает и на открытие/закрытие окна (display), поэтому пишем только при видимом окне,
 // а «изменено пользователем» — когда размер отличается от исходного CSS.
+/** Ручка размера окна (правый нижний угол): тянется мышью, размер запоминает ResizeObserver в tndModalSizes. */
+function tndAddResizeGrip(el) {
+  if (el.querySelector(':scope > .tnd-grip')) return;
+  const grip = document.createElement('div');
+  grip.className = 'tnd-grip';
+  grip.title = 'Потяните, чтобы изменить размер окна';
+  el.appendChild(grip);
+  el.classList.add('tnd-has-grip');
+  el.style.resize = 'none';  // родной уголок (в т. ч. заданный в разметке) — выключен, чтобы не было двух ручек
+  grip.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    const r = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    const minW = parseFloat(cs.minWidth) || 200, minH = parseFloat(cs.minHeight) || 120;
+    // окно, прижатое справа или по центру (transform), — к левому верхнему углу, чтобы тянулся правый нижний
+    el.style.left = r.left + 'px'; el.style.top = r.top + 'px'; el.style.right = 'auto'; el.style.transform = 'none';
+    const x0 = e.clientX, y0 = e.clientY;
+    grip.setPointerCapture?.(e.pointerId);
+    // Край окна держится под курсором (как у окон Windows/GNOME): размер = исходный + сдвиг от точки захвата.
+    // Упёрлись в минимум и пошли обратно — окно растёт, когда курсор снова дошёл до края, а не сразу (ревью Тома 2714:
+    // поведение намеренное, иначе край отрывается от курсора и при каждом упоре окно «уплывает» от мыши).
+    const move = ev => {
+      const w = Math.max(minW, Math.min(window.innerWidth - r.left - 8, r.width + ev.clientX - x0));
+      const h = Math.max(minH, Math.min(window.innerHeight - r.top - 8, r.height + ev.clientY - y0));
+      el.style.width = w + 'px'; el.style.height = h + 'px';
+      el.classList.add('tnd-resized');
+    };
+    const up = ev => { grip.releasePointerCapture?.(ev.pointerId); grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', up); grip.removeEventListener('pointercancel', up); };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', up);
+    grip.addEventListener('pointercancel', up);
+  });
+}
+/** Спойлеры окон (details.tnd-spoiler[data-spoiler-key]): раскрыто/свёрнуто — в localStorage tnd-spoilers. */
+function tndSpoilers() {
+  const KEY = 'tnd-spoilers';
+  let st = {};
+  try { st = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch { /* приватный режим */ }
+  document.querySelectorAll('details.tnd-spoiler[data-spoiler-key]').forEach(d => {
+    const k = d.dataset.spoilerKey;
+    if (st[k] === 1) d.open = true;
+    d.addEventListener('toggle', () => {
+      st[k] = d.open ? 1 : 0;
+      try { localStorage.setItem(KEY, JSON.stringify(st)); } catch { /* приватный режим */ }
+    });
+  });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tndSpoilers); else tndSpoilers();
 function tndModalSizes() {
   const KEY = 'tnd-modal-sizes';
   const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch { return {}; } };
   const save = v => { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch { /* приватный режим */ } };
   const sizes = load();
   const ids = [...document.querySelectorAll('.modal[id], #route-build-kp-list')];
+  ids.filter(el => el.classList.contains('modal')).forEach(tndAddResizeGrip);
   for (const el of ids) {
     const v = sizes[el.id];
     if (v) {
@@ -7437,7 +7534,7 @@ function restoreTrackGeometry(track, snapshot) {
   if (Number.isFinite(snapshot.width)) track.width = snapshot.width;
   if (Number.isFinite(snapshot.pointSize)) track.pointSize = snapshot.pointSize;
   if (track.polyline) {
-    track.polyline.setLatLngs(track.points);
+    track.polyline.setLatLngs(trackLatLngs(track));
   } else if (track.points.length > 0) {
     track.polyline = createTrackPolylineLayer(track.points, {
       color: track.color,
@@ -7556,7 +7653,7 @@ function beginTrackPointDrag(track, idx, options = {}) {
     const marker = getTrackMarker(track, idx);
     if (marker) marker.setLatLng(latlng);
     track.points[idx] = latlng;
-    if (track.polyline) track.polyline.setLatLngs(track.points);
+    if (track.polyline) track.polyline.setLatLngs(trackLatLngs(track));
     moved = true;
   };
   const onUp = () => {
@@ -8015,7 +8112,7 @@ function removeDuplicateTrackDoubleClickPoint() {
   if (previous.distanceTo(last) > 6) return false;
   track.points.pop();
   if (track.pointsData?.length) track.pointsData.pop();
-  if (track.polyline) track.polyline.setLatLngs(track.points);
+  if (track.polyline) track.polyline.setLatLngs(trackLatLngs(track));
   syncTrackMarkers(track);
   for (let i = undoStack.length - 1; i >= 0; i--) {
     const action = undoStack[i];
@@ -8083,7 +8180,7 @@ function renameTrack(id, newName) {
 
 function trackLen(t) {
   let d = 0;
-  for (let i = 1; i < t.points.length; i++) d += t.points[i-1].distanceTo(t.points[i]);
+  for (let i = 1; i < t.points.length; i++) if (!isTrackSegStart(t, i)) d += t.points[i-1].distanceTo(t.points[i]);
   return d / 1000;
 }
 function updateTrackBuildPanel(t) {
@@ -8181,7 +8278,7 @@ function insertTrackPointIntoSegment(track, latlng, options = {}) {
   track.points.splice(insertIndex, 0, latlng);
   if (!track.pointsData) track.pointsData = [];
   track.pointsData.splice(insertIndex, 0, {});
-  if (track.polyline) track.polyline.setLatLngs(track.points);
+  if (track.polyline) track.polyline.setLatLngs(trackLatLngs(track));
   if (currentTrackEdit?.track?.id === track.id) currentTrackEdit.selectedPointIdx = insertIndex;
   syncTrackMarkers(track);
   return insertIndex;
@@ -8287,6 +8384,25 @@ function splitSelectedTrackPoint() {
   ctxTrackAction('split');
 }
 
+/**
+ * Клик по треку в списке — карта переходит к нему (Андрей 09.10). Открытое окно не закрывает трек:
+ * отступ с той стороны, где окно. Скрытый трек показываем — по нему кликнули, чтобы посмотреть.
+ */
+function focusTrackOnMap(id) {
+  const t = tracks.find(item => item.id === id);
+  if (!t || !t.points?.length) return;
+  if (t.visible === false) toggleTrackVisible(id);
+  const mapRect = map.getContainer().getBoundingClientRect();
+  let left = 30, right = 30;
+  const win = document.getElementById('modal-tracks-win');
+  const wr = win && win.offsetParent ? win.getBoundingClientRect() : null;
+  if (wr && wr.width < mapRect.width * 0.7) {
+    if (wr.left + wr.width / 2 > mapRect.left + mapRect.width / 2) right = Math.max(30, mapRect.right - wr.left + 20);
+    else left = Math.max(30, wr.right - mapRect.left + 20);
+  }
+  map.fitBounds(L.latLngBounds(t.points), { paddingTopLeft: [left, 30], paddingBottomRight: [right, 30], maxZoom: 16 });
+}
+
 function selectTrackById(id) {
   if (trackPropsPreviewId != null && trackPropsPreviewId !== id) revertTrackPropsPreview();
   selectedTrackId = id;
@@ -8361,9 +8477,17 @@ function reverseSelectedTrack() {
   const t = tracks.find(track => track.id === selectedTrackId);
   if (!t || t.points.length < 2) return;
   pushUndo({ type: 'trackGeometry', track: t, snapshot: snapshotTrackGeometry(t) });
+  const nPts = t.points.length;
+  const segAt = new Set((t.pointsData || []).map((d, i) => (i > 0 && d?.seg ? i : -1)).filter(i => i > 0));
   t.points = [...t.points].reverse();
-  if (t.pointsData) t.pointsData = [...t.pointsData].reverse();
-  if (t.polyline) t.polyline.setLatLngs(t.points);
+  if (t.pointsData) {
+    // разрыв между точками j−1 и j после разворота — между n−1−j и n−j: начало куска — n−j
+    t.pointsData = [...t.pointsData].reverse().map((d, i) => {
+      const { seg, ...rest } = d || {};
+      return segAt.has(nPts - i) ? { ...rest, seg: 1 } : rest;
+    });
+  }
+  if (t.polyline) t.polyline.setLatLngs(trackLatLngs(t));
   syncTrackMarkers(t);
   touchTrack(t);
   if (currentTrackDraw?.id === t.id) {
@@ -8433,7 +8557,7 @@ function updateTrackList() {
       : (isLargeTrack(t) && (t.pointSize ?? 3) > 0
         ? ` · <span style="font-size:10px;color:var(--text-muted)" title="Точки появятся с z${TRACK_MARKER_DETAIL_ZOOM}">точки с z${TRACK_MARKER_DETAIL_ZOOM}</span>`
         : '');
-    return `<div class="track-item${sel ? ' selected' : ''}" onclick="selectTrackById(${t.id})">
+    return `<div class="track-item${sel ? ' selected' : ''}" onclick="selectTrackById(${t.id});focusTrackOnMap(${t.id})">
       <input type="checkbox" class="track-play-cb" data-track-id="${escapeHtml(t.id)}" onclick="event.stopPropagation()" style="accent-color:${safeCssColor(t.color)};margin-right:4px" title="Выбрать для плеера">
       <div class="track-color" style="background:${safeCssColor(t.color)}"></div>
       <div class="track-info">
@@ -8455,6 +8579,7 @@ function saveTracksGPX() {
     tracks.forEach(t => {
       gpx += `<trk><name>${escapeXml(t.name)}</name><extensions><tnd:color>${escapeXml(t.color || '#4a8adf')}</tnd:color><tnd:width>${Number(t.width) || 3}</tnd:width><tnd:pointSize>${Number(t.pointSize ?? 3)}</tnd:pointSize></extensions><trkseg>`;  // theme-check: data
       t.points.forEach((p, i) => {
+        if (isTrackSegStart(t, i)) gpx += '</trkseg><trkseg>';
         gpx += `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
         const d = t.pointsData?.[i];
         if (d) {
@@ -8545,39 +8670,6 @@ function saveTracksPLT() {
     return rows.join('\r\n');
   });
 }
-/**
- * Куски трека → непрерывные линии: кусок, начало которого у конца собранной линии (или конец — у её начала)
- * в пределах joinM метров, продолжает её; остальное — отдельные части. Порядок кусков в файле не важен.
- * segs: [{points: [L.LatLng], pointsData: [...]}] → [{points, pointsData}].
- */
-function chainTrackSegments(segs, joinM = 50) {
-  const rest = segs.filter(s => s.points.length).map(s => ({ points: s.points.slice(), pointsData: s.pointsData.slice() }));
-  const near = (a, b, m) => a.distanceTo(b) <= m;
-  const out = [];
-  while (rest.length) {
-    const cur = rest.shift();
-    for (let grown = true; grown;) {
-      grown = false;
-      const end = cur.points[cur.points.length - 1], start = cur.points[0];
-      let i = rest.findIndex(s => near(end, s.points[0], joinM));
-      if (i >= 0) {
-        const s = rest.splice(i, 1)[0];
-        const skip = near(end, s.points[0], 1) ? 1 : 0;  // общая точка стыка — одна
-        cur.points.push(...s.points.slice(skip)); cur.pointsData.push(...s.pointsData.slice(skip));
-        grown = true; continue;
-      }
-      i = rest.findIndex(s => near(s.points[s.points.length - 1], start, joinM));
-      if (i >= 0) {
-        const s = rest.splice(i, 1)[0];
-        const cut = near(s.points[s.points.length - 1], start, 1) ? 1 : 0;
-        cur.points.unshift(...s.points.slice(0, s.points.length - cut)); cur.pointsData.unshift(...s.pointsData.slice(0, s.pointsData.length - cut));
-        grown = true;
-      }
-    }
-    out.push(cur);
-  }
-  return out;
-}
 function loadGPXTracks(text, fname, options = {}) {
   const doc = new DOMParser().parseFromString(normalizeText(text), 'application/xml');
   const meta = options.meta || options || {};
@@ -8587,9 +8679,8 @@ function loadGPXTracks(text, fname, options = {}) {
   const importedTrackIds = [];
   xmlDescendantsByLocalName(doc, 'trk').forEach(trk => {
     const name = xmlTextByLocalNames(trk, 'name', { direct: true }) || ('Трек ' + (trackIdCounter));
-    // Куски трека (trkseg) не склеиваем подряд: nakarte режет нарисованный план на части в местах правок,
-    // и прямые от конца одного куска к началу другого рисовали «лучи» через всю карту (Андрей 09.10).
-    // Куски, продолжающие друг друга, — одна линия; разрывы и развилки — отдельные части трека.
+    // Куски трека (trkseg) не соединяем прямыми: nakarte режет нарисованный план в местах правок, GPS-запись
+    // рвётся при потере сигнала — прямые рисовали «лучи» через всю карту (Андрей 09.10). Трек остаётся одним.
     const segNodes = xmlDescendantsByLocalName(trk, 'trkseg');
     const segs = [];
     (segNodes.length ? segNodes : [trk]).forEach(node => {
@@ -8634,11 +8725,17 @@ function loadGPXTracks(text, fname, options = {}) {
       });
       if (seg.points.length) segs.push(seg);
     });
-    const parts = chainTrackSegments(segs).filter(part => part.points.length >= 2);
-    parts.forEach((part, partIndex) => {
+    // один трек; начало каждого следующего куска — разрыв линии (pointsData.seg), без прямой через карту
+    const flat = { points: [], pointsData: [] };
+    segs.forEach((seg, si) => seg.points.forEach((p, k) => {
+      flat.pointsData.push(si > 0 && k === 0 && flat.points.length ? { ...seg.pointsData[k], seg: 1 } : seg.pointsData[k]);
+      flat.points.push(p);
+    }));
+    const parts = flat.points.length >= 2 ? [flat] : [];
+    parts.forEach(part => {
     const points = part.points;
     const pointsData = part.pointsData;
-    const partName = parts.length > 1 && partIndex > 0 ? `${name} — часть ${partIndex + 1}` : name;
+    const partName = name;
     const trkColor = xmlExtensionText(trk, ['color', 'displaycolor']) || null;
     const trkWidth = parseInt(xmlExtensionText(trk, 'width'), 10) || 3;
     const trkPointSize = parseInt(xmlExtensionText(trk, 'pointSize'), 10);
@@ -8649,7 +8746,7 @@ function loadGPXTracks(text, fname, options = {}) {
     });
     // Вычислить скорость из расстояния/времени если нет в данных
     for (let i = 1; i < pointsData.length; i++) {
-      if (pointsData[i].speed == null && pointsData[i].time && pointsData[i-1].time) {
+      if (pointsData[i].speed == null && !pointsData[i].seg && pointsData[i].time && pointsData[i-1].time) {  // через разрыв куска скорость не считаем
         try {
           const dt = (new Date(pointsData[i].time) - new Date(pointsData[i-1].time)) / 1000; // секунды
           if (dt > 0) {
@@ -8664,6 +8761,7 @@ function loadGPXTracks(text, fname, options = {}) {
       }
     }
     t.pointsData = pointsData;
+    if (t.polyline) t.polyline.setLatLngs(trackLatLngs(t));
     importedTracks.push(t);
     importedTrackIds.push(String(t.id));
     count++;
@@ -13120,6 +13218,7 @@ async function saveSyncedGPXFiles(state, checks) {
         if (t.syncedAt) gpx += `      <tnd:syncedAt>${escXml(t.syncedAt)}</tnd:syncedAt>\n`;
         gpx += `    </extensions>\n    <trkseg>\n`;
         (t.points || []).forEach((p, i) => {
+          if (isTrackSegStart(t, i)) gpx += `    </trkseg>\n    <trkseg>\n`;
           gpx += `      <trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
           const d = t.pointsData?.[i];
           if (d?.ele != null) gpx += `<ele>${d.ele.toFixed(1)}</ele>`;

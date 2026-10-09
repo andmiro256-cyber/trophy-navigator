@@ -220,7 +220,8 @@ const zoomOpts = () => {
   return vm.runInNewContext(`(${m[1]})`);
 };
 test('п.5: опции карты — дробный зум, полуровень на кнопку; колесо — плавный зум 0.9.30; MapLibre-холст с padding 0.05', () => {
-  assert.deepEqual({ ...zoomOpts() }, { zoomSnap: 0, zoomDelta: 0.5, scrollWheelZoom: false });
+  // minZoom: 1 — свой нижний предел карты: офлайн-слой с тайлами от z11 не запирает отдаление (Андрей 09.10)
+  assert.deepEqual({ ...zoomOpts() }, { zoomSnap: 0, zoomDelta: 0.5, scrollWheelZoom: false, minZoom: 1 });
   assert.match(html, /L\.map\('map', \{[^\n]*\.\.\.TND_MAP_ZOOM_OPTIONS \}\)/); // 09.10: внутри есть renderer: L.canvas({…})
   assert.match(mapsJs, /L\.maplibreGL\(\{[^}]*padding: 0\.05 \}\)/);
   // подписи зума — целые

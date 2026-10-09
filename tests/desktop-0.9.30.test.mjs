@@ -85,7 +85,7 @@ function setup({ withPinchBlock = false, bridge = false } = {}) {
 }
 
 test('0.9.30: колесо — свой плавный зум, ScrollWheelZoom Leaflet выключен, блока keepWheelClicks нет', () => {
-  assert.deepEqual({ ...zoomOpts() }, { zoomSnap: 0, zoomDelta: 0.5, scrollWheelZoom: false });
+  assert.deepEqual({ ...zoomOpts() }, { zoomSnap: 0, zoomDelta: 0.5, scrollWheelZoom: false, minZoom: 1 });
   assert.doesNotMatch(html, /keepWheelClicksDuringZoomAnimation|wheelDebounceTime/);
   assert.match(html, /<script src="trophynav-maps-core\.js"><\/script>\n<script src="smooth-zoom\.js"><\/script>/);
   assert.match(html, /const tndSmoothZoom = window\.TndSmoothZoom \? window\.TndSmoothZoom\.attach\(map\) : \(map\.scrollWheelZoom\.enable\(\), null\);/);
