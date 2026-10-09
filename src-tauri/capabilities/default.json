@@ -1,9 +1,13 @@
 {
   "identifier": "default",
   "description": "Default capabilities for Trophy Navigator Desktop",
-  "windows": ["main"],
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
+    "core:window:allow-is-fullscreen",
+    "core:window:allow-set-fullscreen",
     "dialog:default",
     "dialog:allow-open",
     "dialog:allow-save",
@@ -22,7 +26,11 @@
     "fs:allow-stat",
     {
       "identifier": "fs:scope",
-      "allow": [{ "path": "**" }]
+      "allow": [
+        {
+          "path": "**"
+        }
+      ]
     },
     "process:default",
     "process:allow-restart",
@@ -32,8 +40,12 @@
     {
       "identifier": "opener:allow-open-path",
       "allow": [
-        { "path": "$DOCUMENT/TrophyNavigator" },
-        { "path": "$DOCUMENT/TrophyNavigator/maps/vector" }
+        {
+          "path": "$DOCUMENT/TrophyNavigator"
+        },
+        {
+          "path": "$DOCUMENT/TrophyNavigator/maps/vector"
+        }
       ]
     }
   ]

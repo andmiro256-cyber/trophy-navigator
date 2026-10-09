@@ -17,7 +17,7 @@ test('toolbar list actions, modal closes and tabs use keyboard controls', () => 
 test('compact toolbar keeps hidden desktop tools in an accessible overflow menu', () => {
   assert.match(html, /id="btn-more-tools"[^>]+aria-haspopup="menu"[^>]+aria-expanded="false"/);
   assert.match(html, /id="toolbar-more-menu" role="menu"[^>]+hidden/);
-  assert.equal((html.match(/class="toolbar-more-item" role="menuitem"/g) || []).length, 7);
+  assert.equal((html.match(/class="toolbar-more-item" role="menuitem"/g) || []).length, 8); // 09.10: + «Во весь экран»
   assert.match(html, /\.desktop-overflow-tool,\s*\.tools-sep \{ display: none !important; \}/);
   assert.match(html, /#btn-more-tools \{ display: flex; \}/);
   assert.doesNotMatch(html, /#btn-(?:ruler|routing) \{ display: none; \}/);
