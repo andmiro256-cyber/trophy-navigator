@@ -195,8 +195,9 @@
       const r = await invoke('voice_stop', { prompt: hint });
       if (v.state !== 'busy') return; // отменили, пока распознавалось
       const said = String(r?.text || '').trim();
+      v.mic = r ? `микрофон ${Math.round((r.rate || 0) / 1000)} кГц, громкость ${Math.round((r.peak || 0) * 100)}%` : '';
       setState('idle');
-      if (!said) { showBar('Не расслышал — нажмите 🎤 и скажите название ещё раз, чуть громче', 'err', 5000); return; }
+      if (!said) { showBar(`Не расслышал — нажмите 🎤 и скажите название ещё раз, чуть громче <span class="tnv-mic">${esc(v.mic || '')}</span>`, 'err', 6000); return; }
       await applyPhrase(said);
     } catch (e) {
       const msg = String(e?.message || e);
@@ -228,9 +229,9 @@
       if (first && typeof window.goToSearchResult === 'function' && typeof window.searchResultArgs === 'function') {
         const args = window.searchResultArgs(first);
         window.goToSearchResult(...args);
-        showBar(`🎤 «${esc(heard)}» → <b>${esc(args[2])}</b>`, 'ok', 4000);
+        showBar(`🎤 «${esc(heard)}» → <b>${esc(args[2])}</b> <span class="tnv-mic">${esc(v.mic || '')}</span>`, 'ok', 5000);
       } else {
-        showBar(`🎤 «${esc(heard)}» — ничего не нашлось. Скажите иначе или впишите вручную`, 'err', 6000);
+        showBar(`🎤 «${esc(heard)}» — ничего не нашлось. Скажите иначе или впишите вручную <span class="tnv-mic">${esc(v.mic || '')}</span>`, 'err', 7000);
       }
     } else {
       input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -257,6 +258,7 @@
       .tnv-bar.tnv-rec { border-left-color: var(--error); }
       .tnv-bar.tnv-ok { border-left-color: var(--success); }
       .tnv-bar.tnv-err { border-left-color: var(--warning); }
+      .tnv-mic { color: var(--text-muted); font-size: 10px; }
       .tnv-x { margin-left: auto; appearance: none; border: 0; background: transparent; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: var(--radius-xs); }
       .tnv-x:hover { background: var(--bg-hover); color: var(--text-primary); }
       .tnv-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--error); flex: none; animation: tnv-blink 1s ease-in-out infinite; }
