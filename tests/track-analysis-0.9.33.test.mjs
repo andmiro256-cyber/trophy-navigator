@@ -250,3 +250,13 @@ test('уклон: дрейф высоты GPS на стоянке не даёт 
   const s = C.stats(C.series(pts, pd));
   assert.ok(Math.abs(s.climbPct) < 3 && Math.abs(s.descentPct) < 3, `climb ${s.climbPct} descent ${s.descentPct}`);
 });
+
+test('трек из кусков (GPX trkseg): расстояние без прыжка через разрыв (Андрей 09.10)', needDom, async () => {
+  const w = await boot();
+  const C = w.TnTrackAnalysis.calc;
+  const pts = [{ lat: 60, lng: 30 }, { lat: 60.001, lng: 30 }, { lat: 61, lng: 30 }, { lat: 61.001, lng: 30 }];
+  const S1 = C.series(pts, [{}, {}, {}, {}]);
+  const S2 = C.series(pts, [{}, {}, { seg: 1 }, {}]);
+  assert.ok(S1.dist[3] > 100000, 'без разрыва — со 111 км прыжка');
+  assert.ok(Math.abs(S2.dist[3] - 2 * STEP) < 1, `с разрывом — только два отрезка по ~111 м, а не ${S2.dist[3]}`);
+});

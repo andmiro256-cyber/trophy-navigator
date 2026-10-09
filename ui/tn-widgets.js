@@ -37,9 +37,10 @@
     const x = Math.cos(a.lat * RAD) * Math.sin(b.lat * RAD) - Math.sin(a.lat * RAD) * Math.cos(b.lat * RAD) * Math.cos(dLng);
     return (Math.atan2(y, x) / RAD + 360) % 360;
   }
-  function polylineMeters(points) {
+  /** Длина ломаной; pointsData[i].seg — начало куска трека (разрыв из GPX), прыжок через разрыв не считается. */
+  function polylineMeters(points, pointsData) {
     let d = 0;
-    for (let i = 1; i < (points?.length || 0); i++) d += haversine(points[i - 1], points[i]);
+    for (let i = 1; i < (points?.length || 0); i++) if (!pointsData?.[i]?.seg) d += haversine(points[i - 1], points[i]);
     return d;
   }
 
@@ -50,7 +51,7 @@
    */
   function trackStats(points, pointsData) {
     const pts = points || [], pd = pointsData || [];
-    const meters = polylineMeters(pts);
+    const meters = polylineMeters(pts, pd);
     const timeAt = i => { const t = pd[i]?.time ? Date.parse(pd[i].time) : NaN; return Number.isFinite(t) ? t : null; };
     let first = null, last = null;
     for (let i = 0; i < pts.length; i++) { const t = timeAt(i); if (t != null) { if (first == null) first = t; last = t; } }
@@ -60,7 +61,7 @@
       // с первой точки: записанная скорость есть и у неё (ревью 2578); по отрезку — только с i ≥ 1
       for (let i = 0; i < pts.length; i++) {
         let v = pd[i]?.speed == null ? NaN : Number(pd[i].speed);
-        if (!Number.isFinite(v) && i > 0) {
+        if (!Number.isFinite(v) && i > 0 && !pd[i]?.seg) {  // через разрыв куска скорость не считаем
           const t0 = timeAt(i - 1), t1 = timeAt(i);
           v = t0 != null && t1 != null && t1 > t0 ? haversine(pts[i - 1], pts[i]) / ((t1 - t0) / 1000) : NaN;
         }

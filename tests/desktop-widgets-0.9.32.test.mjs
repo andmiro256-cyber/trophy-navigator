@@ -246,3 +246,13 @@ test('правый клик по полосе: заменить, убрать, �
   assert.match(menu().textContent, /Все 8 мест заняты/);
   assert.equal(menu().querySelectorAll('[data-tnw-pick]').length, 0);
 });
+
+test('виджет длины трека: разрыв куска (GPX trkseg) не считается (Андрей 09.10)', needDom, async () => {
+  const w = await boot();
+  const U = w.TnWidgets.util;
+  const pts = [{ lat: 60, lng: 30 }, { lat: 60.001, lng: 30 }, { lat: 61, lng: 30 }, { lat: 61.001, lng: 30 }];
+  const whole = U.trackStats(pts, [{}, {}, {}, {}]).km;
+  const broken = U.trackStats(pts, [{}, {}, { seg: 1 }, {}]).km;
+  assert.ok(whole > 100, 'без разрыва — со 111 км прыжка');
+  assert.ok(broken > 0.2 && broken < 0.23, String(broken));
+});
