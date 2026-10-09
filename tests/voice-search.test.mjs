@@ -8,7 +8,7 @@ import vm from 'node:vm';
 
 const src = fs.readFileSync(new URL('../ui/tn-voice.js', import.meta.url), 'utf8');
 function boot(places = {}, center = { lat: 54.62, lng: 39.72 }) {
-  const ctx = { console, setTimeout, clearTimeout, Promise, Map, Set,
+  const ctx = { console, setTimeout, clearTimeout, setInterval, clearInterval, Promise, Map, Set,
     document: { readyState: 'complete', querySelector: () => null, getElementById: () => null, head: { appendChild() {} }, addEventListener() {} },
     map: { getCenter: () => center } };
   ctx.window = ctx;
@@ -101,4 +101,30 @@ test('голос: после распознавания карта сразу п
 test('index.html: Enter в строке поиска — переход к первому результату', () => {
   const html = fs.readFileSync(new URL('../ui/index.html', import.meta.url), 'utf8');
   assert.match(html, /if \(e\.key === 'Enter'\) \{[\s\S]{0,400}await nominatimSearch\(q\);[\s\S]{0,200}if \(first\) goToSearchResult\(\.\.\.searchResultArgs\(first\)\);/);
+});
+
+test('отмена, пока собирается подсказка: voice_stop не зовётся, поздней ошибки нет (ревью Тома #2702)', async () => {
+  const calls = [];
+  let release;
+  const gate = new Promise(r => { release = r; });
+  const T = boot({ ryazan: RYAZAN });
+  const ctx = T.__ctx;
+  ctx.__TAURI_INTERNALS__.invoke = async (cmd, a) => {
+    calls.push(cmd);
+    if (cmd === 'tnmaps_places') { await gate; return RYAZAN; }
+    if (cmd === 'voice_stop') throw new Error('запись не идёт');
+    return null;
+  };
+  const bar = { className: '', innerHTML: '', hidden: true };
+  T._voice.bar = bar;
+  T._voice.state = 'rec';
+  const p = T._stop();                 // ждёт подсказку (названия рядом)
+  await new Promise(r => setTimeout(r, 0));
+  await T._cancel();                   // Esc / ✕
+  assert.equal(T._voice.state, 'idle');
+  release();
+  await p;
+  assert.ok(calls.includes('voice_cancel'));
+  assert.ok(!calls.includes('voice_stop'), 'после отмены распознавание не запускается');
+  assert.doesNotMatch(bar.innerHTML, /⚠/, 'поздняя ошибка не показывается');
 });
