@@ -291,7 +291,8 @@ test('свой порядок: внутри раздела, подзаголов
     t.loadCatalog(CATALOG);
     const p2 = premium();
     const g2 = p2.indexOf('# ГГЦ / Генштаб (nakarte.me)');
-    assert.deepEqual(p2.slice(g2, g2 + 3), ['# ГГЦ / Генштаб (nakarte.me)', 'ГГЦ 2км', 'ГГЦ 500м']);
+    // с каталогом «ГГЦ 2км» (нет в каталоге) убрана — как в Android; порядок остальных сохранён
+    assert.deepEqual(p2.slice(g2, g2 + 2), ['# ГГЦ / Генштаб (nakarte.me)', 'ГГЦ 500м']);
     assert.equal(doc.querySelector('#catalog-base-layers .base-layer[data-layer="ГГЦ 500м"]').dataset.orderKey, 'ggc_500');
     // сброс
     const reset = doc.querySelector('#catalog-base-layers > .lo-reset');
