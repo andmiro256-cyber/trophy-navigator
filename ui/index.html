@@ -261,6 +261,21 @@
     border: 1px solid var(--card-stroke); border-left: 4px solid var(--primary); border-radius: var(--radius-m); box-shadow: var(--shadow-2); font-size: var(--fs-s); }
   #fs-hint[hidden] { display: none; }
   #fs-hint kbd { border: 1px solid var(--border-normal); border-radius: 4px; padding: 0 5px; font-size: 11px; }
+  /* Полный экран (Андрей 09.10): системной рамки нет — свернуть/закрыть/выйти. Полоска-«язычок» у верхнего края,
+     панель выезжает при наведении (как в браузере) и показывается на 3 с при входе в полный экран. */
+  #fs-edge { display: none; position: fixed; z-index: 2147483000; top: 0; left: 0; right: 0; height: 6px; }
+  #fs-edge::after { content: ''; position: absolute; top: 0; left: 50%; width: 64px; height: 4px; margin-left: -32px;
+    border-radius: 0 0 4px 4px; background: var(--text-muted); opacity: .55; }
+  body.tnd-fs #fs-edge { display: block; }
+  #fs-bar { display: none; position: fixed; z-index: 2147483001; top: 0; left: 50%; transform: translate(-50%, -110%); transition: transform .18s ease;
+    align-items: center; gap: 2px; padding: 4px; background: var(--bg-elevated); border: 1px solid var(--card-stroke); border-top: 0;
+    border-radius: 0 0 var(--radius-m) var(--radius-m); box-shadow: var(--shadow-2); }
+  body.tnd-fs #fs-bar { display: flex; }
+  #fs-bar.show { transform: translate(-50%, 0); }
+  #fs-bar button { appearance: none; border: 0; background: transparent; color: var(--text-primary); cursor: pointer; display: flex;
+    align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: var(--radius-xs); font-size: var(--fs-s); }
+  #fs-bar button:hover { background: var(--bg-hover); }
+  #fs-bar button[data-fs-close]:hover { background: var(--error); color: var(--text-on-solid); }
   /* ─── Виджеты внизу карты (tn-widgets.js) — как нижняя панель Android ─── */
   /* Фон полосы и карточек — подложки ::before с opacity var(--widget-fill): прозрачность из настроек
      «Виджеты» гасит только фон, текст остаётся непрозрачным (как прозрачный режим Android) */
@@ -15125,6 +15140,7 @@ async function setFullscreen(on, { remember = true } = {}) {
   } catch (e) { console.warn('fullscreen:', e); showToast('Полноэкранный режим недоступен'); return; }
   if (remember) { try { localStorage.setItem(TND_FS_KEY, on ? '1' : '0'); } catch { /* приватный режим */ } }
   if (on) fsHintSave({ ...fsHintState(), used: true });
+  applyFsUi(on);
   const fsBtn = document.getElementById('sb-fullscreen');
   if (fsBtn) { fsBtn.title = on ? 'Выйти из полного экрана (F11)' : 'Во весь экран (F11)'; fsBtn.setAttribute('aria-label', fsBtn.title); }
   const label = document.querySelector('#menu-fullscreen [data-fs-label]');
@@ -15132,6 +15148,50 @@ async function setFullscreen(on, { remember = true } = {}) {
   setTimeout(() => map.invalidateSize(), 150);
 }
 async function toggleFullscreen() { await setFullscreen(!(await tndIsFullscreen())); }
+
+// Панель управления окном в полном экране: «Свернуть», «Выйти из полного экрана», «Закрыть».
+function fsBarEl() {
+  let bar = document.getElementById('fs-bar');
+  if (bar) return bar;
+  const edge = document.createElement('div');
+  edge.id = 'fs-edge';
+  edge.title = 'Свернуть, выйти из полного экрана или закрыть';
+  bar = document.createElement('div');
+  bar.id = 'fs-bar';
+  bar.setAttribute('role', 'toolbar');
+  bar.setAttribute('aria-label', 'Окно');
+  const ico = d => '<svg class="tn-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="' + d + '"/></svg>';
+  bar.innerHTML = '<button type="button" data-fs-min title="Свернуть">' + ico('M5 18h14') + 'Свернуть</button>'
+    + '<button type="button" data-fs-exit title="Выйти из полного экрана (F11)">' + ico('M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5') + 'Выйти из полного экрана</button>'
+    + '<button type="button" data-fs-close title="Закрыть программу">' + ico('M6 6l12 12M18 6L6 18') + 'Закрыть</button>';
+  bar.addEventListener('click', async e => {
+    const w = tndAppWindow();
+    try {
+      if (e.target.closest('[data-fs-exit]')) { hideFsBar(true); await setFullscreen(false); }
+      else if (e.target.closest('[data-fs-min]')) { hideFsBar(true); await w?.minimize?.(); }
+      else if (e.target.closest('[data-fs-close]')) { if (w?.close) await w.close(); else window.close(); }
+    } catch (err) { console.warn('fs-bar:', err); }
+  });
+  edge.addEventListener('mouseenter', () => showFsBar());
+  bar.addEventListener('mouseenter', () => clearTimeout(showFsBar.t));
+  bar.addEventListener('mouseleave', () => { clearTimeout(showFsBar.t); showFsBar.t = setTimeout(hideFsBar, 1200); });
+  document.body.append(edge, bar);
+  return bar;
+}
+function showFsBar(ms = 0) {
+  const bar = fsBarEl();
+  bar.classList.add('show');
+  clearTimeout(showFsBar.t);
+  if (ms) showFsBar.t = setTimeout(hideFsBar, ms);
+}
+function hideFsBar() { document.getElementById('fs-bar')?.classList.remove('show'); }
+function applyFsUi(on) {
+  const was = document.body.classList.contains('tnd-fs');
+  fsBarEl();
+  document.body.classList.toggle('tnd-fs', !!on);
+  if (on && !was) showFsBar(3000);
+  if (!on) hideFsBar();
+}
 
 // Подсказка про полный экран (Андрей 09.10): окно развернули на весь экран, но панель задач осталась —
 // предложить F11. Не больше 3 раз, «Больше не показывать», после первого полного экрана — никогда.
@@ -15161,6 +15221,8 @@ function showFsHint() {
 }
 let fsHintTimer = 0;
 window.addEventListener('resize', () => {
+  clearTimeout(applyFsUi.t);
+  applyFsUi.t = setTimeout(async () => applyFsUi(await tndIsFullscreen()), 250);
   clearTimeout(fsHintTimer);
   fsHintTimer = setTimeout(async () => {
     const st = fsHintState();
