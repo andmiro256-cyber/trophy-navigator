@@ -45,3 +45,9 @@ test('своя ручка размера окна (Linux: за уголок CSS 
   assert.match(html, /\.tnd-grip \{ position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; z-index: 20; cursor: nwse-resize;/);
   assert.match(html, /el\.style\.resize = 'none';/);
 });
+
+test('клик по треку в списке — карта переходит к нему, окно не закрывает трек (Андрей 09.10)', () => {
+  assert.match(html, /onclick="selectTrackById\(\$\{t\.id\}\);focusTrackOnMap\(\$\{t\.id\}\)"/);
+  assert.match(html, /function focusTrackOnMap\(id\)/);
+  assert.match(html, /map\.fitBounds\(L\.latLngBounds\(t\.points\), \{ paddingTopLeft: \[left, 30\], paddingBottomRight: \[right, 30\], maxZoom: 16 \}\)/);
+});
