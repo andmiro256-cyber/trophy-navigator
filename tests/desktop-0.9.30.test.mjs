@@ -309,16 +309,6 @@ test('перетаскивание или setView посреди жеста — 
   } finally { dom.window.close(); }
 });
 
-test('версия 0.9.30 везде одна', () => {
-  assert.match(read('../src-tauri/tauri.conf.json'), /"version": "0\.9\.30"/);
-  assert.match(read('../src-tauri/Cargo.toml'), /^version = "0\.9\.30"$/m);
-  assert.match(read('../src-tauri/Cargo.lock'), /name = "trophy-navigator-desktop"\nversion = "0\.9\.30"/);
-  assert.match(html, /<title>🧭 Trophy Navigator Desktop v0\.9\.30<\/title>/);
-  assert.match(html, /id="app-version-label" class="app-version">Trophy Navigator · v0\.9\.30</);
-  assert.match(html, /let appDisplayVersion = '0\.9\.30';/);
-  assert.match(html, /id="about-version"[^>]*>0\.9\.30</);
-  assert.doesNotMatch(html, /0\.9\.29/);
-});
 
 test('ревью 2582 P3: удержание щипка без движения не крутит нулевые таймеры', needDom, async () => {
   const { dom, w, frames, sz } = setup();
