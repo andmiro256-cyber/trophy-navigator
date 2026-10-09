@@ -210,7 +210,9 @@ const CATALOG = {
   overlays: [],
 };
 function setupWindow({ order = null, custom = [] } = {}) {
-  const body = between('<div class="layer-section-title" id="custom-layers-title"', '<div class="layer-section-title" style="margin-top:8px">Оверлейные слои</div>');
+  // 09.10: «Мои карты» — в самом низу окна, после офлайн-карт
+  const body = between('<!-- TrophyNav Maps: векторные карты областей', '<div class="layer-section-title" style="margin-top:8px">Оверлейные слои</div>')
+    + between('<div class="layer-section-title" id="custom-layers-title"', '<!-- УВЕДОМЛЕНИЕ -->');
   const dom = new JSDOM(`<!doctype html><head></head><body><div class="modal-body">${body}</div></body>`, { url: 'https://review.invalid/', runScripts: 'dangerously' });
   const w = dom.window;
   if (order) w.localStorage.setItem('tnd-layer-order', JSON.stringify(order));
