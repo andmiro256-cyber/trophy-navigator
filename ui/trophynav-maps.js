@@ -17,6 +17,8 @@
   const LAYER_PREFIX = 'tnmap:';
   const FALLBACK_LAYER = 'OpenStreetMap';
   const LS_THEME = 'tnd-tnmaps-theme';
+  const LS_SETTINGS_OPEN = 'tnd-tnmaps-settings-open';
+  const settingsOpen = () => lsGet(LS_SETTINGS_OPEN) === '1'; // по умолчанию свёрнуто
   const LS_RELIEF = 'tnd-tnmaps-relief';
   const LS_POI = 'tnd-tnmaps-poi';
   const LS_AUTO = 'tnd-tnmaps-autoswitch';
@@ -564,6 +566,13 @@
       .tnmaps-empty { font-size:11px; color:var(--text-muted); padding:4px 2px 6px; }
       .tnmaps-size { margin-left:auto; font-size:10px; color:var(--text-muted); }
       /* Блок под активной картой: две колонки — подпись фиксированной ширины и элементы; строки 34 px */
+      .tnmaps-settings { margin:4px 0 6px; }
+      .tnmaps-settings > summary { display:flex; align-items:center; gap:6px; cursor:pointer; list-style:none; padding:6px 8px; border-radius:var(--radius-m); color:var(--text-secondary); font-size:var(--fs-s); }
+      .tnmaps-settings > summary::-webkit-details-marker { display:none; }
+      .tnmaps-settings > summary:hover { background:var(--bg-hover); color:var(--text-primary); }
+      .tnmaps-settings > summary::after { content:'▾'; margin-left:auto; transition:transform 0.15s; }
+      .tnmaps-settings:not([open]) > summary::after { transform:rotate(-90deg); }
+      .tnmaps-sum { color:var(--text-muted); font-size:var(--fs-xs); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; flex:1; }
       .tnmaps-controls { background:var(--surface-variant); border:0; border-radius:var(--radius-m); padding:6px 10px; margin:4px 0 6px;
         display:grid; grid-template-columns:52px minmax(0,1fr); column-gap:8px; row-gap:2px; align-items:center; }
       .tnmaps-label { font-size:11px; color:var(--text-muted); line-height:34px; white-space:nowrap; }
@@ -656,7 +665,12 @@
       const on = cond => (cond ? '' : 'disabled');
       // Нет файла крутизны — галка не отмечена и неактивна, что бы ни было сохранено для других областей
       const slopeOn = r.slope && hasSlope;
-      controls = `<div class="tnmaps-controls" data-tnmaps-controls>
+      // 09.10 (Андрей): настройки один раз выставил — постоянно видеть не нужно: под спойлером, состояние помнится
+      const themeTitle = { topo: 'Топо', contrast: 'Контраст', normal: 'Обычная' }[theme] || theme;
+      const summary = [`тема «${themeTitle}»`, r.on ? 'рельеф' : 'без рельефа', `значки: ${Core.poiSummary(poi)}`].join(' · ');
+      controls = `<details class="tnmaps-settings" data-tnmaps-settings${settingsOpen() ? ' open' : ''}>
+        <summary>${ico('settings', 'tn-ico-t')}<span>Настройки карты</span><span class="tnmaps-sum">${esc(summary)}</span></summary>
+        <div class="tnmaps-controls" data-tnmaps-controls>
         <span class="tnmaps-label">Тема</span>
         <div class="tnmaps-val">${themeSegHtml(theme)}</div>
         ${state.applyingTheme === act ? '<div class="tnmaps-applying tnmaps-sub" role="status" data-tnmaps-applying>Применяю тему…</div>' : ''}
@@ -685,7 +699,7 @@
         <div class="tnmaps-val">
           <button type="button" class="tnmaps-wide" data-tnmaps-3d>${ico('terrain', 'tn-ico-t')}<span>Открыть 3D-вид</span></button>
         </div>
-      </div>`;
+      </div></details>`;
     }
     const hint = state.local.length ? '' : '<div class="tnmaps-empty">Нет скачанных областей. Векторные карты работают без интернета.</div>';
     const setting = `<div class="tnmaps-checks"><label><input type="checkbox" data-tnmaps-auto ${autoEnabled() ? 'checked' : ''}>Автопереключение карт областей</label></div>`;
@@ -697,6 +711,13 @@
     const poiOpen = box.querySelector('[data-tnmaps-poi-list]')?.hidden === false;
     box.innerHTML = html;
     if (poiOpen) { const l = box.querySelector('[data-tnmaps-poi-list]'); if (l) l.hidden = false; }
+    if (!box.__tnmapsToggleBound) {
+      box.__tnmapsToggleBound = true;
+      // toggle не всплывает — ловим на перехвате
+      box.addEventListener('toggle', e => {
+        if (e.target?.matches?.('[data-tnmaps-settings]')) lsSet(LS_SETTINGS_OPEN, e.target.open ? '1' : '0');
+      }, true);
+    }
   }
 
   /**

@@ -41,3 +41,10 @@ test('полный экран: F11 и пункт меню, выбор запом
   assert.ok(caps.permissions.includes('core:window:allow-set-fullscreen'));
   assert.ok(caps.permissions.includes('core:window:allow-is-fullscreen'));
 });
+
+test('настройки карты TrophyNav Maps — под спойлером, по умолчанию свёрнуты, состояние помнится', () => {
+  assert.match(mapsSrc, /<details class="tnmaps-settings" data-tnmaps-settings\$\{settingsOpen\(\) \? ' open' : ''\}>/);
+  assert.match(mapsSrc, /const settingsOpen = \(\) => lsGet\(LS_SETTINGS_OPEN\) === '1';/);
+  assert.match(mapsSrc, /box\.addEventListener\('toggle', e => \{[\s\S]{0,160}lsSet\(LS_SETTINGS_OPEN, e\.target\.open \? '1' : '0'\)/);
+  assert.match(mapsSrc, /<span>Настройки карты<\/span><span class="tnmaps-sum">/);
+});
