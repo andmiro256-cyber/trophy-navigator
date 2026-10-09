@@ -48,3 +48,11 @@ test('настройки карты TrophyNav Maps — под спойлером
   assert.match(mapsSrc, /box\.addEventListener\('toggle', e => \{[\s\S]{0,160}lsSet\(LS_SETTINGS_OPEN, e\.target\.open \? '1' : '0'\)/);
   assert.match(mapsSrc, /<span>Настройки карты<\/span><span class="tnmaps-sum">/);
 });
+
+test('подсказка про полный экран: при развёрнутом окне, не больше 3 раз, «Больше не показывать»; кнопка ⛶ в строке состояния', () => {
+  assert.match(html, /<button type="button" id="sb-fullscreen" class="sb-fs-btn" onclick="toggleFullscreen\(\)" title="Во весь экран \(F11\)"/);
+  assert.match(html, /if \(st\.never \|\| st\.used \|\| \(st\.shown \|\| 0\) >= 3\) return;/);
+  assert.match(html, /window\.outerWidth >= screen\.availWidth - 16 && window\.outerHeight >= screen\.availHeight - 16/);
+  assert.match(html, /data-fs-never>Больше не показывать<\/button>/);
+  assert.match(html, /if \(on\) fsHintSave\(\{ \.\.\.fsHintState\(\), used: true \}\);/);
+});
