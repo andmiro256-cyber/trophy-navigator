@@ -192,6 +192,8 @@
     setState('busy');
     try {
       const hint = (await nearbyNames(40).catch(() => [])).join(', ');
+      // отменили, пока собирали подсказку: запись уже остановлена voice_cancel — voice_stop не зовём (ревью Тома 2702)
+      if (v.state !== 'busy') return;
       const r = await invoke('voice_stop', { prompt: hint });
       if (v.state !== 'busy') return; // отменили, пока распознавалось
       const said = String(r?.text || '').trim();
@@ -201,7 +203,8 @@
       await applyPhrase(said);
     } catch (e) {
       const msg = String(e?.message || e);
-      if (!/отменено/.test(msg)) showBar(`⚠ ${esc(msg)}`, 'err', 6000);
+      // после отмены поздняя ошибка («запись не идёт», «отменено») не показывается
+      if (v.state === 'busy' && !/отменено/.test(msg)) showBar(`⚠ ${esc(msg)}`, 'err', 6000);
     } finally { if (v.state === 'busy') setState('idle'); }
   }
   async function cancel() {
@@ -317,5 +320,5 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount); else mount();
 
-  window.TnPlaces = { searchLocal, loadPlaces, nearbyNames, cleanPhrase, caseVariants, soundKey, similarity, _places: places, _applyPhrase: applyPhrase, _voice: v, _cancel: cancel };
+  window.TnPlaces = { searchLocal, loadPlaces, nearbyNames, cleanPhrase, caseVariants, soundKey, similarity, _places: places, _applyPhrase: applyPhrase, _voice: v, _cancel: cancel, _stop: stop };
 })();
