@@ -253,6 +253,14 @@
   #statusbar .highlight { font-variant-numeric: tabular-nums; }
   #sb-coords { display: inline-block; min-width: 31ch; white-space: pre; }
   #sb-zoom { display: inline-block; min-width: 2.2ch; }
+  .sb-fs-btn { margin-left: auto; appearance: none; border: 0; background: transparent; color: var(--text-muted); cursor: pointer;
+    font-size: 14px; line-height: 1; padding: 0 6px; border-radius: var(--radius-xs); }
+  .sb-fs-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+  #fs-hint { position: fixed; z-index: 5000; left: 50%; top: 72px; transform: translateX(-50%); display: flex; align-items: center;
+    gap: 10px; flex-wrap: wrap; max-width: calc(100vw - 32px); padding: 10px 14px; background: var(--modal-bg); color: var(--text-primary);
+    border: 1px solid var(--card-stroke); border-left: 4px solid var(--primary); border-radius: var(--radius-m); box-shadow: var(--shadow-2); font-size: var(--fs-s); }
+  #fs-hint[hidden] { display: none; }
+  #fs-hint kbd { border: 1px solid var(--border-normal); border-radius: 4px; padding: 0 5px; font-size: 11px; }
   /* ─── Виджеты внизу карты (tn-widgets.js) — как нижняя панель Android ─── */
   /* Фон полосы и карточек — подложки ::before с opacity var(--widget-fill): прозрачность из настроек
      «Виджеты» гасит только фон, текст остаётся непрозрачным (как прозрачный режим Android) */
@@ -1485,6 +1493,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-navigation"/></svg><span class="highlight" id="sb-mode">Обзор</span></span>
   <span title="Активный слой"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-layers-o"/></svg><span class="highlight" id="sb-layer">OpenStreetMap</span></span>
+  <button type="button" id="sb-fullscreen" class="sb-fs-btn" onclick="toggleFullscreen()" title="Во весь экран (F11)" aria-label="Во весь экран"><svg class="tn-ico tn-ico-t" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
   <span id="app-version-label" class="app-version">Trophy Navigator · v0.9.30</span>
 </div>
 
@@ -15115,11 +15124,54 @@ async function setFullscreen(on, { remember = true } = {}) {
     else if (document.fullscreenElement) await document.exitFullscreen?.();
   } catch (e) { console.warn('fullscreen:', e); showToast('Полноэкранный режим недоступен'); return; }
   if (remember) { try { localStorage.setItem(TND_FS_KEY, on ? '1' : '0'); } catch { /* приватный режим */ } }
+  if (on) fsHintSave({ ...fsHintState(), used: true });
+  const fsBtn = document.getElementById('sb-fullscreen');
+  if (fsBtn) { fsBtn.title = on ? 'Выйти из полного экрана (F11)' : 'Во весь экран (F11)'; fsBtn.setAttribute('aria-label', fsBtn.title); }
   const label = document.querySelector('#menu-fullscreen [data-fs-label]');
   if (label) label.textContent = on ? 'Выйти из полного экрана' : 'Во весь экран';
   setTimeout(() => map.invalidateSize(), 150);
 }
 async function toggleFullscreen() { await setFullscreen(!(await tndIsFullscreen())); }
+
+// Подсказка про полный экран (Андрей 09.10): окно развернули на весь экран, но панель задач осталась —
+// предложить F11. Не больше 3 раз, «Больше не показывать», после первого полного экрана — никогда.
+const TND_FS_HINT_KEY = 'tnd-fullscreen-hint';
+function fsHintState() { try { return JSON.parse(localStorage.getItem(TND_FS_HINT_KEY) || '{}') || {}; } catch { return {}; } }
+function fsHintSave(st) { try { localStorage.setItem(TND_FS_HINT_KEY, JSON.stringify(st)); } catch { /* приватный режим */ } }
+function hideFsHint() { const h = document.getElementById('fs-hint'); if (h) h.hidden = true; }
+function showFsHint() {
+  let h = document.getElementById('fs-hint');
+  if (!h) {
+    h = document.createElement('div');
+    h.id = 'fs-hint';
+    h.setAttribute('role', 'status');
+    h.innerHTML = '<span>Хотите совсем во весь экран, без панели задач?</span>'
+      + '<button type="button" class="btn-primary btn-sm" data-fs-go>Во весь экран</button>'
+      + '<span style="color:var(--text-muted)">или <kbd>F11</kbd></span>'
+      + '<button type="button" class="btn-secondary btn-sm" data-fs-never>Больше не показывать</button>';
+    h.addEventListener('click', e => {
+      if (e.target.closest('[data-fs-go]')) { hideFsHint(); setFullscreen(true); }
+      else if (e.target.closest('[data-fs-never]')) { hideFsHint(); fsHintSave({ ...fsHintState(), never: true }); }
+    });
+    document.body.appendChild(h);
+  }
+  h.hidden = false;
+  clearTimeout(showFsHint.t);
+  showFsHint.t = setTimeout(hideFsHint, 8000);
+}
+let fsHintTimer = 0;
+window.addEventListener('resize', () => {
+  clearTimeout(fsHintTimer);
+  fsHintTimer = setTimeout(async () => {
+    const st = fsHintState();
+    if (st.never || st.used || (st.shown || 0) >= 3) return;
+    if (await tndIsFullscreen()) { fsHintSave({ ...st, used: true }); hideFsHint(); return; }
+    const full = window.outerWidth >= screen.availWidth - 16 && window.outerHeight >= screen.availHeight - 16;
+    if (!full || st.lastW === window.outerWidth) return;
+    fsHintSave({ ...st, shown: (st.shown || 0) + 1, lastW: window.outerWidth });
+    showFsHint();
+  }, 600);
+});
 document.addEventListener('keydown', e => {
   if (e.key !== 'F11' || e.ctrlKey || e.altKey || e.metaKey) return;
   e.preventDefault();
