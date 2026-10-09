@@ -263,7 +263,7 @@
   #fs-hint[hidden] { display: none; }
   #fs-hint kbd { border: 1px solid var(--border-normal); border-radius: 4px; padding: 0 5px; font-size: 11px; }
   /* Полный экран (Андрей 09.10): системной рамки нет — свернуть/закрыть/выйти. Полоска-«язычок» у верхнего края,
-     панель выезжает при наведении (как в браузере) и показывается на 3 с при входе в полный экран. */
+     панель выезжает при наведении (как в браузере) и показывается на 1 с при входе в полный экран. */
   #fs-edge { display: none; position: fixed; z-index: 2147483000; top: 0; left: 0; right: 0; height: 6px; }
   #fs-edge::after { content: ''; position: absolute; top: 0; left: 50%; width: 64px; height: 4px; margin-left: -32px;
     border-radius: 0 0 4px 4px; background: var(--text-muted); opacity: .55; }
@@ -1371,6 +1371,9 @@
   <!-- Live мониторинг -->
   <button class="tb-btn tb-captioned desktop-overflow-tool" id="btn-live" onclick="toggleLive()" title="Мониторинг участников"><span class="tb-icon"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-signal"/></svg></span><span class="tb-text">Live</span></button>
 
+  <!-- Полный экран (Андрей 09.10: кнопка наверху, между Live и поиском) -->
+  <button type="button" class="tb-btn tb-captioned" id="btn-fullscreen" onclick="toggleFullscreen()" title="Во весь экран (F11)" aria-label="Во весь экран"><span class="tb-icon"><svg class="tn-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></span><span class="tb-text">Экран</span></button>
+
   <!-- Правая часть тулбара -->
   <div class="toolbar-spacer"></div>
 
@@ -1509,7 +1512,6 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-navigation"/></svg><span class="highlight" id="sb-mode">Обзор</span></span>
   <span title="Активный слой"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-layers-o"/></svg><span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <button type="button" id="sb-fullscreen" class="sb-fs-btn" onclick="toggleFullscreen()" title="Во весь экран (F11)" aria-label="Во весь экран"><svg class="tn-ico tn-ico-t" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
   <span id="app-version-label" class="app-version">Trophy Navigator · v0.9.30</span>
 </div>
 
@@ -2486,31 +2488,6 @@
     <div class="modal-body">
       <!-- Слои поверх основной карты: спутник с яркостью, TrophyNav Maps «дороги и подписи», наборы (ui/tn-layers.js) -->
       <div id="tn-stack-section"></div>
-      <!-- Пользовательские карты (всегда доступны) -->
-      <div class="layer-section-title" id="custom-layers-title" style="display:flex;justify-content:space-between;align-items:center">
-        <span>Мои карты</span>
-        <span style="font-size:12px;cursor:pointer;color:var(--accent)" onclick="showAddCustomLayer()">+ Добавить</span>
-      </div>
-      <div id="custom-layers-list"></div>
-      <div id="custom-layer-form" style="display:none;background:var(--bg-sunken);border:1px solid var(--border-normal);border-radius:6px;padding:10px;margin-bottom:8px">
-        <div class="prop-field"><label>Название</label><input id="cl-name" placeholder="Моя карта"></div>
-        <div class="prop-field"><label>URL шаблон тайлов</label><input id="cl-url" placeholder="https://server/{z}/{x}/{y}.png"></div>
-        <div style="display:flex;gap:8px">
-          <div class="prop-field" style="flex:1"><label>Max zoom</label><input id="cl-maxzoom" type="number" value="18" min="1" max="22"></div>
-          <div class="prop-field" style="flex:1"><label>TMS (Y инверсия)</label><select id="cl-tms"><option value="0">Нет (XYZ)</option><option value="1">Да (TMS)</option></select></div>
-        </div>
-        <div style="display:flex;gap:8px;margin-bottom:6px">
-          <div class="prop-field" style="flex:1"><label>Поддомены</label><input id="cl-subdomains" placeholder="abc (необязательно)"></div>
-        </div>
-        <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px">Шаблон: <code>{x}</code>, <code>{y}</code>, <code>{z}</code> — координаты тайла, <code>{s}</code> — поддомен</div>
-        <div class="btn-row">
-          <button class="btn-secondary" style="font-size:11px" onclick="openFile('.xml,.XML', importLocusXml)"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>Импорт .xml</button>
-          <div style="flex:1"></div>
-          <button class="btn-secondary" style="font-size:11px" onclick="hideAddCustomLayer()">Отмена</button>
-          <button class="btn-primary" style="font-size:11px" onclick="addCustomLayer()">Добавить</button>
-        </div>
-      </div>
-
       <!-- TrophyNav Maps: векторные карты областей (ui/trophynav-maps.js) -->
       <div class="layer-section-title tnmaps-title-row" style="margin-top:8px">
         <span>TrophyNav Maps</span>
@@ -2576,6 +2553,31 @@
       <div id="offline-layers-section" style="display:none">
         <div class="layer-section-title" style="margin-top:8px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-download"/></svg>Скачанные карты</div>
         <div id="offline-layers-list"></div>
+      </div>
+
+      <!-- Пользовательские карты — в самом низу списка (Андрей 09.10) -->
+      <div class="layer-section-title" id="custom-layers-title" style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+        <span>Мои карты</span>
+        <span style="font-size:12px;cursor:pointer;color:var(--accent)" onclick="showAddCustomLayer()">+ Добавить</span>
+      </div>
+      <div id="custom-layers-list"></div>
+      <div id="custom-layer-form" style="display:none;background:var(--bg-sunken);border:1px solid var(--border-normal);border-radius:6px;padding:10px;margin-bottom:8px">
+        <div class="prop-field"><label>Название</label><input id="cl-name" placeholder="Моя карта"></div>
+        <div class="prop-field"><label>URL шаблон тайлов</label><input id="cl-url" placeholder="https://server/{z}/{x}/{y}.png"></div>
+        <div style="display:flex;gap:8px">
+          <div class="prop-field" style="flex:1"><label>Max zoom</label><input id="cl-maxzoom" type="number" value="18" min="1" max="22"></div>
+          <div class="prop-field" style="flex:1"><label>TMS (Y инверсия)</label><select id="cl-tms"><option value="0">Нет (XYZ)</option><option value="1">Да (TMS)</option></select></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:6px">
+          <div class="prop-field" style="flex:1"><label>Поддомены</label><input id="cl-subdomains" placeholder="abc (необязательно)"></div>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px">Шаблон: <code>{x}</code>, <code>{y}</code>, <code>{z}</code> — координаты тайла, <code>{s}</code> — поддомен</div>
+        <div class="btn-row">
+          <button class="btn-secondary" style="font-size:11px" onclick="openFile('.xml,.XML', importLocusXml)"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-open"/></svg>Импорт .xml</button>
+          <div style="flex:1"></div>
+          <button class="btn-secondary" style="font-size:11px" onclick="hideAddCustomLayer()">Отмена</button>
+          <button class="btn-primary" style="font-size:11px" onclick="addCustomLayer()">Добавить</button>
+        </div>
       </div>
     </div>
   </div>
@@ -15153,8 +15155,11 @@ async function setFullscreen(on, { remember = true } = {}) {
   if (remember) { try { localStorage.setItem(TND_FS_KEY, on ? '1' : '0'); } catch { /* приватный режим */ } }
   if (on) fsHintSave({ ...fsHintState(), used: true });
   applyFsUi(on);
-  const fsBtn = document.getElementById('sb-fullscreen');
-  if (fsBtn) { fsBtn.title = on ? 'Выйти из полного экрана (F11)' : 'Во весь экран (F11)'; fsBtn.setAttribute('aria-label', fsBtn.title); }
+  const fsBtn = document.getElementById('btn-fullscreen');
+  if (fsBtn) {
+    fsBtn.title = on ? 'Выйти из полного экрана (F11)' : 'Во весь экран (F11)'; fsBtn.setAttribute('aria-label', fsBtn.title);
+    fsBtn.classList.toggle('active', !!on);
+  }
   const label = document.querySelector('#menu-fullscreen [data-fs-label]');
   if (label) label.textContent = on ? 'Выйти из полного экрана' : 'Во весь экран';
   setTimeout(() => map.invalidateSize(), 150);
@@ -15201,7 +15206,7 @@ function applyFsUi(on) {
   const was = document.body.classList.contains('tnd-fs');
   fsBarEl();
   document.body.classList.toggle('tnd-fs', !!on);
-  if (on && !was) showFsBar(3000);
+  if (on && !was) showFsBar(1000);  // Андрей 09.10: показать на секунду и спрятать
   if (!on) hideFsBar();
 }
 

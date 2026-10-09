@@ -87,13 +87,19 @@
     const m = localEntry(OVERVIEW_ID);
     return m && !m.error ? m : null;
   }
+  /** Короткое имя области, как в Android (Андрей 09.10): «Санкт-Петербург и ЛО», «Москва и МО», ХМАО, ЯНАО. */
+  function shortRegion(n) {
+    return String(n).replace(/Ленинградская обл(\.|асть)/, 'ЛО').replace(/Московская обл(\.|асть)/, 'МО')
+      .replace(/Ханты-Мансийский (АО|автономный округ)(\s*[—–-]\s*Югра)?/, 'ХМАО').replace(/Ямало-Ненецкий (АО|автономный округ)/, 'ЯНАО')
+      .replace(/\sобласть(?![а-яё])/i, ' обл.');
+  }
   function regionName(id) {
     const c = catalogEntry(id);
-    if (c?.name) return c.name;
+    if (c?.name) return shortRegion(c.name);
     if (id === OVERVIEW_ID) return 'Обзорная карта России';
     const l = localEntry(id);
     // Имя в metadata бывает дефолтом сборщика («OpenMapTiles…») — тогда id
-    if (l?.name && !/openmaptiles/i.test(l.name)) return l.name;
+    if (l?.name && !/openmaptiles/i.test(l.name)) return shortRegion(l.name);
     return id;
   }
   function labelFor(name) {
@@ -578,7 +584,7 @@
       .tnmaps-label { font-size:11px; color:var(--text-muted); line-height:34px; white-space:nowrap; }
       .tnmaps-val { min-height:34px; min-width:0; display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text-primary); }
       .tnmaps-sub { grid-column:2; }
-      .tnmaps-seg { flex:1; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); height:28px; border:1px solid var(--text-secondary); border-radius:var(--radius-pill); overflow:hidden; }
+      .tnmaps-seg { flex:1; display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); height:28px; border:1px solid var(--text-secondary); border-radius:var(--radius-pill); overflow:hidden; }
       .tnmaps-seg-btn { min-width:0; padding:0 4px; border:0; border-left:1px solid var(--text-secondary); background:transparent; color:var(--text-primary); font-size:12px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
       .tnmaps-seg-btn:first-child { border-left:0; }
       .tnmaps-seg-btn:hover { background:var(--hover); }
@@ -637,7 +643,7 @@
     document.head.appendChild(st);
   }
 
-  /** Переключатель темы в одну строку (Обычная | Контраст | Топо) — в «Карте и слоях» и в окне областей. */
+  /** Переключатель темы в одну строку (Базовая | Яркая | Топо | Офф) — в «Карте и слоях» и в окне областей. */
   function themeSegHtml(theme) {
     return `<div class="tnmaps-seg" role="group" aria-label="Тема карты">${Core.THEMES.map(t =>
       `<button type="button" class="tnmaps-seg-btn${t.id === theme ? ' active' : ''}" data-tnmaps-theme="${t.id}" aria-pressed="${t.id === theme}">${esc(t.title)}</button>`).join('')}</div>`;
@@ -685,7 +691,7 @@
           <input type="range" min="0" max="15" step="1" value="${r.strength}" data-tnmaps-strength ${on(r.on && (hasDem || hasSlope))} aria-label="Сила отмывки">
           <span class="tnmaps-pct">${r.strength * 10}%</span>
         </div>
-        ${!Core.RELIEF_THEMES.has(theme) ? '<div class="tnmaps-hint tnmaps-sub">Отмывка, крутизна и горизонтали рисуются в темах «Топо» и «Офф-роуд».</div>'
+        ${!Core.RELIEF_THEMES.has(theme) ? '<div class="tnmaps-hint tnmaps-sub">Отмывка, крутизна и горизонтали рисуются в темах «Топо» и «Офф».</div>'
           : hasDem || hasSlope ? '' : '<div class="tnmaps-hint tnmaps-sub">У этой области нет файлов рельефа — горизонтали только из самой карты.</div>'}
         <span class="tnmaps-label">Значки</span>
         <div class="tnmaps-val">
