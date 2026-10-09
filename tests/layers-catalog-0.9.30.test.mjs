@@ -90,7 +90,7 @@ test('без каталога — зашитые карты видны (запа
   } finally { dom.window.close(); }
 });
 
-test('каталог загружен — в списке нет пар-эквивалентов; зашитые без эквивалента остаются; «точный» показан как «Яндекс Гибрид»', needDom, () => {
+test('каталог загружен — в списке нет пар-эквивалентов; зашитые без эквивалента убраны (как в Android); «точный» показан как «Яндекс Гибрид»', needDom, () => {
   const { dom, t, rows } = setup();
   try {
     t.loadCatalog(CATALOG);
@@ -101,8 +101,9 @@ test('каталог загружен — в списке нет пар-экви
       assert.ok(names.includes(cat), `карта каталога «${cat}» есть`);
     }
     assert.equal(new Set(names).size, names.length, 'ни одной карты дважды');
-    for (const keep of ['Гибрид Bing', 'Рельеф Google', '2GIS', 'Космоснимки рельеф', 'TF Outdoors', 'LoMaps', 'Michelin',
-      'Яндекс Спутник', 'ГГЦ 2км', 'CyclOSM', 'OSM Humanitarian']) assert.ok(names.includes(keep), `остаётся «${keep}»`);
+    // 09.10 (Андрей): с каталогом — как в Android, только карты каталога; зашитые без эквивалента убраны
+    for (const gone of ['Гибрид Bing', 'Рельеф Google', '2GIS', 'Космоснимки рельеф', 'TF Outdoors', 'LoMaps', 'Michelin',
+      'Яндекс Спутник', 'ГГЦ 2км', 'CyclOSM', 'OSM Humanitarian']) assert.ok(!names.includes(gone), `убрана «${gone}»`);
     const yh = list.find(r => r.layer === 'Яндекс Гибрид (точный)');
     assert.equal(yh.text, 'Яндекс Гибрид', 'отображаемое имя без «(точный)»');
     assert.equal(yh.key, 'yandex_hybrid_wgs');
@@ -110,7 +111,7 @@ test('каталог загружен — в списке нет пар-экви
     assert.equal(list.find(r => r.layer === 'ESRI Topo')?.key, 'esri_topo', 'новая карта каталога тоже в списке');
     // бесплатные: OSM/OpenTopoMap из каталога, CyclOSM/OSM Humanitarian — зашитые
     const free = [...dom.window.document.querySelectorAll('#catalog-free-layers .base-layer')].map(d => d.dataset.layer);
-    assert.deepEqual(free.sort(), ['CyclOSM', 'OSM Humanitarian', 'OpenStreetMap', 'OpenTopoMap'].sort());
+    assert.deepEqual(free.sort(), ['OpenStreetMap', 'OpenTopoMap'].sort());
   } finally { dom.window.close(); }
 });
 
@@ -151,23 +152,23 @@ test('скрытые карты: глаз в заголовке показыва
     assert.equal(t.toasts.at(-1), 'Нет скрытых карт');
     assert.equal(t.mode, false);
     t.toggleLayerHidden('bing_sat');
-    t.toggleLayerHidden('Гибрид Bing');   // зашитая карта без ключа каталога скрывается по имени
+    t.toggleLayerHidden('google_hybrid');
     let names = rows().map(r => r.layer);
-    assert.ok(!names.includes('Bing Спутник') && !names.includes('Гибрид Bing'));
+    assert.ok(!names.includes('Bing Спутник') && !names.includes('Google Гибрид'));
     t.showHiddenLayersManager();
     assert.equal(t.mode, true);
     const eye = w.document.getElementById('btn-show-hidden-layers');
     assert.ok(eye.classList.contains('active'));
     assert.equal(eye.getAttribute('aria-pressed'), 'true');
     let shown = rows().filter(r => r.hidden);
-    assert.deepEqual(shown.map(r => r.layer).sort(), ['Bing Спутник', 'Гибрид Bing'].sort());
+    assert.deepEqual(shown.map(r => r.layer).sort(), ['Bing Спутник', 'Google Гибрид'].sort());
     assert.ok(shown.every(r => r.btn === 'Показать в списке'));
     assert.ok(rows().filter(r => !r.hidden).every(r => r.btn === 'Скрыть из списка'));
     // вернуть одну
     w.document.querySelector('.base-layer.layer-hidden[data-layer="Bing Спутник"] button').click();
-    assert.deepEqual([...t.getHiddenLayers()], ['Гибрид Bing']);
+    assert.deepEqual([...t.getHiddenLayers()], ['google_hybrid']);
     shown = rows().filter(r => r.hidden);
-    assert.deepEqual(shown.map(r => r.layer), ['Гибрид Bing'], 'вторая осталась скрытой');
+    assert.deepEqual(shown.map(r => r.layer), ['Google Гибрид'], 'вторая осталась скрытой');
     assert.equal(rows().find(r => r.layer === 'Bing Спутник').hidden, false);
     // выйти из режима
     t.showHiddenLayersManager();
