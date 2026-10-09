@@ -4752,7 +4752,7 @@ dependencies = [
 
 [[package]]
 name = "trophy-navigator-desktop"
-version = "0.9.33"
+version = "0.9.34"
 dependencies = [
  "cpal",
  "flate2",

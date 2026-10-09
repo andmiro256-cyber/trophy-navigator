@@ -2,7 +2,7 @@
 name = "trophy-navigator-desktop"
 
 
-version = "0.9.33"
+version = "0.9.34"
 description = "Trophy Navigator Desktop"
 authors = ["Andrey"]
 edition = "2021"
