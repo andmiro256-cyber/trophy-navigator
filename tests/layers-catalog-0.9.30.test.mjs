@@ -33,7 +33,7 @@ const CATALOG = {
 };
 
 function setup({ session = 'OpenStreetMap', hidden = [] } = {}) {
-  const body = between('<div id="catalog-free-layers">', '<div class="layer-section-title" style="margin-top:8px">Оверлейные слои</div>');
+  const body = between('<div id="catalog-free-layers">', '<div class="layer-section-title" data-sec="overlay" style="margin-top:8px">Оверлейные слои</div>');
   const header = html.match(/<button type="button" class="tn-icon-btn" id="btn-show-hidden-layers"[^>]*>/)[0] + '</button>';
   const dom = new JSDOM(`<!doctype html><body>${header}<div class="modal-body">${body}</div></body>`,
     { url: 'https://review.invalid/', runScripts: 'dangerously' });
