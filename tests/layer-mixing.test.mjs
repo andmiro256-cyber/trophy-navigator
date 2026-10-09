@@ -150,7 +150,7 @@ test('правило показа: проекция, основа, выключ�
 
 // ─── классификатор «только дороги и подписи» ───
 const template = read('../ui/vector/style-liberty.json');
-const THEME_FILES = { normal: null, contrast: '../ui/vector/theme-contrast.json', topo: '../ui/vector/theme-topo.json' };
+const THEME_FILES = { normal: null, contrast: '../ui/vector/theme-contrast.json', topo: '../ui/vector/theme-topo.json', offroad: '../ui/vector/theme-offroad.json' };
 const styleFor = theme => Core.buildStyle({
   template, map: { id: 'lo', modified: 1, dem: { modified: 1 }, slope: { modified: 1 } }, base: 'tnmap://localhost',
   theme: THEME_FILES[theme] ? JSON.parse(read(THEME_FILES[theme])) : null, relief: {}, poi: 'all',

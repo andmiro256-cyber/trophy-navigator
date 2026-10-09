@@ -65,7 +65,11 @@
     { id: 'normal', title: 'Обычная' },
     { id: 'contrast', title: 'Контраст' },
     { id: 'topo', title: 'Топо' },
+    // 09.10: как в Android (theme-offroad.json из racenav-android, стиль Генштаба: грунтовки по проходимости)
+    { id: 'offroad', title: 'Офф-роуд' },
   ];
+  /** Темы, в которых рисуются отмывка, крутизна и горизонтали. */
+  const RELIEF_THEMES = new Set(['topo', 'offroad']);
   const DEFAULT_THEME = 'contrast';
   const normalizeTheme = id => (THEMES.some(t => t.id === id) ? id : DEFAULT_THEME);
 
@@ -484,6 +488,7 @@
     'cutline', 'abandoned_railway', 'narrow_gauge']);
   const OUTDOOR_COVER = new Set(['wetland', 'scrub', 'clearcut', 'peat', 'quarry', 'dam_area']);
   const OUTDOOR_WATER = new Set(['ditch', 'dam']);
+  const OUTDOOR_TERRAIN = new Set(['ravine', 'cliff', 'earth_bank']);
   const OUTDOOR_WATER_LABEL = new Set(['bay_label', 'lake_label', 'waterway_label', 'rapids_label', 'sea_label']);
   const OUTDOOR_PLACE_LABEL = new Set(['island_label', 'cape_label', 'ridge_label', 'valley_label', 'pass_label',
     'valley_point', 'range_label', 'forest_label', 'wetland_label', 'locality']);
@@ -498,6 +503,8 @@
     const all = set => classes.every(c => set.has(c));
     const some = set => classes.some(c => set.has(c));
     if (all(OUTDOOR_RELIEF)) return 'relief-contour';
+    // 09.10: овраги, обрывы и бровки из стиля Android (tn_ravine, tn_cliff) — рельеф; их названия — подписи
+    if (all(OUTDOOR_TERRAIN)) return layer.type === 'symbol' ? 'place-label' : 'relief-contour';
     if (all(OUTDOOR_POWER)) return 'power';
     if (layer.type === 'symbol') {
       if (all(OUTDOOR_WATER_LABEL)) return 'water-label';
@@ -565,7 +572,7 @@
 
   const api = {
     STACK_GROUPS, filterClasses, classifyLayer, roadsLabelsStyle, ROADS_LABELS_GROUPS,
-    applyThemeLayers, THEMES, DEFAULT_THEME, normalizeTheme,
+    applyThemeLayers, THEMES, RELIEF_THEMES, DEFAULT_THEME, normalizeTheme,
     POI_GROUPS, POI_ALL, POI_LAYERS, parsePoi, formatPoi, poiSummary, poiCondition, combineFilter, applyPoiFilter,
     DEFAULT_RELIEF, normalizeRelief, scalePaint, applyRelief, dropLayersWithoutSource, applyBuildings,
     buildStyle, requiredAppImages,
