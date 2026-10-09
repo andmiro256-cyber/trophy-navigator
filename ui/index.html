@@ -346,6 +346,19 @@
   .modal.tnd-resized { max-height: calc(100vh - 16px); max-width: calc(100vw - 16px); }
   /* Своя ручка размера в правом нижнем углу: на Linux (WebKitGTK) за уголок CSS resize не ухватиться —
      его перекрывает содержимое окна (Андрей 09.10); на Windows и macOS ручка та же */
+  /* Спойлер в окнах (свойства трека, плеер): свёрнут по умолчанию, состояние помнится (tndSpoilers) */
+  .tnd-spoiler { margin: 4px 0; }
+  .tnd-spoiler > summary { display: flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; padding: 6px 8px;
+    border-radius: var(--radius-m); color: var(--text-secondary); font-size: var(--fs-s); }
+  .tnd-spoiler > summary::-webkit-details-marker { display: none; }
+  .tnd-spoiler > summary:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .tnd-spoiler > summary::after { content: '▾'; margin-left: auto; transition: transform .15s; }
+  .tnd-spoiler:not([open]) > summary::after { transform: rotate(-90deg); }
+  .tnd-spoiler-sum { color: var(--text-muted); font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .tnd-spoiler[open] > summary .tnd-spoiler-sum { display: none; }
+  .tnd-spoiler[open] > summary { margin-bottom: 6px; }
+  .tnd-spoiler-box { background: var(--bg-interactive); border: 1px solid var(--border-normal); border-radius: 6px; padding: 2px 6px; margin-top: 8px; }
+  .tnd-spoiler-box[open] { padding-bottom: 8px; }
   .modal.tnd-has-grip { resize: none; }
   .tnd-grip { position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; z-index: 20; cursor: nwse-resize;
     touch-action: none; opacity: .75; color: var(--text-secondary); }
@@ -1795,6 +1808,9 @@
       <div id="track-list"></div>
       <!-- Свойства выбранного трека -->
       <div id="track-controls" class="track-controls" style="display:none;margin-top:8px;border-top:1px solid var(--row-border);padding-top:8px">
+        <!-- 09.10 (Андрей): свойства и плеер под спойлером — не всегда нужны; раскрыто/свёрнуто помнится -->
+        <details class="tnd-spoiler" data-spoiler-key="track-props">
+        <summary><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-settings"/></svg><span>Свойства трека</span><span class="tnd-spoiler-sum">название, цвет, толщина, точки</span></summary>
         <div class="ctrl-row">
           <span style="min-width:60px;font-size:12px">Название</span>
           <input id="track-name-input" type="text" style="flex:1;background:var(--bg-sunken);border:1px solid var(--border-normal);color:var(--text-primary);border-radius:4px;padding:3px 6px;font-size:12px">
@@ -1817,6 +1833,7 @@
           <button class="btn-secondary btn-danger" onclick="deleteSelectedTrack()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-delete"/></svg>Удалить трек</button>
           <button class="btn-primary" onclick="applyTrackProps()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-check"/></svg>Сохранить свойства</button>
         </div>
+        </details>
         <div class="btn-row" style="margin-top:4px">
           <button class="btn-secondary" onclick="centerSelectedTrack()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-my-location"/></svg>Центрировать</button>
           <button class="btn-secondary" onclick="startTrackEdit()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-edit"/></svg>Редактировать</button>
@@ -1828,8 +1845,8 @@
         </div>
       </div>
       <!-- Плеер треков -->
-      <div id="track-player-panel" style="background:var(--bg-interactive);border:1px solid var(--border-normal);border-radius:6px;padding:8px;margin-top:8px">
-        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-play"/></svg>Плеер треков</div>
+      <details id="track-player-panel" class="tnd-spoiler tnd-spoiler-box" data-spoiler-key="track-player">
+        <summary><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-play"/></svg><span>Плеер треков</span><span class="tnd-spoiler-sum">воспроизведение отмеченных треков</span></summary>
         <div class="btn-row" style="margin-bottom:6px">
           <button class="btn-primary" onclick="playSelectedTracks()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-play"/></svg>Старт</button>
           <button class="btn-secondary" onclick="pauseTrackPlayer()" style="font-size:11px"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-pause"/></svg>Пауза</button>
@@ -1841,7 +1858,7 @@
           <span id="track-speed-val" style="font-size:12px;color:var(--text-primary);min-width:28px">1x</span>
         </div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:4px">отметьте треки чекбоксами для воспроизведения</div>
-      </div>
+      </details>
       <button class="btn-secondary" style="width:100%;margin-top:8px;color:var(--accent);border-color:var(--accent)" onclick="rrOpenDialog()">Race Report</button>
       <button class="btn-primary" style="width:100%;margin-top:8px" onclick="startNewTrack()">+ Новый трек</button>
     </div>
@@ -7229,6 +7246,21 @@ function tndAddResizeGrip(el) {
     grip.addEventListener('pointercancel', up);
   });
 }
+/** Спойлеры окон (details.tnd-spoiler[data-spoiler-key]): раскрыто/свёрнуто — в localStorage tnd-spoilers. */
+function tndSpoilers() {
+  const KEY = 'tnd-spoilers';
+  let st = {};
+  try { st = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch { /* приватный режим */ }
+  document.querySelectorAll('details.tnd-spoiler[data-spoiler-key]').forEach(d => {
+    const k = d.dataset.spoilerKey;
+    if (st[k] === 1) d.open = true;
+    d.addEventListener('toggle', () => {
+      st[k] = d.open ? 1 : 0;
+      try { localStorage.setItem(KEY, JSON.stringify(st)); } catch { /* приватный режим */ }
+    });
+  });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tndSpoilers); else tndSpoilers();
 function tndModalSizes() {
   const KEY = 'tnd-modal-sizes';
   const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch { return {}; } };

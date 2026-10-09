@@ -49,3 +49,10 @@ test('клик по треку в списке — карта переходит
   assert.match(html, /function focusTrackOnMap\(id\)/);
   assert.match(html, /map\.fitBounds\(L\.latLngBounds\(t\.points\), \{ paddingTopLeft: \[left, 30\], paddingBottomRight: \[right, 30\], maxZoom: 16 \}\)/);
 });
+
+test('окно треков: свойства и плеер под спойлером (свёрнуты, состояние помнится; Андрей 09.10)', () => {
+  assert.match(html, /<details class="tnd-spoiler" data-spoiler-key="track-props">/);
+  assert.match(html, /<details id="track-player-panel" class="tnd-spoiler tnd-spoiler-box" data-spoiler-key="track-player">/);
+  assert.match(html, /function tndSpoilers\(\)/);
+  assert.doesNotMatch(html, /data-spoiler-key="track-(props|player)" open/, 'по умолчанию свёрнуты');
+});
