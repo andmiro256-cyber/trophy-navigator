@@ -132,6 +132,7 @@ pub fn voice_start() -> Result<(), String> {
     if guard.is_some() {
         return Ok(());
     }
+    begin_session();
     let (stop_tx, stop_rx) = mpsc::channel::<()>();
     let (done_tx, done_rx) = mpsc::channel();
     let (ready_tx, ready_rx) = mpsc::channel::<Result<(), String>>();
@@ -313,7 +314,10 @@ pub async fn voice_stop(prompt: Option<String>) -> Result<VoiceResult, String> {
             .done
             .recv_timeout(Duration::from_secs(10))
             .map_err(|_| "запись не завершилась".to_string())??;
-        CANCEL.store(false, std::sync::atomic::Ordering::SeqCst);
+        // Отмена могла прийти, пока запись дописывалась (Том, ревью #2702): флаг сбрасывает только новая запись
+        if cancelled() {
+            return Err(CANCELLED.into());
+        }
         save_last_wav(&raw, rate);
         let peak = raw.iter().fold(0.0f32, |m, v| m.max(v.abs()));
         if !has_speech(&raw, rate) {
@@ -324,6 +328,9 @@ pub async fn voice_stop(prompt: Option<String>) -> Result<VoiceResult, String> {
         if audio.is_empty() {
             return Ok(VoiceResult { text: String::new(), ms: 0, seconds: 0.0, rate, peak });
         }
+        if cancelled() {
+            return Err(CANCELLED.into());
+        }
         let t = Instant::now();
         let text = transcribe(&audio, prompt.as_deref())?;
         let text = if plausible_russian(&text) { text } else { String::new() };
@@ -331,6 +338,17 @@ pub async fn voice_stop(prompt: Option<String>) -> Result<VoiceResult, String> {
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+const CANCELLED: &str = "распознавание отменено";
+
+/// Новая запись — прежняя отмена больше не действует. Сбрасывается только здесь: `voice_stop` флаг не трогает,
+/// иначе отмена, пришедшая между `voice_stop` и концом записи, терялась и распознавание всё равно шло.
+fn begin_session() {
+    CANCEL.store(false, std::sync::atomic::Ordering::SeqCst);
+}
+fn cancelled() -> bool {
+    CANCEL.load(std::sync::atomic::Ordering::SeqCst)
 }
 
 /// Отменить запись или уже идущее распознавание.
@@ -413,8 +431,8 @@ fn transcribe(audio: &[f32], prompt: Option<&str>) -> Result<String, String> {
     let full_prompt = if hint.is_empty() { base.to_string() } else { format!("{base} {hint}") };
     p.set_initial_prompt(&full_prompt);
     let r = state.full(p, audio);
-    if CANCEL.load(std::sync::atomic::Ordering::SeqCst) {
-        return Err("распознавание отменено".into());
+    if cancelled() {
+        return Err(CANCELLED.into());
     }
     r.map_err(|e| format!("распознавание не удалось: {e}"))?;
     let mut out = String::new();
@@ -445,6 +463,22 @@ pub fn dedupe_repeats(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Ревью Тома #2702: отмена, пришедшая во время `voice_stop` (запись ещё дописывается), не теряется —
+    /// флаг сбрасывает только новая запись, `voice_stop` его не трогает.
+    #[test]
+    fn cancel_during_stop_is_not_lost() {
+        begin_session();
+        assert!(!cancelled());
+        voice_cancel(); // записи нет (её уже забрал voice_stop) — флаг всё равно стоит
+        assert!(cancelled());
+        let src = include_str!("voice.rs");
+        let stop = &src[src.find("pub async fn voice_stop").unwrap()..src.find("const CANCELLED").unwrap()];
+        assert!(!stop.contains("CANCEL.store"), "voice_stop не должен сбрасывать отмену");
+        assert!(stop.matches("if cancelled()").count() >= 2, "проверка отмены после записи и перед распознаванием");
+        begin_session();
+        assert!(!cancelled());
+    }
 
     #[test]
     fn resample_48k_to_16k_keeps_duration() {
