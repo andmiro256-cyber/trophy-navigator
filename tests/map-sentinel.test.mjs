@@ -92,3 +92,15 @@ test('точки трека: кружок — только внутри trackPoi
   assert.match(html, /function trackPointStyle\(track, idx\)/);
   assert.ok((html.match(/trackPointRender\.(create|move|setStyle|hide)\b/g) || []).length >= 8);
 });
+
+test('маршруты: линия маршрута — только внутри routeRender; события — onRouteLineEvent', () => {
+  const a = html.indexOf('const routeRender = {');
+  const b = html.indexOf('\n};\n', a) + 4;
+  assert.ok(a > 0 && b > a);
+  const outside = html.slice(0, a) + html.slice(b);
+  assert.doesNotMatch(outside, /\b(route|r|currentRouteDraw)\.polyline\b|item\.route\.polyline/, 'линия маршрута — только routeRender.*');
+  assert.doesNotMatch(html, /function bindRoutePolyline/);
+  assert.match(html, /function routeLineStyle\(route\)/);
+  assert.match(html, /function onRouteLineEvent\(type, route, latlng = null, originalEvent = null\)/);
+  assert.ok((html.match(/routeRender\.(has|isShown|create|show|hide|sync|setStyle|remove)\(/g) || []).length >= 20);
+});

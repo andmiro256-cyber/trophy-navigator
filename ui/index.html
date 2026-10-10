@@ -8983,23 +8983,49 @@ let currentRouteSession = null;
 const routePalette = ['#df4a4a','#4a8adf','#dfdf4a','#4adf7a','#df7a4a','#df4adf'];  // theme-check: data
 let routePropsPreviewId = null;
 
-function applyRouteStyle(route) {
-  if (!route?.polyline) return;
-  route.polyline.setStyle({
+/** Стиль линии маршрута — не зависит от движка (MapLibre возьмёт его для слоя маршрутов). */
+function routeLineStyle(route) {
+  return {
     color: route.color,
     weight: Number(route.width) || 3,
     opacity: 0.9,
     dashArray: Object.prototype.hasOwnProperty.call(route, 'dashArray') ? route.dashArray : '8 4'
-  });
+  };
 }
 
-function bindRoutePolyline(route) {
-  if (!route?.polyline || route.polyline._routeCtxBound) return;
-  route.polyline._routeCtxBound = true;
-  route.polyline.on('contextmenu', e => {
-    L.DomEvent.stop(e);
-    showMapCtxMenuAt(e.originalEvent || e, e.latlng);
-  });
+/**
+ * Отрисовка линии маршрута (MapLibre 0б.5): единственное место, где линия маршрута живёт на карте Leaflet.
+ * События линии идут в onRouteLineEvent — он от движка не зависит.
+ */
+const routeRender = {
+  has: r => !!r?.polyline,
+  isShown: r => !!r?.polyline && map.hasLayer(r.polyline),
+  create(r, { show = true } = {}) {
+    r.polyline = L.polyline(r.points, routeLineStyle(r));
+    if (show) r.polyline.addTo(map);
+    routeRender.bind(r);
+  },
+  show: r => { if (r?.polyline && !map.hasLayer(r.polyline)) r.polyline.addTo(map); },
+  hide: r => { if (r?.polyline && map.hasLayer(r.polyline)) map.removeLayer(r.polyline); },
+  sync: r => { if (r?.polyline) r.polyline.setLatLngs(r.points); },
+  setStyle: (r, style) => { if (r?.polyline) r.polyline.setStyle(style); },
+  /** Убрать с карты и забыть линию (маршрут без точек). */
+  remove: r => { routeRender.hide(r); if (r) r.polyline = null; },
+  bind(r) {
+    if (!r?.polyline || r.polyline._routeCtxBound) return;
+    r.polyline._routeCtxBound = true;
+    r.polyline.on('contextmenu', e => { L.DomEvent.stop(e); onRouteLineEvent('contextmenu', r, e.latlng, e.originalEvent || e); });
+  },
+};
+
+/** События линии маршрута: ПКМ — меню карты в этой точке (своего меню у маршрута нет). */
+function onRouteLineEvent(type, route, latlng = null, originalEvent = null) {
+  if (type === 'contextmenu') showMapCtxMenuAt(originalEvent, latlng);
+}
+
+function applyRouteStyle(route) {
+  if (!routeRender.has(route)) return;
+  routeRender.setStyle(route, routeLineStyle(route));
 }
 
 function createRouteFromPoints(points, name, labels = [], options = {}) {
@@ -9009,9 +9035,7 @@ function createRouteFromPoints(points, name, labels = [], options = {}) {
   const color = options.color || getNewObjectColor('route', id, routePalette);
   const width = Number(options.width) || 3;
   const dashArray = Object.prototype.hasOwnProperty.call(options, 'dashArray') ? (options.dashArray || '') : '8 4';
-  const polyline = L.polyline(points, { color, weight: width, opacity: 0.9, dashArray });
   const visible = options.visible !== false;
-  if (visible) polyline.addTo(map);
   const route = {
     id,
     name: name || `Маршрут ${id}`,
@@ -9022,7 +9046,7 @@ function createRouteFromPoints(points, name, labels = [], options = {}) {
     labels: labels.length ? [...labels] : points.map((_, i) => `КП${i+1}`),
     pointRadii: Array.isArray(options.pointRadii) ? [...options.pointRadii] : [],
     pointWaypointIds: Array.isArray(options.pointWaypointIds) ? [...options.pointWaypointIds] : [],
-    polyline,
+    polyline: null,
     visible,
     createdAt: options.createdAt || null,
     updatedAt: options.updatedAt || null,
@@ -9032,8 +9056,8 @@ function createRouteFromPoints(points, name, labels = [], options = {}) {
   ensureRouteMeta(route, { touch: false });
   normalizeRoutePointRadii(route, route.points.length);
   normalizeRoutePointWaypointIds(route, route.points.length);
+  routeRender.create(route, { show: visible });
   applyRouteStyle(route);
-  bindRoutePolyline(route);
   routes.push(route);
   return route;
 }
@@ -9074,27 +9098,14 @@ function restoreRouteState(route, snapshot) {
   normalizeRoutePointRadii(route, route.points.length);
   normalizeRoutePointWaypointIds(route, route.points.length);
   if (!route.points.length) {
-    if (route.polyline && map.hasLayer(route.polyline)) map.removeLayer(route.polyline);
-    route.polyline = null;
+    routeRender.remove(route);
     return;
   }
-  if (!route.polyline) {
-    route.polyline = L.polyline(route.points, {
-      color: route.color,
-      weight: Number(route.width) || 3,
-      opacity: 0.9,
-      dashArray: Object.prototype.hasOwnProperty.call(route, 'dashArray') ? route.dashArray : '8 4'
-    });
-  } else {
-    route.polyline.setLatLngs(route.points);
-  }
+  if (!routeRender.has(route)) routeRender.create(route, { show: false });
+  else routeRender.sync(route);
   applyRouteStyle(route);
-  bindRoutePolyline(route);
-  if (route.visible === false) {
-    if (map.hasLayer(route.polyline)) map.removeLayer(route.polyline);
-  } else if (!map.hasLayer(route.polyline)) {
-    route.polyline.addTo(map);
-  }
+  if (route.visible === false) routeRender.hide(route);
+  else routeRender.show(route);
 }
 
 function updateRouteBuildPanelState() {
@@ -9184,7 +9195,7 @@ function startRouteEdit(routeId = selectedRouteId) {
   currentRouteDraw = route;
   selectedRouteId = route.id;
   currentRouteSession = { mode: 'edit', snapshot: cloneRouteState(route) };
-  if (route.polyline && !map.hasLayer(route.polyline)) route.polyline.addTo(map);
+  routeRender.show(route);
   applyRouteStyle(route);
   setMode('routeedit');
   updateRouteBuildPanelState();
@@ -9202,17 +9213,8 @@ function addRoutePoint(latlng, label, options = {}) {
   currentRouteDraw.pointRadii.push(Number.isFinite(options.radius) && options.radius > 0 ? options.radius : 0);
   currentRouteDraw.pointWaypointIds.push(options.waypointId ? String(options.waypointId) : null);
   touchRoute(currentRouteDraw);
-  if (currentRouteDraw.polyline) {
-    currentRouteDraw.polyline.setLatLngs(currentRouteDraw.points);
-  } else {
-    currentRouteDraw.polyline = L.polyline(currentRouteDraw.points, {
-      color: currentRouteDraw.color,
-      weight: currentRouteDraw.width || 3,
-      opacity: 0.9,
-      dashArray: Object.prototype.hasOwnProperty.call(currentRouteDraw, 'dashArray') ? currentRouteDraw.dashArray : '8 4'
-    }).addTo(map);
-    bindRoutePolyline(currentRouteDraw);
-  }
+  if (routeRender.has(currentRouteDraw)) routeRender.sync(currentRouteDraw);
+  else routeRender.create(currentRouteDraw);
   applyRouteStyle(currentRouteDraw);
   updateRouteBuildPanelState();
   updateRouteBuildList();
@@ -9243,13 +9245,9 @@ function removeRouteBuildPoint(index) {
   currentRouteDraw.pointRadii.splice(index, 1);
   currentRouteDraw.pointWaypointIds.splice(index, 1);
   touchRoute(currentRouteDraw);
-  if (currentRouteDraw.polyline) {
-    if (currentRouteDraw.points.length === 0) {
-      map.removeLayer(currentRouteDraw.polyline);
-      currentRouteDraw.polyline = null;
-    } else {
-      currentRouteDraw.polyline.setLatLngs(currentRouteDraw.points);
-    }
+  if (routeRender.has(currentRouteDraw)) {
+    if (currentRouteDraw.points.length === 0) routeRender.remove(currentRouteDraw);
+    else routeRender.sync(currentRouteDraw);
   }
   updateRouteBuildPanelState();
   updateRouteBuildList();
@@ -9272,14 +9270,11 @@ function finishRouteDraw() {
   const nameInput = document.getElementById('route-build-name');
   if (nameInput?.value?.trim()) currentRouteDraw.name = nameInput.value.trim();
   touchRoute(currentRouteDraw);
-  if (currentRouteDraw.polyline) {
-    currentRouteDraw.polyline.setLatLngs(currentRouteDraw.points);
+  if (routeRender.has(currentRouteDraw)) {
+    routeRender.sync(currentRouteDraw);
     applyRouteStyle(currentRouteDraw);
-    if (currentRouteDraw.visible === false && map.hasLayer(currentRouteDraw.polyline)) {
-      map.removeLayer(currentRouteDraw.polyline);
-    } else if (currentRouteDraw.visible !== false && !map.hasLayer(currentRouteDraw.polyline)) {
-      currentRouteDraw.polyline.addTo(map);
-    }
+    if (currentRouteDraw.visible === false) routeRender.hide(currentRouteDraw);
+    else routeRender.show(currentRouteDraw);
   }
   setMode('hand');
   const r = currentRouteDraw;
@@ -9301,7 +9296,7 @@ function cancelRouteDraw() {
   if (isEdit) {
     restoreRouteState(currentRouteDraw, currentRouteSession?.snapshot);
   } else {
-    if (currentRouteDraw.polyline) map.removeLayer(currentRouteDraw.polyline);
+    routeRender.hide(currentRouteDraw);
     routes = routes.filter(r => r !== currentRouteDraw);
   }
   currentRouteDraw = null;
@@ -9337,7 +9332,7 @@ function removeRouteObject(r) {
     updateRouteBuildPanelState();
     if (currentMode === 'route' || currentMode === 'routeedit') setMode('hand');
   }
-  if (r.polyline) map.removeLayer(r.polyline);
+  routeRender.hide(r);
   routes = routes.filter(r => r.id !== id);
   if (selectedRouteId === id) {
     selectedRouteId = null;
@@ -9357,10 +9352,10 @@ function toggleRouteVisible(id) {
   if (!r) return;
   r.visible = r.visible === false;
   if (r.visible === false) {
-    if (r.polyline && map.hasLayer(r.polyline)) map.removeLayer(r.polyline);
+    routeRender.hide(r);
     showToast('Маршрут скрыт: ' + r.name);
   } else {
-    if (r.polyline && !map.hasLayer(r.polyline)) r.polyline.addTo(map);
+    routeRender.show(r);
     applyRouteStyle(r);
     showToast('Маршрут показан: ' + r.name);
   }
@@ -9392,7 +9387,7 @@ function reorderRoutePoint(route, fromIdx, toIdx) {
   moveArrayItem(route.labels, fromIdx, targetIdx);
   moveArrayItem(route.pointRadii, fromIdx, targetIdx);
   moveArrayItem(route.pointWaypointIds, fromIdx, targetIdx);
-  if (route.polyline) route.polyline.setLatLngs(route.points);
+  routeRender.sync(route);
   touchRoute(route);
   return true;
 }
@@ -9453,7 +9448,7 @@ function deleteRoutePoint(routeId, idx) {
   if (r.labels?.length) r.labels.splice(idx, 1);
   if (r.pointRadii?.length) r.pointRadii.splice(idx, 1);
   if (r.pointWaypointIds?.length) r.pointWaypointIds.splice(idx, 1);
-  if (r.polyline) r.polyline.setLatLngs(r.points);
+  routeRender.sync(r);
   touchRoute(r);
   updateRouteList();
   if (currentRouteDraw?.id === routeId) {
@@ -9495,9 +9490,9 @@ function selectRouteById(routeId) {
 
 function previewRouteProps() {
   const route = routes.find(item => item.id === selectedRouteId);
-  if (!route?.polyline) return;
+  if (!routeRender.has(route)) return;
   routePropsPreviewId = route.id;
-  route.polyline.setStyle({
+  routeRender.setStyle(route, {
     color: document.getElementById('route-color-input').value,
     weight: parseInt(document.getElementById('route-width-input').value, 10) || route.width || 3,
     opacity: 0.9,
@@ -12030,7 +12025,7 @@ function hideAllWorkObjects() {
   const snapshot = {
     waypoints: waypoints.map(marker => ({ marker, visible: wpRender.isShown(marker), circleVisible: wpRender.isCircleShown(marker) })),
     tracks: tracks.map(track => ({ track, visible: trackRender.isShown(track) })),
-    routes: routes.map(route => ({ route, visible: !!route.polyline && map.hasLayer(route.polyline) })),
+    routes: routes.map(route => ({ route, visible: routeRender.isShown(route) })),
     osrm: osrmState.items.map(route => ({
       route,
       routeVisible: !!route.routeLayer && map.hasLayer(route.routeLayer),
@@ -12055,7 +12050,7 @@ function hideAllWorkObjects() {
     if (item.visible) trackRender.hide(item.track);
     removeTrackMarkers(item.track);
   });
-  snapshot.routes.forEach(item => { if (item.visible) map.removeLayer(item.route.polyline); });
+  snapshot.routes.forEach(item => { if (item.visible) routeRender.hide(item.route); });
   snapshot.osrm.forEach(item => {
     if (item.routeVisible) map.removeLayer(item.route.routeLayer);
     if (item.markersVisible) map.removeLayer(item.route.markersLayer);
@@ -12083,7 +12078,7 @@ function showAllWorkObjects() {
     }
   });
   snapshot.routes.forEach(item => {
-    if (routes.includes(item.route) && item.visible && item.route.polyline) item.route.polyline.addTo(map);
+    if (routes.includes(item.route) && item.visible) routeRender.show(item.route);
   });
   snapshot.osrm.forEach(item => {
     if (!osrmState.items.includes(item.route)) return;
@@ -12156,7 +12151,7 @@ function clearCurrentData() {
   currentTrackUndoToken = null;
   trackPropsPreviewId = null;
   // Remove all routes from map
-  routes.forEach(r => { if (r.polyline) map.removeLayer(r.polyline); });
+  routes.forEach(r => routeRender.hide(r));
   routes = [];
   routeIdCounter = 1;
   currentRouteDraw = null;
