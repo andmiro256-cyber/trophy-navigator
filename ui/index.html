@@ -24,6 +24,8 @@
 <!-- переход на MapLibre (план v3, этап 0б): геофункции без Leaflet и нейтральный тестовый API -->
 <script src="tn-geo.js"></script>
 <script src="tn-model.js"></script>
+<script src="tn-map.js"></script>
+<script src="tn-map-leaflet.js"></script>
 <script src="tn-test-api.js"></script>
 <script src="tn-server.js"></script>
 <style>
@@ -2715,6 +2717,9 @@ const map = L.map('map', { zoomControl: true, attributionControl: false, maxZoom
 // Холсты отдельных pane (радиусы точек — waypointRadius, точки маршрута по дорогам — markerPane) Leaflet
 // создаёт сам через _createRenderer с запасом 10% — с тем же запасом, что и остальные
 map._createRenderer = options => L.canvas({ padding: TND_CANVAS_PADDING, ...options });
+// Фасад карты (переход на MapLibre, план v3 R1, пакет 0б.5): камера, проекция и события — через tnMap,
+// движок — адаптер (сейчас Leaflet). Прямые вызовы map.* переводятся сюда по подсистемам.
+const tnMap = window.TnMap.create(window.TnMapLeaflet.create(map));
 const trackCanvasRenderer = L.canvas({ padding: TND_CANVAS_PADDING });
 const trackPointCanvasRenderer = L.canvas({ padding: TND_CANVAS_PADDING, tolerance: 8 });
 /**

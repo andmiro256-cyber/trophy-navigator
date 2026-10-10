@@ -34,8 +34,9 @@
 
   /** {lat,lng} из чего угодно с полями lat/lng (L.LatLng, запись), с проверкой. */
   function plainLatLng(p, where) {
-    const q = p && { lat: Number(p.lat), lng: Number(p.lng) };
-    if (!q || p.lat === null || p.lng === null || !Geo().isValidLatLng(q)) {
+    // только числа: Number(null), Number('') и Number(undefined→NaN) не должны давать точку «0,0»
+    const q = p && { lat: p.lat, lng: p.lng };
+    if (!q || !Geo().isValidLatLng(q)) {
       throw new TypeError(`tn-model: невалидная точка${where ? ' в ' + where : ''}: ${JSON.stringify(p && { lat: p.lat, lng: p.lng })}`);
     }
     return q;

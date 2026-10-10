@@ -24,6 +24,7 @@ test('точки в модели — простые {lat,lng}: L.LatLng-подо
   assert.throws(() => M.add('track', { id: 'trk_2', points: [{ lat: null, lng: 0 }] }), /невалидная точка/);
   assert.throws(() => M.add('wp', { id: 'wp-x', lat: NaN, lng: 1 }), /невалидная/);
   assert.throws(() => M.add('wp', { lat: 1, lng: 1 }), /нет id/);
+  for (const bad of [{ lat: '', lng: 0 }, { lat: 0, lng: undefined }, { lat: '55', lng: 37 }]) assert.throws(() => M.add('wp', { id: 'wp-bad', ...bad }), /невалидная/, JSON.stringify(bad));
   assert.equal(M.has('track', 'trk_2'), false, 'запись с мусором не добавлена');
 });
 

@@ -48,18 +48,33 @@
     onMap(layer) { const m = host.map(); return !!(layer && m && m.hasLayer(layer)); },
     size() { const s = host.map().getSize(); return { x: s.x, y: s.y }; },
   };
-  let bridge = leafletBridge;
+  // мост через фасад TnMap (0б.5): тот же путь, что у приложения; без фасада — Leaflet напрямую
+  /* eslint-disable no-undef */
+  const facade = () => (typeof tnMap !== 'undefined' ? tnMap : null);
+  /* eslint-enable no-undef */
+  const facadeBridge = {
+    get engine() { return facade().engine; },
+    getView: () => facade().getView(),
+    setView: v => facade().setView(v, { animate: false }),
+    project: p => facade().project(p),
+    unproject: pt => facade().unproject(pt),
+    onMap: l => leafletBridge.onMap(l),          // слои — пока Leaflet (отрисовка переходит в адаптер позже)
+    size: () => facade().getSize(),
+  };
+  let bridge = null;
+  const activeBridge = () => bridge || (facade() ? facadeBridge : leafletBridge);
 
   // ─── модель в нейтральном виде ───
+  const B = () => activeBridge();
   const wpRec = w => {
     const d = w.wpData || {};
     return { id: d.id, name: d.name, lat: d.lat, lng: d.lng, radius: Number(d.radius) || 0, setId: d.setId ?? null,
-      visible: bridge.onMap(w), radiusVisible: bridge.onMap(w.wpCircle) };
+      visible: B().onMap(w), radiusVisible: B().onMap(w.wpCircle) };
   };
   const lineRec = (kind, t) => ({
     id: `${kind === 'track' ? 'trk' : 'rte'}_${t.id}`, rawId: t.id, name: t.name, points: t.points?.length || 0,
     segments: kind === 'track' ? (G().trackSegments(t.points || [], t.pointsData).length) : 1,
-    visible: bridge.onMap(t.polyline),
+    visible: B().onMap(t.polyline),
   });
   function entities() {
     return {
@@ -77,7 +92,7 @@
   }
   function nearestOnLine(pt, points, pointsData) {
     let best = null;
-    const px = points.map(p => bridge.project(p));
+    const px = points.map(p => B().project(p));
     for (let i = 1; i < px.length; i++) {
       if (pointsData?.[i]?.seg) continue;                       // разрыв куска трека — линии нет
       const d = segDistPx(pt, px[i - 1], px[i]);
@@ -93,20 +108,20 @@
     const kinds = o.kinds ? new Set(o.kinds) : null;
     const want = k => !kinds || kinds.has(k);
     const out = [];
-    const ll = bridge.unproject(pt);
+    const ll = B().unproject(pt);
     for (const w of host.waypoints()) {
-      if (!bridge.onMap(w)) continue;
-      const d = w.wpData; const c = bridge.project(d);
+      if (!B().onMap(w)) continue;
+      const d = w.wpData; const c = B().project(d);
       const distPx = G().screenDistance(pt, c);
       if (want('wp') && distPx <= Math.max(tol, 12)) out.push({ kind: 'wp', id: d.id, distPx });
-      else if (want('wpRadius') && Number(d.radius) > 0 && bridge.onMap(w.wpCircle) && G().distance(d, ll) <= Number(d.radius)) {
+      else if (want('wpRadius') && Number(d.radius) > 0 && B().onMap(w.wpCircle) && G().distance(d, ll) <= Number(d.radius)) {
         out.push({ kind: 'wpRadius', id: d.id, distPx });
       }
     }
     for (const [kind, list] of [['route', host.routes()], ['track', host.tracks()]]) {
       if (!want(kind)) continue;
       for (const t of list) {
-        if (!bridge.onMap(t.polyline) || !(t.points?.length)) continue;
+        if (!B().onMap(t.polyline) || !(t.points?.length)) continue;
         const n = nearestOnLine(pt, t.points, kind === 'track' ? t.pointsData : null);
         if (n && n.distPx <= tol) out.push({ kind, id: `${kind === 'track' ? 'trk' : 'rte'}_${t.id}`, rawId: t.id, distPx: n.distPx, index: n.index });
       }
@@ -118,7 +133,7 @@
     const e = entities();
     const cnt = (list, f) => list.filter(f).length;
     return {
-      engine: bridge.engine, zoom: bridge.getView().zoom,
+      engine: B().engine, zoom: B().getView().zoom,
       wp: e.wp.length, wpOnMap: cnt(e.wp, x => x.visible), wpRadiusOnMap: cnt(e.wp, x => x.radiusVisible),
       tracks: e.track.length, tracksOnMap: cnt(e.track, x => x.visible), trackSegments: e.track.reduce((s, t) => s + t.segments, 0),
       routes: e.route.length, routesOnMap: cnt(e.route, x => x.visible),
@@ -127,15 +142,15 @@
 
   const api = {
     VERSION,
-    get engine() { return bridge.engine; },
-    getView: () => bridge.getView(),
-    setView: v => bridge.setView(v),
-    project: p => bridge.project(p),
-    unproject: pt => bridge.unproject(pt),
-    size: () => bridge.size(),
+    get engine() { return B().engine; },
+    getView: () => B().getView(),
+    setView: v => B().setView(v),
+    project: p => B().project(p),
+    unproject: pt => B().unproject(pt),
+    size: () => B().size(),
     entities, pick, stats,
     _setHost: h => { host = { ...host, ...h }; },
-    _setBridge: b => { bridge = b || leafletBridge; },
+    _setBridge: b => { bridge = b || null; },
     _leafletBridge: leafletBridge,
   };
   root.__tnTest = api;
