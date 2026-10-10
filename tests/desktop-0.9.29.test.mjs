@@ -426,7 +426,9 @@ test('Live в 3D: после опроса при открытом 3D — setData
   assert.deepEqual(JSON.parse(JSON.stringify(sidebar[0])), ['a', 'b', 'c', 'e'], 'в 3D — те же участники, что в списке (с позицией)');
   // 3D: точки Live не дублируются общим слоем точек; свой слой с цветом по свежести; клик — тот же попап
   const d3 = read('../ui/trophynav-3d.js');
-  assert.match(d3, /if \(layer\._liveDev\) return;/);
+  // сбор линий и точек для 3D — в адаптере карты (MapLibre 0б.5); участники Live туда не входят
+  assert.match(read('../ui/tn-map-leaflet.js'), /if \(layer\._liveDev\) return;/);
+  assert.match(d3, /m\.collectOverlay\(\)/);
   assert.match(d3, /'circle-color': LIVE_COLORS/);
   assert.match(d3, /\['match', \['get', 'age'\], 'online', '#2E7D32', 'recent', '#F9A825', 'old', '#C62828'/);
   assert.match(d3, /ml\.on\('click', 'tn-live'[\s\S]*window\.tndLive3d\?\.popupHtml\?\.\(f\.properties\.id\)[\s\S]*new window\.maplibregl\.Popup/);

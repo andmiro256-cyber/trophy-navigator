@@ -42,6 +42,39 @@
       flyTo(p, zoom, o = {}) { map.flyTo(ll(p), zoom, o.durationMs != null ? { duration: o.durationMs / 1000 } : {}); },
       fitBounds(b, o) { map.fitBounds(L.latLngBounds(ll(b[0]), ll(b[1])), fitOpts(o)); },
       getBounds() { const b = map.getBounds(); return [plain(b.getSouthWest()), plain(b.getNorthEast())]; },
+      getZoomRange: () => ({ min: map.getMinZoom(), max: map.getMaxZoom() }),
+      collectOverlay() {
+        const lines = [], points = [];
+        map.eachLayer(layer => {
+          if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
+            const flat = layer.getLatLngs().flat(3).filter(p => p && Number.isFinite(p.lat));
+            if (flat.length < 2) return;
+            lines.push({
+              color: layer.options.color || '#4adf7a',  // theme-check: data (цвет на карте)
+              width: Number(layer.options.weight) || 3,
+              opacity: layer.options.opacity ?? 0.9,
+              coords: flat.map(p => [p.lng, p.lat]),
+            });
+          } else if (layer instanceof L.Marker) {
+            if (layer._liveDev) return;  // участники Live — свой слой 'tn-live' в 3D
+            const ll = layer.getLatLng();
+            const wp = layer.wpData;
+            const tip = layer.getTooltip?.()?.getContent?.();
+            const name = wp?.name || layer.options.title || (typeof tip === 'string' ? tip.replace(/<[^>]*>/g, '') : '');
+            points.push({ name: String(name || ''), color: wp?.color || '#df7a4a', lng: ll.lng, lat: ll.lat });  // theme-check: data
+          }
+        });
+        return { lines, points };
+      },
+      addControl(el, o = {}) {
+        const Ctl = L.Control.extend({
+          options: { position: o.position || 'topleft' },
+          onAdd() { L.DomEvent.disableClickPropagation(el); return el; },
+        });
+        const ctl = new Ctl();
+        map.addControl(ctl);
+        return () => map.removeControl(ctl);
+      },
       project(p) {
         const pt = map.project(ll(p)).subtract(map.getPixelOrigin()).add(map._getMapPanePos());
         return { x: pt.x, y: pt.y };

@@ -15,7 +15,8 @@
   'use strict';
   const Geo = () => root.TnGeo || (typeof require === 'function' ? require('./tn-geo.js') : null);
   const ADAPTER_METHODS = ['getView', 'setView', 'panTo', 'flyTo', 'fitBounds', 'getBounds', 'project', 'unproject',
-    'eventToLatLng', 'eventToPoint', 'resize', 'getContainer', 'getSize', 'on', 'openPopup', 'closePopup', 'isPopupOpen'];
+    'eventToLatLng', 'eventToPoint', 'resize', 'getContainer', 'getSize', 'on', 'openPopup', 'closePopup', 'isPopupOpen',
+    'getZoomRange', 'collectOverlay', 'addControl'];
   const EVENTS = ['click', 'dblclick', 'contextmenu', 'pointerdown', 'pointermove', 'pointerup', 'mousemove',
     'movestart', 'move', 'moveend', 'zoomstart', 'zoom', 'zoomend', 'resize'];
 
@@ -60,6 +61,15 @@
       /** b — [sw, ne] или список точек; o: { padding: px | [x,y], paddingTopLeft, paddingBottomRight, maxZoom, animate }. */
       fitBounds(b, o = {}) { adapter.fitBounds(boundsOf(b, 'fitBounds'), o); },
       getBounds: () => adapter.getBounds(),
+      /** Пределы зума карты: { min, max }. */
+      getZoomRange: () => adapter.getZoomRange(),
+      /**
+       * Видимые сейчас линии и точки карты — для 3D-вида: { lines: [{ color, width, opacity, coords: [[lng,lat]…] }],
+       * points: [{ name, color, lng, lat }] }. Участники Live сюда не входят (у 3D свой слой).
+       */
+      collectOverlay: () => adapter.collectOverlay(),
+      /** Кнопка или панель на карте: el — DOM-узел, o.position — угол ('topleft'…). Клики дальше узла не идут. Возвращает снятие. */
+      addControl: (el, o = {}) => adapter.addControl(el, o),
       /** Пиксели контейнера без округления. */
       project: p => adapter.project(latLng(p, 'project')),
       unproject: pt => adapter.unproject(pt),

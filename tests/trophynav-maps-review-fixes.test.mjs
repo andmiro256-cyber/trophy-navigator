@@ -121,7 +121,8 @@ function load3d() {
     cancelAnimationFrame() {},
     document: { readyState: 'loading', addEventListener() {}, dispatchEvent() {}, body: { appendChild: r => roots.push(r) } },
     addEventListener() {}, removeEventListener() {},
-    map: { getCenter: () => ({ lat: 1, lng: 2 }), getZoom: () => 10, getMaxZoom: () => 18, setView() {} },
+    // основная карта — через фасад TnMap (MapLibre 0б.5)
+    tnMap: { getCenter: () => ({ lat: 1, lng: 2 }), getZoom: () => 10, getZoomRange: () => ({ min: 1, max: 18 }), setView() {}, addControl() {} },
     maplibregl: { Map: function Map() {
       this.removed = false; this.on = () => {}; this.getCanvas = node; this.getCanvasContainer = node;
       this.remove = () => { this.removed = true; }; maps.push(this);
@@ -199,6 +200,9 @@ test('#2503: настоящий Leaflet — клик/ПКМ/колесо по в
   try {
     w.eval(read('../ui/leaflet.js'));
     w.eval('var map = L.map("map", {zoomControl:true,attributionControl:false}).setView([60,30],10)');
+    // фасад карты — как в index.html (кнопка «3D» ставится через tnMap.addControl)
+    for (const f of ['tn-geo.js', 'tn-map.js', 'tn-map-leaflet.js']) w.eval(read('../ui/' + f));
+    w.eval('var tnMap = TnMap.create(TnMapLeaflet.create(map))');
     const hits = { click: 0, contextmenu: 0, dblclick: 0, zoom: 0 };
     for (const k of ['click', 'contextmenu', 'dblclick']) w.map.on(k, () => hits[k]++);
     w.map.on('zoomstart', () => hits.zoom++);

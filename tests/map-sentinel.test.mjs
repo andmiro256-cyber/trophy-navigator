@@ -107,3 +107,11 @@ test('маршруты: линия маршрута — только внутр�
   assert.match(html, /function onRouteLineEvent\(type, route, latlng = null, originalEvent = null\)/);
   assert.ok((html.match(/routeRender\.(has|isShown|create|show|hide|sync|setStyle|remove)\(/g) || []).length >= 20);
 });
+
+test('trophynav-3d.js: основная карта только через фасад — ни Leaflet, ни map.*', () => {
+  const src = fs.readFileSync(new URL('../ui/trophynav-3d.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /\bL\.[A-Za-z]/, 'Leaflet в модуле 3D не нужен');
+  assert.doesNotMatch(src, /typeof map !== 'undefined'|\bleafletMap\b|\blmap\b/);
+  assert.match(src, /const mainMap = \(\) => \(typeof tnMap !== 'undefined' \? tnMap : null\);/);
+  for (const m of ['collectOverlay()', 'addControl(box', 'getZoomRange()']) assert.ok(src.includes(m), m);
+});

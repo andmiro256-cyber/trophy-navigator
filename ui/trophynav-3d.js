@@ -18,7 +18,8 @@
   const ENTER_PITCH = 60;
   const ROTATE_STEP = 15;
   /* global map */
-  const leafletMap = () => (typeof map !== 'undefined' ? map : null);
+  // Основная карта — только через фасад TnMap (план MapLibre v3, R1): движок может быть любым
+  const mainMap = () => (typeof tnMap !== 'undefined' ? tnMap : null);
   const toast = (msg, type) => { if (typeof window.showToast === 'function') window.showToast(msg, type); };
   const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* приватный режим */ } };
@@ -78,36 +79,22 @@
 
   // ─── точки, треки, маршруты с основной карты (как видны сейчас) ───
   function collectOverlay() {
-    const lmap = leafletMap();
-    const lines = [], points = [];
-    if (!lmap) return { lines, points };
-    lmap.eachLayer(layer => {
-      if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
-        const flat = layer.getLatLngs().flat(3).filter(p => p && Number.isFinite(p.lat));
-        if (flat.length < 2) return;
-        lines.push({
-          type: 'Feature',
-          properties: {
-            color: layer.options.color || '#4adf7a',  // theme-check: data (цвет на карте)
-            width: Number(layer.options.weight) || 3,
-            opacity: layer.options.opacity ?? 0.9,
-          },
-          geometry: { type: 'LineString', coordinates: flat.map(p => [p.lng, p.lat]) },
-        });
-      } else if (layer instanceof L.Marker) {
-        if (layer._liveDev) return;  // участники Live — свой слой 'tn-live' (цвет по свежести, обновляется)
-        const ll = layer.getLatLng();
-        const wp = layer.wpData;
-        const tip = layer.getTooltip?.()?.getContent?.();
-        const name = wp?.name || layer.options.title || (typeof tip === 'string' ? tip.replace(/<[^>]*>/g, '') : '');
-        points.push({
-          type: 'Feature',
-          properties: { name: String(name || ''), color: wp?.color || '#df7a4a' },  // theme-check: data (цвет на карте)
-          geometry: { type: 'Point', coordinates: [ll.lng, ll.lat] },
-        });
-      }
-    });
-    return { lines, points };
+    const m = mainMap();
+    if (!m) return { lines: [], points: [] };
+    // Участники Live в сборе фасада не участвуют — у 3D свой слой 'tn-live' (цвет по свежести, обновляется)
+    const o = m.collectOverlay();
+    return {
+      lines: o.lines.map(l => ({
+        type: 'Feature',
+        properties: { color: l.color, width: l.width, opacity: l.opacity },
+        geometry: { type: 'LineString', coordinates: l.coords },
+      })),
+      points: o.points.map(p => ({
+        type: 'Feature',
+        properties: { name: p.name, color: p.color },
+        geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
+      })),
+    };
   }
 
   function addOverlay(ml) {
@@ -337,15 +324,15 @@
   async function doOpen(explicitId, seq) {
     const stale = () => seq !== view.seq;
     const tn = window.TrophyNavMaps;
-    const lmap = leafletMap();
-    if (!tn || !lmap) return;
+    const m = mainMap();
+    if (!tn || !m) return;
     if (!tn.hasWebGL()) {
       toast('⚠ 3D-вид недоступен: в этой системе нет WebGL (видеодрайвер). Обычная карта работает как раньше.', 'warning');
       return;
     }
     await tn.refreshLocal().catch(() => {});
     if (stale()) return;
-    const c = lmap.getCenter();
+    const c = m.getCenter();
     // Область под центром карты; карта на экране — если её область здесь (иначе 3D показал бы пустоту)
     const here = tn.regionAt(c.lat, c.lng, tn.activeId());
     const id = explicitId || here;
@@ -376,7 +363,7 @@
         style,
         center: [c.lng, c.lat],
         // Leaflet считает масштаб в тайлах 256 px, MapLibre — 512 px
-        zoom: Math.max(0, lmap.getZoom() - 1),
+        zoom: Math.max(0, m.getZoom() - 1),
         pitch: ENTER_PITCH,
         maxPitch: Core.MAX_PITCH,
         attributionControl: false,
@@ -423,10 +410,10 @@
   }
 
   function close(silent) {
-    const ml = view.ml, lmap = leafletMap();
-    if (ml && lmap && !silent) {
+    const ml = view.ml, m = mainMap();
+    if (ml && m && !silent) {
       const c = ml.getCenter();
-      lmap.setView([c.lat, c.lng], Math.min(lmap.getMaxZoom(), ml.getZoom() + 1), { animate: false });
+      m.setView({ center: { lat: c.lat, lng: c.lng }, zoom: Math.min(m.getZoomRange().max, ml.getZoom() + 1) }, { animate: false });
     }
     // Незавершённое открытие больше ничего не создаст
     view.seq++;
@@ -453,25 +440,20 @@
 
   // ─── кнопка «3D» на карте (видна, когда на экране TrophyNav Maps) ───
   function addMapButton() {
-    const lmap = leafletMap();
-    if (!lmap || !L.Control) return;
-    const Ctl = L.Control.extend({
-      options: { position: 'topleft' },
-      onAdd() {
-        const box = L.DomUtil.create('div', 'leaflet-bar tn3d-control tn3d-off');
-        const a = L.DomUtil.create('a', '', box);
-        a.href = '#'; a.textContent = '3D'; a.title = '3D-вид: наклон, поворот, рельеф';
-        a.setAttribute('role', 'button');
-        L.DomEvent.on(a, 'click', ev => { L.DomEvent.preventDefault(ev); L.DomEvent.stopPropagation(ev); open(); });
-        L.DomEvent.disableClickPropagation(box);
-        this._box = box;
-        return box;
-      },
-    });
-    const ctl = new Ctl();
-    lmap.addControl(ctl);
-    document.addEventListener('tnmaps:active', e => ctl._box?.classList.toggle('tn3d-off', !e.detail?.id));
-    if (window.TrophyNavMaps?.activeId?.()) ctl._box.classList.remove('tn3d-off');
+    const m = mainMap();
+    if (!m) return;
+    const box = document.createElement('div');
+    box.className = 'leaflet-bar tn3d-control tn3d-off';
+    const a = document.createElement('a');
+    a.className = '';
+    box.appendChild(a);
+    a.href = '#'; a.textContent = '3D'; a.title = '3D-вид: наклон, поворот, рельеф';
+    a.setAttribute('role', 'button');
+    a.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); open(); });
+    // Клики по кнопке до карты не доходят — это делает addControl фасада
+    m.addControl(box, { position: 'topleft' });
+    document.addEventListener('tnmaps:active', e => box.classList.toggle('tn3d-off', !e.detail?.id));
+    if (window.TrophyNavMaps?.activeId?.()) box.classList.remove('tn3d-off');
   }
 
   function init() {
