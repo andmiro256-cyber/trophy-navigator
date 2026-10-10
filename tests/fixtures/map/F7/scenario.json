@@ -1,0 +1,22 @@
+{
+  "id": "F7",
+  "description": "Полярные точки ±86° не обрезаются в модели/экспорте",
+  "imports": [
+    {
+      "file": "polar.gpx",
+      "loader": "loadGPXTracks"
+    }
+  ],
+  "actions": [],
+  "assertions": {
+    "tracks": 2,
+    "trackPointCounts": [
+      3,
+      3
+    ],
+    "extremeLatitudes": [
+      -86,
+      86
+    ]
+  }
+}

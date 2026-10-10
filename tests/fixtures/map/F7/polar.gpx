@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='utf-8'?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="TND regression fixtures">
+  <trk>
+    <name>North pole</name>
+    <trkseg>
+      <trkpt lat="85.0000000" lon="30.0000000" />
+      <trkpt lat="86.0000000" lon="30.0000000" />
+      <trkpt lat="86.0000000" lon="31.0000000" />
+    </trkseg>
+  </trk>
+  <trk>
+    <name>South pole</name>
+    <trkseg>
+      <trkpt lat="-85.0000000" lon="30.0000000" />
+      <trkpt lat="-86.0000000" lon="30.0000000" />
+      <trkpt lat="-86.0000000" lon="31.0000000" />
+    </trkseg>
+  </trk>
+</gpx>

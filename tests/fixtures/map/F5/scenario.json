@@ -1,0 +1,49 @@
+{
+  "id": "F5",
+  "description": "Зафиксировать до изменений и после удаления WP, переноса вершины, split, join; затем undo×4",
+  "imports": [
+    {
+      "file": "undo.gpx",
+      "loader": "loadGPXWaypoints"
+    },
+    {
+      "file": "undo.gpx",
+      "loader": "loadGPXTracks"
+    }
+  ],
+  "actions": [
+    {
+      "op": "deleteWaypoint",
+      "index": 0
+    },
+    {
+      "op": "moveTrackPoint",
+      "trackIndex": 0,
+      "pointIndex": 1,
+      "lat": 59.902,
+      "lng": 30.303
+    },
+    {
+      "op": "splitTrack",
+      "trackIndex": 0,
+      "pointIndex": 3
+    },
+    {
+      "op": "joinTracks",
+      "trackIndices": [
+        0,
+        1
+      ]
+    },
+    {
+      "op": "undo",
+      "count": 4
+    }
+  ],
+  "assertions": {
+    "initialWaypoints": 2,
+    "initialTracks": 1,
+    "undoRestoresInitialGeometry": true
+  },
+  "knownIssue": "0.9.34 exposes no track join function. Golden executes delete, move vertex and split, records join as unsupported, then undoes those three operations. The fourth undo applies only when join is available in a later implementation."
+}

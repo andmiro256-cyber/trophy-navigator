@@ -1,0 +1,28 @@
+{
+  "id": "F3",
+  "description": "301 точка с ele/time, 10-секундный интервал и 5 КП для RR",
+  "imports": [
+    {
+      "file": "audit-timed.gpx",
+      "loader": "loadGPXWaypoints"
+    },
+    {
+      "file": "audit-timed.gpx",
+      "loader": "loadGPXTracks"
+    },
+    {
+      "file": "audit-timed.gpx",
+      "loader": "loadGPXRoutes"
+    }
+  ],
+  "actions": [],
+  "assertions": {
+    "trackPointCounts": [
+      301
+    ],
+    "tracks": 1,
+    "routes": 1,
+    "rr": true,
+    "allPointsHaveEleAndTime": true
+  }
+}

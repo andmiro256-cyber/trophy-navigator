@@ -1,0 +1,38 @@
+{
+  "id": "F4",
+  "description": "Два набора WP и два трека; второй набор/трек скрыть после импорта",
+  "imports": [
+    {
+      "file": "visible.gpx",
+      "loader": "loadGPXWaypoints"
+    },
+    {
+      "file": "visible.gpx",
+      "loader": "loadGPXTracks"
+    },
+    {
+      "file": "hidden.gpx",
+      "loader": "loadGPXWaypoints"
+    },
+    {
+      "file": "hidden.gpx",
+      "loader": "loadGPXTracks"
+    }
+  ],
+  "actions": [
+    {
+      "op": "hideWaypointSet",
+      "index": 1
+    },
+    {
+      "op": "hideTrack",
+      "index": 1
+    }
+  ],
+  "assertions": {
+    "waypoints": 2,
+    "tracks": 2,
+    "hiddenWaypointSets": 1,
+    "hiddenTracks": 1
+  }
+}

@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext" version="1.1" creator="TND regression fixtures">
+  <wpt lat="59.9000000" lon="30.3000000">
+    <name>Видимая WP</name>
+    <desc>Fixture F4</desc>
+    <extensions>
+      <tnd:radius>50</tnd:radius>
+    </extensions>
+  </wpt>
+  <trk>
+    <name>Visible</name>
+    <trkseg>
+      <trkpt lat="59.9000000" lon="30.3000000" />
+      <trkpt lat="59.9100000" lon="30.3100000" />
+    </trkseg>
+  </trk>
+</gpx>

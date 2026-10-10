@@ -1,0 +1,39 @@
+{
+  "id": "F2",
+  "description": "WP↔КП маршрута: импорт WP перед маршрутом даёт связи pointWaypointIds; переименование и перенос синхронизируют КП",
+  "imports": [
+    {
+      "file": "linked.gpx",
+      "loader": "loadGPXWaypoints"
+    },
+    {
+      "file": "linked.gpx",
+      "loader": "loadGPXRoutes"
+    },
+    {
+      "file": "linked.gpx",
+      "loader": "loadGPXTracks"
+    }
+  ],
+  "actions": [
+    {
+      "op": "renameWaypoint",
+      "index": 0,
+      "name": "КП1 переименован"
+    },
+    {
+      "op": "moveWaypoint",
+      "index": 1,
+      "lat": 59.9011,
+      "lng": 30.3021
+    }
+  ],
+  "assertions": {
+    "waypoints": 3,
+    "tracks": 1,
+    "routes": 1,
+    "linkedRoutePoints": 3,
+    "rr": true
+  },
+  "knownIssue": "0.9.34 synchronizes route labels/waypoint ids/radii, but moving a linked waypoint does not move route checkpoint coordinates. Golden records this baseline behavior."
+}

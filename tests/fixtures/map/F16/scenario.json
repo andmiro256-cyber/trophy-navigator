@@ -1,0 +1,22 @@
+{
+  "id": "F16",
+  "description": "Реальные GPX: nakarte план 15 trkseg и Android запись 21 trkseg; сохранены разрывы и метаданные",
+  "imports": [
+    {
+      "file": "plan-15-segments.gpx",
+      "loader": "loadGPXTracks"
+    },
+    {
+      "file": "android-21-segments.gpx",
+      "loader": "loadGPXTracks"
+    }
+  ],
+  "actions": [],
+  "assertions": {
+    "sourceSegments": [
+      15,
+      21
+    ],
+    "segmentBoundariesPreserved": true
+  }
+}

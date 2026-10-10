@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='utf-8'?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext" version="1.1" creator="TND regression fixtures">
+  <wpt lat="0.0000000" lon="0.0000000">
+    <name>Нулевой меридиан</name>
+    <desc>Fixture F1</desc>
+    <extensions>
+      <tnd:radius>50</tnd:radius>
+    </extensions>
+  </wpt>
+  <wpt lat="0.0000000" lon="30.0000000">
+    <name>Экватор</name>
+    <desc>Fixture F1</desc>
+    <extensions>
+      <tnd:radius>75</tnd:radius>
+    </extensions>
+  </wpt>
+  <wpt lat="59.9000000" lon="0.0000000">
+    <name>Север</name>
+    <desc>Fixture F1</desc>
+    <extensions>
+      <tnd:radius>100</tnd:radius>
+    </extensions>
+  </wpt>
+  <trk>
+    <name>Through zero</name>
+    <trkseg>
+      <trkpt lat="-0.1000000" lon="-0.1000000" />
+      <trkpt lat="0.0000000" lon="0.0000000" />
+      <trkpt lat="0.1000000" lon="0.1000000" />
+      <trkpt lat="0.0000000" lon="30.0000000" />
+    </trkseg>
+  </trk>
+</gpx>
