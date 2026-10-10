@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">
+  <wpt lat="59.900000" lon="30.300000">
+    <name>КП1 переименован</name>
+    <desc>Fixture F2</desc>
+    <sym>⬤</sym>
+    <extensions>
+      <tnd:color>#df7a4a</tnd:color>
+      <tnd:radius>50</tnd:radius>
+    </extensions>
+  </wpt>
+  <wpt lat="59.901100" lon="30.302100">
+    <name>КП2</name>
+    <desc>Fixture F2</desc>
+    <sym>⬤</sym>
+    <extensions>
+      <tnd:color>#df7a4a</tnd:color>
+      <tnd:radius>75</tnd:radius>
+    </extensions>
+  </wpt>
+  <wpt lat="59.902000" lon="30.304000">
+    <name>КП3</name>
+    <desc>Fixture F2</desc>
+    <sym>⬤</sym>
+    <extensions>
+      <tnd:color>#df7a4a</tnd:color>
+      <tnd:radius>100</tnd:radius>
+    </extensions>
+  </wpt>
+</gpx>

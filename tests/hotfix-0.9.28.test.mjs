@@ -74,6 +74,7 @@ test('#1 маркер, быстрое переименование и подск
   try {
     w.eval(sourceBetween('function makeDivIcon(data)', 'function makeWaypointMarkerOptions('));
     w.eval(sourceBetween('let quickRenamePopup = null;', 'function getDefaultRadius()'));
+    w.eval(fs.readFileSync(new URL('../ui/tn-geo.js', import.meta.url), 'utf8'));
     w.eval(sourceBetween('function formatTrackPointTooltip(track, idx)', '// Тянет точку трека за мышью.'));
     w.garminToEmoji = s => s;
     w.applyQuickRename = () => {};

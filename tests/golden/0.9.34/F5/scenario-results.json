@@ -1,0 +1,36 @@
+[
+  {
+    "op": "deleteWaypoint",
+    "status": "executed"
+  },
+  {
+    "op": "moveTrackPoint",
+    "status": "executed"
+  },
+  {
+    "op": "splitTrack",
+    "status": "executed"
+  },
+  {
+    "op": "joinTracks",
+    "status": "unsupported",
+    "reason": "0.9.34 has no track join function or undo action"
+  },
+  {
+    "op": "undo",
+    "status": "executed"
+  },
+  {
+    "op": "undo",
+    "status": "executed"
+  },
+  {
+    "op": "undo",
+    "status": "executed"
+  },
+  {
+    "op": "undo",
+    "status": "unsupported",
+    "reason": "Undo stack empty (join unavailable)"
+  }
+]

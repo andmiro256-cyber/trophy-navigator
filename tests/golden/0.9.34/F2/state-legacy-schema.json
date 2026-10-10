@@ -1,0 +1,392 @@
+{
+  "version": 1,
+  "savedAt": "2026-01-02T03:04:05.000Z",
+  "localStorageCompact": false,
+  "map": {
+    "center": {
+      "lat": 55.75,
+      "lng": 37.62
+    },
+    "zoom": 10,
+    "layer": "OpenStreetMap"
+  },
+  "counters": {
+    "wpCounter": 4,
+    "trackIdCounter": 2,
+    "routeIdCounter": 2,
+    "waypointSetIdCounter": 2
+  },
+  "waypointSets": [
+    {
+      "id": 1,
+      "name": "linked",
+      "visible": true
+    }
+  ],
+  "activeSetId": 1,
+  "waypoints": [
+    {
+      "id": "wp-mjwaid1k-5dacfnim",
+      "lat": 59.9,
+      "lng": 30.3,
+      "name": "КП1 переименован",
+      "desc": "Fixture F2",
+      "icon": "⬤",
+      "color": "#df7a4a",
+      "radius": 50,
+      "num": 1,
+      "setId": 1,
+      "createdAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "syncedAt": null
+    },
+    {
+      "id": "wp-mjwaid1k-z5q070as",
+      "lat": 59.9011,
+      "lng": 30.3021,
+      "name": "КП2",
+      "desc": "Fixture F2",
+      "icon": "⬤",
+      "color": "#df7a4a",
+      "radius": 75,
+      "num": 2,
+      "setId": 1,
+      "createdAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "syncedAt": null
+    },
+    {
+      "id": "wp-mjwaid1k-zpx6aa3o",
+      "lat": 59.902,
+      "lng": 30.304,
+      "name": "КП3",
+      "desc": "Fixture F2",
+      "icon": "⬤",
+      "color": "#df7a4a",
+      "radius": 100,
+      "num": 3,
+      "setId": 1,
+      "createdAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "syncedAt": null
+    }
+  ],
+  "tracks": [
+    {
+      "id": 1,
+      "name": "Linked RR",
+      "color": "#4adf7a",
+      "width": 3,
+      "pointSize": 3,
+      "points": [
+        {
+          "lat": 59.9,
+          "lng": 30.3
+        },
+        {
+          "lat": 59.9001,
+          "lng": 30.3002
+        },
+        {
+          "lat": 59.9002,
+          "lng": 30.3004
+        },
+        {
+          "lat": 59.9003,
+          "lng": 30.3006
+        },
+        {
+          "lat": 59.9004,
+          "lng": 30.3008
+        },
+        {
+          "lat": 59.9005,
+          "lng": 30.301
+        },
+        {
+          "lat": 59.9006,
+          "lng": 30.3012
+        },
+        {
+          "lat": 59.9007,
+          "lng": 30.3014
+        },
+        {
+          "lat": 59.9008,
+          "lng": 30.3016
+        },
+        {
+          "lat": 59.9009,
+          "lng": 30.3018
+        },
+        {
+          "lat": 59.901,
+          "lng": 30.302
+        },
+        {
+          "lat": 59.9011,
+          "lng": 30.3022
+        },
+        {
+          "lat": 59.9012,
+          "lng": 30.3024
+        },
+        {
+          "lat": 59.9013,
+          "lng": 30.3026
+        },
+        {
+          "lat": 59.9014,
+          "lng": 30.3028
+        },
+        {
+          "lat": 59.9015,
+          "lng": 30.303
+        },
+        {
+          "lat": 59.9016,
+          "lng": 30.3032
+        },
+        {
+          "lat": 59.9017,
+          "lng": 30.3034
+        },
+        {
+          "lat": 59.9018,
+          "lng": 30.3036
+        },
+        {
+          "lat": 59.9019,
+          "lng": 30.3038
+        },
+        {
+          "lat": 59.902,
+          "lng": 30.304
+        }
+      ],
+      "pointsData": [
+        {
+          "ele": 10,
+          "time": "2026-08-09T08:00:00Z"
+        },
+        {
+          "ele": 11,
+          "time": "2026-08-09T08:00:10Z",
+          "speed": 1.5749100212243952,
+          "course": 45.08629858500774
+        },
+        {
+          "ele": 12,
+          "time": "2026-08-09T08:00:20Z",
+          "speed": 1.574907643105489,
+          "course": 45.086212330352055
+        },
+        {
+          "ele": 13,
+          "time": "2026-08-09T08:00:30Z",
+          "speed": 1.574905265099313,
+          "course": 45.0861260753486
+        },
+        {
+          "ele": 14,
+          "time": "2026-08-09T08:00:40Z",
+          "speed": 1.5749028869827328,
+          "course": 45.086039824553154
+        },
+        {
+          "ele": 15,
+          "time": "2026-08-09T08:00:50Z",
+          "speed": 1.574900508978884,
+          "course": 45.08595355974268
+        },
+        {
+          "ele": 16,
+          "time": "2026-08-09T08:01:00Z",
+          "speed": 1.5748981308786605,
+          "course": 45.0858673114941
+        },
+        {
+          "ele": 17,
+          "time": "2026-08-09T08:01:10Z",
+          "speed": 1.5748957528631082,
+          "course": 45.08578105094608
+        },
+        {
+          "ele": 18,
+          "time": "2026-08-09T08:01:20Z",
+          "speed": 1.5748933747511815,
+          "course": 45.08569479602619
+        },
+        {
+          "ele": 19,
+          "time": "2026-08-09T08:01:30Z",
+          "speed": 1.5748909967519866,
+          "course": 45.08560853802504
+        },
+        {
+          "ele": 20,
+          "time": "2026-08-09T08:01:40Z",
+          "speed": 1.574888618698171,
+          "course": 45.08552228058733
+        },
+        {
+          "ele": 21,
+          "time": "2026-08-09T08:01:50Z",
+          "speed": 1.5748862405897346,
+          "course": 45.08543602280179
+        },
+        {
+          "ele": 22,
+          "time": "2026-08-09T08:02:00Z",
+          "speed": 1.5748838625940307,
+          "course": 45.08534976649088
+        },
+        {
+          "ele": 23,
+          "time": "2026-08-09T08:02:10Z",
+          "speed": 1.5748814845019505,
+          "course": 45.08526350669638
+        },
+        {
+          "ele": 24,
+          "time": "2026-08-09T08:02:20Z",
+          "speed": 1.5748791064945444,
+          "course": 45.08517724826987
+        },
+        {
+          "ele": 25,
+          "time": "2026-08-09T08:02:30Z",
+          "speed": 1.5748767283907623,
+          "course": 45.0850909918268
+        },
+        {
+          "ele": 26,
+          "time": "2026-08-09T08:02:40Z",
+          "speed": 1.5748743503997134,
+          "course": 45.08500472683551
+        },
+        {
+          "ele": 27,
+          "time": "2026-08-09T08:02:50Z",
+          "speed": 1.5748719722982587,
+          "course": 45.08491847334153
+        },
+        {
+          "ele": 28,
+          "time": "2026-08-09T08:03:00Z",
+          "speed": 1.5748695943095372,
+          "course": 45.084832206743556
+        },
+        {
+          "ele": 29,
+          "time": "2026-08-09T08:03:10Z",
+          "speed": 1.57486721621041,
+          "course": 45.084745952554044
+        },
+        {
+          "ele": 30,
+          "time": "2026-08-09T08:03:20Z",
+          "speed": 1.5748648382240165,
+          "course": 45.08465968708282
+        }
+      ],
+      "visible": true,
+      "createdAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "syncedAt": null
+    }
+  ],
+  "routes": [
+    {
+      "id": 1,
+      "name": "F2 route",
+      "color": "#4a8adf",
+      "width": 3,
+      "dashArray": "8 4",
+      "points": [
+        {
+          "lat": 59.9,
+          "lng": 30.3
+        },
+        {
+          "lat": 59.901,
+          "lng": 30.302
+        },
+        {
+          "lat": 59.902,
+          "lng": 30.304
+        }
+      ],
+      "labels": [
+        "КП1 переименован",
+        "КП2",
+        "КП3"
+      ],
+      "pointRadii": [
+        50,
+        75,
+        100
+      ],
+      "pointWaypointIds": [
+        "wp-mjwaid1k-5dacfnim",
+        "wp-mjwaid1k-z5q070as",
+        "wp-mjwaid1k-zpx6aa3o"
+      ],
+      "visible": true,
+      "createdAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "syncedAt": null
+    }
+  ],
+  "settings": {
+    "defaultRadius": 30,
+    "colorWpt": "#df7a4a",
+    "trackColorMode": "fixed",
+    "colorTrack": "#4adf7a",
+    "routeColorMode": "fixed",
+    "colorRoute": "#4a8adf",
+    "colorRadiusFill": "#4a8adf",
+    "colorRadiusStroke": "#4a8adf",
+    "radiusOpacity": 15,
+    "colorOsrm": "#4a8adf",
+    "colorSearch": "#4a8adf",
+    "iconSize": 16,
+    "trackWidth": 3,
+    "liveMarkerSize": 3,
+    "liveLabelSize": 3,
+    "theme": "dark"
+  },
+  "gpxFiles": [],
+  "loadedSourceFiles": [
+    {
+      "id": "src-mjwaid1k-vmfsnjgt",
+      "key": "gpx::linked.gpx",
+      "name": "linked.gpx",
+      "path": null,
+      "format": "gpx",
+      "importedAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "entityCounts": {
+        "waypoints": 0,
+        "tracks": 1,
+        "routes": 0
+      },
+      "entityIds": {
+        "waypoints": [],
+        "tracks": [
+          "1"
+        ],
+        "routes": [
+          "1"
+        ],
+        "gpxFiles": []
+      }
+    }
+  ]
+}

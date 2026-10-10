@@ -108,3 +108,11 @@ test('куски трека и длина — как trackLatLngs/trackLen пр�
   }
   assert.deepEqual(G.trackSegments([], []), []);
 });
+
+test('index.html: геодезия только через TnGeo (нет .distanceTo), пиксели — screenDistance (снятие дубля при двойном щелчке, перетаскивание)', () => {
+  const html = fs.readFileSync(new URL('../ui/index.html', import.meta.url), 'utf8');
+  assert.doesNotMatch(html, /\.distanceTo\(/);
+  assert.equal((html.match(/if \(TnGeo\.screenDistance\(previous, last\) > 6\) return false;/g) || []).length, 2);
+  assert.match(html, /TnGeo\.screenDistance\(map\.mouseEventToContainerPoint\(moveEvent\), startPoint\)/);
+  assert.match(html, /const dist = TnGeo\.screenDistance\(target, map\.latLngToLayerPoint\(point\)\);/);
+});

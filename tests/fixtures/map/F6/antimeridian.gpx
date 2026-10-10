@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='utf-8'?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="TND regression fixtures">
+  <trk>
+    <name>Antimeridian</name>
+    <trkseg>
+      <trkpt lat="10.0000000" lon="179.9000000" />
+      <trkpt lat="10.0100000" lon="179.9500000" />
+      <trkpt lat="10.0200000" lon="-179.9500000" />
+      <trkpt lat="10.0300000" lon="-179.9000000" />
+    </trkseg>
+  </trk>
+</gpx>

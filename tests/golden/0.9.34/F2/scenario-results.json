@@ -1,0 +1,10 @@
+[
+  {
+    "op": "renameWaypoint",
+    "status": "executed"
+  },
+  {
+    "op": "moveWaypoint",
+    "status": "executed"
+  }
+]

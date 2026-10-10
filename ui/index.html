@@ -23,6 +23,9 @@
 <script src="tn-section-order.js"></script>
 <!-- переход на MapLibre (план v3, этап 0б): геофункции без Leaflet и нейтральный тестовый API -->
 <script src="tn-geo.js"></script>
+<script src="tn-model.js"></script>
+<script src="tn-map.js"></script>
+<script src="tn-map-leaflet.js"></script>
 <script src="tn-test-api.js"></script>
 <script src="tn-server.js"></script>
 <style>
@@ -2714,6 +2717,9 @@ const map = L.map('map', { zoomControl: true, attributionControl: false, maxZoom
 // Холсты отдельных pane (радиусы точек — waypointRadius, точки маршрута по дорогам — markerPane) Leaflet
 // создаёт сам через _createRenderer с запасом 10% — с тем же запасом, что и остальные
 map._createRenderer = options => L.canvas({ padding: TND_CANVAS_PADDING, ...options });
+// Фасад карты (переход на MapLibre, план v3 R1, пакет 0б.5): камера, проекция и события — через tnMap,
+// движок — адаптер (сейчас Leaflet). Прямые вызовы map.* переводятся сюда по подсистемам.
+const tnMap = window.TnMap.create(window.TnMapLeaflet.create(map));
 const trackCanvasRenderer = L.canvas({ padding: TND_CANVAS_PADDING });
 const trackPointCanvasRenderer = L.canvas({ padding: TND_CANVAS_PADDING, tolerance: 8 });
 /**
@@ -2762,8 +2768,8 @@ const ZoomDisplay = L.Control.extend({
   onAdd(map) {
     const div = L.DomUtil.create('div', 'zoom-display-ctrl');
     div.title = 'Текущий зум';
-    div.textContent = formatZoomLevel(map.getZoom());
-    map.on('zoomend', () => div.textContent = formatZoomLevel(map.getZoom()));
+    div.textContent = formatZoomLevel(tnMap.getZoom());
+    tnMap.on('zoomend', () => div.textContent = formatZoomLevel(tnMap.getZoom()));
     return div;
   }
 });
@@ -2793,14 +2799,14 @@ new HandModeControl().addTo(map);
 L.control.scale({ imperial: false, maxWidth: 200, position: 'bottomleft' }).addTo(map);
 
 // Координаты в статусбаре
-map.on('mousemove', e => {
+tnMap.on('mousemove', e => {
   const {lat, lng: lon} = e.latlng;
   const latD = Math.floor(Math.abs(lat)), latM = ((Math.abs(lat)-latD)*60).toFixed(3);
   const lonD = Math.floor(Math.abs(lon)), lonM = ((Math.abs(lon)-lonD)*60).toFixed(3);
   document.getElementById('sb-coords').textContent = `${latD}°${latM}'${lat>=0?'N':'S'}  ${lonD}°${lonM}'${lon>=0?'E':'W'}`;
 });
-map.on('zoomend', () => document.getElementById('sb-zoom').textContent = formatZoomLevel(map.getZoom()));
-document.getElementById('sb-zoom').textContent = formatZoomLevel(map.getZoom());
+tnMap.on('zoomend', () => document.getElementById('sb-zoom').textContent = formatZoomLevel(tnMap.getZoom()));
+document.getElementById('sb-zoom').textContent = formatZoomLevel(tnMap.getZoom());
 
 // ─── Щипок тачпада и Ctrl+колесо: страница никогда не масштабируется, щипок над картой зумит карту ───
 // Колесо, два пальца и щипок WebView2/Chromium (Ctrl+колесо) — плавный зум smooth-zoom.js на контейнере карты.
@@ -2812,7 +2818,7 @@ function tndPinchTargetAt(x, y) {
   if (window.TrophyNav3D?.isOpen?.()) return '3d';
   const el = document.elementFromPoint(x, y);
   if (!el || el.closest('.leaflet-control, .modal-overlay')) return null;
-  return map.getContainer().contains(el) ? 'map' : null;
+  return tnMap.getContainer().contains(el) ? 'map' : null;
 }
 function tndPinchApply() {
   tndPinchState.raf = 0;
@@ -2826,7 +2832,7 @@ function tndPinchApply() {
   }
   if (tndPinchState.target === 'map') {
     // запасной путь, если smooth-zoom.js не загрузился
-    const r = map.getContainer().getBoundingClientRect();
+    const r = tnMap.getContainer().getBoundingClientRect();
     const zoom = map._limitZoom(tndPinchState.startZoom + dz);
     if (zoom !== map.getZoom()) map.setZoomAround(L.point(tndPinchState.x - r.left, tndPinchState.y - r.top), zoom, { animate: false });
   }
@@ -2875,6 +2881,24 @@ document.addEventListener('keydown', e => {
 // ТОЧКИ
 // ─────────────────────────────────────────────
 let waypoints = [], wpCounter = 1, activeWaypoint = null;
+// Модель данных вне движка карты (переход на MapLibre, план v3 R1, пакет 0б.4). Шаг 1 — чтение: записи WP
+// собираются из маркеров в момент чтения, выгрузки и состояние читают модель; запись через модель и рендер
+// из неё — следующие шаги. Не собралась (битая точка, повтор id) — старый путь с предупреждением, без потерь.
+const tnModel = window.TnModel.create();
+function tnSyncWaypointModel() {
+  try {
+    tnModel.reset('wp', waypoints.map(m => ({ ...m.wpData, setId: m._setId })));
+    return tnModel.ids('wp').length === waypoints.length;
+  } catch (e) {
+    console.warn('Модель WP не собрана, читаю маркеры напрямую:', e?.message || e);
+    return false;
+  }
+}
+/** Записи WP модели в порядке маркеров markers (по умолчанию все). */
+function tnWaypointRecs(markers = waypoints) {
+  const ok = tnSyncWaypointModel();
+  return markers.map(m => (ok && tnModel.get('wp', m.wpData.id)) || { ...m.wpData, setId: m._setId });
+}
 const wpColors = ['#4a8adf','#df4a4a','#4adf7a','#dfdf4a','#df7a4a','#7a4adf','#4adfe0','#df4adf'];  // theme-check: data
 
 // ─── UNDO стек ───
@@ -3284,7 +3308,7 @@ function csvField(value) {
 
 function fitToLatLngs(points) {
   if (!points || points.length === 0) return;
-  map.fitBounds(L.latLngBounds(points), { padding: [30, 30] });
+  tnMap.fitBounds(points, { padding: [30, 30] });
 }
 
 const APP_STATE_VERSION = 1;
@@ -3575,7 +3599,7 @@ function findWaypointMatch(latlng, label = '') {
   let bestDistance = Infinity;
   for (const marker of waypoints) {
     if (!marker?.wpData) continue;
-    const distance = latlng.distanceTo(marker.getLatLng());
+    const distance = TnGeo.distance(latlng, marker.getLatLng());
     if (distance > 60) continue;
     const markerLabel = normalizeWaypointLabel(marker.wpData.name);
     if (normalizedLabel && markerLabel === normalizedLabel && distance <= 25) return marker;
@@ -3875,6 +3899,53 @@ function getDefaultRadius() {
   return Number.isFinite(v) && v >= 0 ? v : 30;
 }
 
+/**
+ * Маркер WP (MapLibre 0б.5: отрисовка WP — одно место). Leaflet-обработчики только переводят события маркера
+ * в onWaypointMarkerEvent — логика приложения там; MapLibre-адаптер будет звать тот же обработчик.
+ * o.latlng / o.optionsFrom — как было при восстановлении состояния (иконка из исходной записи).
+ */
+function createWaypointMarker(wpData, o = {}) {
+  const marker = L.marker(o.latlng || L.latLng(wpData.lat, wpData.lng), makeWaypointMarkerOptions(o.optionsFrom || wpData));
+  marker.wpData = wpData;
+  marker.addTo(map);
+  refreshWaypoint(marker, { touch: false });
+  marker.on('contextmenu', e => {
+    L.DomEvent.stop(e);
+    if (e.originalEvent) { e.originalEvent.preventDefault(); e.originalEvent.stopPropagation(); }
+    onWaypointMarkerEvent('contextmenu', marker, e.originalEvent);
+  });
+  marker.on('click', e => {
+    L.DomEvent.stop(e);
+    if (e.originalEvent) e.originalEvent.stopPropagation();
+    onWaypointMarkerEvent('click', marker, e.originalEvent);
+  });
+  marker.on('dragstart', () => onWaypointMarkerEvent('dragstart', marker));
+  marker.on('drag', () => onWaypointMarkerEvent('drag', marker, null, marker.getLatLng()));
+  marker.on('dragend', () => onWaypointMarkerEvent('dragend', marker));
+  return marker;
+}
+
+/** События точки WP — независимо от движка: click, contextmenu, dragstart, drag (latlng), dragend. */
+function onWaypointMarkerEvent(type, marker, originalEvent = null, latlng = null) {
+  if (type === 'contextmenu') { showCtxMenu(originalEvent, marker); return; }
+  if (type === 'click') {
+    if (isRouteCaptureMode()) {
+      addRoutePoint(marker.getLatLng(), marker.wpData.name, { radius: marker.wpData.radius, waypointId: marker.wpData.id });
+      return;
+    }
+    openQuickRename(marker);
+    return;
+  }
+  if (type === 'dragstart') { marker.closePopup(); return; }
+  if (type === 'drag') {
+    marker.wpData.lat = latlng.lat;
+    marker.wpData.lng = latlng.lng;
+    if (marker.wpCircle) marker.wpCircle.setLatLng(latlng);
+    return;
+  }
+  if (type === 'dragend') { refreshWaypoint(marker); updateWptTable(); }
+}
+
 function addWaypoint(latlng, nameHint, extra = {}) {
   ensureWorkObjectsVisibleForEditing();
   const name = nameHint || ('wp'+wpCounter);
@@ -3895,39 +3966,7 @@ function addWaypoint(latlng, nameHint, extra = {}) {
     source: extra.source || 'desktop',
     syncedAt: extra.syncedAt || null
   };
-  const marker = L.marker(latlng, makeWaypointMarkerOptions(wpData));
-  marker.wpData = wpData;
-  marker.addTo(map);
-  refreshWaypoint(marker, { touch: false });
-  marker.on('contextmenu', e => {
-    L.DomEvent.stop(e);
-    if (e.originalEvent) { e.originalEvent.preventDefault(); e.originalEvent.stopPropagation(); }
-    showCtxMenu(e.originalEvent, marker);
-  });
-  marker.on('click', e => {
-    L.DomEvent.stop(e);
-    if (e.originalEvent) e.originalEvent.stopPropagation();
-    if (isRouteCaptureMode()) {
-      addRoutePoint(marker.getLatLng(), marker.wpData.name, {
-        radius: marker.wpData.radius,
-        waypointId: marker.wpData.id
-      });
-      return;
-    }
-    openQuickRename(marker);
-  });
-  marker.on('dragstart', () => {
-    marker.closePopup();
-  });
-  marker.on('drag', () => {
-    marker.wpData.lat = marker.getLatLng().lat;
-    marker.wpData.lng = marker.getLatLng().lng;
-    if (marker.wpCircle) marker.wpCircle.setLatLng(marker.getLatLng());
-  });
-  marker.on('dragend', () => {
-    refreshWaypoint(marker);
-    updateWptTable();
-  });
+  const marker = createWaypointMarker(wpData);
   waypoints.push(marker);
   const set = ensureActiveSet();
   if (set) set.waypoints.push(marker);
@@ -3954,7 +3993,7 @@ function updateWptTable() {
     const idx = waypoints.indexOf(m);
     const syncBadge = d.syncedAt ? `<span title="Синхр. с ${d.source === 'android' ? 'Android' : 'desktop'} · ${escapeHtml(new Date(d.syncedAt).toLocaleString('ru-RU'))}" style="font-size:10px;opacity:0.7;margin-left:2px">☁</span>` : '';
     const srcHint = d.source && d.source !== 'desktop' ? `<span style="font-size:9px;color:var(--text-muted);margin-left:3px">${escapeHtml(d.source)}</span>` : '';
-    return `<tr oncontextmenu="showCtxMenuTable(event,${idx})" onclick="map.panTo([${safeNum(d.lat)},${safeNum(d.lng)}])">
+    return `<tr oncontextmenu="showCtxMenuTable(event,${idx})" onclick="tnMap.panTo({ lat: ${safeNum(d.lat)}, lng: ${safeNum(d.lng)} })">
       <td class="wpt-cb-cell" onclick="event.stopPropagation()"><label for="wpt-cb-${idx}"><input type="checkbox" id="wpt-cb-${idx}" class="wpt-cb" data-idx="${idx}"></label></td>
       <td class="wpt-pick-cell" onclick="event.stopPropagation()"><label for="wpt-cb-${idx}"><span class="wpt-icon" style="background:${safeCssColor(d.color)}"></span></label></td>
       <td class="wpt-num">${escapeHtml(d.num)}</td>
@@ -4075,7 +4114,7 @@ function findWaypointForRoutePoint(route, idx) {
 
   for (const marker of waypoints) {
     if (!marker?.wpData) continue;
-    const distance = cp.distanceTo(marker.getLatLng());
+    const distance = TnGeo.distance(cp, marker.getLatLng());
     if (distance > 2) continue;
     const markerLabel = String(marker.wpData.name || '').trim().toLowerCase();
     if (label && markerLabel === label) return marker;
@@ -4102,7 +4141,7 @@ function getRoutePointRadius(route, idx, fallbackRadius) {
 
 function latLngDistanceMeters(a, b) {
   if (!a || !b) return Infinity;
-  try { return L.latLng(a.lat, a.lng).distanceTo(L.latLng(b.lat, b.lng)); }
+  try { return TnGeo.distance(L.latLng(a.lat, a.lng), L.latLng(b.lat, b.lng)); }
   catch { return Infinity; }
 }
 
@@ -4249,7 +4288,7 @@ function setMode(mode) {
     item.classList.toggle('active', item.dataset.mode === mode);
   });
   document.getElementById('sb-mode').textContent = modeNames[mode] || mode;
-  map.getContainer().style.cursor = mode === 'hand' ? '' : 'crosshair';
+  tnMap.getContainer().style.cursor = mode === 'hand' ? '' : 'crosshair';
   updateRulerPanel();
   if (mode !== 'hand') showToast('Режим: ' + modeNames[mode]);
 }
@@ -4370,7 +4409,7 @@ document.addEventListener('keydown', e => {
   }
 });
 
-map.on('click', e => {
+tnMap.on('click', e => {
   closeCtxMenu();
   if (typeof routePickMode !== 'undefined' && routePickMode) return; // route pick обрабатывается отдельно
   if (currentMode === 'waypoint') addWaypoint(e.latlng);
@@ -4380,8 +4419,8 @@ map.on('click', e => {
   else if (currentMode === 'routeedit' && currentRouteDraw) addRoutePoint(e.latlng, `КП${currentRouteDraw.points.length + 1}`);
   else if (currentMode === 'ruler') addRulerPoint(e.latlng);
 });
-map.on('dblclick', e => {
-  L.DomEvent.stop(e);
+tnMap.on('dblclick', e => {
+  e.stop();
   if (currentMode === 'track') {
     removeDuplicateTrackDoubleClickPoint();
     finishTrackDraw();
@@ -6319,8 +6358,7 @@ function saveWaypointsWPT() {
       'Reserved 2',
       'Reserved 3'
     ];
-    list.forEach(m => {
-      const d = m.wpData;
+    tnWaypointRecs(list).forEach(d => {
       rows.push([
         d.num,
         csvField(d.name),
@@ -6357,8 +6395,7 @@ function saveWaypointsGPX() {
   downloadText(fname, 'application/gpx+xml', () => {
     validateExportCoordinates({ waypoints: list });
     let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">\n';
-    list.forEach(m => {
-      const d = m.wpData;
+    tnWaypointRecs(list).forEach(d => {
       gpx += `  <wpt lat="${d.lat.toFixed(6)}" lon="${d.lng.toFixed(6)}">\n`;
       gpx += `    <name>${escapeXml(d.name)}</name>\n`;
       if (d.desc) gpx += `    <desc>${escapeXml(d.desc)}</desc>\n`;
@@ -6459,8 +6496,7 @@ function saveAllGPX() {
 
 function buildGPXWithData(selWaypoints, selTracks, selRoutes) {
   let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">\n';
-  selWaypoints.forEach(m => {
-    const d = m.wpData;
+  tnWaypointRecs(selWaypoints).forEach(d => {
     gpx += `<wpt lat="${d.lat.toFixed(6)}" lon="${d.lng.toFixed(6)}">`;
     gpx += `<name>${escapeXml(d.name)}</name>`;
     if (d.desc) gpx += `<desc>${escapeXml(d.desc)}</desc>`;
@@ -6468,7 +6504,7 @@ function buildGPXWithData(selWaypoints, selTracks, selRoutes) {
     gpx += `<extensions><tnd:color>${escapeXml(d.color || '#df7a4a')}</tnd:color><tnd:radius>${d.radius || 0}</tnd:radius></extensions>`;  // theme-check: data
     gpx += '</wpt>\n';
   });
-  selTracks.forEach(t => {
+  tnTrackRecs(selTracks).forEach(t => {
     gpx += `<trk><name>${escapeXml(t.name)}</name><extensions><tnd:color>${escapeXml(t.color || '#4a8adf')}</tnd:color><tnd:width>${Number(t.width) || 3}</tnd:width><tnd:pointSize>${Number(t.pointSize ?? 3)}</tnd:pointSize></extensions><trkseg>`;  // theme-check: data
     t.points.forEach((p, i) => {
       if (isTrackSegStart(t, i)) gpx += '</trkseg><trkseg>';
@@ -6482,7 +6518,7 @@ function buildGPXWithData(selWaypoints, selTracks, selRoutes) {
     });
     gpx += '</trkseg></trk>';
   });
-  selRoutes.forEach(r => {
+  tnRouteRecs(selRoutes).forEach(r => {
     gpx += `<rte><name>${escapeXml(r.name)}</name><extensions><tnd:color>${escapeXml(r.color || '#4a8adf')}</tnd:color><tnd:width>${Number(r.width) || 3}</tnd:width><tnd:dashArray>${escapeXml(r.dashArray || '')}</tnd:dashArray></extensions>`;  // theme-check: data
     r.points.forEach((p, i) => {
       const radius = Number(r.pointRadii?.[i]) || 0;
@@ -6819,7 +6855,7 @@ function closeCtxMenu() {
 
 function showMapCtxMenuAt(e, latlng) {
   ctxTarget = null;
-  ctxLatLng = latlng || map.mouseEventToLatLng(e);
+  ctxLatLng = latlng || tnMap.eventToLatLng(e);
   closeCtxMenu();
   const m = document.getElementById('ctx-menu-map');
   const undoEl = document.getElementById('ctx-undo-route');
@@ -6965,10 +7001,10 @@ async function ctxAction(action) {
   else if (action === 'move') {
     if (objectsLocked) { showToast('🔒 Объекты заблокированы'); return; }
     if (target.dragging) target.dragging.enable();
-    map.panTo(target.getLatLng());
+    tnMap.panTo(target.getLatLng());
     showToast('Перетащите точку в нужное место');
   }
-  else if (action === 'center') map.panTo(target.getLatLng());
+  else if (action === 'center') tnMap.panTo(target.getLatLng());
   else if (action === 'copy') {
     const txt = target.wpData.lat.toFixed(5) + ', ' + target.wpData.lng.toFixed(5);
     navigator.clipboard.writeText(txt).catch(() => {});
@@ -6994,7 +7030,7 @@ async function ctxMapAction(action) {
   if (action === 'addwpt') {
     addWaypoint(ctxLatLng);
   } else if (action === 'center') {
-    map.panTo(ctxLatLng);
+    tnMap.panTo(ctxLatLng);
   } else if (action === 'measure') {
     startRulerFrom(ctxLatLng);
   } else if (action === 'copycoords') {
@@ -7025,7 +7061,7 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('#ctx-menu') || e.target.closest('#ctx-menu-map') || e.target.closest('#ctx-menu-track')) return;
   closeCtxMenu();
 });
-map.getContainer().addEventListener('contextmenu', e => {
+tnMap.getContainer().addEventListener('contextmenu', e => {
   e.preventDefault();
   // Если ПКМ уже обработан маркером — не показываем меню карты
   if (ctxHandledByMarker) { ctxHandledByMarker = false; return; }
@@ -7351,6 +7387,20 @@ document.addEventListener('keydown', event => {
 // ТРЕКИ
 // ─────────────────────────────────────────────
 let tracks = [], trackIdCounter = 1;
+// Модель треков (MapLibre 0б.4, шаг 1 — чтение): записи без объектов Leaflet (polyline, markers),
+// id 'trk_<n>', прежний числовой id — rawId. Не собралась — старый путь с предупреждением.
+function tnTrackRec(t) {
+  const { polyline, markers, markerMap, ...rest } = t;
+  return { ...rest, id: window.TnModel.entityId('track', t.id), rawId: t.id };
+}
+function tnTrackRecs(list = tracks) {
+  let ok = false;
+  try {
+    tnModel.reset('track', tracks.map(tnTrackRec));
+    ok = tnModel.ids('track').length === tracks.length;
+  } catch (e) { console.warn('Модель треков не собрана, читаю треки напрямую:', e?.message || e); }
+  return list.map(t => (ok && tnModel.get('track', window.TnModel.entityId('track', t.id))) || tnTrackRec(t));
+}
 let currentTrackDraw = null;
 let currentTrackSnapshot = null;
 let currentTrackEdit = null;
@@ -7473,7 +7523,7 @@ function trackUsesViewportMarkers(track) {
     !isTrackEditActive(track) &&
     (track.pointSize ?? 3) > 0 &&
     trackNeedsDetailMarkers(track) &&
-    map.getZoom() >= TRACK_MARKER_DETAIL_ZOOM
+    tnMap.getZoom() >= TRACK_MARKER_DETAIL_ZOOM
   );
 }
 
@@ -7482,7 +7532,7 @@ function shouldShowTrackMarkers(track) {
   if (isTrackDrawActive(track) || isTrackEditActive(track)) return true;
   if ((track.pointSize ?? 3) <= 0) return false;
   if (!trackNeedsDetailMarkers(track)) return true;
-  return map.getZoom() >= TRACK_MARKER_DETAIL_ZOOM;
+  return tnMap.getZoom() >= TRACK_MARKER_DETAIL_ZOOM;
 }
 
 function setTrackPanelState(mode, track) {
@@ -7637,7 +7687,7 @@ function formatTrackPointTooltip(track, idx) {
   // Distance from start
   if (idx > 0) {
     let dist = 0;
-    for (let i = 1; i <= idx; i++) dist += track.points[i-1].distanceTo(track.points[i]);
+    for (let i = 1; i <= idx; i++) dist += TnGeo.distance(track.points[i-1], track.points[i]);
     html += `<b>От старта:</b> ${(dist/1000).toFixed(2)} км<br>`;
   }
   html += `</div>`;
@@ -7663,7 +7713,7 @@ function beginTrackPointDrag(track, idx, options = {}) {
     map.off('mousemove', onMove);
     map.off('mouseup', onUp);
     map.dragging.enable();
-    map.getContainer()?.classList.remove('track-grabbing');
+    tnMap.getContainer()?.classList.remove('track-grabbing');
     if (moved) {
       pushUndo({ type: 'trackGeometry', track, snapshot: undoSnapshot });
       touchTrack(track);
@@ -7672,7 +7722,7 @@ function beginTrackPointDrag(track, idx, options = {}) {
     syncTrackMarkers(track);
   };
   map.dragging.disable();
-  map.getContainer()?.classList.add('track-grabbing');
+  tnMap.getContainer()?.classList.add('track-grabbing');
   map.on('mousemove', onMove);
   map.on('mouseup', onUp);
   // Точка, рождённая перетаскиванием, должна сразу оказаться под курсором
@@ -7802,7 +7852,8 @@ function scheduleTrackMarkerRefresh() {
   });
 }
 
-map.on('zoomend moveend', scheduleTrackMarkerRefresh);
+tnMap.on('zoomend', scheduleTrackMarkerRefresh);
+tnMap.on('moveend', scheduleTrackMarkerRefresh);
 
 // Захват трека мышью. Работает в режиме «Обзор» и в режиме правки трека:
 // подвёл курсор к линии — она подсвечивается курсором-ладонью, потянул —
@@ -7812,7 +7863,7 @@ function trackGestureAllowed() {
 }
 
 let trackHoverCheckedAt = 0;
-map.on('mousemove', e => {
+tnMap.on('mousemove', e => {
   if (!trackGestureAllowed()) { setTrackGrabCursor(false); return; }
   const now = Date.now();
   if (now - trackHoverCheckedAt < TRACK_HOVER_THROTTLE_MS) return;
@@ -7823,7 +7874,7 @@ map.on('mousemove', e => {
 
 // Слушаем на этапе перехвата: иначе Leaflet успевает начать перетаскивание карты
 // и наш жест уже не остановить — dragging.disable() на запущенный drag не влияет.
-map.getContainer().addEventListener('mousedown', onTrackGrabMouseDown, true);
+tnMap.getContainer().addEventListener('mousedown', onTrackGrabMouseDown, true);
 
 function onTrackGrabMouseDown(nativeEvent) {
   if (nativeEvent.button !== 0 || !trackGestureAllowed()) return;
@@ -7858,7 +7909,7 @@ function onTrackGrabMouseDown(nativeEvent) {
   };
   const onMove = ev => {
     const moveEvent = ev.originalEvent || ev;
-    if (map.mouseEventToContainerPoint(moveEvent).distanceTo(startPoint) < TRACK_RESHAPE_DRAG_THRESHOLD_PX) return;
+    if (TnGeo.screenDistance(map.mouseEventToContainerPoint(moveEvent), startPoint) < TRACK_RESHAPE_DRAG_THRESHOLD_PX) return;
     handedOver = true;
     cleanup();
     const undoSnapshot = snapshotTrackGeometry(track);
@@ -7879,7 +7930,7 @@ function findNearestTrackPointHit(track, latlng, maxPx = TRACK_POINT_HIT_RADIUS_
   let best = null;
   track.points.forEach((point, idx) => {
     if (!bounds.contains(point)) return;
-    const dist = target.distanceTo(map.latLngToLayerPoint(point));
+    const dist = TnGeo.screenDistance(target, map.latLngToLayerPoint(point));
     if (dist > maxPx) return;
     if (!best || dist < best.dist) best = { idx, point, dist };
   });
@@ -8014,7 +8065,7 @@ function bindTrackPolyline(track) {
     const clickLatLng = e.latlng;
     let minDist = Infinity, closestIdx = 0;
     track.points.forEach((p, i) => {
-      const d = clickLatLng.distanceTo(p);
+      const d = TnGeo.distance(clickLatLng, p);
       if (d < minDist) { minDist = d; closestIdx = i; }
     });
     const marker = getTrackMarker(track, closestIdx);
@@ -8110,9 +8161,9 @@ function addTrackPoint(latlng) {
 function removeDuplicateTrackDoubleClickPoint() {
   const track = currentTrackDraw;
   if (!track || track.points.length < 2) return false;
-  const previous = map.latLngToContainerPoint(track.points[track.points.length - 2]);
-  const last = map.latLngToContainerPoint(track.points[track.points.length - 1]);
-  if (previous.distanceTo(last) > 6) return false;
+  const previous = tnMap.project(track.points[track.points.length - 2]);
+  const last = tnMap.project(track.points[track.points.length - 1]);
+  if (TnGeo.screenDistance(previous, last) > 6) return false;
   track.points.pop();
   if (track.pointsData?.length) track.pointsData.pop();
   if (track.polyline) track.polyline.setLatLngs(trackLatLngs(track));
@@ -8183,7 +8234,7 @@ function renameTrack(id, newName) {
 
 function trackLen(t) {
   let d = 0;
-  for (let i = 1; i < t.points.length; i++) if (!isTrackSegStart(t, i)) d += t.points[i-1].distanceTo(t.points[i]);
+  for (let i = 1; i < t.points.length; i++) if (!isTrackSegStart(t, i)) d += TnGeo.distance(t.points[i-1], t.points[i]);
   return d / 1000;
 }
 function updateTrackBuildPanel(t) {
@@ -8395,7 +8446,7 @@ function focusTrackOnMap(id) {
   const t = tracks.find(item => item.id === id);
   if (!t || !t.points?.length) return;
   if (t.visible === false) toggleTrackVisible(id);
-  const mapRect = map.getContainer().getBoundingClientRect();
+  const mapRect = tnMap.getContainer().getBoundingClientRect();
   let left = 30, right = 30;
   const win = document.getElementById('modal-tracks-win');
   const wr = win && win.offsetParent ? win.getBoundingClientRect() : null;
@@ -8403,7 +8454,7 @@ function focusTrackOnMap(id) {
     if (wr.left + wr.width / 2 > mapRect.left + mapRect.width / 2) right = Math.max(30, mapRect.right - wr.left + 20);
     else left = Math.max(30, wr.right - mapRect.left + 20);
   }
-  map.fitBounds(L.latLngBounds(t.points), { paddingTopLeft: [left, 30], paddingBottomRight: [right, 30], maxZoom: 16 });
+  tnMap.fitBounds(t.points, { paddingTopLeft: [left, 30], paddingBottomRight: [right, 30], maxZoom: 16 });
 }
 
 function selectTrackById(id) {
@@ -8579,7 +8630,7 @@ function saveTracksGPX() {
   downloadText('tracks.gpx', 'application/gpx+xml', () => {
     validateExportCoordinates({ tracks });
     let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">';
-    tracks.forEach(t => {
+    tnTrackRecs().forEach(t => {
       gpx += `<trk><name>${escapeXml(t.name)}</name><extensions><tnd:color>${escapeXml(t.color || '#4a8adf')}</tnd:color><tnd:width>${Number(t.width) || 3}</tnd:width><tnd:pointSize>${Number(t.pointSize ?? 3)}</tnd:pointSize></extensions><trkseg>`;  // theme-check: data
       t.points.forEach((p, i) => {
         if (isTrackSegStart(t, i)) gpx += '</trkseg><trkseg>';
@@ -8646,7 +8697,7 @@ function saveTracksPLT() {
   if (tracks.length === 0) { showToast('Нет треков для сохранения'); return; }
   downloadText('tracks.plt', 'text/plain', () => {
     validateExportCoordinates({ tracks });
-    const exportTracks = tracks.map(track => ({
+    const exportTracks = tnTrackRecs().map(track => ({
       track,
       points: track.points.map((point, index) => ({
         point: parseTrackLatLng(point?.lat, point?.lng),
@@ -8753,7 +8804,7 @@ function loadGPXTracks(text, fname, options = {}) {
         try {
           const dt = (new Date(pointsData[i].time) - new Date(pointsData[i-1].time)) / 1000; // секунды
           if (dt > 0) {
-            const dist = points[i-1].distanceTo(points[i]); // метры
+            const dist = TnGeo.distance(points[i-1], points[i]); // метры
             pointsData[i].speed = dist / dt; // м/с
           }
         } catch(_) {}
@@ -8887,6 +8938,20 @@ function onTrackSpeedChange(val) {
 // МАРШРУТЫ
 // ─────────────────────────────────────────────
 let routes = [], routeIdCounter = 1;
+// Модель маршрутов по КП (MapLibre 0б.4, шаг 1 — чтение): записи без слоёв Leaflet, id 'rte_<n>', rawId.
+function tnRouteRec(r) {
+  const isLayer = v => !!v && typeof v === 'object' && (v._leaflet_id !== undefined || (window.L && v instanceof L.Layer));
+  const rest = Object.fromEntries(Object.entries(r).filter(([k, v]) => k !== 'polyline' && !isLayer(v)));
+  return { ...rest, id: window.TnModel.entityId('route', r.id), rawId: r.id };
+}
+function tnRouteRecs(list = routes) {
+  let ok = false;
+  try {
+    tnModel.reset('route', routes.map(tnRouteRec));
+    ok = tnModel.ids('route').length === routes.length;
+  } catch (e) { console.warn('Модель маршрутов не собрана, читаю маршруты напрямую:', e?.message || e); }
+  return list.map(r => (ok && tnModel.get('route', window.TnModel.entityId('route', r.id))) || tnRouteRec(r));
+}
 let selectedRouteId = null;
 // Импортированные GPX файлы (хранятся для синхронизации)
 let importedGpxFiles = [];
@@ -9170,9 +9235,9 @@ function removeRouteBuildPoint(index) {
 function removeDuplicateRouteDoubleClickPoint() {
   const route = currentRouteDraw;
   if (!route || route.points.length < 2) return false;
-  const previous = map.latLngToContainerPoint(route.points[route.points.length - 2]);
-  const last = map.latLngToContainerPoint(route.points[route.points.length - 1]);
-  if (previous.distanceTo(last) > 6) return false;
+  const previous = tnMap.project(route.points[route.points.length - 2]);
+  const last = tnMap.project(route.points[route.points.length - 1]);
+  if (TnGeo.screenDistance(previous, last) > 6) return false;
   removeRouteBuildPoint(route.points.length - 1);
   return true;
 }
@@ -9227,7 +9292,7 @@ function cancelRouteDraw() {
 }
 function routeLen(r) {
   let d = 0;
-  for (let i = 1; i < r.points.length; i++) d += r.points[i-1].distanceTo(r.points[i]);
+  for (let i = 1; i < r.points.length; i++) d += TnGeo.distance(r.points[i-1], r.points[i]);
   return d / 1000;
 }
 function deleteRoute(id) {
@@ -9493,7 +9558,7 @@ function updateRouteList() {
     const srcTag = r.source && r.source !== 'desktop' ? ` · <span style="font-size:10px;color:var(--text-secondary)">${escapeHtml(r.source)}</span>` : '';
     const kpRows = r.points.map((p, i) => {
       const prev = i > 0 ? r.points[i-1] : null;
-      const dist = prev ? (prev.distanceTo(p)/1000).toFixed(1) + ' км' : '—';
+      const dist = prev ? (TnGeo.distance(prev, p)/1000).toFixed(1) + ' км' : '—';
       const bear = prev ? calcBearing(prev.lat, prev.lng, p.lat, p.lng).toFixed(0) + '°' : '';
       const upBtn = `<button type="button" class="route-kp-btn" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},-1)" title="Выше" aria-label="Выше"${i === 0 ? ' disabled' : ''}>${tnIcon('chevron-up', 'tn-ico-xs')}</button>`;
       const downBtn = `<button type="button" class="route-kp-btn" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},1)" title="Ниже" aria-label="Ниже"${i === r.points.length - 1 ? ' disabled' : ''}>${tnIcon('chevron-down', 'tn-ico-xs')}</button>`;
@@ -9537,7 +9602,7 @@ function saveRoutesGPX() {
   downloadText('routes.gpx', 'application/gpx+xml', () => {
     validateExportCoordinates({ routes });
     let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">';
-    routes.forEach(r => {
+    tnRouteRecs().forEach(r => {
       gpx += `<rte><name>${escapeXml(r.name)}</name><extensions><tnd:color>${escapeXml(r.color || '#4a8adf')}</tnd:color><tnd:width>${Number(r.width) || 3}</tnd:width><tnd:dashArray>${escapeXml(r.dashArray || '')}</tnd:dashArray></extensions>`;  // theme-check: data
       r.points.forEach((p, i) => {
         const radius = Number(r.pointRadii?.[i]) || 0;
@@ -9567,7 +9632,7 @@ function saveRoutesRTE() {
       'Reserved 1',
       'Reserved 2'
     ];
-    routes.forEach((r, idx) => {
+    tnRouteRecs().forEach((r, idx) => {
       rows.push(`R,${idx},${csvField(r.name)},,${hexToOziColor(r.color)}`);
       r.points.forEach((p, i) => rows.push(`W,${idx},${i + 1},${i + 1},${csvField(r.labels?.[i] || `КП${i+1}`)},${p.lat.toFixed(6)},${p.lng.toFixed(6)}`));
     });
@@ -9871,9 +9936,10 @@ function startAreaSelect() {
   dlPolygonPoints = [];
   dlPolygonMarkers = [];
   dlPolygonShape = null;
-  map.getContainer().style.cursor = 'crosshair';
+  tnMap.getContainer().style.cursor = 'crosshair';
   map.dragging.disable();
-  map.on('click', onPolygonClick);
+  dlPolygonClickOff?.();
+  dlPolygonClickOff = tnMap.on('click', onPolygonClick);
   document.addEventListener('keydown', onDlEscape);
   // Show toolbar
   const tb = document.getElementById('polygon-toolbar');
@@ -9886,6 +9952,7 @@ function onDlEscape(e) {
   if (e.key === 'Escape') cancelAreaSelect();
 }
 
+let dlPolygonClickOff = null;  // отписка клика выделения области (фасад tnMap)
 function onPolygonClick(e) {
   if (dlPolygonPoints.length >= 8) {
     showToast('Максимум 8 точек');
@@ -9942,9 +10009,10 @@ function finishPolygon() {
   );
   // Exit polygon mode but keep shapes visible
   dlPolygonMode = false;
-  map.getContainer().style.cursor = '';
+  tnMap.getContainer().style.cursor = '';
   map.dragging.enable();
-  map.off('click', onPolygonClick);
+  dlPolygonClickOff?.();
+  dlPolygonClickOff = null;
   document.removeEventListener('keydown', onDlEscape);
   document.getElementById('polygon-toolbar').style.display = 'none';
   // Store polygon for filtering
@@ -9954,9 +10022,10 @@ function finishPolygon() {
 
 function cancelAreaSelect() {
   dlPolygonMode = false;
-  map.getContainer().style.cursor = '';
+  tnMap.getContainer().style.cursor = '';
   map.dragging.enable();
-  map.off('click', onPolygonClick);
+  dlPolygonClickOff?.();
+  dlPolygonClickOff = null;
   document.removeEventListener('keydown', onDlEscape);
   document.getElementById('polygon-toolbar').style.display = 'none';
   // Cleanup markers & shape
@@ -11291,8 +11360,7 @@ function fitOfflineMapBounds(bounds, maxZoom) {
   if (![north, south, east, west].every(Number.isFinite)) return;
   if (north <= south || east <= west) return;
   try {
-    const mapBounds = L.latLngBounds([south, west], [north, east]);
-    map.fitBounds(mapBounds.pad(0.04), {
+    tnMap.fitBounds(TnMap.padBounds([{ lat: south, lng: west }, { lat: north, lng: east }], 0.04), {
       padding: [24, 24],
       maxZoom: Math.min(Math.max(Number(maxZoom) || 14, 12), 16)
     });
@@ -11649,8 +11717,8 @@ function collectState(options = {}) {
     savedAt: getIsoNow(),
     localStorageCompact: options.localStorageCompact === true,
     map: {
-      center: { lat: map.getCenter().lat, lng: map.getCenter().lng },
-      zoom: map.getZoom(),
+      center: { lat: tnMap.getCenter().lat, lng: tnMap.getCenter().lng },
+      zoom: tnMap.getZoom(),
       layer: currentBaseLayerName,
       // Включённые офлайн-карты (пути) — аддитивное поле; старые версии его не читают
       offline: getOfflineMapPathsForState(),
@@ -11660,29 +11728,25 @@ function collectState(options = {}) {
     counters: { wpCounter, trackIdCounter, routeIdCounter, waypointSetIdCounter },
     waypointSets: waypointSets.map(s => ({ id: s.id, name: s.name, visible: s.visible })),
     activeSetId,
-    waypoints: waypoints.map(m => {
-      ensureWaypointMeta(m, { touch: false });
+    waypoints: (waypoints.forEach(m => ensureWaypointMeta(m, { touch: false })), tnWaypointRecs()).map(d => ({
+      id: d.id,
+      lat: d.lat,
+      lng: d.lng,
+      name: d.name,
+      desc: d.desc,
+      icon: d.icon?.length > 2 ? garminToEmoji(d.icon) : d.icon,
+      color: d.color,
+      radius: d.radius,
+      num: d.num,
+      setId: d.setId,
+      createdAt: d.createdAt || null,
+      updatedAt: d.updatedAt || null,
+      source: d.source || 'desktop',
+      syncedAt: d.syncedAt || null
+    })),
+    tracks: (tracks.forEach(t => { if (!t.isNew) ensureTrackMeta(t, { touch: false }); }), tnTrackRecs(tracks.filter(t => !t.isNew))).map(t => {
       return {
-        id: m.wpData.id,
-        lat: m.wpData.lat,
-        lng: m.wpData.lng,
-        name: m.wpData.name,
-        desc: m.wpData.desc,
-        icon: m.wpData.icon?.length > 2 ? garminToEmoji(m.wpData.icon) : m.wpData.icon,
-        color: m.wpData.color,
-        radius: m.wpData.radius,
-        num: m.wpData.num,
-        setId: m._setId,
-        createdAt: m.wpData.createdAt || null,
-        updatedAt: m.wpData.updatedAt || null,
-        source: m.wpData.source || 'desktop',
-        syncedAt: m.wpData.syncedAt || null
-      };
-    }),
-    tracks: tracks.filter(t => !t.isNew).map(t => {
-      ensureTrackMeta(t, { touch: false });
-      return {
-        id: t.id,
+        id: t.rawId,
         name: t.name,
         color: t.color,
         width: t.width,
@@ -11696,10 +11760,9 @@ function collectState(options = {}) {
         syncedAt: t.syncedAt || null
       };
     }),
-    routes: routes.filter(r => !r.isNew && r.points?.length >= 2).map(r => {
-      ensureRouteMeta(r, { touch: false });
+    routes: (routes.forEach(r => { if (!r.isNew && r.points?.length >= 2) ensureRouteMeta(r, { touch: false }); }), tnRouteRecs(routes.filter(r => !r.isNew && r.points?.length >= 2))).map(r => {
       return {
-        id: r.id,
+        id: r.rawId,
         name: r.name,
         color: r.color,
         width: r.width,
@@ -12435,8 +12498,7 @@ function applyState(state) {
     state.waypoints.forEach(wp => {
       const latlng = L.latLng(wp.lat, wp.lng);
       wpCounter = Math.max(wpCounter, (wp.num || 0) + 1);
-      const marker = L.marker(latlng, makeWaypointMarkerOptions(wp));
-      marker.wpData = {
+      const marker = createWaypointMarker({
         id: wp.id || null,
         name: wp.name, desc: wp.desc || '', icon: wp.icon || '⬤',
         color: wp.color, radius: wp.radius || 0,
@@ -12445,14 +12507,7 @@ function applyState(state) {
         updatedAt: wp.updatedAt || null,
         source: wp.source || 'desktop',
         syncedAt: wp.syncedAt || null
-      };
-      marker.addTo(map);
-      refreshWaypoint(marker, { touch: false });
-      marker.on('contextmenu', e => { L.DomEvent.stop(e); if (e.originalEvent) { e.originalEvent.preventDefault(); e.originalEvent.stopPropagation(); } showCtxMenu(e.originalEvent, marker); });
-      marker.on('click', e => { L.DomEvent.stop(e); if (e.originalEvent) e.originalEvent.stopPropagation(); if (isRouteCaptureMode()) { addRoutePoint(marker.getLatLng(), marker.wpData.name, { radius: marker.wpData.radius, waypointId: marker.wpData.id }); return; } openQuickRename(marker); });
-      marker.on('dragstart', () => { marker.closePopup(); });
-      marker.on('drag', () => { marker.wpData.lat = marker.getLatLng().lat; marker.wpData.lng = marker.getLatLng().lng; if (marker.wpCircle) marker.wpCircle.setLatLng(marker.getLatLng()); });
-      marker.on('dragend', () => { refreshWaypoint(marker); updateWptTable(); });
+      }, { latlng, optionsFrom: wp });
       waypoints.push(marker);
       const targetSetId = wp.setId;
       marker._setId = targetSetId;
@@ -12601,7 +12656,8 @@ function applyState(state) {
       pendingOfflineMapRestore = state.map.offline.filter(path => typeof path === 'string' && path);
     }
     if (state.map.center && state.map.zoom != null) {
-      map.setView([state.map.center.lat, state.map.center.lng], state.map.zoom);
+      // битый центр в старом файле — вид не меняем, остальное состояние загружается
+      try { tnMap.setView({ center: state.map.center, zoom: state.map.zoom }); } catch (e) { console.warn('Вид карты из состояния пропущен:', e?.message || e); }
     }
   }
 
@@ -12662,7 +12718,7 @@ function addRulerPoint(latlng, options = {}) {
 
   if (rulerPoints.length > 1) {
     const prev = rulerPoints[rulerPoints.length - 2];
-    const segDist = prev.distanceTo(latlng);
+    const segDist = TnGeo.distance(prev, latlng);
     rulerTotalDist += segDist;
     const line = L.polyline([prev, latlng], {
       color: '#ff6a00', weight: 2, dashArray: '6 4', opacity: 0.8  // theme-check: data
@@ -14356,12 +14412,12 @@ function waitForFirstPaint() {
   // Восстановить позицию карты из localStorage
   const savedView = localStorage.getItem('tnd-map-view');
   if (savedView) {
-    try { const v = JSON.parse(savedView); map.setView([v.lat, v.lng], v.zoom); } catch {}
+    try { const v = JSON.parse(savedView); tnMap.setView({ center: { lat: v.lat, lng: v.lng }, zoom: v.zoom }); } catch {}
   }
   // Сохранять позицию карты при перемещении
-  map.on('moveend', () => {
-    const c = map.getCenter();
-    localStorage.setItem('tnd-map-view', JSON.stringify({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }));
+  tnMap.on('moveend', () => {
+    const c = tnMap.getCenter();
+    localStorage.setItem('tnd-map-view', JSON.stringify({ lat: c.lat, lng: c.lng, zoom: tnMap.getZoom() }));
     TileCache.clearPrefetchQueue(); // сброс устаревшей очереди
   });
   // Trial / License — используем аппаратный ID
@@ -14469,14 +14525,14 @@ function rrMatchTrackToRoute(track, route, radius) {
 
     // Ищем ПЕРВОЕ попадание трека в радиус КП, начиная с searchFrom
     for (let ti = searchFrom; ti < track.points.length; ti++) {
-      const d = cp.distanceTo(track.points[ti]);
+      const d = TnGeo.distance(cp, track.points[ti]);
       if (d < cpRadius) {
         // Нашли вход в радиус — теперь ищем ближайшую точку в этом "проходе"
         foundIdx = ti;
         foundDist = d;
         // Продолжаем пока трек внутри радиуса, берём ближайшую
         for (let tj = ti + 1; tj < track.points.length; tj++) {
-          const d2 = cp.distanceTo(track.points[tj]);
+          const d2 = TnGeo.distance(cp, track.points[tj]);
           if (d2 >= cpRadius) break; // вышли из радиуса
           if (d2 < foundDist) { foundIdx = tj; foundDist = d2; }
         }
@@ -14510,7 +14566,7 @@ function rrAnalyzeSlice(track, fromIdx, toIdx) {
   const stops = [];
 
   for (let i = fromIdx + 1; i <= toIdx; i++) {
-    const segDist = pts[i - 1].distanceTo(pts[i]);
+    const segDist = TnGeo.distance(pts[i - 1], pts[i]);
     dist += segDist;
     const d = pd[i], dPrev = pd[i - 1];
     if (d?.ele != null && dPrev?.ele != null) {
@@ -14560,7 +14616,7 @@ function rrAnalyzeSlice(track, fromIdx, toIdx) {
   const t1 = pd[toIdx]?.time ? new Date(pd[toIdx].time) : null;
   const totalTime = t0 && t1 ? (t1 - t0) / 1000 : null;
   const moveTime = totalTime != null ? totalTime - stopTime : null;
-  const straightDist = pts[fromIdx].distanceTo(pts[toIdx]);
+  const straightDist = TnGeo.distance(pts[fromIdx], pts[toIdx]);
   const efficiency = dist > 0 ? (straightDist / dist * 100) : 100;
 
   return {
@@ -14584,8 +14640,11 @@ function rrGenerate() {
   const radius = parseInt(document.getElementById('rr-cp-radius').value) || 30;
   const startMode = document.querySelector('input[name="rr-start-mode"]:checked')?.value || 'auto';
 
-  const track = tracks.find(t => t.id === trackId);
-  const route = routes.find(r => r.id === routeId);
+  // Race Report читает записи модели (MapLibre 0б.4): простые {lat,lng}, без слоёв Leaflet
+  const trackObj = tracks.find(t => t.id === trackId);
+  const routeObj = routes.find(r => r.id === routeId);
+  const track = trackObj ? tnTrackRecs([trackObj])[0] : null;
+  const route = routeObj ? tnRouteRecs([routeObj])[0] : null;
   if (!track) { showToast('Выберите трек с таймштампами'); return; }
   if (!route) { showToast('Выберите маршрут'); return; }
 
@@ -14757,7 +14816,7 @@ async function rrRenderCharts() {
   // Build distance array for speed line chart
   const distances = [0];
   for (let i = raceStartIdx + 1; i <= raceEndIdx; i++) {
-    distances.push(distances[distances.length - 1] + pts[i - 1].distanceTo(pts[i]));
+    distances.push(distances[distances.length - 1] + TnGeo.distance(pts[i - 1], pts[i]));
   }
   const distKm = distances.map(d => +(d / 1000).toFixed(3));
 
@@ -14767,7 +14826,7 @@ async function rrRenderCharts() {
     let spd = pd[i]?.speed;
     if (spd == null && i > raceStartIdx && pd[i]?.time && pd[i-1]?.time) {
       const dt = (new Date(pd[i].time) - new Date(pd[i-1].time)) / 1000;
-      const d = pts[i-1].distanceTo(pts[i]);
+      const d = TnGeo.distance(pts[i-1], pts[i]);
       spd = dt > 0 ? d / dt : 0;
     }
     speeds.push(spd != null ? spd * 3.6 : 0);
@@ -14935,7 +14994,7 @@ function rrRenderMapOverlays() {
     let spd = pd[i]?.speed;
     if (spd == null && i > rStart && pd[i]?.time && pd[i-1]?.time) {
       const dt = (new Date(pd[i].time) - new Date(pd[i-1].time)) / 1000;
-      spd = dt > 0 ? pts[i-1].distanceTo(pts[i]) / dt : 0;
+      spd = dt > 0 ? TnGeo.distance(pts[i-1], pts[i]) / dt : 0;
     }
     speeds.push(spd != null ? spd * 3.6 : 0);
   }
@@ -15003,8 +15062,7 @@ function rrZoomSegment(fromIdx, toIdx) {
   if (!rrData) return;
   const pts = rrData.track.points.slice(fromIdx, toIdx + 1);
   if (pts.length > 0) {
-    const bounds = L.latLngBounds(pts);
-    map.fitBounds(bounds.pad(0.15));
+    tnMap.fitBounds(TnMap.padBounds(TnMap.boundsOf(pts, 'rr'), 0.15));
   }
 }
 
@@ -15313,7 +15371,7 @@ async function setFullscreen(on, { remember = true } = {}) {
   }
   const label = document.querySelector('#menu-fullscreen [data-fs-label]');
   if (label) label.textContent = on ? 'Выйти из полного экрана' : 'Во весь экран';
-  setTimeout(() => map.invalidateSize(), 150);
+  setTimeout(() => tnMap.resize(), 150);
 }
 async function toggleFullscreen() { await setFullscreen(!(await tndIsFullscreen())); }
 
@@ -15462,7 +15520,7 @@ function photonDisplayName(p) {
 async function geocode(query, limit = 5) {
   const errors = [];
   try {
-    const c = typeof map !== 'undefined' && map?.getCenter ? map.getCenter() : null;
+    const c = typeof tnMap !== 'undefined' ? tnMap.getCenter() : null;
     const bias = c ? `&lat=${c.lat.toFixed(4)}&lon=${c.lng.toFixed(4)}` : '';
     // lang=default — местные (русские) названия: иначе Photon берёт язык системы, и на английской Windows
     // выдавал «Razmetelevo, Leningrad Oblast» (Андрей 09.10)
@@ -15537,7 +15595,7 @@ function searchResultArgs(el) {
 function goToSearchResult(lat, lon, name) {
   if (searchMarker) map.removeLayer(searchMarker);
   const ll = L.latLng(lat, lon);
-  map.flyTo(ll, 15, { duration: 1 });
+  tnMap.flyTo(ll, 15, { durationMs: 1000 });
   const safeName = escapeHtml(name);
   searchMarker = L.marker(ll, {
     icon: L.divIcon({
@@ -15630,7 +15688,7 @@ function updateOsrmPickUI() {
   if (hintText && routePickMode) hintText.textContent = routePickMode === 'A'
     ? 'Выберите СТАРТ на карте'
     : 'Выберите ФИНИШ на карте';
-  map.getContainer().classList.toggle('osrm-route-picking', !!routePickMode);
+  tnMap.getContainer().classList.toggle('osrm-route-picking', !!routePickMode);
 }
 
 function cancelRoutePick(showMessage = false) {
@@ -15676,7 +15734,7 @@ function startRoutePick(point) {
   return true;
 }
 
-map.on('click', function(e) {
+tnMap.on('click', function(e) {
   if (!routePickMode) return;
   const pickedPoint = routePickMode;
   setOsrmEndpoint(pickedPoint, e.latlng);
@@ -15984,7 +16042,7 @@ function renderOsrmRouteList() {
 }
 
 function fitOsrmRouteOnMap(route) {
-  const mapRect = map.getContainer().getBoundingClientRect();
+  const mapRect = tnMap.getContainer().getBoundingClientRect();
   const routingOverlay = document.getElementById('modal-routing');
   const routingPanel = document.getElementById('modal-routing-win');
   const panelRect = routingOverlay?.classList.contains('open') && routingPanel
@@ -15993,7 +16051,7 @@ function fitOsrmRouteOnMap(route) {
   const rightOcclusion = panelRect && panelRect.left >= mapRect.left + mapRect.width / 2
     ? Math.max(0, mapRect.right - panelRect.left) + 24
     : 40;
-  map.fitBounds(L.latLngBounds(route.coords).pad(0.05), {
+  tnMap.fitBounds(TnMap.padBounds(TnMap.boundsOf(route.coords.map(([lat, lng]) => ({ lat, lng })), 'osrm'), 0.05), {
     paddingTopLeft: [40, 40],
     paddingBottomRight: [rightOcclusion, 40]
   });
@@ -16402,7 +16460,7 @@ function liveAppendTrail(dev) {
     return;
   }
   const last = entry.points[entry.points.length - 1];
-  if (last && last.distanceTo(latlng) < 8) {
+  if (last && TnGeo.distance(last, latlng) < 8) {
     entry.polyline.setStyle({ color: liveMarkerColor(dev) });
     return;
   }
@@ -17828,14 +17886,13 @@ function liveUpdateDot(status) {
 }
 
 function liveZoomTo(lat, lon) {
-  map.setView([lat, lon], Math.max(map.getZoom(), 14), { animate: true });
+  tnMap.setView({ center: { lat: Number(lat), lng: Number(lon) }, zoom: Math.max(tnMap.getZoom(), 14) }, { animate: true });
 }
 
 function liveShowAll() {
   const markers = Object.values(liveState.markers);
   if (markers.length === 0) return;
-  const group = L.featureGroup(markers);
-  map.fitBounds(group.getBounds().pad(0.1));
+  tnMap.fitBounds(TnMap.padBounds(TnMap.boundsOf(markers.map(m => m.getLatLng()), 'live'), 0.1));
 }
 
 liveLoadCache();

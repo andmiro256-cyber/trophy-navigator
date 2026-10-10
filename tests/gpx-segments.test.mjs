@@ -29,7 +29,7 @@ test('GPX: все trkseg трека — один трек, начало куск
 
 test('отрисовка, длина и выгрузка в GPX учитывают разрывы', () => {
   assert.doesNotMatch(html, /polyline\.setLatLngs\((t|track)\.points\)/, 'все обновления линии трека — через trackLatLngs');
-  assert.match(html, /if \(!isTrackSegStart\(t, i\)\) d \+= t\.points\[i-1\]\.distanceTo\(t\.points\[i\]\);/);
+  assert.match(html, /if \(!isTrackSegStart\(t, i\)\) d \+= TnGeo\.distance\(t\.points\[i-1\], t\.points\[i\]\);/);
   assert.equal((html.match(/if \(isTrackSegStart\(t, i\)\) gpx \+= /g) || []).length, 3, 'три выгрузки GPX рвут trkseg');
 });
 
@@ -47,7 +47,7 @@ test('своя ручка размера окна (Linux: за уголок CSS 
 test('клик по треку в списке — карта переходит к нему, окно не закрывает трек (Андрей 09.10)', () => {
   assert.match(html, /onclick="selectTrackById\(\$\{t\.id\}\);focusTrackOnMap\(\$\{t\.id\}\)"/);
   assert.match(html, /function focusTrackOnMap\(id\)/);
-  assert.match(html, /map\.fitBounds\(L\.latLngBounds\(t\.points\), \{ paddingTopLeft: \[left, 30\], paddingBottomRight: \[right, 30\], maxZoom: 16 \}\)/);
+  assert.match(html, /tnMap\.fitBounds\(t\.points, \{ paddingTopLeft: \[left, 30\], paddingBottomRight: \[right, 30\], maxZoom: 16 \}\)/);
 });
 
 test('окно треков: свойства и плеер под спойлером (свёрнуты, состояние помнится; Андрей 09.10)', () => {

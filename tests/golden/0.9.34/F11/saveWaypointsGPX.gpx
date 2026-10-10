@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">
+  <wpt lat="59.900000" lon="30.300000">
+    <name>КП Север</name>
+    <desc>Описание, ёжик</desc>
+    <sym>⬤</sym>
+    <extensions>
+      <tnd:color>#ff0000</tnd:color>
+      <tnd:radius>75</tnd:radius>
+    </extensions>
+  </wpt>
+  <wpt lat="59.901000" lon="30.302000">
+    <name>КП Юг</name>
+    <desc>Лесная дорога</desc>
+    <sym>⬤</sym>
+    <extensions>
+      <tnd:color>#00ff00</tnd:color>
+      <tnd:radius>125</tnd:radius>
+    </extensions>
+  </wpt>
+</gpx>

@@ -7,7 +7,7 @@
  *
  * Записи:
  *   WaypointRec { id, lat, lng, name, desc, icon, color, radius, num, setId, createdAt, updatedAt, … } — = wpData
- *   TrackRec    { id, name, color, width, pointSize, visible, setId?, points: LatLng[], pointsData: PointData[] }
+ *   TrackRec    { id, rawId?, name, color, width, pointSize, visible, setId?, points: LatLng[], pointsData?: PointData[] } — pointsData по индексу точки, как есть (может быть короче)
  *   RouteRec    { id, name, color, width, dashArray, visible, points: LatLng[], labels[], pointRadii[], pointWaypointIds[] }
  *   PointData   { time?, ele?, speed?, course?, hdop?, …, seg?: 1 } — seg: начало куска трека (GPX trkseg, 0.9.34)
  * Координаты в модели — только {lat, lng} (не L.LatLng и не LngLat); невалидная точка на входе — ошибка,
@@ -34,8 +34,9 @@
 
   /** {lat,lng} из чего угодно с полями lat/lng (L.LatLng, запись), с проверкой. */
   function plainLatLng(p, where) {
-    const q = p && { lat: Number(p.lat), lng: Number(p.lng) };
-    if (!q || p.lat === null || p.lng === null || !Geo().isValidLatLng(q)) {
+    // только числа: Number(null), Number('') и Number(undefined→NaN) не должны давать точку «0,0»
+    const q = p && { lat: p.lat, lng: p.lng };
+    if (!q || !Geo().isValidLatLng(q)) {
       throw new TypeError(`tn-model: невалидная точка${where ? ' в ' + where : ''}: ${JSON.stringify(p && { lat: p.lat, lng: p.lng })}`);
     }
     return q;
@@ -50,7 +51,9 @@
     }
     const points = (rec.points || []).map((p, i) => plainLatLng(p, `${kind} ${rec.id} #${i}`));
     const out = { ...rec, points };
-    if (kind === 'track') out.pointsData = points.map((_, i) => ({ ...(rec.pointsData?.[i] || {}) }));
+    // pointsData — как есть (длина и пустые места не меняются: collectState пишет массив дословно);
+    // объекты копируются, чтобы модель не делила их с вызывающим
+    if (kind === 'track' && Array.isArray(rec.pointsData)) out.pointsData = rec.pointsData.map(d => (d && typeof d === 'object' ? { ...d } : d));
     return out;
   }
 
