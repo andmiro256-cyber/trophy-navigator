@@ -118,7 +118,7 @@ test('DEB auto-update warns about the administrator password before installing',
 
 test('manual Linux updates show a download action and never call auto-install', () => {
   assert.match(html, /function setManualUpdateButton\(url\)[\s\S]*?openExternalUrl\(url\)/);
-  assert.match(html, /if \(!update\.canAutoInstall \|\| !pendingUpdateRid\)[\s\S]*?Автоустановка недоступна[^`]*скачайте пакет вручную/);
+  assert.match(html, /if \(!update\.canAutoInstall \|\| !pendingUpdateRid\)[\s\S]*?Для этой Linux-установки обновление ставится вручную/);
   assert.match(html, /else if \(pendingManualUpdateUrl\)[\s\S]*?setManualUpdateButton\(pendingManualUpdateUrl\)/);
 
   const startupCheck = html.indexOf('if (!update.canAutoInstall || !update.rid)');

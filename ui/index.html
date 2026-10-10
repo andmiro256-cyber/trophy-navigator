@@ -51,6 +51,28 @@
   .tn-icon-btn.danger:hover { color: var(--error-text); }
   .tn-icon-btn:disabled { opacity: 0.35; cursor: default; color: var(--text-secondary); }
   .tn-ico.tn-ico-t { width: 16px; height: 16px; display: inline-block; vertical-align: -3px; margin-right: 6px; }
+  /* 0.9.37: приветствие и «О программе» — фирменная шапка (компас, название, девиз) */
+  .tnd-logo { display: block; margin: 0 auto 8px; width: 72px; height: 72px; border-radius: var(--radius-m); }
+  .tnd-brand-name { font-size: var(--fs-xl); font-weight: 700; color: var(--text-primary); text-align: center; }
+  .tnd-brand-tagline { font-size: var(--fs-s); color: var(--text-secondary); text-align: center; margin-top: 2px; }
+  .tnd-welcome { background: var(--surface); border: 1px solid var(--card-stroke); border-radius: var(--radius-l); box-shadow: var(--shadow-3); padding: 24px; width: 420px; max-width: calc(100vw - 32px); }
+  .tnd-welcome-tips { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; font-size: var(--fs-m); color: var(--text-primary); }
+  .tnd-welcome-tip { display: flex; align-items: center; gap: 10px; }
+  .tnd-about { padding: 20px 18px; overflow-y: auto; max-height: calc(100vh - 120px); }
+  .tnd-about-card { background: var(--surface-variant); border: 1px solid var(--card-stroke); border-radius: var(--radius-m); padding: 4px 14px; margin: 16px 0 12px; font-size: var(--fs-m); }
+  .tnd-about-row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--card-stroke); }
+  .tnd-about-row:last-child { border-bottom: 0; }
+  .tnd-about-row > span:first-child { color: var(--text-secondary); }
+  .tnd-about-row > span:last-child { color: var(--text-primary); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tnd-about-strong { color: var(--primary-text) !important; }
+  .tnd-about-update { width: 100%; justify-content: center; }
+  .tnd-about-status { font-size: var(--fs-s); min-height: 18px; text-align: center; margin: 8px 0 12px; display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
+  .tnd-about-list { margin: 4px 0 8px; padding-left: 18px; font-size: var(--fs-m); color: var(--text-primary); line-height: 1.5; }
+  .tnd-about-list li { margin: 4px 0; }
+  .tnd-about-keys { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; padding: 6px 8px 10px; font-size: var(--fs-s); color: var(--text-secondary); }
+  .tnd-about-foot { text-align: center; font-size: var(--fs-xs); color: var(--text-muted); margin-top: 8px; }
+  .tnd-welcome-tip .tn-ico { color: var(--primary-text); flex: 0 0 auto; }
+  .tnd-welcome kbd, .tnd-about kbd { background: var(--surface-variant); border: 1px solid var(--card-stroke); border-radius: var(--radius-xs); padding: 0 5px; font-family: var(--font-mono); font-size: var(--fs-s); }
   .tn-ico.tn-ico-m { color: var(--text-secondary); }
   .modal-close .tn-ico { width: 20px; height: 20px; }
   .modal-title { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
@@ -113,7 +135,7 @@
     color: var(--primary-text);
   }
   .tb-tag.active, .tb-tag.mode-active { background-color: var(--primary); background-image: none; color: var(--on-primary); box-shadow: 0 0 0 3px var(--primary-ring); }
-  /* Плитка с подписью под иконкой (Точки, Треки, Офлайн карты, Синхр., Live, Сервер, Настройки) */
+  /* Плитка с подписью под иконкой (Точки, Треки, Офлайн-карты, Синхр., Live, Сервер, Настройки) */
   .tb-group-label, .tb-btn.tb-captioned { flex-direction: column; gap: 1px; min-width: 64px; padding: 2px 8px; }
   .tb-group-label .tn-ico, .tb-btn.tb-captioned .tn-ico { width: 20px; height: 20px; }
   .tb-cap, .tb-btn.tb-captioned .tb-text { font-size: 10.5px; font-weight: 600; letter-spacing: 0; line-height: 1.15; }
@@ -322,7 +344,7 @@
   body.tn-widgets-on .leaflet-bottom { bottom: var(--tn-widgets-bottom, 58px); }
   body.tn-widgets-on #tn-widgets-toggle { bottom: 16px; }
   #statusbar .highlight { color: var(--text-secondary); font-weight: 500; }
-  #statusbar .app-version { margin-left: auto; color: var(--text-hint); font-size: 10px; }
+  #statusbar .app-version { margin-left: auto; color: var(--text-muted); font-size: var(--fs-xs); }  /* 0.9.37: читаемо (было hint 10 px, контраст < 3) */
 
   /* ─── МОДАЛЬНЫЕ ОКНА — как диалоги Android: поверхность surface, заголовок полужирный ─── */
   .modal-overlay { display: none; position: fixed; inset: 0; z-index: 4100; pointer-events: none; }
@@ -1010,7 +1032,7 @@
     .tb-btn, .tb-group-label, .tb-tag { min-width: 38px; padding: 0 5px; height: 38px; }
     .tb-tag { width: 38px; padding: 0; }
     .tb-group-label { min-width: 48px; padding: 1px 4px; }
-    .tb-cap { font-size: 9.5px; }
+    .tb-cap { font-size: 10px; }
     .tn-ico { width: 20px; height: 20px; }
     .toolbar-search-box { height: 38px; }
     .tb-sep { height: 28px; margin: 0 1px; }
@@ -1023,7 +1045,7 @@
     .tools-sep { display: none !important; }
     #btn-more-tools { display: flex; }
     .settings-main-btn .tb-text { display: none; }
-    #statusbar { height: 20px; font-size: 9px; padding: 2px 8px; gap: 10px; }
+    #statusbar { height: 20px; font-size: 10px; padding: 2px 8px; gap: 10px; }
     #live-sidebar { width: 200px; top: 46px; right: 8px; }
     .modal { max-height: 70vh; min-width: 280px; }
     .modal-body { padding: 6px 12px 12px; }
@@ -1123,7 +1145,7 @@
     margin-top: 3px; text-shadow: 0 1px 3px var(--map-halo), 0 0 6px var(--map-shadow);
   }
   .live-marker-label.pro { color: var(--map-pro); }
-  .live-marker-speed { font-size: 9px; color: var(--map-ink-muted); text-align: center; text-shadow: 0 1px 2px var(--map-halo); }
+  .live-marker-speed { font-size: 10px; color: var(--map-ink-muted); text-align: center; text-shadow: 0 1px 2px var(--map-halo); }
 
   /* ─── RACE REPORT ─── */
   #race-report-panel {
@@ -1186,7 +1208,7 @@
     padding: 4px 8px; font-size: 10px; color: var(--text-primary); white-space: nowrap; z-index: 5;
   }
   .rr-tl-seg:hover .rr-tl-tip { display: block; }
-  .rr-tl-labels { display: flex; font-size: 9px; color: var(--text-muted); position: relative; height: 14px; }
+  .rr-tl-labels { display: flex; font-size: 10px; color: var(--text-muted); position: relative; height: 14px; }
   /* Charts */
   .rr-charts { display: flex; gap: 12px; flex: 1; min-height: 0; }
   .rr-chart-wrap { flex: 1; position: relative; min-height: 120px; }
@@ -1388,7 +1410,7 @@
   <div class="tb-sep tools-sep"></div>
 
   <!-- Инструменты -->
-  <button class="tb-btn tb-captioned offline-btn desktop-overflow-tool" onclick="openModal('modal-offline');scanOfflineMaps()" title="Офлайн карты — скачать и загрузить (D)"><span class="tb-icon"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-download"/></svg></span><span class="tb-text">Офлайн карты</span></button>
+  <button class="tb-btn tb-captioned offline-btn desktop-overflow-tool" onclick="openModal('modal-offline');scanOfflineMaps()" title="Офлайн-карты — скачать и загрузить (D)"><span class="tb-icon"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-download"/></svg></span><span class="tb-text">Офлайн-карты</span></button>
 
   <!-- Синхронизация -->
   <button class="tb-btn tb-captioned sync-btn desktop-overflow-tool" onclick="openSyncModal()" title="Синхронизация с сервером"><span class="tb-icon"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-cloud-sync"/></svg></span><span class="tb-text">Синхр.</span></button>
@@ -2201,12 +2223,12 @@
 <div class="modal-overlay" id="modal-offline">
   <div class="modal" id="modal-offline-win" style="top:60px;left:300px;width:420px">
     <div class="modal-header" onmousedown="startDrag(event,'modal-offline-win')">
-      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-download"/></svg>Офлайн карты</span>
+      <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-download"/></svg>Офлайн-карты</span>
       <button type="button" class="modal-close" onclick="closeModal('modal-offline')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
     <div class="modal-body">
       <div class="settings-tabs" role="tablist" aria-label="Разделы офлайн-карт">
-        <button type="button" role="tab" aria-selected="true" aria-controls="tab-offline-list" class="tab-btn active" onclick="switchTab(this,'tab-offline-list')">Мои карты</button>
+        <button type="button" role="tab" aria-selected="true" aria-controls="tab-offline-list" class="tab-btn active" onclick="switchTab(this,'tab-offline-list')">Скачанные карты</button>
         <button type="button" role="tab" aria-selected="false" aria-controls="tab-offline-download" class="tab-btn" onclick="switchTab(this,'tab-offline-download')">Скачать</button>
         <button type="button" role="tab" aria-selected="false" aria-controls="tab-offline-load" class="tab-btn" onclick="switchTab(this,'tab-offline-load')">Загрузить файл</button>
       </div>
@@ -2216,7 +2238,7 @@
         <div id="offline-maps-list"></div>
         <div id="offline-maps-empty" style="background:var(--bg-sunken);border:1px dashed var(--border-normal);border-radius:6px;padding:24px;text-align:center;color:var(--text-muted);font-size:12px">
           <svg class="tn-ico tn-ico-xl tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>
-          <div style="color:var(--text-secondary);margin-bottom:4px">Офлайн карты не найдены</div>
+          <div style="color:var(--text-secondary);margin-bottom:4px">Офлайн-карты не найдены</div>
           <div style="font-size:11px">Скачайте карту через «Скачать» или загрузите .sqlitedb файл</div>
         </div>
         <button class="btn-secondary" style="width:100%;margin-top:8px;font-size:11px" onclick="scanOfflineMaps()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-refresh"/></svg>Обновить список</button>
@@ -2248,7 +2270,7 @@
           <div>• <b style="color:var(--text-secondary)">.sqlitedb</b> — RMaps / Locus Maps</div>
           <div>• <b style="color:var(--text-secondary)">.mbtiles</b> — стандарт MBTiles</div>
           <div>• <b style="color:var(--text-secondary)">.rmap</b> — OziExplorer растровые карты</div>
-          <div style="margin-top:8px;color:var(--text-muted)">Подключённая карта появится в списке "Мои карты" и будет доступна в переключателе слоёв</div>
+          <div style="margin-top:8px;color:var(--text-muted)">Подключённая карта появится в списке «Скачанные карты» и будет доступна в переключателе слоёв</div>
         </div>
       </div>
 
@@ -2415,7 +2437,7 @@
       </div>
       <div class="dialog-actions">
         <button type="button" class="btn-text" onclick="dialogCancel()">Отмена</button>
-        <button type="button" class="btn-text" id="modal-dialog-ok" onclick="dialogOk()">OK</button>
+        <button type="button" class="btn-text" id="modal-dialog-ok" onclick="dialogOk()">Да</button>
       </div>
     </div>
   </div>
@@ -2534,16 +2556,16 @@
       </div>
 
       <!-- Premium карты (требуют лицензию) -->
-      <div class="layer-section-title" data-sec="premium" style="margin-top:8px" id="premium-layers-title">Premium карты <span style="font-size:9px;color:var(--accent-amber)" id="premium-badge"></span></div>
+      <div class="layer-section-title" data-sec="premium" style="margin-top:8px" id="premium-layers-title">Premium карты <span style="font-size:10px;color:var(--accent-amber)" id="premium-badge"></span></div>
       <div id="premium-layers-container">
         <div id="catalog-base-layers">
-          <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">Яндекс</div>
+          <div class="layer-section-title" style="margin-top:4px;font-size:10px;border:none;padding:0">Яндекс</div>
           <div class="base-layer premium-layer" data-layer="Яндекс Схема" onclick="setLayerPremium('Яндекс Схема', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>Яндекс Схема</div>
           <div class="base-layer premium-layer" data-layer="Яндекс Гибрид" onclick="setLayerPremium('Яндекс Гибрид', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-satellite"/></svg>Яндекс Гибрид</div>
           <div class="base-layer premium-layer" data-layer="Яндекс Спутник" onclick="setLayerPremium('Яндекс Спутник', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-satellite"/></svg>Яндекс Спутник</div>
           <div class="base-layer premium-layer" data-layer="Космоснимки рельеф" onclick="setLayerPremium('Космоснимки рельеф', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-terrain"/></svg>Космоснимки</div>
 
-          <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">Google / Bing / ESRI</div>
+          <div class="layer-section-title" style="margin-top:4px;font-size:10px;border:none;padding:0">Google / Bing / ESRI</div>
           <div class="base-layer premium-layer" data-layer="2GIS" onclick="setLayerPremium('2GIS', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>2GIS</div>
           <div class="base-layer premium-layer" data-layer="Спутник Google" onclick="setLayerPremium('Спутник Google', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-satellite"/></svg>Спутник Google</div>
           <div class="base-layer premium-layer" data-layer="Карты Google" onclick="setLayerPremium('Карты Google', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>Карты Google</div>
@@ -2554,7 +2576,7 @@
           <div class="base-layer premium-layer" data-layer="Спутник ESRI" onclick="setLayerPremium('Спутник ESRI', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-satellite"/></svg>Спутник ESRI</div>
           <div class="base-layer premium-layer" data-layer="ESRI Clarity" onclick="setLayerPremium('ESRI Clarity', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-satellite"/></svg>ESRI Clarity</div>
 
-          <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">Thunderforest / Прочие</div>
+          <div class="layer-section-title" style="margin-top:4px;font-size:10px;border:none;padding:0">Thunderforest / Прочие</div>
           <div class="base-layer premium-layer" data-layer="TF Outdoors" onclick="setLayerPremium('TF Outdoors', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-terrain"/></svg>TF Outdoors</div>
           <div class="base-layer premium-layer" data-layer="LoMaps" onclick="setLayerPremium('LoMaps', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>LoMaps</div>
           <div class="base-layer premium-layer" data-layer="TF Transport" onclick="setLayerPremium('TF Transport', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>TF Transport</div>
@@ -2562,7 +2584,7 @@
           <div class="base-layer premium-layer" data-layer="MTB Map" onclick="setLayerPremium('MTB Map', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-bike"/></svg>MTB Map</div>
           <div class="base-layer premium-layer" data-layer="Michelin" onclick="setLayerPremium('Michelin', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>Michelin</div>
 
-          <div class="layer-section-title" style="margin-top:4px;font-size:9px;border:none;padding:0">ГГЦ / Генштаб (nakarte.me)</div>
+          <div class="layer-section-title" style="margin-top:4px;font-size:10px;border:none;padding:0">ГГЦ / Генштаб (nakarte.me)</div>
           <div class="base-layer premium-layer" data-layer="ГГЦ 250м" onclick="setLayerPremium('ГГЦ 250м', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>ГГЦ 250м</div>
           <div class="base-layer premium-layer" data-layer="ГГЦ 500м" onclick="setLayerPremium('ГГЦ 500м', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>ГГЦ 500м</div>
           <div class="base-layer premium-layer" data-layer="ГГЦ 1км" onclick="setLayerPremium('ГГЦ 1км', this)"><svg class="tn-ico tn-ico-t tn-ico-m" aria-hidden="true"><use href="#tn-i-map"/></svg>ГГЦ 1км</div>
@@ -3048,7 +3070,7 @@ function onSetSelectChange(sel) {
 }
 
 async function promptNewSet() {
-  const name = await tndPrompt('Название нового набора:');
+  const name = await tndPrompt('Название нового набора:', '', 'Новый набор', 'Создать');
   if (!name || !name.trim()) return;
   createWaypointSet(name.trim());
   updateWptTable();
@@ -3951,7 +3973,7 @@ function updateWptTable() {
     const d = m.wpData;
     const idx = waypoints.indexOf(m);
     const syncBadge = d.syncedAt ? `<span title="Синхр. с ${d.source === 'android' ? 'Android' : 'desktop'} · ${escapeHtml(new Date(d.syncedAt).toLocaleString('ru-RU'))}" style="font-size:10px;opacity:0.7;margin-left:2px">☁</span>` : '';
-    const srcHint = d.source && d.source !== 'desktop' ? `<span style="font-size:9px;color:var(--text-muted);margin-left:3px">${escapeHtml(d.source)}</span>` : '';
+    const srcHint = d.source && d.source !== 'desktop' ? `<span style="font-size:10px;color:var(--text-muted);margin-left:3px">${escapeHtml(d.source)}</span>` : '';
     return `<tr oncontextmenu="showCtxMenuTable(event,${idx})" onclick="map.panTo([${safeNum(d.lat)},${safeNum(d.lng)}])">
       <td class="wpt-cb-cell" onclick="event.stopPropagation()"><label for="wpt-cb-${idx}"><input type="checkbox" id="wpt-cb-${idx}" class="wpt-cb" data-idx="${idx}"></label></td>
       <td class="wpt-pick-cell" onclick="event.stopPropagation()"><label for="wpt-cb-${idx}"><span class="wpt-icon" style="background:${safeCssColor(d.color)}"></span></label></td>
@@ -5367,7 +5389,7 @@ function renderBaseLayerSection(container, rows, premium, hidden) {
     if (r.title) {
       const t = document.createElement('div');
       t.className = 'layer-section-title';
-      t.style.cssText = 'margin-top:4px;font-size:9px;border:none;padding:0';
+      t.style.cssText = 'margin-top:4px;font-size:10px;border:none;padding:0';
       t.textContent = r.title;
       container.appendChild(t);
       return;
@@ -6187,7 +6209,8 @@ async function downloadText(filename, mimeType, textOrBuilder) {
       showToast(`✓ Аварийная копия сохранена: ${backup.fileName}`);
       void tndConfirm(
         `Окно выбора файла не ответило. Данные автоматически сохранены и проверены:\n\n${backup.path}\n\nЕсли окно появится позже, можно выбрать файл: он тоже будет сохранён, пока вы не начали новый экспорт.`,
-        'Файл сохранён автоматически'
+        'Файл сохранён автоматически',
+        'Понятно'
       );
       return;
     }
@@ -7160,9 +7183,11 @@ function openModal(id) {
     checkForUpdates(true);
     document.getElementById('about-platform').textContent = getReadablePlatform();
     const licEl = document.getElementById('about-license');
-    if (isLicensed()) { licEl.textContent = '✓ Активна'; licEl.className = 'status-ok'; }
-    else if (getTrialDaysLeft() > 0) { licEl.textContent = `Триал: ${getTrialDaysLeft()} дн.`; licEl.className = 'status-warn'; }
-    else { licEl.textContent = '🔒 Нет лицензии'; licEl.className = 'status-err'; }
+    // 0.9.37: значок из набора вместо ✓/🔒
+    const lic = (ico, text, cls) => { licEl.innerHTML = tnIcon(ico, 'tn-ico-t'); licEl.append(text); licEl.className = cls; };
+    if (isLicensed()) lic('check', 'Активна', 'status-ok');
+    else if (getTrialDaysLeft() > 0) lic('info', `Пробный период: ${getTrialDaysLeft()} дн.`, 'status-warn');
+    else lic('lock', 'Нет лицензии', 'status-err');
   }
   if (id === 'modal-settings') {
     const themeSel = document.getElementById('setting-theme');
@@ -9714,18 +9739,19 @@ function setDialogDanger(on) {
   document.getElementById('modal-dialog-ok').classList.toggle('danger', !!on);
   document.getElementById('modal-dialog-header').classList.toggle('danger', !!on);
 }
-function tndConfirm(message, title) {
+/** okText — глагол действия на кнопке («Обновить», «Скачать»…), а не «OK» (брендбук §9, 0.9.37) */
+function tndConfirm(message, title, okText) {
   return new Promise(resolve => {
     _dialogResolve = resolve;
     document.getElementById('modal-dialog-title').textContent = title || 'Подтверждение';
     document.getElementById('modal-dialog-message').textContent = message;
     document.getElementById('modal-dialog-input-wrap').style.display = 'none';
-    document.getElementById('modal-dialog-ok').textContent = 'OK';
+    document.getElementById('modal-dialog-ok').textContent = okText || 'Да';
     setDialogDanger(false);
     openModal('modal-dialog');
   });
 }
-function tndPrompt(message, defaultVal, title) {
+function tndPrompt(message, defaultVal, title, okText) {
   return new Promise(resolve => {
     _dialogResolve = resolve;
     document.getElementById('modal-dialog-title').textContent = title || 'Ввод';
@@ -9733,7 +9759,7 @@ function tndPrompt(message, defaultVal, title) {
     const inp = document.getElementById('modal-dialog-input');
     inp.value = defaultVal || '';
     document.getElementById('modal-dialog-input-wrap').style.display = 'block';
-    document.getElementById('modal-dialog-ok').textContent = 'OK';
+    document.getElementById('modal-dialog-ok').textContent = okText || 'Сохранить';
     setDialogDanger(false);
     openModal('modal-dialog');
     setTimeout(() => inp.focus(), 100);
@@ -9776,9 +9802,10 @@ function showToast(msg, type) {
   const t = document.getElementById('toast');
   // Автоопределение типа по маркерам
   if (!type) {
-    if (msg.startsWith('✓')) type = 'success';
+    // 0.9.37: «✅» — тоже успех (раньше такие тосты получали оранжевую полосу вместо зелёной)
+    if (msg.startsWith('✓') || msg.startsWith('✅')) type = 'success';
     else if (msg.startsWith('⚠')) type = 'warning';
-    else if (msg.startsWith('❌') || msg.toLowerCase().startsWith('ошибка')) type = 'error';
+    else if (msg.startsWith('❌') || msg.startsWith('✗') || msg.toLowerCase().startsWith('ошибка')) type = 'error';
   }
   t.className = type ? `toast-${type}` : '';
   t.textContent = msg; t.style.display = 'block';
@@ -11388,7 +11415,7 @@ async function toggleOfflineMap(fname, btn, opts = {}) {
   }
 
   if (!isTauriRuntime()) {
-    if (!quiet) showToast('Офлайн карты доступны только в desktop-приложении');
+    if (!quiet) showToast('Офлайн-карты доступны только в desktop-приложении');
     return;
   }
 
@@ -13284,7 +13311,7 @@ async function syncPull(silent) {
   if (!cfg.email || !cfg.syncKey) { if (!silent) showToast('Привяжите email для синхронизации'); return; }
   const checks = getSyncChecks();
 
-  if (!silent && !await tndConfirm('Получить данные с сервера? Добавятся только точки, маршруты и треки с новыми названиями — то, что уже есть на компьютере, не изменится и не удалится.', 'Получить с сервера')) return;
+  if (!silent && !await tndConfirm('Получить данные с сервера? Добавятся только точки, маршруты и треки с новыми названиями — то, что уже есть на компьютере, не изменится и не удалится.', 'Получить с сервера', 'Получить')) return;
 
   updateSyncStatus('Получение...', false);
   try {
@@ -13347,6 +13374,16 @@ function formatPublishedDate(value) {
 }
 
 /** Подпись кнопки обновления: значок набора (или без него) + текст; текст — только через textContent. */
+/** Строка статуса обновления: значок из набора и цвет по смыслу (вместо ✓ ⬆ ℹ ✗ в тексте, 0.9.37) */
+function setUpdateStatus(kind, text) {
+  const status = getUpdateStatus();
+  const look = { ok: ['check', 'var(--success-text)'], new: ['cloud-download', 'var(--warning-text)'],
+    info: ['info', 'var(--primary-text)'], error: ['close', 'var(--error-text)'] }[kind];
+  status.style.color = look ? look[1] : 'var(--text-muted)';
+  status.innerHTML = look ? tnIcon(look[0], 'tn-ico-t') : '';
+  status.append(text);
+}
+
 function setUpdateButtonLabel(btn, icon, text) {
   btn.innerHTML = icon ? tnIcon(icon, 'tn-ico-t') : '';
   btn.append(text);
@@ -13381,17 +13418,6 @@ function compareVersions(a, b) {
   return 0;
 }
 
-function pickReleaseAsset(assets) {
-  const list = Array.isArray(assets) ? assets : [];
-  const isWindows = navigator.userAgent.includes('Windows');
-  const preferredSuffixes = isWindows ? ['.exe', '.msi'] : ['.appimage', '.deb', '.rpm'];
-  for (const suffix of preferredSuffixes) {
-    const match = list.find(asset => asset?.name?.toLowerCase().endsWith(suffix));
-    if (match) return match;
-  }
-  return list.find(asset => asset?.browser_download_url) || null;
-}
-
 async function fallbackCheckForUpdates(silent = false) {
   const btn = getUpdateButton();
   const status = getUpdateStatus();
@@ -13404,28 +13430,23 @@ async function fallbackCheckForUpdates(silent = false) {
   status.style.color = 'var(--text-muted)';
   status.textContent = silent ? 'Проверяем релизы GitHub...' : '';
   try {
-    const r = await fetch('https://api.github.com/repos/andmiro256-cyber/trophy-navigator/releases/latest');
+    // Тот же манифест, по которому обновляется приложение (репозиторий GitHub закрыт, 0.9.37)
+    const r = await fetch('https://trophynav.ru/api/updates/latest.json', { cache: 'no-store' });
     if (!r.ok) throw new Error('Нет ответа');
     const data = await r.json();
-    const latest = normalizeVersion(data.tag_name || data.name || '?');
+    const latest = normalizeVersion(data.version || '?');
     const current = getCurrentAppVersion();
-    const published = formatPublishedDate(data.published_at);
+    const published = formatPublishedDate(data.pub_date);
     const versionDiff = compareVersions(latest, current);
     if (versionDiff === 0) {
-      status.style.color = 'var(--success-text)';
-      status.textContent = '✓ У вас актуальная версия ' + current;
+      setUpdateStatus('ok', 'Установлена последняя версия ' + current);
     } else if (versionDiff > 0) {
-      const asset = pickReleaseAsset(data.assets);
-      const assetHint = asset?.name ? ` (${asset.name})` : '';
-      status.style.color = 'var(--warning-text)';
-      status.textContent = `⬆ Доступна версия ${latest}${published ? ` от ${published}` : ''}${assetHint}`;
+      setUpdateStatus('new', `Доступна версия ${latest}${published ? ` от ${published}` : ''}`);
     } else {
-      status.style.color = 'var(--primary-text)';
-      status.textContent = `ℹ Установлена версия ${current}, она новее опубликованной ${latest}${published ? ` от ${published}` : ''}`;
+      setUpdateStatus('info', `Установлена версия ${current}, она новее опубликованной ${latest}${published ? ` от ${published}` : ''}`);
     }
   } catch(e) {
-    status.style.color = 'var(--error-text)';
-    status.textContent = '✗ ' + getErrorMessage(e, 'Ошибка проверки обновлений');
+    setUpdateStatus('error', getErrorMessage(e, 'Ошибка проверки обновлений'));
   } finally {
     btn.disabled = false;
     resetUpdateButton();
@@ -13436,7 +13457,7 @@ async function installPendingUpdate() {
   if (updateCheckBusy || !pendingUpdateRid) return;
   const passwordHint = getUpdatePasswordHint(pendingUpdateKind);
   const confirmText = `Установить обновление ${pendingUpdateVersion || ''}?`.trim();
-  if (!await tndConfirm(passwordHint ? `${confirmText}\n\n${passwordHint}` : confirmText)) return;
+  if (!await tndConfirm(passwordHint ? `${confirmText}\n\n${passwordHint}` : confirmText, 'Обновление', 'Установить')) return;
 
   updateCheckBusy = true;
   const btn = getUpdateButton();
@@ -13490,8 +13511,7 @@ async function installPendingUpdate() {
       status.style.color = 'var(--warning-text)';
       status.textContent = 'Обновление отменено — пакет не установлен. Чтобы повторить, нажмите «Проверить обновление».';
     } else {
-      status.style.color = 'var(--error-text)';
-      status.textContent = '✗ ' + installError;
+      setUpdateStatus('error', installError);
     }
     // Rust уже закрыл updater-resource: повторная установка требует новой проверки.
     pendingUpdateRid = null;
@@ -13527,8 +13547,7 @@ async function checkForUpdates(silent = false) {
 
     const update = await tauriInvoke('check_app_update');
     if (!update) {
-      status.style.color = 'var(--success-text)';
-      status.textContent = '✓ У вас актуальная версия ' + getCurrentAppVersion();
+      setUpdateStatus('ok', 'Установлена последняя версия ' + getCurrentAppVersion());
       resetUpdateButton();
       return;
     }
@@ -13543,16 +13562,15 @@ async function checkForUpdates(silent = false) {
     if (!update.canAutoInstall || !pendingUpdateRid) {
       pendingUpdateRid = null;
       pendingManualUpdateUrl = update.manualDownloadUrl || 'https://trophynav.ru/desktop.html#download';
-      status.textContent = `⬆ Доступна версия ${pendingUpdateVersion}${published ? ` от ${published}` : ''}${notes} Автоустановка недоступна для этой Linux-установки — скачайте пакет вручную.`;
+      setUpdateStatus('new', `Доступна версия ${pendingUpdateVersion}${published ? ` от ${published}` : ''}${notes} Для этой Linux-установки обновление ставится вручную.`);
       setManualUpdateButton(pendingManualUpdateUrl);
     } else {
       const passwordHint = getUpdatePasswordHint(pendingUpdateKind);
-      status.textContent = `⬆ Доступна версия ${pendingUpdateVersion}${published ? ` от ${published}` : ''}${notes}${passwordHint ? ` ${passwordHint}` : ''}`;
+      setUpdateStatus('new', `Доступна версия ${pendingUpdateVersion}${published ? ` от ${published}` : ''}${notes}${passwordHint ? ` ${passwordHint}` : ''}`);
       setInstallUpdateButton(pendingUpdateVersion);
     }
   } catch(e) {
-    status.style.color = 'var(--error-text)';
-    status.textContent = '✗ ' + getErrorMessage(e, 'Ошибка проверки обновлений');
+    setUpdateStatus('error', getErrorMessage(e, 'Ошибка проверки обновлений'));
     resetUpdateButton();
   } finally {
     updateCheckBusy = false;
@@ -14243,22 +14261,24 @@ function showOnboarding() {
   const overlay = document.createElement('div');
   overlay.id = 'onboarding-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:7000;display:flex;align-items:center;justify-content:center;background:var(--scrim)';
-  overlay.innerHTML = `<div style="background:var(--bg-elevated);border:1px solid var(--border-bright);border-radius:16px;padding:28px;width:420px;text-align:center">
-    <div style="display:flex;justify-content:flex-end;margin:-12px -12px 4px 0">
+  // 0.9.37: в фирменном стиле — компас, девиз, значки из набора вместо эмодзи, нейтральная рамка окна
+  const tip = (ico, html) => `<div class="tnd-welcome-tip">${tnIcon(ico, 'tn-ico-t')}<span>${html}</span></div>`;
+  overlay.innerHTML = `<div class="tnd-welcome">
+    <div style="display:flex;justify-content:flex-end;margin:-12px -12px 0 0">
       <button type="button" class="tn-icon-btn" onclick="dismissOnboarding()" title="Закрыть" aria-label="Закрыть">${tnIcon('close')}</button>
     </div>
-    <div style="font-size:36px;margin-bottom:8px">🏆</div>
-    <div style="font-size:20px;font-weight:700;color:var(--primary-text);margin-bottom:4px">Trophy Navigator Desktop</div>
-    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:20px">Навигация для трофи-рейдов и экспедиций</div>
-    <div style="text-align:left;font-size:13px;color:var(--text-primary);line-height:2">
-      <div>📍 <b>W</b> — добавить точку на карту</div>
-      <div>〜 <b>T</b> — нарисовать трек</div>
-      <div>⚑ <b>R</b> — создать маршрут по точкам</div>
-      <div>📥 Перетащите GPX-файл на карту для импорта</div>
-      <div>🗺 Переключайте карты кнопкой в тулбаре</div>
-      <div>❓ Нажмите <kbd style="background:var(--bg-sunken);border:1px solid var(--border-normal);border-radius:3px;padding:0 4px;font-family:monospace">?</kbd> для списка горячих клавиш</div>
+    <img class="tnd-logo" src="img/logo-compass-96.png" srcset="img/logo-compass-192.png 2x" width="72" height="72" alt="">
+    <div class="tnd-brand-name">Trophy Navigator Desktop</div>
+    <div class="tnd-brand-tagline">Навигация для тех, кто едет первым</div>
+    <div class="tnd-welcome-tips">
+      ${tip('pin', '<b>W</b> — добавить точку на карту')}
+      ${tip('track', '<b>T</b> — нарисовать трек')}
+      ${tip('route', '<b>R</b> — создать маршрут по точкам')}
+      ${tip('open', 'Перетащите GPX-файл на карту — он загрузится')}
+      ${tip('layers', 'Карту выбирают кнопкой «Карта и слои» на панели')}
+      ${tip('info', 'Клавиша <kbd>?</kbd> — все горячие клавиши')}
     </div>
-    <button class="btn-primary" onclick="dismissOnboarding()" style="width:100%;margin-top:16px;font-size:14px;padding:10px">Начать работу</button>
+    <button class="btn-primary" onclick="dismissOnboarding()" style="width:100%;margin-top:16px">Начать работу</button>
   </div>`;
   overlay.addEventListener('click', e => { if (e.target === overlay) dismissOnboarding(); });
   document.body.appendChild(overlay);
@@ -14396,14 +14416,16 @@ function waitForFirstPaint() {
         if (!update.canAutoInstall || !update.rid) {
           const manualUrl = update.manualDownloadUrl || 'https://trophynav.ru/desktop.html#download';
           const openDownload = await tndConfirm(
-            `Доступна новая версия ${ver}!\n\n${notes}\n\nДля этой Linux-установки требуется ручное обновление. Открыть страницу загрузки?`
+            `Доступна новая версия ${ver}.\n\n${notes}\n\nДля этой Linux-установки обновление ставится вручную: скачать новую версию со страницы загрузки.`,
+            'Обновление', 'Открыть страницу'
           );
           if (openDownload) await openExternalUrl(manualUrl);
           else localStorage.setItem('tnd-update-dismissed', new Date().toISOString());
           return;
         }
         const doUpdate = await tndConfirm(
-          `Доступна новая версия ${ver}!\n\n${notes}\n\nОбновить сейчас?`
+          `Доступна новая версия ${ver}.\n\n${notes}`,
+          'Обновление', 'Обновить'
         );
         if (doUpdate) {
           pendingUpdateRid = update.rid;
@@ -15098,105 +15120,49 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${escapeHtml(missedCPs
       <span class="modal-title"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-info"/></svg>Trophy Navigator Desktop</span>
       <button type="button" class="modal-close" onclick="closeModal('modal-about')" aria-label="Закрыть"><svg class="tn-ico" aria-hidden="true"><use href="#tn-i-close"/></svg></button>
     </div>
-    <div class="modal-body" style="padding:16px;overflow-y:auto;max-height:calc(100vh - 120px)">
-      <!-- Шапка -->
-      <div style="text-align:center;margin-bottom:16px">
-        <div style="font-size:36px;margin-bottom:6px">🏆</div>
-        <div style="font-size:18px;font-weight:700;color:var(--primary-text)">Trophy Navigator Desktop</div>
-        <div style="font-size:12px;color:var(--text-muted)">Навигация для трофи-рейдов и экспедиций</div>
+    <!-- 0.9.37: по схеме Android «О программе» и брендбуку — компас, карточки, пилюля, спойлеры, без эмодзи -->
+    <div class="modal-body tnd-about">
+      <img class="tnd-logo" src="img/logo-compass-96.png" srcset="img/logo-compass-192.png 2x" width="72" height="72" alt="">
+      <div class="tnd-brand-name">Trophy Navigator Desktop</div>
+      <div class="tnd-brand-tagline">Навигация для тех, кто едет первым</div>
+
+      <div class="tnd-about-card">
+          <div class="tnd-about-row"><span>Версия</span><span id="about-version">0.9.37</span></div>
+          <div class="tnd-about-row"><span>Платформа</span><span id="about-platform">—</span></div>
+          <div class="tnd-about-row"><span>Лицензия</span><span id="about-license" class="status-ok">—</span></div>
       </div>
 
-      <!-- Информация -->
-      <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
-        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--card-stroke)">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:var(--text-primary)">0.9.37</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--card-stroke)">
-          <span style="color:var(--text-muted)">Платформа</span><span style="color:var(--text-primary)" id="about-platform">—</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--card-stroke)">
-          <span style="color:var(--text-muted)">Лицензия</span><span id="about-license" class="status-ok">—</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--card-stroke)">
-          <span style="color:var(--text-muted)">Сайт</span><span style="color:var(--primary-text)">trophynav.ru</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:3px 0">
-          <span style="color:var(--text-muted)">Почта</span><span style="color:var(--primary-text)">info@trophynav.ru</span>
-        </div>
-      </div>
-
-      <button class="tb-btn" id="btn-check-update" onclick="checkForUpdates()" style="width:100%;justify-content:center;margin-bottom:12px">
+      <button type="button" class="btn-primary tnd-about-update" id="btn-check-update" onclick="checkForUpdates()">
         <svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-cloud-sync"/></svg>Проверить обновление
       </button>
-      <div id="update-status" style="font-size:12px;color:var(--text-muted);min-height:18px;text-align:center;margin-bottom:12px"></div>
+      <div id="update-status" class="tnd-about-status"></div>
 
-      <!-- Описание функций -->
-      <details open style="margin-bottom:8px">
-        <summary style="font-size:13px;color:var(--primary-text);cursor:pointer;padding:6px 0;font-weight:600">Возможности программы</summary>
-        <div style="font-size:12px;color:var(--text-primary);line-height:1.8;padding:8px 0">
+      <details class="tnd-spoiler" data-spoiler-key="about-features">
+        <summary><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-info"/></svg><span>Возможности</span><span class="tnd-spoiler-sum">карты, точки, треки, маршруты</span></summary>
+        <ul class="tnd-about-list">
+          <li><b>Карты.</b> Онлайн-карты, Генштаб и ГГЦ, спутник; векторные карты областей TrophyNav Maps с темами Базовая, Яркая, Топо и Офф; офлайн-карты; свои карты по адресу сервера.</li>
+          <li><b>Точки.</b> Наборы точек, радиус, значки; GPX, WPT, CSV.</li>
+          <li><b>Треки.</b> Рисование и правка, треки из кусков, анализ скорости и высоты, плеер; GPX, PLT.</li>
+          <li><b>Маршруты.</b> По контрольным точкам с радиусами; маршрут по дорогам; GPX, RTE.</li>
+          <li><b>Инструменты.</b> Поиск по адресу и голосом, линейка, виджеты на карте, 3D-вид, отчёт о гонке.</li>
+          <li><b>Связь с Android.</b> Синхронизация точек, треков и маршрутов через сервер по email; мониторинг Live.</li>
+        </ul>
+      </details>
 
-          <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:8px 0 4px">🗺 Карты</div>
-          <div>• 26+ базовых карт (Google, Яндекс, OSM, ESRI, ГГЦ, Генштаб и др.)</div>
-          <div>• 11 оверлейных слоёв (GPS треки, тропы, подписи, Wikimapia)</div>
-          <div>• Пользовательские карты — добавьте любой тайловый сервер</div>
-          <div>• Каталог карт обновляется с сервера автоматически</div>
-          <div>• Скачивание карт для офлайн (RMaps/OsmAnd) с наложением слоёв</div>
-
-          <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:12px 0 4px">📍 Точки (Waypoints)</div>
-          <div>• Создание точек кликом на карту или по координатам</div>
-          <div>• Наборы точек — группировка по категориям</div>
-          <div>• Радиус сближения — настраиваемый для каждой точки</div>
-          <div>• Иконки Garmin — автоматическое преобразование символов</div>
-          <div>• Импорт/экспорт: GPX, WPT (OziExplorer), CSV</div>
-
-          <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:12px 0 4px">〜 Треки</div>
-          <div>• Рисование треков на карте с отображением длины</div>
-          <div>• Редактирование: перетаскивание точек, удаление, разбиение</div>
-          <div>• Импорт GPX/PLT с сохранением высоты и скорости</div>
-          <div>• Настраиваемый цвет, толщина, размер точек</div>
-
-          <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:12px 0 4px">⚑ Маршруты</div>
-          <div>• Создание маршрутов по контрольным точкам</div>
-          <div>• Перетаскивание точек в списке (drag & drop)</div>
-          <div>• Расстояние и азимут между точками</div>
-          <div>• Импорт/экспорт: GPX, RTE (OziExplorer)</div>
-
-          <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:12px 0 4px">🔍 Поиск и роутинг</div>
-          <div>• Поиск по адресу (Nominatim / OpenStreetMap)</div>
-          <div>• Результаты поиска → сразу в маршрут (A/B) или точку</div>
-          <div>• Маршрут по дорогам (OSRM) — расстояние, время, скорость</div>
-          <div>• ПКМ на карте → «Маршрут отсюда / сюда»</div>
-
-          <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:12px 0 4px">📐 Инструменты</div>
-          <div>• Линейка (M) — измерение расстояний с азимутом</div>
-          <div>• Блокировка объектов (K) — защита от случайного перемещения</div>
-          <div>• Очистка карты — удаление всех данных с подтверждением</div>
-          <div>• Undo (Ctrl+Z) — отмена последнего действия</div>
-
-          <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:12px 0 4px">⟲ Синхронизация</div>
-          <div>• Синхронизация с Android (Trophy Navigator) через сервер</div>
-          <div>• Привязка по email — одна учётка на все устройства</div>
-          <div>• Выбор данных для отправки/получения</div>
-
-          <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:12px 0 4px">⚙ Настройки</div>
-          <div>• Цвета: точки, треки, маршруты, радиус, OSRM</div>
-          <div>• Прозрачность заливки радиуса</div>
-          <div>• Размер иконок, толщина треков</div>
-          <div>• Автосохранение каждые 30 сек</div>
-
-          <div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;margin:12px 0 4px">⌨ Горячие клавиши</div>
-          <div>• <b>H / Пробел</b> — обзор (двигать карту) &nbsp; <b>W</b> — добавить точку</div>
-          <div>• <b>T</b> — новый трек &nbsp; <b>R</b> — новый маршрут</div>
-          <div>• <b>M</b> — линейка &nbsp; <b>K</b> — блокировка</div>
-          <div>• <b>/</b> — поиск &nbsp; <b>D</b> — скачать карту</div>
-          <div>• <b>L</b> — выбор слоёв &nbsp; <b>Ctrl+S</b> — сохранить GPX</div>
-          <div>• <b>Ctrl+Z</b> — отмена &nbsp; <b>ESC</b> — сброс режима</div>
+      <details class="tnd-spoiler" data-spoiler-key="about-keys">
+        <summary><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-info"/></svg><span>Горячие клавиши</span><span class="tnd-spoiler-sum">W, T, R, M, K, /</span></summary>
+        <div class="tnd-about-keys">
+          <span><kbd>H</kbd> обзор</span><span><kbd>W</kbd> точка</span><span><kbd>T</kbd> трек</span><span><kbd>R</kbd> маршрут</span>
+          <span><kbd>M</kbd> линейка</span><span><kbd>K</kbd> блокировка</span><span><kbd>/</kbd> поиск</span><span><kbd>D</kbd> скачать карту</span>
+          <span><kbd>L</kbd> карта и слои</span><span><kbd>Ctrl+S</kbd> сохранить GPX</span><span><kbd>Ctrl+Z</kbd> отмена</span><span><kbd>Esc</kbd> сброс режима</span>
         </div>
       </details>
 
-      <div style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:8px">
-        trophynav.ru · info@trophynav.ru
+      <div class="tnd-about-card">
+          <div class="tnd-about-row"><span>Сайт</span><span class="tnd-about-strong">trophynav.ru</span></div>
+          <div class="tnd-about-row"><span>Почта</span><span class="tnd-about-strong">info@trophynav.ru</span></div>
       </div>
+      <div class="tnd-about-foot">Trophy Navigator © 2006–2026 · ООО «АЛЬФА-КМ»</div>
     </div>
   </div>
 </div>
@@ -16489,7 +16455,7 @@ function liveCancelGroupEdit() {
 async function liveDeleteGroup(groupId) {
   const group = (liveState.favoritesDoc?.groups || []).find(item => item.id === groupId);
   if (!group) return;
-  if (!await tndConfirm(`Удалить группу «${group.name}»?`)) return;
+  if (!await tndConfirmDanger(`Удалить группу «${group.name}»?`)) return;
   const groups = (liveState.favoritesDoc?.groups || []).filter(item => item.id !== groupId);
   const activeGroupId = liveState.activeGroupId === groupId ? LIVE_GROUP_ALL_ID : liveState.activeGroupId;
   const doc = {

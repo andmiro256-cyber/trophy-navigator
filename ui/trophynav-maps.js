@@ -642,7 +642,7 @@
       .sb-maps-upd { appearance:none; border:0; background:transparent; color:var(--accent-amber); font:inherit; font-weight:700; cursor:pointer; padding:0 4px; border-radius:var(--radius-xs); }
       .sb-maps-upd:hover { background:var(--bg-hover); }
       .tn-upd-dot { position:relative; }
-      .tn-upd-dot::after { content:''; position:absolute; top:3px; right:3px; width:8px; height:8px; border-radius:50%; background:var(--accent-amber); box-shadow:0 0 0 2px var(--modal-bg); pointer-events:none; }
+      .tn-upd-dot::after { content:''; position:absolute; top:3px; right:3px; width:8px; height:8px; border-radius:50%; background:var(--status-warn-fill); box-shadow:0 0 0 1px var(--status-ink), 0 0 0 3px var(--modal-bg); pointer-events:none; }
       .tnmaps-link.tn-upd-dot { padding-right:14px; }
       .tnmaps-link.tn-upd-dot::after { top:50%; right:0; transform:translateY(-50%); }
       .tnmaps-region-prompt { position:fixed; top:112px; left:50%; transform:translateX(-50%); z-index:5000; display:flex; align-items:center; flex-wrap:wrap; gap:8px; max-width:calc(100vw - 32px); padding:10px 18px; background:var(--modal-bg); color:var(--text-primary); border:1px solid var(--card-stroke); border-left:4px solid var(--primary); border-radius:var(--radius-m); box-shadow:var(--shadow-2); font-size:var(--fs-s); }

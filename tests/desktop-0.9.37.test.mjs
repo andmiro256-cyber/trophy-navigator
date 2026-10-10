@@ -20,7 +20,7 @@ test('версия 0.9.37 везде одна', () => {
 
 test('описание выпуска 0.9.37 в манифесте обновлений и GitHub Release', () => {
   const wf = read('../.github/workflows/build.yml');
-  assert.match(wf, /"notes": "Обновления для Mac и для установки через MSI теперь скачиваются с trophynav\.ru\."/);
+  assert.match(wf, /"notes": "«О программе» и приветствие в фирменном стиле/);
   assert.match(wf, /### Изменено в 0\.9\.37[\s\S]*### Новое в 0\.9\.36/);
 });
 
@@ -153,4 +153,47 @@ test('DOM: оформление — строка «обновление…», з
   onStylePackEvent({ payload: { phase: 'start', version: 21 } });
   onStylePackEvent({ payload: { phase: 'error', version: 21 } });
   assert.equal(el.hidden, true);
+});
+
+test('0.9.37: «О программе» и приветствие — компас вместо 🏆, без эмодзи, кнопка-пилюля', () => {
+  assert.doesNotMatch(html, /🏆/);
+  assert.match(html, /<img class="tnd-logo" src="img\/logo-compass-96\.png"/);
+  assert.ok(fs.existsSync(new URL('../ui/img/logo-compass-96.png', import.meta.url)));
+  const a = html.indexOf('<div class="modal-overlay" id="modal-about">'); const b = html.indexOf('<div class="modal-overlay"', a + 10);
+  const about = html.slice(a, b);
+  assert.match(about, /class="btn-primary tnd-about-update" id="btn-check-update"/);
+  assert.doesNotMatch(about, /(?![©®™])\p{Extended_Pictographic}/u, 'без эмодзи в «О программе» (© — не эмодзи)');
+  assert.doesNotMatch(about, /26\+ базовых карт|11 оверлейных/, 'без устаревших чисел');
+  assert.doesNotMatch(html, /'✓ Активна'|'🔒 Нет лицензии'/);
+});
+
+test('0.9.37: диалоги — глагол действия вместо «OK»; удаление группы — опасное подтверждение', () => {
+  assert.doesNotMatch(html, /textContent = 'OK'|>OK<\/button>/);
+  assert.match(html, /'Обновление', 'Обновить'/);
+  assert.match(html, /'Обновление', 'Установить'/);
+  assert.match(html, /'Получить с сервера', 'Получить'\)/);
+  assert.match(html, /tndConfirmDanger\(`Удалить группу/);
+  assert.doesNotMatch(html, /Доступна новая версия \$\{ver\}!/);
+  assert.match(read('../ui/tn-voice.js'), /'Голосовой поиск', 'Скачать'\)/);
+});
+
+test('0.9.37: тост с ✅ — успех; статус обновления значком; проверка без GitHub', () => {
+  assert.match(html, /msg\.startsWith\('✓'\) \|\| msg\.startsWith\('✅'\)\) type = 'success'/);
+  assert.doesNotMatch(html, /api\.github\.com|github\.com/);
+  assert.doesNotMatch(html, /'✓ У вас актуальная версия|`⬆ Доступна версия|'✗ ' \+/);
+  assert.match(html, /function setUpdateStatus\(kind, text\)/);
+});
+
+test('0.9.37: «Скачанные карты» во вкладке офлайн-карт; «Офлайн-карты» через дефис', () => {
+  assert.match(html, /switchTab\(this,'tab-offline-list'\)">Скачанные карты</);
+  assert.doesNotMatch(html, /Офлайн карты/);
+});
+
+test('0.9.37: не мельче 10 px; метка «есть новое» жёлтая; установщики Windows на русском', () => {
+  assert.doesNotMatch(html, /font-size: ?9(\.5)?px/);
+  assert.match(read('../ui/tn-widgets.js'), /CAPTION_MIN = 10;/);
+  assert.match(read('../ui/trophynav-maps.js'), /\.tn-upd-dot::after \{[^}]*background:var\(--status-warn-fill\)/);
+  const conf = JSON.parse(read('../src-tauri/tauri.conf.json'));
+  assert.equal(conf.bundle.windows.wix.language, 'ru-RU');
+  assert.deepEqual(conf.bundle.windows.nsis.languages, ['Russian']);
 });

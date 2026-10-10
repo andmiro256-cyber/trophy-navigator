@@ -661,7 +661,7 @@
   // Не влезает и на минимуме — перенос на вторую строку (.tn-widgets-wrap). Ширины меряются в базовом
   // размере (пересчёт из текущего), так что выбор шага не зависит от себя самого и не дребезжит;
   // пересчёт — только при смене текстов значений или ширины полосы (ResizeObserver).
-  const FIT_MAX = 18, FIT_MIN = 13, CAPTION_BASE = 10.5, CAPTION_MIN = 9;
+  const FIT_MAX = 18, FIT_MIN = 13, CAPTION_BASE = 10.5, CAPTION_MIN = 10;  // 0.9.37: не мельче 10 px (брендбук §4)
   let fitKey = '', fitRaf = 0, fitFs = FIT_MAX;
   function textWidth(el) {
     if (typeof document.createRange !== 'function') return 0;

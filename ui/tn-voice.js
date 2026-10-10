@@ -166,7 +166,7 @@
     if (st.model) return true;
     const mb = Math.round((st.size || 6e7) / 1048576);
     const ask = typeof window.tndConfirm === 'function'
-      ? await window.tndConfirm(`Для голосового поиска нужна модель распознавания речи (${mb} МБ). Скачать один раз? Дальше голос работает без интернета.`, 'Голосовой поиск')
+      ? await window.tndConfirm(`Для голосового поиска нужна модель распознавания речи (${mb} МБ). Скачать один раз? Дальше голос работает без интернета.`, 'Голосовой поиск', 'Скачать')
       : window.confirm(`Скачать модель распознавания речи (${mb} МБ)?`);
     if (!ask) return false;
     setState('download', 'Скачиваю модель распознавания…');
