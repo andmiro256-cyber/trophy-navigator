@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<providers><provider id="9001" type="0" visible="true" background="-1"><name>Аудит OSM XML</name><mode>png</mode><url><![CDATA[https://tile.openstreetmap.org/{$z}/{$x}/{$y}.png]]></url><zoomPart>{$z}</zoomPart><zoomMin>0</zoomMin><zoomMax>18</zoomMax></provider></providers>

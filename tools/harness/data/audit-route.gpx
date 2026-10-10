@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="audit" xmlns="http://www.topografix.com/GPX/1/1">
+<rte><name>Тест маршрут</name>
+<rtept lat="43.16" lon="44.8"><name>Старт</name></rtept>
+<rtept lat="43.17" lon="44.81"><name>WP01</name></rtept>
+<rtept lat="43.185" lon="44.84"><name>WP02</name></rtept>
+<rtept lat="43.2" lon="44.875"><name>WP03</name></rtept>
+<rtept lat="43.19" lon="44.91"><name>WP04</name></rtept>
+<rtept lat="43.165" lon="44.93"><name>WP05</name></rtept>
+</rte>
+</gpx>
