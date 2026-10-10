@@ -637,6 +637,14 @@
       .sb-dl-fill { display:block; height:100%; background:var(--primary); transition:width 0.25s; }
       .sb-dl-x { appearance:none; border:0; background:transparent; color:var(--text-muted); cursor:pointer; font-size:12px; padding:0 4px; border-radius:var(--radius-xs); }
       .sb-dl-x:hover { background:var(--bg-hover); color:var(--text-primary); }
+      .sb-maps-note { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; color:var(--text-primary); }
+      .sb-maps-note[hidden] { display:none; }
+      .sb-maps-upd { appearance:none; border:0; background:transparent; color:var(--accent-amber); font:inherit; font-weight:700; cursor:pointer; padding:0 4px; border-radius:var(--radius-xs); }
+      .sb-maps-upd:hover { background:var(--bg-hover); }
+      .tn-upd-dot { position:relative; }
+      .tn-upd-dot::after { content:''; position:absolute; top:3px; right:3px; width:8px; height:8px; border-radius:50%; background:var(--accent-amber); box-shadow:0 0 0 2px var(--modal-bg); pointer-events:none; }
+      .tnmaps-link.tn-upd-dot { padding-right:14px; }
+      .tnmaps-link.tn-upd-dot::after { top:50%; right:0; transform:translateY(-50%); }
       .tnmaps-region-prompt { position:fixed; top:112px; left:50%; transform:translateX(-50%); z-index:5000; display:flex; align-items:center; flex-wrap:wrap; gap:8px; max-width:calc(100vw - 32px); padding:10px 18px; background:var(--modal-bg); color:var(--text-primary); border:1px solid var(--card-stroke); border-left:4px solid var(--primary); border-radius:var(--radius-m); box-shadow:var(--shadow-2); font-size:var(--fs-s); }
       .tnmaps-poi[hidden] { display:none; }
     `;
@@ -969,6 +977,7 @@
     await Promise.all([refreshLocal().catch(() => {}), loadCatalog()]);
     renderWindow();
     renderLayerSection();
+    renderUpdateMarks();
   }
 
   function canDownload(id) {
@@ -1050,6 +1059,7 @@
    * непонятно, что происходит»). Видно всегда, пока качается; ✕ — остановить (докачается потом).
    */
   function renderStatusDownloads() {
+    renderUpdateMarks();
     const bar = document.getElementById('statusbar');
     if (!bar) return;
     let el = document.getElementById('sb-download');
@@ -1099,15 +1109,74 @@
     renderWindow();
   }
 
+  // ─── новые версии карт: метка на кнопках и строка внизу (Андрей 10.10) ───
+  /** Скачанные области, у которых на сервере новая версия (и они сейчас не качаются). */
+  function mapsWithUpdates() {
+    if (!state.catalog) return [];
+    return state.local.filter(m => !m.error && !state.downloads[m.id]
+      && updateState(m, catalogEntry(m.id)) === 'update').map(m => m.id);
+  }
+
+  /** Строка внизу: сначала создаётся пустой, потом только меняется текст. */
+  function statusNote(id) {
+    let el = document.getElementById(id);
+    const bar = document.getElementById('statusbar');
+    if (!el && bar) {
+      el = document.createElement('span');
+      el.id = id;
+      el.className = 'sb-maps-note';
+      el.setAttribute('role', 'status');
+      el.hidden = true;
+      bar.insertBefore(el, document.getElementById('app-version-label'));
+    }
+    return el;
+  }
+
+  function renderUpdateMarks() {
+    const ids = mapsWithUpdates();
+    const tip = ids.length ? `Новая версия карты: ${ids.map(regionName).join(', ')}` : '';
+    [document.getElementById('btn-map-layer'), document.getElementById('tnmaps-open-link')].forEach(btn => {
+      if (!btn) return;
+      btn.classList.toggle('tn-upd-dot', ids.length > 0);
+      if (ids.length) btn.dataset.tnUpd = tip; else delete btn.dataset.tnUpd;
+    });
+    const el = statusNote('sb-maps-upd');
+    if (!el) return;
+    el.hidden = !ids.length;
+    if (!ids.length) { el.textContent = ''; return; }
+    const text = ids.length === 1 ? `⟳ Новая версия карты: ${regionName(ids[0])}` : `⟳ Новые версии карт: ${ids.length}`;
+    el.innerHTML = `<button type="button" class="sb-maps-upd" title="${esc(tip)} — открыть «Карты областей»">${esc(text)}</button>`;
+    el.firstElementChild.onclick = () => openWindow();
+  }
+
   // ─── пакет стиля с сервера (0.9.36, style_pack.rs) ───
   // Без сети проверка тихо не проходит: работает скачанный ранее пакет или встроенный — офлайн всё на месте.
   const STYLEPACK_INTERVAL_MS = 30 * 60 * 1000;
-  const stylePack = { version: 0, checking: false };
+  const STYLEPACK_DONE_MS = 6000;
+  const stylePack = { version: 0, checking: false, timer: 0 };
 
   function applyPackInfo(info) {
     if (!info) return;
     stylePack.version = Number(info.version) || 0;
     Core.setThemes(info.themes);
+  }
+
+  /** Внизу видно только настоящее скачивание нового оформления; пустая проверка ничего не показывает. */
+  function onStylePackEvent(ev) {
+    const p = ev?.payload || {};
+    const el = statusNote('sb-stylepack');
+    if (!el) return;
+    clearTimeout(stylePack.timer);
+    if (p.phase === 'start') {
+      el.textContent = '⬇ Оформление карт: обновление…';
+      el.hidden = false;
+    } else if (p.phase === 'done') {
+      el.textContent = '✓ Оформление карт обновлено';
+      el.hidden = false;
+      stylePack.timer = setTimeout(() => { el.hidden = true; }, STYLEPACK_DONE_MS);
+    } else {
+      el.hidden = true;
+    }
   }
 
   async function checkStylePack() {
@@ -1131,11 +1200,20 @@
     }
   }
 
+  /** Раз в 30 минут и при появлении сети: оформление и каталог (новые версии карт). Без сети — ничего. */
+  async function checkServer() {
+    if (navigator.onLine === false) return;
+    checkStylePack();
+    await loadCatalog();
+    if (!state.catalogError) renderUpdateMarks();
+  }
+
   async function initStylePack() {
     try { applyPackInfo(await invoke('tnmaps_stylepack_info')); } catch (e) { console.warn('TrophyNav Maps: пакет стиля', e); }
+    window.__TAURI__?.event?.listen?.('tnmaps-stylepack', onStylePackEvent);
     checkStylePack();
-    window.addEventListener('online', checkStylePack);
-    setInterval(checkStylePack, STYLEPACK_INTERVAL_MS);
+    window.addEventListener('online', checkServer);
+    setInterval(checkServer, STYLEPACK_INTERVAL_MS);
   }
 
   // ─── запуск ───
@@ -1166,6 +1244,7 @@
       const local = pack.then(refreshLocal).then(renderLayerSection).catch(() => {});
       // Названия областей для списка и строки состояния (тихо, без окна)
       const catalog = loadCatalog().then(() => { renderLayerSection(); window.updateBaseLayerStatusText?.(); });
+      Promise.all([local, catalog]).then(renderUpdateMarks);
       Promise.all([local, catalog]).then(fetchOverviewOnce);
     }
   }

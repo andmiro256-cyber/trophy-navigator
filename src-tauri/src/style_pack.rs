@@ -19,11 +19,14 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 const BASE_URL: &str = "https://trophynav.ru/maps/v1/style/";
 const MAX_MANIFEST_BYTES: u64 = 1_000_000;
 const MAX_FILE_BYTES: u64 = 16 * 1024 * 1024;
+/// Событие для строки состояния: {"phase": "start" | "done" | "error", "version"} — только когда пакет
+/// действительно качается; проверка без нового пакета ничего не показывает.
+const EVENT: &str = "tnmaps-stylepack";
 
 /// Скачать файл пакета: (путь, предел байт) → содержимое.
 type Fetch<'a> = &'a dyn Fn(&str, u64) -> Result<Vec<u8>, String>;
@@ -241,7 +244,8 @@ fn http_get(agent: &ureq::Agent, url: &str, max: u64) -> Result<Vec<u8>, String>
 }
 
 /// Скачать и включить пакет. Ok(true) — новый пакет стал активным. Блокирующая.
-fn update(manifest_text: &str, fetch: Fetch) -> Result<bool, String> {
+/// `on_start(версия)` — перед скачиванием, только когда новый пакет действительно ставится.
+fn update(manifest_text: &str, fetch: Fetch, on_start: &dyn Fn(i64)) -> Result<bool, String> {
     let remote = parse_manifest(manifest_text).ok_or("манифест пакета повреждён")?;
     let (root, active_dir, current, app_version) = {
         let st = STATE
@@ -263,6 +267,7 @@ fn update(manifest_text: &str, fetch: Fetch) -> Result<bool, String> {
     if !should_install(&remote, current, &app_version) {
         return Ok(false);
     }
+    on_start(remote.version);
 
     let staging = root.join(format!("staging-v{}", remote.version));
     let _ = fs::remove_dir_all(&staging);
@@ -318,7 +323,7 @@ fn update(manifest_text: &str, fetch: Fetch) -> Result<bool, String> {
     Ok(true)
 }
 
-fn check_blocking() -> Result<PackInfo, String> {
+fn check_blocking<R: Runtime>(app: AppHandle<R>) -> Result<PackInfo, String> {
     let _guard = CHECKING
         .try_lock()
         .map_err(|_| "проверка уже идёт".to_string())?;
@@ -333,9 +338,26 @@ fn check_blocking() -> Result<PackInfo, String> {
     )
     .map_err(|e| format!("нет связи с сервером стиля: {e}"))?;
     let text = String::from_utf8(text).map_err(|_| "манифест пакета повреждён".to_string())?;
-    let activated = update(&text, &|path, max| {
-        http_get(&agent, &format!("{BASE_URL}{path}"), max)
-    })?;
+    let started = std::cell::Cell::new(None);
+    let result = update(
+        &text,
+        &|path, max| http_get(&agent, &format!("{BASE_URL}{path}"), max),
+        &|version| {
+            started.set(Some(version));
+            let _ = app.emit(
+                EVENT,
+                serde_json::json!({ "phase": "start", "version": version }),
+            );
+        },
+    );
+    if let Some(version) = started.get() {
+        let phase = if result.is_ok() { "done" } else { "error" };
+        let _ = app.emit(
+            EVENT,
+            serde_json::json!({ "phase": phase, "version": version }),
+        );
+    }
+    let activated = result?;
     let st = STATE
         .get()
         .ok_or("пакет стиля не инициализирован")?
@@ -357,8 +379,8 @@ pub fn tnmaps_stylepack_info() -> Result<PackInfo, String> {
 
 /// Проверить сервер и поставить новый пакет, если он есть.
 #[tauri::command]
-pub async fn tnmaps_stylepack_check() -> Result<PackInfo, String> {
-    tauri::async_runtime::spawn_blocking(check_blocking)
+pub async fn tnmaps_stylepack_check<R: Runtime>(app: AppHandle<R>) -> Result<PackInfo, String> {
+    tauri::async_runtime::spawn_blocking(move || check_blocking(app))
         .await
         .map_err(|e| e.to_string())?
 }
@@ -426,18 +448,18 @@ mod tests {
             app_version: "0.9.36".into(),
         }));
         // Битый файл: пакет не ставится, указателя нет
-        let err = update(&manifest(19, ""), &|_, _| Ok(b"b".to_vec())).unwrap_err();
+        let err = update(&manifest(19, ""), &|_, _| Ok(b"b".to_vec()), &|_| {}).unwrap_err();
         assert!(err.contains("контрольная сумма"), "{err}");
         assert!(!root.join("current").exists());
         // Не новее встроенного — ничего не делаем
-        assert!(!update(&manifest(18, ""), &|_, _| Ok(b"a".to_vec())).unwrap());
+        assert!(!update(&manifest(18, ""), &|_, _| Ok(b"a".to_vec()), &|_| {}).unwrap());
         // Правильный пакет
-        assert!(update(&manifest(19, ""), &|_, _| Ok(b"a".to_vec())).unwrap());
+        assert!(update(&manifest(19, ""), &|_, _| Ok(b"a".to_vec()), &|_| {}).unwrap());
         assert_eq!(fs::read_to_string(root.join("current")).unwrap(), "19");
         assert_eq!(read_asset("theme-topo.json").unwrap(), b"a");
         assert!(read_asset("../current").is_none());
         // Следующий пакет берёт неизменённый файл из активного, без сети
-        assert!(update(&manifest(20, ""), &|_, _| Err("нет сети".into())).unwrap());
+        assert!(update(&manifest(20, ""), &|_, _| Err("нет сети".into()), &|_| {}).unwrap());
         assert!(!root.join("v19").exists());
         let _ = fs::remove_dir_all(&root);
     }
