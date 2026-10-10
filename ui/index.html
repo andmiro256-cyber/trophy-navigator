@@ -2939,7 +2939,7 @@ function undoLastAction() {
   } else if (action.type === 'deleteWaypoint') {
     const m = action.marker;
     wpRender.showMarker(m);
-    if (m.wpCircle && action.hadCircle) updateWaypointCircle(m);
+    if (wpRender.hasCircle(m) && action.hadCircle) updateWaypointCircle(m);
     waypoints.push(m);
     const set = waypointSets.find(s => s.id === m._setId);
     if (set) set.waypoints.push(m);
@@ -3826,6 +3826,20 @@ const wpRender = {
   hideCircle: m => { if (m.wpCircle) map.removeLayer(m.wpCircle); },
   show(m) { wpRender.showMarker(m); wpRender.showCircle(m); },
   hide(m) { wpRender.hideCircle(m); wpRender.hideMarker(m); },
+  hasCircle: m => !!m.wpCircle,
+  /** Круг радиуса заново по данным и настройкам (радиус 0 — без круга). */
+  updateCircle(m) {
+    if (m.wpCircle) { map.removeLayer(m.wpCircle); m.wpCircle = null; }
+    if (m.wpData.radius > 0) {
+      const st = wpRadiusStyle(m.wpData);
+      m.wpCircle = L.circle(m.getLatLng(), {
+        radius: st.radius, color: st.stroke, weight: 1, opacity: 0.75, fillColor: st.fill, fillOpacity: st.fillOpacity,
+        pane: 'waypointRadius', interactive: false, bubblingMouseEvents: false
+      }).addTo(map);
+    }
+  },
+  moveCircle: (m, latlng) => { if (m.wpCircle) m.wpCircle.setLatLng(latlng); },
+  updateIcon: m => { m.setIcon(makeDivIcon(m.wpData)); },
 };
 
 function makeWaypointMarkerOptions(data) {
@@ -3839,32 +3853,21 @@ function makeWaypointMarkerOptions(data) {
   };
 }
 
-function updateWaypointCircle(marker) {
-  if (marker.wpCircle) {
-    map.removeLayer(marker.wpCircle);
-    marker.wpCircle = null;
-  }
-  if (marker.wpData.radius > 0) {
-    const rStroke = document.getElementById('setting-color-radius-stroke')?.value || marker.wpData.color;
-    const rFill = document.getElementById('setting-color-radius-fill')?.value || marker.wpData.color;
-    const rOpacity = (parseInt(document.getElementById('setting-radius-opacity')?.value) || 15) / 100;
-    marker.wpCircle = L.circle(marker.getLatLng(), {
-      radius: marker.wpData.radius,
-      color: rStroke,
-      weight: 1,
-      opacity: 0.75,
-      fillColor: rFill,
-      fillOpacity: rOpacity,
-      pane: 'waypointRadius',
-      interactive: false,
-      bubblingMouseEvents: false
-    }).addTo(map);
-  }
+/** Стиль круга радиуса WP из настроек — не зависит от движка (MapLibre возьмёт его для слоя wpRadius). */
+function wpRadiusStyle(d) {
+  return {
+    radius: d.radius,
+    stroke: document.getElementById('setting-color-radius-stroke')?.value || d.color,
+    fill: document.getElementById('setting-color-radius-fill')?.value || d.color,
+    fillOpacity: (parseInt(document.getElementById('setting-radius-opacity')?.value) || 15) / 100,
+  };
 }
+
+function updateWaypointCircle(marker) { wpRender.updateCircle(marker); }
 
 function refreshWaypoint(marker, options = {}) {
   ensureWaypointMeta(marker, { touch: options.touch !== false });
-  marker.setIcon(makeDivIcon(marker.wpData));
+  wpRender.updateIcon(marker);
   marker.wpData.lat = marker.getLatLng().lat;
   marker.wpData.lng = marker.getLatLng().lng;
   updateWaypointCircle(marker);
@@ -3951,7 +3954,7 @@ function onWaypointMarkerEvent(type, marker, originalEvent = null, latlng = null
   if (type === 'drag') {
     marker.wpData.lat = latlng.lat;
     marker.wpData.lng = latlng.lng;
-    if (marker.wpCircle) marker.wpCircle.setLatLng(latlng);
+    wpRender.moveCircle(marker, latlng);
     return;
   }
   if (type === 'dragend') { refreshWaypoint(marker); updateWptTable(); }
@@ -7025,7 +7028,7 @@ async function ctxAction(action) {
     await openWaypointMarkerMap(target, action.slice(4));
   }
   else if (action === 'delete') {
-    const hadCircle = !!target.wpCircle;
+    const hadCircle = wpRender.hasCircle(target);
     wpRender.hide(target);
     waypoints = waypoints.filter(m => m !== target);
     waypointSets.forEach(s => { s.waypoints = s.waypoints.filter(m => m !== target); });

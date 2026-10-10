@@ -51,16 +51,16 @@ test('события карты и контейнер: только через t
   assert.match(html, /dlPolygonClickOff = tnMap\.on\('click', onPolygonClick\);/);
 });
 
-test('WP: показ/скрытие маркера и круга радиуса — только через wpRender (кроме самого круга в updateWaypointCircle)', () => {
-  assert.match(html, /const wpRender = \{/);
-  // признаки отрисовки WP вне wpRender: круг радиуса добавляется/убирается напрямую, маркер WP прячется рядом с кругом
-  const lines = html.split('\n');
-  const bad = lines.filter(l => (/\.wpCircle\.addTo\(map\)|map\.(removeLayer|hasLayer)\([a-zA-Z.]*\.wpCircle\)/.test(l))
-    && !/^\s*(isCircleShown|showCircle|hideCircle):/.test(l)
-    && !/^\s*map\.removeLayer\(marker\.wpCircle\);$/.test(l));                  // updateWaypointCircle — сама отрисовка круга
-  assert.deepEqual(bad, []);
-  assert.ok((html.match(/wpRender\.(show|hide|showMarker|hideMarker|showCircle|hideCircle|isShown|isCircleShown)\(/g) || []).length >= 14);
+test('WP: круг радиуса и иконка — только внутри wpRender; маркер WP создаётся в одном месте', () => {
+  const a = html.indexOf('const wpRender = {');
+  const b = html.indexOf('\n};\n', a) + 4;
+  assert.ok(a > 0 && b > a);
+  const outside = html.slice(0, a) + html.slice(b);
+  assert.doesNotMatch(outside, /wpCircle/, 'круг радиуса WP — деталь отрисовки, снаружи wpRender его нет');
+  assert.doesNotMatch(outside, /\.setIcon\(makeDivIcon\(/, 'иконка WP — wpRender.updateIcon');
+  assert.match(html, /function wpRadiusStyle\(d\)/);
+  assert.ok((html.match(/wpRender\.(show|hide|showMarker|hideMarker|showCircle|hideCircle|isShown|isCircleShown|hasCircle|updateCircle|moveCircle|updateIcon)\(/g) || []).length >= 20);
   assert.match(html, /function createWaypointMarker\(wpData, o = \{\}\)/);
   assert.match(html, /function onWaypointMarkerEvent\(type, marker, originalEvent = null, latlng = null\)/);
-  assert.equal((html.match(/makeWaypointMarkerOptions\(/g) || []).length, 2, 'маркер WP создаётся в одном месте (определение + один вызов)');
+  assert.equal((html.match(/makeWaypointMarkerOptions\(/g) || []).length, 2, 'определение + один вызов');
 });

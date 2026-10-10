@@ -101,6 +101,16 @@ for (let i = 0; i < n - 1; i++) { const [x, y] = await wpScreen(i); await page.m
 { const [x, y] = await wpScreen(n - 1); await page.mouse.dblclick(x, y); await page.waitForTimeout(500); }
 R.s7_route = await snap();
 
+// 7б. «Свойства» точки 0: радиус 150, затем 0 (круг пропадает) и снова 80
+const circleOf = i => ev(i => { const m = waypoints[i]; let r = null; map.eachLayer(l => { if (l instanceof L.Circle && Math.abs(l.getLatLng().lat - m.getLatLng().lat) < 1e-9 && Math.abs(l.getLatLng().lng - m.getLatLng().lng) < 1e-9) r = { radius: l.getRadius(), color: l.options.color, fillOpacity: l.options.fillOpacity }; }); return r; }, i);
+R.s7b_radius = [];
+for (const r of [150, 0, 80]) {
+  await ev(() => openWaypointPropsByNum(waypoints[0].wpData.num));
+  await page.fill('#prop-radius', String(r));
+  await ev(() => applyWaypointProps()); await page.waitForTimeout(150);
+  R.s7b_radius.push(await circleOf(0));
+}
+
 // 8. «Скрыть все рабочие объекты» и обратно (кнопка с глазом)
 await ev(() => toggleAllWorkObjectsVisible()); await page.waitForTimeout(200);
 R.s8_hidden = await snap();
