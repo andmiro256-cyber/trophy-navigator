@@ -2799,7 +2799,7 @@ new HandModeControl().addTo(map);
 L.control.scale({ imperial: false, maxWidth: 200, position: 'bottomleft' }).addTo(map);
 
 // Координаты в статусбаре
-map.on('mousemove', e => {
+tnMap.on('mousemove', e => {
   const {lat, lng: lon} = e.latlng;
   const latD = Math.floor(Math.abs(lat)), latM = ((Math.abs(lat)-latD)*60).toFixed(3);
   const lonD = Math.floor(Math.abs(lon)), lonM = ((Math.abs(lon)-lonD)*60).toFixed(3);
@@ -2818,7 +2818,7 @@ function tndPinchTargetAt(x, y) {
   if (window.TrophyNav3D?.isOpen?.()) return '3d';
   const el = document.elementFromPoint(x, y);
   if (!el || el.closest('.leaflet-control, .modal-overlay')) return null;
-  return map.getContainer().contains(el) ? 'map' : null;
+  return tnMap.getContainer().contains(el) ? 'map' : null;
 }
 function tndPinchApply() {
   tndPinchState.raf = 0;
@@ -2832,7 +2832,7 @@ function tndPinchApply() {
   }
   if (tndPinchState.target === 'map') {
     // запасной путь, если smooth-zoom.js не загрузился
-    const r = map.getContainer().getBoundingClientRect();
+    const r = tnMap.getContainer().getBoundingClientRect();
     const zoom = map._limitZoom(tndPinchState.startZoom + dz);
     if (zoom !== map.getZoom()) map.setZoomAround(L.point(tndPinchState.x - r.left, tndPinchState.y - r.top), zoom, { animate: false });
   }
@@ -4273,7 +4273,7 @@ function setMode(mode) {
     item.classList.toggle('active', item.dataset.mode === mode);
   });
   document.getElementById('sb-mode').textContent = modeNames[mode] || mode;
-  map.getContainer().style.cursor = mode === 'hand' ? '' : 'crosshair';
+  tnMap.getContainer().style.cursor = mode === 'hand' ? '' : 'crosshair';
   updateRulerPanel();
   if (mode !== 'hand') showToast('Режим: ' + modeNames[mode]);
 }
@@ -4394,7 +4394,7 @@ document.addEventListener('keydown', e => {
   }
 });
 
-map.on('click', e => {
+tnMap.on('click', e => {
   closeCtxMenu();
   if (typeof routePickMode !== 'undefined' && routePickMode) return; // route pick обрабатывается отдельно
   if (currentMode === 'waypoint') addWaypoint(e.latlng);
@@ -4404,8 +4404,8 @@ map.on('click', e => {
   else if (currentMode === 'routeedit' && currentRouteDraw) addRoutePoint(e.latlng, `КП${currentRouteDraw.points.length + 1}`);
   else if (currentMode === 'ruler') addRulerPoint(e.latlng);
 });
-map.on('dblclick', e => {
-  L.DomEvent.stop(e);
+tnMap.on('dblclick', e => {
+  e.stop();
   if (currentMode === 'track') {
     removeDuplicateTrackDoubleClickPoint();
     finishTrackDraw();
@@ -7046,7 +7046,7 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('#ctx-menu') || e.target.closest('#ctx-menu-map') || e.target.closest('#ctx-menu-track')) return;
   closeCtxMenu();
 });
-map.getContainer().addEventListener('contextmenu', e => {
+tnMap.getContainer().addEventListener('contextmenu', e => {
   e.preventDefault();
   // Если ПКМ уже обработан маркером — не показываем меню карты
   if (ctxHandledByMarker) { ctxHandledByMarker = false; return; }
@@ -7698,7 +7698,7 @@ function beginTrackPointDrag(track, idx, options = {}) {
     map.off('mousemove', onMove);
     map.off('mouseup', onUp);
     map.dragging.enable();
-    map.getContainer()?.classList.remove('track-grabbing');
+    tnMap.getContainer()?.classList.remove('track-grabbing');
     if (moved) {
       pushUndo({ type: 'trackGeometry', track, snapshot: undoSnapshot });
       touchTrack(track);
@@ -7707,7 +7707,7 @@ function beginTrackPointDrag(track, idx, options = {}) {
     syncTrackMarkers(track);
   };
   map.dragging.disable();
-  map.getContainer()?.classList.add('track-grabbing');
+  tnMap.getContainer()?.classList.add('track-grabbing');
   map.on('mousemove', onMove);
   map.on('mouseup', onUp);
   // Точка, рождённая перетаскиванием, должна сразу оказаться под курсором
@@ -7837,7 +7837,8 @@ function scheduleTrackMarkerRefresh() {
   });
 }
 
-map.on('zoomend moveend', scheduleTrackMarkerRefresh);
+tnMap.on('zoomend', scheduleTrackMarkerRefresh);
+tnMap.on('moveend', scheduleTrackMarkerRefresh);
 
 // Захват трека мышью. Работает в режиме «Обзор» и в режиме правки трека:
 // подвёл курсор к линии — она подсвечивается курсором-ладонью, потянул —
@@ -7847,7 +7848,7 @@ function trackGestureAllowed() {
 }
 
 let trackHoverCheckedAt = 0;
-map.on('mousemove', e => {
+tnMap.on('mousemove', e => {
   if (!trackGestureAllowed()) { setTrackGrabCursor(false); return; }
   const now = Date.now();
   if (now - trackHoverCheckedAt < TRACK_HOVER_THROTTLE_MS) return;
@@ -7858,7 +7859,7 @@ map.on('mousemove', e => {
 
 // Слушаем на этапе перехвата: иначе Leaflet успевает начать перетаскивание карты
 // и наш жест уже не остановить — dragging.disable() на запущенный drag не влияет.
-map.getContainer().addEventListener('mousedown', onTrackGrabMouseDown, true);
+tnMap.getContainer().addEventListener('mousedown', onTrackGrabMouseDown, true);
 
 function onTrackGrabMouseDown(nativeEvent) {
   if (nativeEvent.button !== 0 || !trackGestureAllowed()) return;
@@ -8430,7 +8431,7 @@ function focusTrackOnMap(id) {
   const t = tracks.find(item => item.id === id);
   if (!t || !t.points?.length) return;
   if (t.visible === false) toggleTrackVisible(id);
-  const mapRect = map.getContainer().getBoundingClientRect();
+  const mapRect = tnMap.getContainer().getBoundingClientRect();
   let left = 30, right = 30;
   const win = document.getElementById('modal-tracks-win');
   const wr = win && win.offsetParent ? win.getBoundingClientRect() : null;
@@ -9920,9 +9921,10 @@ function startAreaSelect() {
   dlPolygonPoints = [];
   dlPolygonMarkers = [];
   dlPolygonShape = null;
-  map.getContainer().style.cursor = 'crosshair';
+  tnMap.getContainer().style.cursor = 'crosshair';
   map.dragging.disable();
-  map.on('click', onPolygonClick);
+  dlPolygonClickOff?.();
+  dlPolygonClickOff = tnMap.on('click', onPolygonClick);
   document.addEventListener('keydown', onDlEscape);
   // Show toolbar
   const tb = document.getElementById('polygon-toolbar');
@@ -9935,6 +9937,7 @@ function onDlEscape(e) {
   if (e.key === 'Escape') cancelAreaSelect();
 }
 
+let dlPolygonClickOff = null;  // отписка клика выделения области (фасад tnMap)
 function onPolygonClick(e) {
   if (dlPolygonPoints.length >= 8) {
     showToast('Максимум 8 точек');
@@ -9991,9 +9994,10 @@ function finishPolygon() {
   );
   // Exit polygon mode but keep shapes visible
   dlPolygonMode = false;
-  map.getContainer().style.cursor = '';
+  tnMap.getContainer().style.cursor = '';
   map.dragging.enable();
-  map.off('click', onPolygonClick);
+  dlPolygonClickOff?.();
+  dlPolygonClickOff = null;
   document.removeEventListener('keydown', onDlEscape);
   document.getElementById('polygon-toolbar').style.display = 'none';
   // Store polygon for filtering
@@ -10003,9 +10007,10 @@ function finishPolygon() {
 
 function cancelAreaSelect() {
   dlPolygonMode = false;
-  map.getContainer().style.cursor = '';
+  tnMap.getContainer().style.cursor = '';
   map.dragging.enable();
-  map.off('click', onPolygonClick);
+  dlPolygonClickOff?.();
+  dlPolygonClickOff = null;
   document.removeEventListener('keydown', onDlEscape);
   document.getElementById('polygon-toolbar').style.display = 'none';
   // Cleanup markers & shape
@@ -14403,7 +14408,7 @@ function waitForFirstPaint() {
     try { const v = JSON.parse(savedView); tnMap.setView({ center: { lat: v.lat, lng: v.lng }, zoom: v.zoom }); } catch {}
   }
   // Сохранять позицию карты при перемещении
-  map.on('moveend', () => {
+  tnMap.on('moveend', () => {
     const c = tnMap.getCenter();
     localStorage.setItem('tnd-map-view', JSON.stringify({ lat: c.lat, lng: c.lng, zoom: tnMap.getZoom() }));
     TileCache.clearPrefetchQueue(); // сброс устаревшей очереди
@@ -15676,7 +15681,7 @@ function updateOsrmPickUI() {
   if (hintText && routePickMode) hintText.textContent = routePickMode === 'A'
     ? 'Выберите СТАРТ на карте'
     : 'Выберите ФИНИШ на карте';
-  map.getContainer().classList.toggle('osrm-route-picking', !!routePickMode);
+  tnMap.getContainer().classList.toggle('osrm-route-picking', !!routePickMode);
 }
 
 function cancelRoutePick(showMessage = false) {
@@ -15722,7 +15727,7 @@ function startRoutePick(point) {
   return true;
 }
 
-map.on('click', function(e) {
+tnMap.on('click', function(e) {
   if (!routePickMode) return;
   const pickedPoint = routePickMode;
   setOsrmEndpoint(pickedPoint, e.latlng);
@@ -16030,7 +16035,7 @@ function renderOsrmRouteList() {
 }
 
 function fitOsrmRouteOnMap(route) {
-  const mapRect = map.getContainer().getBoundingClientRect();
+  const mapRect = tnMap.getContainer().getBoundingClientRect();
   const routingOverlay = document.getElementById('modal-routing');
   const routingPanel = document.getElementById('modal-routing-win');
   const panelRect = routingOverlay?.classList.contains('open') && routingPanel

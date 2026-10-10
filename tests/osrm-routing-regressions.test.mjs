@@ -87,9 +87,12 @@ function makeRoutingContext(options = {}) {
   };
   const toasts = [];
   let context;
+  // фасад tnMap (MapLibre 0б.5) поверх той же заглушки карты
+  const tnMap = { on(type, handler) { map.on(type, handler); return () => {}; }, getContainer: () => container };
   context = vm.createContext({
     L,
     map,
+    tnMap,
     osrmState: { items: [], activeId: null, nextId: 1 },
     routePickMode: null,
     dlPolygonMode: false,
@@ -135,6 +138,7 @@ test('changing map tool cancels pending OSRM selection before another map click'
         : { classList: emptyClassList, closest: () => null }
     },
     map: { getContainer: () => ({ style: {} }) },
+    tnMap: { getContainer: () => ({ style: {} }), on: () => () => {} },
     cancelRoutePick() { calls.push('cancel'); context.routePickMode = null; },
     clearRuler() {},
     closeTransientMapModals() {},

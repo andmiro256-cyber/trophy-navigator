@@ -25,7 +25,8 @@
     // Leaflet называет события указателя по-своему
     const EV = { pointerdown: 'mousedown', pointermove: 'mousemove', pointerup: 'mouseup' };
     const toPayload = e => {
-      const out = { originalEvent: e?.originalEvent || null };
+      // stop() — как L.DomEvent.stop: событие не уходит дальше (двойной щелчок не зумит карту при рисовании)
+      const out = { originalEvent: e?.originalEvent || null, stop: () => { if (e) L.DomEvent.stop(e); } };
       if (e?.latlng) out.latlng = plain(e.latlng);
       if (e?.containerPoint) out.point = { x: e.containerPoint.x, y: e.containerPoint.y };
       return out;

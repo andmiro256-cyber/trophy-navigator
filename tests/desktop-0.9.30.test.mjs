@@ -56,6 +56,9 @@ function setup({ withPinchBlock = false, bridge = false } = {}) {
   w.L.Browser.any3d = true;
   w.__opts = zoomOpts();
   w.eval('var map = L.map("map", Object.assign({ maxZoom: 22 }, window.__opts)).setView([60, 30], 10, { animate: false });');
+  // фасад tnMap (MapLibre 0б.5) — как в index.html сразу после создания карты
+  for (const f of ['../ui/tn-geo.js', '../ui/tn-map.js', '../ui/tn-map-leaflet.js']) w.eval(read(f));
+  w.eval('var tnMap = TnMap.create(TnMapLeaflet.create(map));');
   const map = w.map;
   const events = [];
   map.on('zoomstart zoomend movestart moveend', e => events.push(e.type));

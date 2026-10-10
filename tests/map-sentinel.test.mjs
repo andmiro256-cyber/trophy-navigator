@@ -38,3 +38,15 @@ test('модули вне index.html: tn-widgets/tn-track-analysis/tn-voice не
     assert.equal(n, 0, `${f}: ${n}`);
   }
 });
+
+test('события карты и контейнер: только через tnMap; прямые map.on/off — лишь перетаскивание вершины (этап 3)', () => {
+  const lines = html.split('\n');
+  const ev = [];
+  lines.forEach((l, i) => { if (/\bmap\.(on|off|once)\(/.test(l)) ev.push(l.trim()); });
+  const ALLOW_EV = ["map.off('mousemove', onMove);", "map.off('mouseup', onUp);", "map.on('mousemove', onMove);", "map.on('mouseup', onUp);"];
+  assert.deepEqual(ev.filter(l => !ALLOW_EV.includes(l)), []);
+  assert.ok(ev.length <= 8, `перетаскивание: ${ev.length}`);
+  assert.doesNotMatch(html, /\bmap\.getContainer\(\)/);
+  assert.match(html, /tnMap\.on\('dblclick', e => \{\n  e\.stop\(\);/);
+  assert.match(html, /dlPolygonClickOff = tnMap\.on\('click', onPolygonClick\);/);
+});
