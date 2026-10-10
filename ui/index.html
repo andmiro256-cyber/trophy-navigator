@@ -14623,8 +14623,11 @@ function rrGenerate() {
   const radius = parseInt(document.getElementById('rr-cp-radius').value) || 30;
   const startMode = document.querySelector('input[name="rr-start-mode"]:checked')?.value || 'auto';
 
-  const track = tracks.find(t => t.id === trackId);
-  const route = routes.find(r => r.id === routeId);
+  // Race Report читает записи модели (MapLibre 0б.4): простые {lat,lng}, без слоёв Leaflet
+  const trackObj = tracks.find(t => t.id === trackId);
+  const routeObj = routes.find(r => r.id === routeId);
+  const track = trackObj ? tnTrackRecs([trackObj])[0] : null;
+  const route = routeObj ? tnRouteRecs([routeObj])[0] : null;
   if (!track) { showToast('Выберите трек с таймштампами'); return; }
   if (!route) { showToast('Выберите маршрут'); return; }
 

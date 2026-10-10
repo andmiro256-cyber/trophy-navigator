@@ -108,3 +108,9 @@ test('index.html, шаг 1 (чтение): треки и маршруты — з
   assert.match(html, /tnRouteRecs\(selRoutes\)\.forEach\(r => \{/);
   assert.match(html, /tnRouteRecs\(routes\.filter\(r => !r\.isNew && r\.points\?\.length >= 2\)\)\)\.map\(r => \{\n      return \{\n        id: r\.rawId,/);
 });
+
+test('index.html, шаг 1 (чтение): Race Report берёт трек и маршрут записями модели', async () => {
+  const fs = await import('node:fs');
+  const html = fs.readFileSync(new URL('../ui/index.html', import.meta.url), 'utf8');
+  assert.match(html, /const track = trackObj \? tnTrackRecs\(\[trackObj\]\)\[0\] : null;\n  const route = routeObj \? tnRouteRecs\(\[routeObj\]\)\[0\] : null;/);
+});
