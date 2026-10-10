@@ -77,3 +77,18 @@ test('треки: линия трека — только внутри trackRende
   assert.match(html, /function onTrackLineEvent\(type, track, latlng = null, originalEvent = null\)/);
   assert.ok((html.match(/trackRender\.(has|isShown|create|show|hide|sync|setStyle|bringToFront|remove|bounds)\(/g) || []).length >= 30);
 });
+
+test('точки трека: кружок — только внутри trackPointRender; события — onTrackPointEvent', () => {
+  const a = html.indexOf('const trackPointRender = {');
+  const b = html.indexOf('\n};\n', a) + 4;
+  assert.ok(a > 0 && b > a);
+  const outside = html.slice(0, a) + html.slice(b);
+  assert.doesNotMatch(outside, /function createTrackMarker/);
+  // кружок точки трека снаружи не двигают и не красят напрямую
+  for (const frag of ['marker.setLatLng(point)', 'if (marker) marker.setLatLng(latlng);', 'marker => marker.setStyle({', 't.markers.forEach(m => m.setStyle(']) {
+    assert.ok(!outside.includes(frag), frag);
+  }
+  assert.match(html, /function onTrackPointEvent\(type, track, idx, originalEvent = null, latlng = null\)/);
+  assert.match(html, /function trackPointStyle\(track, idx\)/);
+  assert.ok((html.match(/trackPointRender\.(create|move|setStyle|hide)\b/g) || []).length >= 8);
+});

@@ -7735,7 +7735,7 @@ function beginTrackPointDrag(track, idx, options = {}) {
   const onMove = ev => {
     const latlng = map.mouseEventToLatLng(ev.originalEvent || ev);
     const marker = getTrackMarker(track, idx);
-    if (marker) marker.setLatLng(latlng);
+    if (marker) trackPointRender.move(marker, latlng);
     track.points[idx] = latlng;
     trackRender.sync(track);
     moved = true;
@@ -7760,59 +7760,78 @@ function beginTrackPointDrag(track, idx, options = {}) {
   if (options.initialEvent) onMove(options.initialEvent);
 }
 
-function createTrackMarker(track, idx) {
+/** Стиль точки трека — не зависит от движка (MapLibre возьмёт его для слоя точек трека). */
+function trackPointStyle(track, idx) {
   const isSelected = currentTrackEdit?.track?.id === track.id && currentTrackEdit?.selectedPointIdx === idx;
   const r = canEditTrackGeometry(track) ? Math.max(track.pointSize ?? 3, 5) : (track.pointSize ?? 3);
-  const m = L.circleMarker(track.points[idx], {
+  return {
     radius: isSelected ? r + 2 : r,
     color: isSelected ? '#ffffff' : track.color,  // theme-check: data
     fillColor: track.color,
     fillOpacity: isSelected ? 1 : 0.7,
     weight: isSelected ? 2 : 1,
-    renderer: trackPointCanvasRenderer,
-    bubblingMouseEvents: false
-  }).addTo(map);
-  m._trackIdx = idx;
-  m.on('mouseover', function(e) {
-    L.DomEvent.stop(e);
-    showTrackPointHoverTooltip(track, m._trackIdx);
-  });
-  m.on('mousemove', function(e) {
-    L.DomEvent.stop(e);
-    showTrackPointHoverTooltip(track, m._trackIdx);
-  });
-  m.on('mouseout', closeTrackPointHoverTooltip);
+  };
+}
+
+/**
+ * Отрисовка точек трека (MapLibre 0б.5): единственное место, где кружок точки трека живёт на карте Leaflet.
+ * События кружка идут в onTrackPointEvent — он от движка не зависит.
+ */
+const trackPointRender = {
+  create(track, idx) {
+    const m = L.circleMarker(track.points[idx], {
+      ...trackPointStyle(track, idx),
+      renderer: trackPointCanvasRenderer,
+      bubblingMouseEvents: false
+    }).addTo(map);
+    m._trackIdx = idx;
+    const fire = (type, e) => onTrackPointEvent(type, track, m._trackIdx, e.originalEvent, m.getLatLng());
+    ['mouseover', 'mousemove', 'contextmenu', 'click'].forEach(type => m.on(type, e => { L.DomEvent.stop(e); fire(type, e); }));
+    m.on('mouseout', e => fire('mouseout', e));
+    // Нажатие гасится, только если с него началось перетаскивание
+    m.on('mousedown', e => { if (fire('mousedown', e)) L.DomEvent.stop(e); });
+    return m;
+  },
+  move: (m, latlng) => { m.setLatLng(latlng); },
+  setStyle: (m, style) => { m.setStyle(style); },
+  hide: m => { if (map.hasLayer(m)) map.removeLayer(m); },
+};
+
+/** События точки трека. true — событие поглощено (для mousedown: началось перетаскивание). */
+function onTrackPointEvent(type, track, idx, originalEvent = null, latlng = null) {
+  if (type === 'mouseover' || type === 'mousemove') { showTrackPointHoverTooltip(track, idx); return true; }
+  if (type === 'mouseout') { closeTrackPointHoverTooltip(); return false; }
   // Перетаскивание левой кнопкой
-  m.on('mousedown', function(e) {
-    if (!canReshapeTrack(track)) return;
-    if (e.originalEvent?.button !== 0) return; // только ЛКМ
-    L.DomEvent.stop(e);
+  if (type === 'mousedown') {
+    if (!canReshapeTrack(track)) return false;
+    if (originalEvent?.button !== 0) return false; // только ЛКМ
     if (isTrackEditActive(track)) {
-      currentTrackEdit.selectedPointIdx = m._trackIdx;
+      currentTrackEdit.selectedPointIdx = idx;
       updateTrackBuildPanel(track);
     }
-    beginTrackPointDrag(track, m._trackIdx);
-  });
+    beginTrackPointDrag(track, idx);
+    return true;
+  }
   // ПКМ — контекстное меню
-  m.on('contextmenu', function(e) {
-    L.DomEvent.stop(e);
-    showTrackPointCtxMenu(e.originalEvent, track, m._trackIdx, m, m.getLatLng());
-  });
-  m.on('click', function(e) {
-    L.DomEvent.stop(e);
+  if (type === 'contextmenu') {
+    showTrackPointCtxMenu(originalEvent, track, idx, getTrackMarker(track, idx), latlng);
+    return true;
+  }
+  if (type === 'click') {
     if (!isTrackEditActive(track)) {
-      showTrackPointPopup(track, m._trackIdx, m.getLatLng());
-      return;
+      showTrackPointPopup(track, idx, latlng);
+      return true;
     }
     if (currentTrackEdit?.track?.id === track.id) {
-      currentTrackEdit.selectedPointIdx = m._trackIdx;
+      currentTrackEdit.selectedPointIdx = idx;
       syncTrackMarkers(track);
       updateTrackBuildPanel(track);
-      showTrackPointPopup(track, m._trackIdx, m.getLatLng());
-      showToast(`Выбрана точка трека #${m._trackIdx + 1}`);
+      showTrackPointPopup(track, idx, latlng);
+      showToast(`Выбрана точка трека #${idx + 1}`);
     }
-  });
-  return m;
+    return true;
+  }
+  return false;
 }
 
 function getTrackMarker(track, idx) {
@@ -7837,14 +7856,14 @@ function addTrackMarkers(track) {
     wanted.add(i);
     const marker = markerMap.get(i);
     if (marker) {
-      marker.setLatLng(point);
+      trackPointRender.move(marker, point);
       return;
     }
-    markerMap.set(i, createTrackMarker(track, i));
+    markerMap.set(i, trackPointRender.create(track, i));
   });
   markerMap.forEach((marker, idx) => {
     if (wanted.has(idx)) return;
-    if (map.hasLayer(marker)) map.removeLayer(marker);
+    trackPointRender.hide(marker);
     markerMap.delete(idx);
   });
   track.markerMap = markerMap;
@@ -7853,14 +7872,10 @@ function addTrackMarkers(track) {
 
 function removeTrackMarkers(track) {
   if (track.markerMap instanceof Map) {
-    track.markerMap.forEach(marker => {
-      if (map.hasLayer(marker)) map.removeLayer(marker);
-    });
+    track.markerMap.forEach(trackPointRender.hide);
     track.markerMap.clear();
   } else if (track.markers) {
-    track.markers.forEach(marker => {
-      if (map.hasLayer(marker)) map.removeLayer(marker);
-    });
+    track.markers.forEach(trackPointRender.hide);
   }
   track.markers = [];
   track.markerMap = new Map();
@@ -8491,7 +8506,7 @@ function previewTrackProps() {
   const width = parseInt(document.getElementById('track-width-input').value, 10) || t.width;
   const pointSize = parseInt(document.getElementById('track-point-size-input').value, 10);
   trackRender.setStyle(t, { color, weight: width });
-  (t.markers || []).forEach(marker => marker.setStyle({
+  (t.markers || []).forEach(marker => trackPointRender.setStyle(marker, {
     color,
     fillColor: color,
     radius: canEditTrackGeometry(t) ? Math.max(pointSize, 5) : pointSize
@@ -8520,7 +8535,7 @@ function applyTrackProps() {
   syncTrackMarkers(t);
   if (t.markers?.length > 0) {
     const radius = canEditTrackGeometry(t) ? Math.max(newPointSize, 5) : newPointSize;
-    t.markers.forEach(m => m.setStyle({ color: t.color, fillColor: t.color, radius }));
+    t.markers.forEach(m => trackPointRender.setStyle(m, { color: t.color, fillColor: t.color, radius }));
   }
   setTrackEditingVisualState(t, isTrackEditActive(t));
   trackPropsPreviewId = null;
@@ -12552,7 +12567,7 @@ function applyState(state) {
       track.pointsData = pointsData;
       if (!track.visible) {
         trackRender.hide(track);
-        if (track.markers) track.markers.forEach(m => map.removeLayer(m));
+        if (track.markers) track.markers.forEach(trackPointRender.hide);
       }
     });
     trackIdCounter = state.counters?.trackIdCounter || trackIdCounter;
