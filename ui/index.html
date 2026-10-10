@@ -3594,7 +3594,7 @@ function findWaypointMatch(latlng, label = '') {
   let bestDistance = Infinity;
   for (const marker of waypoints) {
     if (!marker?.wpData) continue;
-    const distance = latlng.distanceTo(marker.getLatLng());
+    const distance = TnGeo.distance(latlng, marker.getLatLng());
     if (distance > 60) continue;
     const markerLabel = normalizeWaypointLabel(marker.wpData.name);
     if (normalizedLabel && markerLabel === normalizedLabel && distance <= 25) return marker;
@@ -4094,7 +4094,7 @@ function findWaypointForRoutePoint(route, idx) {
 
   for (const marker of waypoints) {
     if (!marker?.wpData) continue;
-    const distance = cp.distanceTo(marker.getLatLng());
+    const distance = TnGeo.distance(cp, marker.getLatLng());
     if (distance > 2) continue;
     const markerLabel = String(marker.wpData.name || '').trim().toLowerCase();
     if (label && markerLabel === label) return marker;
@@ -4121,7 +4121,7 @@ function getRoutePointRadius(route, idx, fallbackRadius) {
 
 function latLngDistanceMeters(a, b) {
   if (!a || !b) return Infinity;
-  try { return L.latLng(a.lat, a.lng).distanceTo(L.latLng(b.lat, b.lng)); }
+  try { return TnGeo.distance(L.latLng(a.lat, a.lng), L.latLng(b.lat, b.lng)); }
   catch { return Infinity; }
 }
 
@@ -7667,7 +7667,7 @@ function formatTrackPointTooltip(track, idx) {
   // Distance from start
   if (idx > 0) {
     let dist = 0;
-    for (let i = 1; i <= idx; i++) dist += track.points[i-1].distanceTo(track.points[i]);
+    for (let i = 1; i <= idx; i++) dist += TnGeo.distance(track.points[i-1], track.points[i]);
     html += `<b>От старта:</b> ${(dist/1000).toFixed(2)} км<br>`;
   }
   html += `</div>`;
@@ -7888,7 +7888,7 @@ function onTrackGrabMouseDown(nativeEvent) {
   };
   const onMove = ev => {
     const moveEvent = ev.originalEvent || ev;
-    if (map.mouseEventToContainerPoint(moveEvent).distanceTo(startPoint) < TRACK_RESHAPE_DRAG_THRESHOLD_PX) return;
+    if (TnGeo.screenDistance(map.mouseEventToContainerPoint(moveEvent), startPoint) < TRACK_RESHAPE_DRAG_THRESHOLD_PX) return;
     handedOver = true;
     cleanup();
     const undoSnapshot = snapshotTrackGeometry(track);
@@ -7909,7 +7909,7 @@ function findNearestTrackPointHit(track, latlng, maxPx = TRACK_POINT_HIT_RADIUS_
   let best = null;
   track.points.forEach((point, idx) => {
     if (!bounds.contains(point)) return;
-    const dist = target.distanceTo(map.latLngToLayerPoint(point));
+    const dist = TnGeo.screenDistance(target, map.latLngToLayerPoint(point));
     if (dist > maxPx) return;
     if (!best || dist < best.dist) best = { idx, point, dist };
   });
@@ -8044,7 +8044,7 @@ function bindTrackPolyline(track) {
     const clickLatLng = e.latlng;
     let minDist = Infinity, closestIdx = 0;
     track.points.forEach((p, i) => {
-      const d = clickLatLng.distanceTo(p);
+      const d = TnGeo.distance(clickLatLng, p);
       if (d < minDist) { minDist = d; closestIdx = i; }
     });
     const marker = getTrackMarker(track, closestIdx);
@@ -8142,7 +8142,7 @@ function removeDuplicateTrackDoubleClickPoint() {
   if (!track || track.points.length < 2) return false;
   const previous = map.latLngToContainerPoint(track.points[track.points.length - 2]);
   const last = map.latLngToContainerPoint(track.points[track.points.length - 1]);
-  if (previous.distanceTo(last) > 6) return false;
+  if (TnGeo.screenDistance(previous, last) > 6) return false;
   track.points.pop();
   if (track.pointsData?.length) track.pointsData.pop();
   if (track.polyline) track.polyline.setLatLngs(trackLatLngs(track));
@@ -8213,7 +8213,7 @@ function renameTrack(id, newName) {
 
 function trackLen(t) {
   let d = 0;
-  for (let i = 1; i < t.points.length; i++) if (!isTrackSegStart(t, i)) d += t.points[i-1].distanceTo(t.points[i]);
+  for (let i = 1; i < t.points.length; i++) if (!isTrackSegStart(t, i)) d += TnGeo.distance(t.points[i-1], t.points[i]);
   return d / 1000;
 }
 function updateTrackBuildPanel(t) {
@@ -8783,7 +8783,7 @@ function loadGPXTracks(text, fname, options = {}) {
         try {
           const dt = (new Date(pointsData[i].time) - new Date(pointsData[i-1].time)) / 1000; // секунды
           if (dt > 0) {
-            const dist = points[i-1].distanceTo(points[i]); // метры
+            const dist = TnGeo.distance(points[i-1], points[i]); // метры
             pointsData[i].speed = dist / dt; // м/с
           }
         } catch(_) {}
@@ -9216,7 +9216,7 @@ function removeDuplicateRouteDoubleClickPoint() {
   if (!route || route.points.length < 2) return false;
   const previous = map.latLngToContainerPoint(route.points[route.points.length - 2]);
   const last = map.latLngToContainerPoint(route.points[route.points.length - 1]);
-  if (previous.distanceTo(last) > 6) return false;
+  if (TnGeo.screenDistance(previous, last) > 6) return false;
   removeRouteBuildPoint(route.points.length - 1);
   return true;
 }
@@ -9271,7 +9271,7 @@ function cancelRouteDraw() {
 }
 function routeLen(r) {
   let d = 0;
-  for (let i = 1; i < r.points.length; i++) d += r.points[i-1].distanceTo(r.points[i]);
+  for (let i = 1; i < r.points.length; i++) d += TnGeo.distance(r.points[i-1], r.points[i]);
   return d / 1000;
 }
 function deleteRoute(id) {
@@ -9537,7 +9537,7 @@ function updateRouteList() {
     const srcTag = r.source && r.source !== 'desktop' ? ` · <span style="font-size:10px;color:var(--text-secondary)">${escapeHtml(r.source)}</span>` : '';
     const kpRows = r.points.map((p, i) => {
       const prev = i > 0 ? r.points[i-1] : null;
-      const dist = prev ? (prev.distanceTo(p)/1000).toFixed(1) + ' км' : '—';
+      const dist = prev ? (TnGeo.distance(prev, p)/1000).toFixed(1) + ' км' : '—';
       const bear = prev ? calcBearing(prev.lat, prev.lng, p.lat, p.lng).toFixed(0) + '°' : '';
       const upBtn = `<button type="button" class="route-kp-btn" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},-1)" title="Выше" aria-label="Выше"${i === 0 ? ' disabled' : ''}>${tnIcon('chevron-up', 'tn-ico-xs')}</button>`;
       const downBtn = `<button type="button" class="route-kp-btn" onclick="event.stopPropagation();moveRoutePoint(${r.id},${i},1)" title="Ниже" aria-label="Ниже"${i === r.points.length - 1 ? ' disabled' : ''}>${tnIcon('chevron-down', 'tn-ico-xs')}</button>`;
@@ -12701,7 +12701,7 @@ function addRulerPoint(latlng, options = {}) {
 
   if (rulerPoints.length > 1) {
     const prev = rulerPoints[rulerPoints.length - 2];
-    const segDist = prev.distanceTo(latlng);
+    const segDist = TnGeo.distance(prev, latlng);
     rulerTotalDist += segDist;
     const line = L.polyline([prev, latlng], {
       color: '#ff6a00', weight: 2, dashArray: '6 4', opacity: 0.8  // theme-check: data
@@ -14508,14 +14508,14 @@ function rrMatchTrackToRoute(track, route, radius) {
 
     // Ищем ПЕРВОЕ попадание трека в радиус КП, начиная с searchFrom
     for (let ti = searchFrom; ti < track.points.length; ti++) {
-      const d = cp.distanceTo(track.points[ti]);
+      const d = TnGeo.distance(cp, track.points[ti]);
       if (d < cpRadius) {
         // Нашли вход в радиус — теперь ищем ближайшую точку в этом "проходе"
         foundIdx = ti;
         foundDist = d;
         // Продолжаем пока трек внутри радиуса, берём ближайшую
         for (let tj = ti + 1; tj < track.points.length; tj++) {
-          const d2 = cp.distanceTo(track.points[tj]);
+          const d2 = TnGeo.distance(cp, track.points[tj]);
           if (d2 >= cpRadius) break; // вышли из радиуса
           if (d2 < foundDist) { foundIdx = tj; foundDist = d2; }
         }
@@ -14549,7 +14549,7 @@ function rrAnalyzeSlice(track, fromIdx, toIdx) {
   const stops = [];
 
   for (let i = fromIdx + 1; i <= toIdx; i++) {
-    const segDist = pts[i - 1].distanceTo(pts[i]);
+    const segDist = TnGeo.distance(pts[i - 1], pts[i]);
     dist += segDist;
     const d = pd[i], dPrev = pd[i - 1];
     if (d?.ele != null && dPrev?.ele != null) {
@@ -14599,7 +14599,7 @@ function rrAnalyzeSlice(track, fromIdx, toIdx) {
   const t1 = pd[toIdx]?.time ? new Date(pd[toIdx].time) : null;
   const totalTime = t0 && t1 ? (t1 - t0) / 1000 : null;
   const moveTime = totalTime != null ? totalTime - stopTime : null;
-  const straightDist = pts[fromIdx].distanceTo(pts[toIdx]);
+  const straightDist = TnGeo.distance(pts[fromIdx], pts[toIdx]);
   const efficiency = dist > 0 ? (straightDist / dist * 100) : 100;
 
   return {
@@ -14796,7 +14796,7 @@ async function rrRenderCharts() {
   // Build distance array for speed line chart
   const distances = [0];
   for (let i = raceStartIdx + 1; i <= raceEndIdx; i++) {
-    distances.push(distances[distances.length - 1] + pts[i - 1].distanceTo(pts[i]));
+    distances.push(distances[distances.length - 1] + TnGeo.distance(pts[i - 1], pts[i]));
   }
   const distKm = distances.map(d => +(d / 1000).toFixed(3));
 
@@ -14806,7 +14806,7 @@ async function rrRenderCharts() {
     let spd = pd[i]?.speed;
     if (spd == null && i > raceStartIdx && pd[i]?.time && pd[i-1]?.time) {
       const dt = (new Date(pd[i].time) - new Date(pd[i-1].time)) / 1000;
-      const d = pts[i-1].distanceTo(pts[i]);
+      const d = TnGeo.distance(pts[i-1], pts[i]);
       spd = dt > 0 ? d / dt : 0;
     }
     speeds.push(spd != null ? spd * 3.6 : 0);
@@ -14974,7 +14974,7 @@ function rrRenderMapOverlays() {
     let spd = pd[i]?.speed;
     if (spd == null && i > rStart && pd[i]?.time && pd[i-1]?.time) {
       const dt = (new Date(pd[i].time) - new Date(pd[i-1].time)) / 1000;
-      spd = dt > 0 ? pts[i-1].distanceTo(pts[i]) / dt : 0;
+      spd = dt > 0 ? TnGeo.distance(pts[i-1], pts[i]) / dt : 0;
     }
     speeds.push(spd != null ? spd * 3.6 : 0);
   }
@@ -16441,7 +16441,7 @@ function liveAppendTrail(dev) {
     return;
   }
   const last = entry.points[entry.points.length - 1];
-  if (last && last.distanceTo(latlng) < 8) {
+  if (last && TnGeo.distance(last, latlng) < 8) {
     entry.polyline.setStyle({ color: liveMarkerColor(dev) });
     return;
   }

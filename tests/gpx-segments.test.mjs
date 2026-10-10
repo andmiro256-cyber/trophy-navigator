@@ -29,7 +29,7 @@ test('GPX: все trkseg трека — один трек, начало куск
 
 test('отрисовка, длина и выгрузка в GPX учитывают разрывы', () => {
   assert.doesNotMatch(html, /polyline\.setLatLngs\((t|track)\.points\)/, 'все обновления линии трека — через trackLatLngs');
-  assert.match(html, /if \(!isTrackSegStart\(t, i\)\) d \+= t\.points\[i-1\]\.distanceTo\(t\.points\[i\]\);/);
+  assert.match(html, /if \(!isTrackSegStart\(t, i\)\) d \+= TnGeo\.distance\(t\.points\[i-1\], t\.points\[i\]\);/);
   assert.equal((html.match(/if \(isTrackSegStart\(t, i\)\) gpx \+= /g) || []).length, 3, 'три выгрузки GPX рвут trkseg');
 });
 

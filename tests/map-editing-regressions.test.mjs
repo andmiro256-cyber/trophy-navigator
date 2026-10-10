@@ -1,3 +1,5 @@
+import { createRequire as __cr } from 'node:module';
+const TnGeo = __cr(import.meta.url)('../ui/tn-geo.js');
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
@@ -17,6 +19,7 @@ test('active geometry session is focused instead of being replaced', () => {
   const source = sourceBetween('function getActiveGeometrySession()', '// ─── БЛОКИРОВКА ПЕРЕМЕЩЕНИЯ ОБЪЕКТОВ');
   const calls = [];
   const context = vm.createContext({
+    TnGeo,
     currentTrackEdit: null,
     currentTrackDraw: { isNew: true },
     currentRouteDraw: null,
@@ -53,6 +56,7 @@ test('route double-click cleanup removes only the duplicate endpoint', () => {
     pointWaypointIds: [null, null, null]
   };
   const context = vm.createContext({
+    TnGeo,
     currentRouteDraw: route,
     map: { latLngToContainerPoint: point => ({ distanceTo: other => Math.hypot(point.x - other.x, point.y - other.y) }) },
     removeRouteBuildPoint: index => {
@@ -73,6 +77,7 @@ test('stale temporary layers are not considered current', () => {
   const source = sourceBetween('function isCurrentTemporaryMapLayer(', 'function hideAllWorkObjects()');
   const currentSearch = {};
   const context = vm.createContext({
+    TnGeo,
     rulerLines: [],
     rulerMarkers: [],
     searchMarker: currentSearch,
