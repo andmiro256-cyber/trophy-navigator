@@ -170,3 +170,18 @@ PASS здесь означает отсутствие этих ошибок ис
 
 `REPORT-0b6.md` содержит SHA, итог smoke, статистику шагов, новые API-пробелы и
 ограничения. Полные скриншоты/сырые логи остаются в папке прогона на HP.
+
+На HP сборке Desktop дополнительно нужны заголовки ALSA (`cpal`), хотя сборка
+Map Builder обходится без них. В прогоне #2730 `libasound2-dev` распакован через
+`apt-get download` / `dpkg -x` в `~/tnd-harness-2730/deps`, без установки в систему.
+В `alsa.pc` заменены `prefix`/`exec_prefix` на этот путь, `libasound.so.2.0.0` связан
+с `/lib/x86_64-linux-gnu/libasound.so.2.0.0` (именно на него указывает dev-symlink `libasound.so`). Для сборки:
+
+```bash
+export PKG_CONFIG_PATH=/home/andrey-hp/tnd-harness-2730/deps/usr/lib/x86_64-linux-gnu/pkgconfig
+export CFLAGS=-I/home/andrey-hp/tnd-harness-2730/deps/usr/include
+export LIBCLANG_PATH=/lib/x86_64-linux-gnu
+```
+
+Это переменные окружения **сборки**. Для запуска приложения используется
+окружение `env.sh`; sudo, установленные приложения и их настройки не меняются.

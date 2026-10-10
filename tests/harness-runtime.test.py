@@ -3,6 +3,7 @@
 Run: python3 tests/harness-runtime.test.py
 """
 import importlib.util
+import io
 import json
 from pathlib import Path
 import tempfile
@@ -57,6 +58,36 @@ class HarnessRuntime(unittest.TestCase):
             result = wd.tn_install(browser)
         self.assertTrue(result['strict'])
         self.assertNotIn('installed', result)
+
+    def test_kill_app_matches_executable_and_isolated_home_not_command_arguments(self):
+        # The checksum/shell inspect the application and share audit HOME, but must survive.
+        processes = {
+            '101': ('/usr/bin/sha256sum', self.tmp.name + '/home',
+                    '/usr/bin/sha256sum /audit/app/trophy-navigator-desktop'),
+            '102': ('/usr/bin/bash', self.tmp.name + '/home',
+                    'bash -c sha256sum /audit/app/trophy-navigator-desktop'),
+            '103': ('/audit/app/trophy-navigator-desktop', self.tmp.name + '/home',
+                    '/audit/app/trophy-navigator-desktop'),
+            '104': ('/user/app/trophy-navigator-desktop', '/home/andre',
+                    '/user/app/trophy-navigator-desktop'),
+            '105': ('/audit2/app/trophy-navigator-desktop', self.tmp.name + '/other-home',
+                    '/audit2/app/trophy-navigator-desktop'),
+        }
+        def proc_read(path, mode='r', *args, **kwargs):
+            _, _, pid, field = str(path).split('/')
+            executable, home, command = processes[pid]
+            if field == 'environ': return io.BytesIO(('HOME=' + home + '\0').encode())
+            if field == 'cmdline': return io.BytesIO(command.encode())
+            self.fail('Unexpected proc read: ' + str(path))
+        def exe_link(path):
+            pid = str(path).split('/')[2]
+            return processes[pid][0]
+        with patch.object(wd.os, 'listdir', return_value=list(processes)), \
+             patch('builtins.open', side_effect=proc_read), \
+             patch.object(wd.os, 'readlink', side_effect=exe_link), \
+             patch.object(wd.os, 'kill') as kill:
+            wd.kill_app()
+        kill.assert_called_once_with(103, 15)
 
     def persisted(self, prefix):
         return json.loads(Path(self.tmp.name, 'logs', prefix + '.json').read_text())

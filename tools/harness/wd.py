@@ -105,8 +105,8 @@ def kill_app():
         if not pid.isdigit(): continue
         try:
             env = open('/proc/' + pid + '/environ', 'rb').read().split(b'\0')
-            cmd = open('/proc/' + pid + '/cmdline', 'rb').read()
-            if ('HOME=' + A + '/home').encode() in env and b'trophy-navigator-desktop' in cmd:
+            exe = os.path.basename(os.readlink('/proc/' + pid + '/exe'))
+            if ('HOME=' + A + '/home').encode() in env and exe == 'trophy-navigator-desktop':
                 os.kill(int(pid), 15)
         except (OSError, PermissionError): pass
 
