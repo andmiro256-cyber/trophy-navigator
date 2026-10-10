@@ -58,7 +58,7 @@ test('route double-click cleanup removes only the duplicate endpoint', () => {
   const context = vm.createContext({
     TnGeo,
     currentRouteDraw: route,
-    map: { latLngToContainerPoint: point => ({ distanceTo: other => Math.hypot(point.x - other.x, point.y - other.y) }) },
+    tnMap: { project: point => ({ x: point.x, y: point.y }) },
     removeRouteBuildPoint: index => {
       route.points.splice(index, 1);
       route.labels.splice(index, 1);

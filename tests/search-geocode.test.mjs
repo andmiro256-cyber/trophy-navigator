@@ -12,7 +12,7 @@ const code = html.slice(start, end);
 function setup(handler) {
   const urls = [];
   const ctx = { setTimeout, clearTimeout, AbortController, console,
-    map: { getCenter: () => ({ lat: 54.62, lng: 39.72 }) },
+    tnMap: { getCenter: () => ({ lat: 54.62, lng: 39.72 }) },
     fetch: async url => { urls.push(url); return handler(url); } };
   vm.createContext(ctx);
   vm.runInContext(code + '\nthis.geocode = geocode;', ctx);

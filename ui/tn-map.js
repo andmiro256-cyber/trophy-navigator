@@ -39,6 +39,13 @@
     return [{ lat: s, lng: w }, { lat: n, lng: e }];
   }
 
+  /** Рамка с запасом ratio от высоты/ширины с каждой стороны — та же формула, что LatLngBounds.pad Leaflet. */
+  function padBounds(b, ratio) {
+    const [sw, ne] = b;
+    const hb = Math.abs(sw.lat - ne.lat) * ratio, wb = Math.abs(sw.lng - ne.lng) * ratio;
+    return [{ lat: sw.lat - hb, lng: sw.lng - wb }, { lat: ne.lat + hb, lng: ne.lng + wb }];
+  }
+
   function create(adapter) {
     const missing = ADAPTER_METHODS.filter(m => typeof adapter?.[m] !== 'function');
     if (missing.length) throw new TypeError(`TnMap: адаптеру не хватает ${missing.join(', ')}`);
@@ -71,7 +78,7 @@
     return api;
   }
 
-  const api = { create, ADAPTER_METHODS, EVENTS, boundsOf };
+  const api = { create, ADAPTER_METHODS, EVENTS, boundsOf, padBounds };
   root.TnMap = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

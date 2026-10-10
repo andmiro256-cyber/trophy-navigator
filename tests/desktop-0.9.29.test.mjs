@@ -225,8 +225,8 @@ test('п.5: опции карты — дробный зум, полуровен�
   assert.match(html, /L\.map\('map', \{[^\n]*\.\.\.TND_MAP_ZOOM_OPTIONS \}\)/); // 09.10: внутри есть renderer: L.canvas({…})
   assert.match(mapsJs, /L\.maplibreGL\(\{[^}]*padding: 0\.05 \}\)/);
   // подписи зума — целые
-  assert.match(html, /div\.textContent = formatZoomLevel\(map\.getZoom\(\)\)/);
-  assert.match(html, /getElementById\('sb-zoom'\)\.textContent = formatZoomLevel\(map\.getZoom\(\)\)\);/);
+  assert.match(html, /div\.textContent = formatZoomLevel\(tnMap\.getZoom\(\)\)/);
+  assert.match(html, /getElementById\('sb-zoom'\)\.textContent = formatZoomLevel\(tnMap\.getZoom\(\)\)\);/);
   assert.doesNotMatch(html, /textContent = map\.getZoom\(\)/);
   const formatZoomLevel = vm.runInNewContext(`${html.match(/const formatZoomLevel = [^;]*;/)[0]} formatZoomLevel`);
   assert.equal(formatZoomLevel(12.25), '12');

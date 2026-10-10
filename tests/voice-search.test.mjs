@@ -10,7 +10,7 @@ const src = fs.readFileSync(new URL('../ui/tn-voice.js', import.meta.url), 'utf8
 function boot(places = {}, center = { lat: 54.62, lng: 39.72 }) {
   const ctx = { console, setTimeout, clearTimeout, setInterval, clearInterval, Promise, Map, Set,
     document: { readyState: 'complete', querySelector: () => null, getElementById: () => null, head: { appendChild() {} }, addEventListener() {} },
-    map: { getCenter: () => center } };
+    tnMap: { getCenter: () => center } };
   ctx.window = ctx;
   ctx.TrophyNavMaps = { _state: { local: Object.keys(places).map(id => ({ id })) } };
   ctx.__TAURI_INTERNALS__ = { invoke: async (cmd, a) => { if (cmd === 'tnmaps_places') return places[a.id] || []; throw new Error(cmd); } };

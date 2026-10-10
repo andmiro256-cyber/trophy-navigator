@@ -2768,8 +2768,8 @@ const ZoomDisplay = L.Control.extend({
   onAdd(map) {
     const div = L.DomUtil.create('div', 'zoom-display-ctrl');
     div.title = 'Текущий зум';
-    div.textContent = formatZoomLevel(map.getZoom());
-    map.on('zoomend', () => div.textContent = formatZoomLevel(map.getZoom()));
+    div.textContent = formatZoomLevel(tnMap.getZoom());
+    tnMap.on('zoomend', () => div.textContent = formatZoomLevel(tnMap.getZoom()));
     return div;
   }
 });
@@ -2805,8 +2805,8 @@ map.on('mousemove', e => {
   const lonD = Math.floor(Math.abs(lon)), lonM = ((Math.abs(lon)-lonD)*60).toFixed(3);
   document.getElementById('sb-coords').textContent = `${latD}°${latM}'${lat>=0?'N':'S'}  ${lonD}°${lonM}'${lon>=0?'E':'W'}`;
 });
-map.on('zoomend', () => document.getElementById('sb-zoom').textContent = formatZoomLevel(map.getZoom()));
-document.getElementById('sb-zoom').textContent = formatZoomLevel(map.getZoom());
+tnMap.on('zoomend', () => document.getElementById('sb-zoom').textContent = formatZoomLevel(tnMap.getZoom()));
+document.getElementById('sb-zoom').textContent = formatZoomLevel(tnMap.getZoom());
 
 // ─── Щипок тачпада и Ctrl+колесо: страница никогда не масштабируется, щипок над картой зумит карту ───
 // Колесо, два пальца и щипок WebView2/Chromium (Ctrl+колесо) — плавный зум smooth-zoom.js на контейнере карты.
@@ -3308,7 +3308,7 @@ function csvField(value) {
 
 function fitToLatLngs(points) {
   if (!points || points.length === 0) return;
-  map.fitBounds(L.latLngBounds(points), { padding: [30, 30] });
+  tnMap.fitBounds(points, { padding: [30, 30] });
 }
 
 const APP_STATE_VERSION = 1;
@@ -3978,7 +3978,7 @@ function updateWptTable() {
     const idx = waypoints.indexOf(m);
     const syncBadge = d.syncedAt ? `<span title="Синхр. с ${d.source === 'android' ? 'Android' : 'desktop'} · ${escapeHtml(new Date(d.syncedAt).toLocaleString('ru-RU'))}" style="font-size:10px;opacity:0.7;margin-left:2px">☁</span>` : '';
     const srcHint = d.source && d.source !== 'desktop' ? `<span style="font-size:9px;color:var(--text-muted);margin-left:3px">${escapeHtml(d.source)}</span>` : '';
-    return `<tr oncontextmenu="showCtxMenuTable(event,${idx})" onclick="map.panTo([${safeNum(d.lat)},${safeNum(d.lng)}])">
+    return `<tr oncontextmenu="showCtxMenuTable(event,${idx})" onclick="tnMap.panTo({ lat: ${safeNum(d.lat)}, lng: ${safeNum(d.lng)} })">
       <td class="wpt-cb-cell" onclick="event.stopPropagation()"><label for="wpt-cb-${idx}"><input type="checkbox" id="wpt-cb-${idx}" class="wpt-cb" data-idx="${idx}"></label></td>
       <td class="wpt-pick-cell" onclick="event.stopPropagation()"><label for="wpt-cb-${idx}"><span class="wpt-icon" style="background:${safeCssColor(d.color)}"></span></label></td>
       <td class="wpt-num">${escapeHtml(d.num)}</td>
@@ -6840,7 +6840,7 @@ function closeCtxMenu() {
 
 function showMapCtxMenuAt(e, latlng) {
   ctxTarget = null;
-  ctxLatLng = latlng || map.mouseEventToLatLng(e);
+  ctxLatLng = latlng || tnMap.eventToLatLng(e);
   closeCtxMenu();
   const m = document.getElementById('ctx-menu-map');
   const undoEl = document.getElementById('ctx-undo-route');
@@ -6986,10 +6986,10 @@ async function ctxAction(action) {
   else if (action === 'move') {
     if (objectsLocked) { showToast('🔒 Объекты заблокированы'); return; }
     if (target.dragging) target.dragging.enable();
-    map.panTo(target.getLatLng());
+    tnMap.panTo(target.getLatLng());
     showToast('Перетащите точку в нужное место');
   }
-  else if (action === 'center') map.panTo(target.getLatLng());
+  else if (action === 'center') tnMap.panTo(target.getLatLng());
   else if (action === 'copy') {
     const txt = target.wpData.lat.toFixed(5) + ', ' + target.wpData.lng.toFixed(5);
     navigator.clipboard.writeText(txt).catch(() => {});
@@ -7015,7 +7015,7 @@ async function ctxMapAction(action) {
   if (action === 'addwpt') {
     addWaypoint(ctxLatLng);
   } else if (action === 'center') {
-    map.panTo(ctxLatLng);
+    tnMap.panTo(ctxLatLng);
   } else if (action === 'measure') {
     startRulerFrom(ctxLatLng);
   } else if (action === 'copycoords') {
@@ -7508,7 +7508,7 @@ function trackUsesViewportMarkers(track) {
     !isTrackEditActive(track) &&
     (track.pointSize ?? 3) > 0 &&
     trackNeedsDetailMarkers(track) &&
-    map.getZoom() >= TRACK_MARKER_DETAIL_ZOOM
+    tnMap.getZoom() >= TRACK_MARKER_DETAIL_ZOOM
   );
 }
 
@@ -7517,7 +7517,7 @@ function shouldShowTrackMarkers(track) {
   if (isTrackDrawActive(track) || isTrackEditActive(track)) return true;
   if ((track.pointSize ?? 3) <= 0) return false;
   if (!trackNeedsDetailMarkers(track)) return true;
-  return map.getZoom() >= TRACK_MARKER_DETAIL_ZOOM;
+  return tnMap.getZoom() >= TRACK_MARKER_DETAIL_ZOOM;
 }
 
 function setTrackPanelState(mode, track) {
@@ -8145,8 +8145,8 @@ function addTrackPoint(latlng) {
 function removeDuplicateTrackDoubleClickPoint() {
   const track = currentTrackDraw;
   if (!track || track.points.length < 2) return false;
-  const previous = map.latLngToContainerPoint(track.points[track.points.length - 2]);
-  const last = map.latLngToContainerPoint(track.points[track.points.length - 1]);
+  const previous = tnMap.project(track.points[track.points.length - 2]);
+  const last = tnMap.project(track.points[track.points.length - 1]);
   if (TnGeo.screenDistance(previous, last) > 6) return false;
   track.points.pop();
   if (track.pointsData?.length) track.pointsData.pop();
@@ -8438,7 +8438,7 @@ function focusTrackOnMap(id) {
     if (wr.left + wr.width / 2 > mapRect.left + mapRect.width / 2) right = Math.max(30, mapRect.right - wr.left + 20);
     else left = Math.max(30, wr.right - mapRect.left + 20);
   }
-  map.fitBounds(L.latLngBounds(t.points), { paddingTopLeft: [left, 30], paddingBottomRight: [right, 30], maxZoom: 16 });
+  tnMap.fitBounds(t.points, { paddingTopLeft: [left, 30], paddingBottomRight: [right, 30], maxZoom: 16 });
 }
 
 function selectTrackById(id) {
@@ -9219,8 +9219,8 @@ function removeRouteBuildPoint(index) {
 function removeDuplicateRouteDoubleClickPoint() {
   const route = currentRouteDraw;
   if (!route || route.points.length < 2) return false;
-  const previous = map.latLngToContainerPoint(route.points[route.points.length - 2]);
-  const last = map.latLngToContainerPoint(route.points[route.points.length - 1]);
+  const previous = tnMap.project(route.points[route.points.length - 2]);
+  const last = tnMap.project(route.points[route.points.length - 1]);
   if (TnGeo.screenDistance(previous, last) > 6) return false;
   removeRouteBuildPoint(route.points.length - 1);
   return true;
@@ -11340,8 +11340,7 @@ function fitOfflineMapBounds(bounds, maxZoom) {
   if (![north, south, east, west].every(Number.isFinite)) return;
   if (north <= south || east <= west) return;
   try {
-    const mapBounds = L.latLngBounds([south, west], [north, east]);
-    map.fitBounds(mapBounds.pad(0.04), {
+    tnMap.fitBounds(TnMap.padBounds([{ lat: south, lng: west }, { lat: north, lng: east }], 0.04), {
       padding: [24, 24],
       maxZoom: Math.min(Math.max(Number(maxZoom) || 14, 12), 16)
     });
@@ -11698,8 +11697,8 @@ function collectState(options = {}) {
     savedAt: getIsoNow(),
     localStorageCompact: options.localStorageCompact === true,
     map: {
-      center: { lat: map.getCenter().lat, lng: map.getCenter().lng },
-      zoom: map.getZoom(),
+      center: { lat: tnMap.getCenter().lat, lng: tnMap.getCenter().lng },
+      zoom: tnMap.getZoom(),
       layer: currentBaseLayerName,
       // Включённые офлайн-карты (пути) — аддитивное поле; старые версии его не читают
       offline: getOfflineMapPathsForState(),
@@ -12645,7 +12644,8 @@ function applyState(state) {
       pendingOfflineMapRestore = state.map.offline.filter(path => typeof path === 'string' && path);
     }
     if (state.map.center && state.map.zoom != null) {
-      map.setView([state.map.center.lat, state.map.center.lng], state.map.zoom);
+      // битый центр в старом файле — вид не меняем, остальное состояние загружается
+      try { tnMap.setView({ center: state.map.center, zoom: state.map.zoom }); } catch (e) { console.warn('Вид карты из состояния пропущен:', e?.message || e); }
     }
   }
 
@@ -14400,12 +14400,12 @@ function waitForFirstPaint() {
   // Восстановить позицию карты из localStorage
   const savedView = localStorage.getItem('tnd-map-view');
   if (savedView) {
-    try { const v = JSON.parse(savedView); map.setView([v.lat, v.lng], v.zoom); } catch {}
+    try { const v = JSON.parse(savedView); tnMap.setView({ center: { lat: v.lat, lng: v.lng }, zoom: v.zoom }); } catch {}
   }
   // Сохранять позицию карты при перемещении
   map.on('moveend', () => {
-    const c = map.getCenter();
-    localStorage.setItem('tnd-map-view', JSON.stringify({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }));
+    const c = tnMap.getCenter();
+    localStorage.setItem('tnd-map-view', JSON.stringify({ lat: c.lat, lng: c.lng, zoom: tnMap.getZoom() }));
     TileCache.clearPrefetchQueue(); // сброс устаревшей очереди
   });
   // Trial / License — используем аппаратный ID
@@ -15050,8 +15050,7 @@ function rrZoomSegment(fromIdx, toIdx) {
   if (!rrData) return;
   const pts = rrData.track.points.slice(fromIdx, toIdx + 1);
   if (pts.length > 0) {
-    const bounds = L.latLngBounds(pts);
-    map.fitBounds(bounds.pad(0.15));
+    tnMap.fitBounds(TnMap.padBounds(TnMap.boundsOf(pts, 'rr'), 0.15));
   }
 }
 
@@ -15360,7 +15359,7 @@ async function setFullscreen(on, { remember = true } = {}) {
   }
   const label = document.querySelector('#menu-fullscreen [data-fs-label]');
   if (label) label.textContent = on ? 'Выйти из полного экрана' : 'Во весь экран';
-  setTimeout(() => map.invalidateSize(), 150);
+  setTimeout(() => tnMap.resize(), 150);
 }
 async function toggleFullscreen() { await setFullscreen(!(await tndIsFullscreen())); }
 
@@ -15509,7 +15508,7 @@ function photonDisplayName(p) {
 async function geocode(query, limit = 5) {
   const errors = [];
   try {
-    const c = typeof map !== 'undefined' && map?.getCenter ? map.getCenter() : null;
+    const c = typeof tnMap !== 'undefined' ? tnMap.getCenter() : null;
     const bias = c ? `&lat=${c.lat.toFixed(4)}&lon=${c.lng.toFixed(4)}` : '';
     // lang=default — местные (русские) названия: иначе Photon берёт язык системы, и на английской Windows
     // выдавал «Razmetelevo, Leningrad Oblast» (Андрей 09.10)
@@ -15584,7 +15583,7 @@ function searchResultArgs(el) {
 function goToSearchResult(lat, lon, name) {
   if (searchMarker) map.removeLayer(searchMarker);
   const ll = L.latLng(lat, lon);
-  map.flyTo(ll, 15, { duration: 1 });
+  tnMap.flyTo(ll, 15, { durationMs: 1000 });
   const safeName = escapeHtml(name);
   searchMarker = L.marker(ll, {
     icon: L.divIcon({
@@ -16040,7 +16039,7 @@ function fitOsrmRouteOnMap(route) {
   const rightOcclusion = panelRect && panelRect.left >= mapRect.left + mapRect.width / 2
     ? Math.max(0, mapRect.right - panelRect.left) + 24
     : 40;
-  map.fitBounds(L.latLngBounds(route.coords).pad(0.05), {
+  tnMap.fitBounds(TnMap.padBounds(TnMap.boundsOf(route.coords.map(([lat, lng]) => ({ lat, lng })), 'osrm'), 0.05), {
     paddingTopLeft: [40, 40],
     paddingBottomRight: [rightOcclusion, 40]
   });
@@ -17875,14 +17874,13 @@ function liveUpdateDot(status) {
 }
 
 function liveZoomTo(lat, lon) {
-  map.setView([lat, lon], Math.max(map.getZoom(), 14), { animate: true });
+  tnMap.setView({ center: { lat: Number(lat), lng: Number(lon) }, zoom: Math.max(tnMap.getZoom(), 14) }, { animate: true });
 }
 
 function liveShowAll() {
   const markers = Object.values(liveState.markers);
   if (markers.length === 0) return;
-  const group = L.featureGroup(markers);
-  map.fitBounds(group.getBounds().pad(0.1));
+  tnMap.fitBounds(TnMap.padBounds(TnMap.boundsOf(markers.map(m => m.getLatLng()), 'live'), 0.1));
 }
 
 liveLoadCache();

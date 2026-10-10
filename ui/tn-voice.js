@@ -101,7 +101,7 @@
   async function searchLocal(query, { limit = 6, center = null, min = 0.72 } = {}) {
     await loadPlaces();
     const variants = caseVariants(cleanPhrase(query) || String(query || '').toLowerCase());
-    const c = center || (typeof map !== 'undefined' && map?.getCenter ? (() => { const x = map.getCenter(); return { lat: x.lat, lon: x.lng }; })() : null);
+    const c = center || (typeof tnMap !== 'undefined' && tnMap?.getCenter ? (() => { const x = tnMap.getCenter(); return { lat: x.lat, lon: x.lng }; })() : null);
     const out = [];
     for (const list of places.byId.values()) {
       for (const p of list) {
@@ -121,8 +121,8 @@
   /** Названия рядом с центром карты — подсказка распознавателю (Whisper лучше пишет знакомые слова). */
   async function nearbyNames(n = 60) {
     await loadPlaces();
-    if (typeof map === 'undefined' || !map?.getCenter) return [];
-    const c = map.getCenter(), cc = { lat: c.lat, lon: c.lng };
+    if (typeof tnMap === 'undefined' || !tnMap?.getCenter) return [];
+    const c = tnMap.getCenter(), cc = { lat: c.lat, lon: c.lng };
     const all = [];
     for (const list of places.byId.values()) for (const p of list) if (p.l === 'place') all.push([km(cc, p), p.n]);
     all.sort((a, b) => a[0] - b[0]);
