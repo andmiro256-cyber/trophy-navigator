@@ -15,7 +15,7 @@
   'use strict';
   const Geo = () => root.TnGeo || (typeof require === 'function' ? require('./tn-geo.js') : null);
   const ADAPTER_METHODS = ['getView', 'setView', 'panTo', 'flyTo', 'fitBounds', 'getBounds', 'project', 'unproject',
-    'eventToLatLng', 'eventToPoint', 'resize', 'getContainer', 'getSize', 'on'];
+    'eventToLatLng', 'eventToPoint', 'resize', 'getContainer', 'getSize', 'on', 'openPopup', 'closePopup', 'isPopupOpen'];
   const EVENTS = ['click', 'dblclick', 'contextmenu', 'pointerdown', 'pointermove', 'pointerup', 'mousemove',
     'movestart', 'move', 'moveend', 'zoomstart', 'zoom', 'zoomend', 'resize'];
 
@@ -68,6 +68,14 @@
       resize: () => adapter.resize(),
       getContainer: () => adapter.getContainer(),
       getSize: () => adapter.getSize(),
+      /**
+       * Всплывающее окно над точкой карты. id — своё имя окна (одно окно на id), content — HTML-строка
+       * (уже экранированная вызывающим) или DOM-узел. o: { offset: [x,y], closeButton, autoClose, closeOnClick,
+       * className, exclusive } — exclusive: закрыть остальные окна (как openOn Leaflet).
+       */
+      openPopup(id, p, content, o = {}) { adapter.openPopup(String(id), latLng(p, 'openPopup'), content, o); },
+      closePopup: id => adapter.closePopup(id == null ? null : String(id)),
+      isPopupOpen: id => adapter.isPopupOpen(String(id)),
       /** Подписка: payload { latlng?, point?, originalEvent? }. Возвращает отписку. */
       on(ev, cb) {
         if (!EVENTS.includes(ev)) throw new TypeError(`TnMap.on: неизвестное событие ${ev}`);

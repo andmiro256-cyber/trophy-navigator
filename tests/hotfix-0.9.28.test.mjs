@@ -34,6 +34,9 @@ function makeDom(body = '') {
   w.eval(read('../ui/leaflet.js'));
   w.eval(read('../ui/tn-icons.js')); // tnIcon: кнопки-значки в разметке строк
   w.eval('var map = L.map("map", { attributionControl: false }).setView([60, 30], 10);');
+  // фасад tnMap (MapLibre 0б.5): попапы и камера — как в index.html
+  for (const f of ['../ui/tn-geo.js', '../ui/tn-map.js', '../ui/tn-map-leaflet.js']) w.eval(fs.readFileSync(new URL(f, import.meta.url), 'utf8'));
+  w.eval('var tnMap = TnMap.create(TnMapLeaflet.create(map));');
   w.eval(HELPERS);
   w.toasts = [];
   w.showToast = msg => w.toasts.push(String(msg));

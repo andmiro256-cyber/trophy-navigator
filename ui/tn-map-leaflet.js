@@ -24,6 +24,7 @@
     };
     // Leaflet называет события указателя по-своему
     const EV = { pointerdown: 'mousedown', pointermove: 'mousemove', pointerup: 'mouseup' };
+    const popups = new Map();  // id → L.popup
     const toPayload = e => {
       // stop() — как L.DomEvent.stop: событие не уходит дальше (двойной щелчок не зумит карту при рисовании)
       const out = { originalEvent: e?.originalEvent || null, stop: () => { if (e) L.DomEvent.stop(e); } };
@@ -53,6 +54,23 @@
       resize: () => map.invalidateSize(),
       getContainer: () => map.getContainer(),
       getSize: () => { const s = map.getSize(); return { x: s.x, y: s.y }; },
+      openPopup(id, p, content, o = {}) {
+        const old = popups.get(id);
+        if (old && map.hasLayer(old)) map.removeLayer(old);
+        const opts = {};
+        for (const k of ['closeButton', 'autoClose', 'closeOnClick', 'className']) if (o[k] != null) opts[k] = o[k];
+        if (o.offset) opts.offset = o.offset;
+        const pop = L.popup(opts).setLatLng(ll(p)).setContent(content);
+        if (o.exclusive) pop.openOn(map); else pop.addTo(map);
+        popups.set(id, pop);
+      },
+      closePopup(id) {
+        if (id == null) { map.closePopup(); return; }
+        const pop = popups.get(id);
+        if (pop && map.hasLayer(pop)) map.removeLayer(pop);
+        popups.delete(id);
+      },
+      isPopupOpen: id => { const pop = popups.get(id); return !!pop && map.hasLayer(pop); },
       on(ev, cb) {
         const name = EV[ev] || ev;
         const h = e => cb(toPayload(e));

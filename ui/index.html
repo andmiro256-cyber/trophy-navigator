@@ -3879,12 +3879,8 @@ function openQuickRename(marker) {
   window.TnWidgets?.selectWp(marker);
   const popupId = `wp-rename-${safeNum(marker.wpData.num)}`;
   const value = escapeHtml(marker.wpData.name);
-  if (quickRenamePopup && map.hasLayer(quickRenamePopup)) {
-    map.removeLayer(quickRenamePopup);
-  }
-  quickRenamePopup = L.popup({ closeButton: false, offset: [0, -12], autoClose: true, closeOnClick: true })
-    .setLatLng(marker.getLatLng())
-    .setContent(`
+  quickRenamePopup = 'wp-rename';
+  tnMap.openPopup(quickRenamePopup, marker.getLatLng(), `
     <div style="min-width:180px">
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Быстрое переименование</div>
       <input id="${popupId}" value="${value}" maxlength="16" style="width:100%;padding:5px 6px;border:1px solid var(--border-normal);border-radius:4px;background:var(--bg-sunken);color:var(--text-primary)">
@@ -3893,8 +3889,7 @@ function openQuickRename(marker) {
         <button onclick="openWaypointPropsByNum(${safeNum(marker.wpData.num)})" style="flex:1;padding:5px 6px;border:1px solid var(--border-normal);border-radius:4px;background:var(--bg-interactive);color:var(--text-secondary);cursor:pointer">Свойства</button>
       </div>
     </div>
-  `)
-    .openOn(map);
+  `, { closeButton: false, offset: [0, -12], autoClose: true, closeOnClick: true, exclusive: true });
   setTimeout(() => {
     const input = document.getElementById(popupId);
     if (input) {
@@ -4042,7 +4037,7 @@ function showWptPopup(marker) {
 function openWaypointPropsByNum(num) {
   const marker = waypoints.find(m => m.wpData.num === num);
   if (!marker) return;
-  map.closePopup(quickRenamePopup);
+  if (quickRenamePopup) tnMap.closePopup(quickRenamePopup);
   quickRenamePopup = null;
   showWptPopup(marker);
 }
@@ -4056,7 +4051,7 @@ function applyQuickRename(num) {
   refreshWaypoint(marker);
   syncWaypointReferences(marker, { oldName, syncRadius: false });
   updateWptTable();
-  map.closePopup(quickRenamePopup);
+  if (quickRenamePopup) tnMap.closePopup(quickRenamePopup);
   quickRenamePopup = null;
   showToast('Название точки обновлено');
 }
@@ -8028,25 +8023,13 @@ function closeTransientMapModals() {
 function showTrackPointPopup(track, idx, latlng = null) {
   if (!track?.points?.[idx]) return;
   closeTransientMapModals();
-  if (!trackPointPopup) {
-    trackPointPopup = L.popup({
-      autoClose: false,
-      closeOnClick: false,
-      closeButton: true,
-      offset: [0, -8],
-      className: 'track-point-popup'
-    });
-  }
-  trackPointPopup
-    .setLatLng(latlng || track.points[idx])
-    .setContent(formatTrackPointTooltip(track, idx))
-    .addTo(map);
+  trackPointPopup = 'track-point';
+  tnMap.openPopup(trackPointPopup, latlng || track.points[idx], formatTrackPointTooltip(track, idx),
+    { autoClose: false, closeOnClick: false, closeButton: true, offset: [0, -8], className: 'track-point-popup' });
 }
 
 function closeTrackPointPopup() {
-  if (trackPointPopup && map.hasLayer(trackPointPopup)) {
-    map.removeLayer(trackPointPopup);
-  }
+  if (trackPointPopup && tnMap.isPopupOpen(trackPointPopup)) tnMap.closePopup(trackPointPopup);
 }
 
 function bindTrackPolyline(track) {
@@ -17798,10 +17781,7 @@ window.tndLive3d = {
 };
 
 function liveShowPopup(dev) {
-  L.popup({ offset: [0, -15] })
-    .setLatLng([dev.lat, dev.lon])
-    .setContent(livePopupHtml(dev))
-    .openOn(map);
+  tnMap.openPopup('live', { lat: Number(dev.lat), lng: Number(dev.lon) }, livePopupHtml(dev), { offset: [0, -15], exclusive: true });
 }
 
 // Свежесть последней точки — цвет времени в попапе и в списке (одна граница с «в сети»)
