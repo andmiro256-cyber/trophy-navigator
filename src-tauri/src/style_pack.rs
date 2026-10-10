@@ -23,7 +23,11 @@ use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 const BASE_URL: &str = "https://trophynav.ru/maps/v1/style/";
 const MAX_MANIFEST_BYTES: u64 = 1_000_000;
+/// Предел одного файла пакета (сейчас самый большой — спрайт @2x, ~200 КБ).
 const MAX_FILE_BYTES: u64 = 16 * 1024 * 1024;
+/// Предел всего пакета и числа файлов: манифест с сервера не может заставить писать без конца.
+const MAX_PACK_BYTES: u64 = 64 * 1024 * 1024;
+const MAX_PACK_FILES: usize = 512;
 /// Событие для строки состояния: {"phase": "start" | "done" | "error", "version"} — только когда пакет
 /// действительно качается; проверка без нового пакета ничего не показывает.
 const EVENT: &str = "tnmaps-stylepack";
@@ -60,11 +64,17 @@ static CHECKING: Mutex<()> = Mutex::new(());
 
 // ─────────────────────────── чистые части (тесты внизу) ───────────────────────────
 
-/// None для любого повреждённого манифеста или опасного пути: битый манифест не применяется никогда.
+/// None для любого повреждённого манифеста, опасного пути или размера сверх пределов
+/// (файл > MAX_FILE_BYTES, пакет > MAX_PACK_BYTES или > MAX_PACK_FILES файлов): такой манифест не применяется.
 pub fn parse_manifest(text: &str) -> Option<Manifest> {
     let o: serde_json::Value = serde_json::from_str(text).ok()?;
+    let entries = o.get("files")?.as_object()?;
+    if entries.len() > MAX_PACK_FILES {
+        return None;
+    }
     let mut files = BTreeMap::new();
-    for (path, f) in o.get("files")?.as_object()? {
+    let mut total: u64 = 0;
+    for (path, f) in entries {
         if !is_safe_path(path) {
             return None;
         }
@@ -72,13 +82,12 @@ pub fn parse_manifest(text: &str) -> Option<Manifest> {
         if sha.len() != 64 || !sha.bytes().all(|b| b.is_ascii_hexdigit()) {
             return None;
         }
-        files.insert(
-            path.clone(),
-            FileInfo {
-                sha256: sha,
-                size: f.get("size")?.as_u64()?,
-            },
-        );
+        let size = f.get("size")?.as_u64()?;
+        total = total.checked_add(size)?;
+        if size > MAX_FILE_BYTES || total > MAX_PACK_BYTES {
+            return None;
+        }
+        files.insert(path.clone(), FileInfo { sha256: sha, size });
     }
     Some(Manifest {
         version: o.get("version")?.as_i64()?,
@@ -285,8 +294,8 @@ fn update(manifest_text: &str, fetch: Fetch, on_start: &dyn Fn(i64)) -> Result<b
             });
             let bytes = match reused.filter(|b| sha256_hex(b) == want.sha256) {
                 Some(b) => b,
-                None => fetch(path, want.size.min(MAX_FILE_BYTES))
-                    .map_err(|e| format!("{path}: {e}"))?,
+                // want.size ≤ MAX_FILE_BYTES — проверено в parse_manifest; больше заявленного http_get не читает
+                None => fetch(path, want.size).map_err(|e| format!("{path}: {e}"))?,
             };
             if bytes.len() as u64 != want.size || sha256_hex(&bytes) != want.sha256 {
                 return Err(format!("{path}: контрольная сумма не совпала"));
@@ -420,6 +429,35 @@ mod tests {
             assert!(!is_safe_path(p), "{p}");
         }
         assert!(is_safe_path("sprites/osm-liberty@2x.png"));
+    }
+
+    #[test]
+    fn rejects_oversized_files_and_packs() {
+        let one = |size: u64| {
+            format!(r#"{{"version":1,"files":{{"a.json":{{"sha256":"{SHA_A}","size":{size}}}}}}}"#)
+        };
+        assert!(parse_manifest(&one(MAX_FILE_BYTES)).is_some());
+        assert!(parse_manifest(&one(MAX_FILE_BYTES + 1)).is_none());
+        assert!(parse_manifest(&one(u64::MAX)).is_none());
+        // Каждый файл в пределе, а вместе больше пакета
+        let many = |n: u64| {
+            let files: Vec<String> = (0..n)
+                .map(|i| format!(r#""f{i}.json":{{"sha256":"{SHA_A}","size":{MAX_FILE_BYTES}}}"#))
+                .collect();
+            format!(r#"{{"version":1,"files":{{{}}}}}"#, files.join(","))
+        };
+        let fit = MAX_PACK_BYTES / MAX_FILE_BYTES;
+        assert!(parse_manifest(&many(fit)).is_some());
+        assert!(parse_manifest(&many(fit + 1)).is_none());
+        // Слишком много файлов
+        let tiny: Vec<String> = (0..=MAX_PACK_FILES)
+            .map(|i| format!(r#""t{i}.json":{{"sha256":"{SHA_A}","size":1}}"#))
+            .collect();
+        assert!(parse_manifest(&format!(
+            r#"{{"version":1,"files":{{{}}}}}"#,
+            tiny.join(",")
+        ))
+        .is_none());
     }
 
     #[test]
