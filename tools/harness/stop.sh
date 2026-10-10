@@ -1,10 +1,17 @@
 #!/bin/sh
-# Остановить окружение прогона: WebKitWebDriver, Xvfb :99 и шину at-spi, которую поднимает приложение в нашем
-# XDG_RUNTIME_DIR ($A/run). Чужие процессы не трогаются.
-A="${A:-$HOME/desktop-audit}"
-for pid in $(ps -eo pid,args | awk "/WebKitWebDriver --port=445[56]/ && !/awk/ {print \$1}"); do kill $pid; done
-for pid in $(ps -eo pid,args | awk "/dbus-run-session -- WebKitWebDriver/ && !/awk/ {print \$1}"); do kill $pid; done
-for pid in $(ps -eo pid,args | awk "/Xvfb :99/ && !/awk/ {print \$1}"); do kill $pid; done
-for pid in $(pgrep -f "at-spi-bus-launcher|at-spi2/accessibility.conf"); do
-  tr '\0' '\n' < /proc/$pid/environ 2>/dev/null | grep -qx "XDG_RUNTIME_DIR=$A/run" && kill $pid
-done
+# Only processes whose environment points to this audit directory.
+set -eu
+HERE=$(cd "$(dirname "$0")" && pwd)
+. "$HERE/env.sh"
+python3 - <<'PYCODE'
+import os, signal
+run = os.environ['XDG_RUNTIME_DIR'].encode()
+for pid in os.listdir('/proc'):
+    if not pid.isdigit() or int(pid) in (os.getpid(), os.getppid()): continue
+    try:
+        env = open('/proc/' + pid + '/environ', 'rb').read().split(b'\0')
+        cmd = open('/proc/' + pid + '/cmdline', 'rb').read()
+        if b'XDG_RUNTIME_DIR=' + run in env and any(x in cmd for x in (b'Xvfb', b'WebKit', b'dbus-', b'at-spi', b'trophy-navigator-desktop', b'gvfs')):
+            os.kill(int(pid), signal.SIGTERM)
+    except (OSError, PermissionError): pass
+PYCODE

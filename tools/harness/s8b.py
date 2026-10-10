@@ -27,15 +27,15 @@ TRK = "const p=__tnh.pts(__tnh.longTrack().id); const q=__tnTest.project(__tnh.m
 def rtrack():
     s.js(CLEAN); s.js("const p=__tnh.pts(__tnh.longTrack().id); __tnh.go(p[150], 16)"); time.sleep(1.5)
     return s.js(TRK + "return __tnTest.dispatchAt(q, 'contextmenu', {kinds: ['track']})")
-TM = "return [document.getElementById('ctx-menu-track').classList.contains('open'), tracks.map(t=>t.points.length)]"
+TM = "return [document.getElementById('ctx-menu-track').classList.contains('open'), __tnTest.entities().track.map(t=>t.points)]"
 R('трек ПКМ (обход холстов)', rtrack, extra=TM)
 for a, lbl in [('map:yandex-map','Яндекс Карты здесь'),('split','Разбить трек здесь'),('delete','Удалить точку'),('delete-track','Удалить весь трек')]:
     def f(a=a):
         rtrack(); click(s, f"#ctx-menu-track .ctx-item[onclick=\"ctxTrackAction('{a}')\"]")
-    R('трек ctx: ' + lbl, f, wait=1.5, extra="return [__tnTest.stats().tracks, tracks.map(t=>t.points.length), document.getElementById('modal-dialog').classList.contains('open'), document.getElementById('modal-dialog-message').innerText.slice(0,80)]")
-    if s.js("return document.getElementById('modal-dialog').classList.contains('open')"): R('  подтвердить', lambda: dlg(s), extra="return [__tnTest.stats().tracks, tracks.map(t=>t.points.length)]")
+    R('трек ctx: ' + lbl, f, wait=1.5, extra="return [__tnTest.stats().tracks, __tnTest.entities().track.map(t=>t.points), document.getElementById('modal-dialog').classList.contains('open'), document.getElementById('modal-dialog-message').innerText.slice(0,80)]")
+    if s.js("return document.getElementById('modal-dialog').classList.contains('open')"): R('  подтвердить', lambda: dlg(s), extra="return [__tnTest.stats().tracks, __tnTest.entities().track.map(t=>t.points)]")
     wd.closewins(s, main)
-R('Ctrl+Z', lambda: (s.js(CLEAN), focus_map(s), key(s, 'z', ('ctrl',))), extra="return [__tnTest.stats().tracks, tracks.map(t=>t.points.length)]")
+R('Ctrl+Z', lambda: (s.js(CLEAN), focus_map(s), key(s, 'z', ('ctrl',))), extra="return [__tnTest.stats().tracks, __tnTest.entities().track.map(t=>t.points)]")
 # ЛКМ по треку (обход)
 R('трек ЛКМ (обход холстов) → попап/свойства', lambda: (rtrack(), s.js("closeCtxMenu()"), s.js(TRK + "return __tnTest.dispatchAt(q, 'click', {kinds: ['track']})")), extra="const pp=__tnTest.popup(); return [[...document.querySelectorAll('.modal-overlay.open')].map(e=>e.id), pp.open ? pp.text.slice(0,100) : undefined]")
 R.save()

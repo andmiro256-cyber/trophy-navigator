@@ -6,7 +6,7 @@ L = "return [...document.querySelectorAll('#modal-routing .routing-route-item, #
 R('saved: 👁 Скрыть', lambda: (openr(), click(s, '#modal-routing [onclick^="toggleOsrmRouteVisible"]')), extra=L)
 R('saved: 👁 Показать', lambda: click(s, '#modal-routing [onclick^="toggleOsrmRouteVisible"]'), extra=L, shot=False)
 R('saved: 🎯 Центр', lambda: (s.js("__tnTest.setView({center:{lat:55,lng:37},zoom:6})"), click(s, '#modal-routing [onclick^="centerOsrmRoute"]')), wait=1.5, extra="return [__tnTest.getView().center.lat.toFixed(2), __tnTest.getView().zoom]")
-R('saved: 💾 В треки', lambda: click(s, '#modal-routing [onclick^="saveOsrmRouteAsTrack"]'), wait=1, extra="return [__tnTest.stats().tracks, tracks.at(-1).name, tracks.at(-1).points.length]")
+R('saved: 💾 В треки', lambda: click(s, '#modal-routing [onclick^="saveOsrmRouteAsTrack"]'), wait=1, extra="return [__tnTest.stats().tracks, __tnh.track(-1).name, __tnh.track(-1).points]")
 R('saved: ✕ Удалить', lambda: click(s, '#modal-routing [onclick^="deleteOsrm"]'), wait=1, extra=L + ".concat([document.getElementById('modal-dialog').classList.contains('open')])")
 if s.js("return document.getElementById('modal-dialog').classList.contains('open')"): R('  confirm', lambda: dlg(s), extra=L)
 s.js(CLEAN)

@@ -42,11 +42,11 @@ R('track right-click', rtrack, extra=TM)
 for a, lbl in [('map:yandex-map','Яндекс здесь'),('map:google-streetview','Street View здесь'),('split','Разбить трек здесь'),('delete','Удалить точку'),('delete-track','Удалить весь трек')]:
     def f(a=a):
         rtrack(); click(s, f"#ctx-menu-track .ctx-item[onclick=\"ctxTrackAction('{a}')\"]")
-    R('track ctx: ' + lbl, f, wait=1.5, extra="return [__tnTest.stats().tracks, tracks.map(t=>t.points.length), document.getElementById('modal-dialog').classList.contains('open'), document.getElementById('modal-dialog-message').innerText]")
+    R('track ctx: ' + lbl, f, wait=1.5, extra="return [__tnTest.stats().tracks, __tnTest.entities().track.map(t=>t.points), document.getElementById('modal-dialog').classList.contains('open'), document.getElementById('modal-dialog-message').innerText]")
     if s.js("return document.getElementById('modal-dialog').classList.contains('open')"):
-        R('  confirm', lambda: dlg(s), extra="return [__tnTest.stats().tracks, tracks.map(t=>t.points.length)]")
+        R('  confirm', lambda: dlg(s), extra="return [__tnTest.stats().tracks, __tnTest.entities().track.map(t=>t.points)]")
     wd.closewins(s, main)
-R('Ctrl+Z after track delete', lambda: (focus_map(s), key(s, 'z', ('ctrl',))), extra="return [__tnTest.stats().tracks, tracks.map(t=>t.points.length)]")
+R('Ctrl+Z after track delete', lambda: (focus_map(s), key(s, 'z', ('ctrl',))), extra="return [__tnTest.stats().tracks, __tnTest.entities().track.map(t=>t.points)]")
 # ПКМ по маршруту
 def rroute():
     s.js(CLEAN)

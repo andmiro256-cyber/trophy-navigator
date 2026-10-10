@@ -1,17 +1,18 @@
 #!/bin/sh
-# Поднять Xvfb :99 и WebKitWebDriver на 4455 (W3C) для харнесса. Остановить — stop.sh, посмотреть — ps.sh.
-# Приложение запускает сам WebDriver при создании сессии (wd.session(): binary = $A/app/cur/AppRun).
+set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
 . "$HERE/env.sh"
-mkdir -p "$A/logs" "$A/shots" "$HOME/Загрузки" "$XDG_RUNTIME_DIR" && chmod 700 "$XDG_RUNTIME_DIR"
-for f in "$HERE"/fakebin/*; do [ -e "$A/fakebin/$(basename "$f")" ] || { mkdir -p "$A/fakebin"; cp "$f" "$A/fakebin/"; }; done
+mkdir -p "$A/logs" "$A/shots" "$HOME/Загрузки" "$HOME/Документы" "$XDG_CONFIG_HOME" "$XDG_RUNTIME_DIR" "$A/fakebin"
+chmod 700 "$XDG_RUNTIME_DIR"
+printf 'XDG_DOCUMENTS_DIR="%s/Документы"\nXDG_DOWNLOAD_DIR="%s/Загрузки"\n' "$HOME" "$HOME" > "$XDG_CONFIG_HOME/user-dirs.dirs"
+cp "$HERE"/fakebin/* "$A/fakebin/"
 cp -n "$HERE"/data/* "$HOME/Загрузки/" 2>/dev/null || true
-if ! pgrep -f "Xvfb :99" >/dev/null; then
-  nohup Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp >"$A/logs/xvfb.log" 2>&1 &
-  sleep 1
-fi
-if ! pgrep -f "WebKitWebDriver --port=4455" >/dev/null; then
-  nohup dbus-run-session -- WebKitWebDriver --port=4455 >"$A/logs/webdriver.log" 2>&1 &
-  sleep 1
-fi
-sh "$HERE/ps.sh"
+if [ -e "/tmp/.X${DISPLAY#:}-lock" ]; then echo "Display $DISPLAY already owned; choose TN_DISPLAY" >&2; exit 1; fi
+nohup Xvfb "$DISPLAY" -screen 0 1920x1080x24 -nolisten tcp >"$A/logs/xvfb.log" 2>&1 &
+echo $! > "$A/logs/xvfb.pid"
+sleep 1
+nohup dbus-run-session -- WebKitWebDriver --port="$TN_WEBDRIVER_PORT" >"$A/logs/webdriver.log" 2>&1 &
+echo $! > "$A/logs/webdriver.pid"
+sleep 1
+kill -0 "$(cat "$A/logs/xvfb.pid")" "$(cat "$A/logs/webdriver.pid")"
+echo "Audit $A; display $DISPLAY; WebDriver $TN_WEBDRIVER_PORT"

@@ -123,3 +123,50 @@ sh stop.sh                         # WebKitWebDriver, Xvfb и шина at-spi н
 - Состояние приложения вне движка можно читать как есть: `currentMode`, `selectedTrackId`, `currentTrackDraw`,
   `tracks[i].name`/`.points.length`/`.labels`, `offlineMaps[].name`, `customLayers` и т. п.
 - Чего не хватает в `__tnTest` — записывается в `API-GAPS.md`. `ui/*` из харнесса не правится.
+
+## Продолжение #2730: строгий прогон VERSION 2
+
+Текущая база `feat/maplibre-2d` содержит G0–G8 нативно (VERSION 2). Движок этой
+стадии ещё `leaflet`; название ветки не означает наличие MapLibre-адаптера.
+При `TN_STRICT=1` отсутствующий встроенный API завершает запуск ошибкой: внедрение
+`ui/tn-test-api.js` и установка `tn-gaps.js` запрещены.
+
+Пример воспроизведения на HP (исходники точного SHA в отдельной копии, ui не править):
+
+```bash
+# В обычном HOME, до загрузки env.sh:
+export CARGO_TARGET_DIR="$PWD/target-harness"
+export TAURI_CONFIG='{"productName":"TN Harness 2730","identifier":"ru.trophy-nav.desktop.harness2730","plugins":{"updater":{"endpoints":[]}}}'
+nice -n 19 ~/.cargo/bin/cargo build --manifest-path src-tauri/Cargo.toml --features tauri/custom-protocol -j 3
+export A=/home/andrey-hp/desktop-audit-2730
+mkdir -p "$A/app/cur"
+cp "$CARGO_TARGET_DIR/debug/trophy-navigator-desktop" "$A/app/cur/"
+printf '#!/bin/sh\nexec "%s/app/cur/trophy-navigator-desktop" "$@"\n' "$A" > "$A/app/cur/AppRun"
+chmod +x "$A/app/cur/AppRun"
+ln -s /home/andrey-hp/desktop-audit/root "$A/root"
+export TN_DISPLAY=:109 TN_WEBDRIVER_PORT=4473 TN_STRICT=1 TN_WORKDIR_NAME=TrophyNavigator
+cd tools/harness
+nice -n 19 sh start.sh
+. ./env.sh
+nice -n 19 python3 prepare.py       # отдельный профиль, onboarding + synthetic audit-all.gpx
+nice -n 19 python3 smoke.py
+nice -n 19 python3 -u run.py        # s1…s19, варианты и r2; продолжает после ошибки скрипта
+sh stop.sh
+```
+
+`start.sh` отказывается использовать занятый дисплей. `stop.sh` и `wd.kill_app()`
+останавливают процессы только с HOME/XDG_RUNTIME_DIR данного прогона. Для нового
+повторного прогона выбирать новую папку A, свободные TN_DISPLAY и TN_WEBDRIVER_PORT.
+Рабочая папка определяется `user-dirs.dirs` внутри отдельного HOME; `prepare.py`
+проверяет, что `appDataPath` не выходит из него. Данные приложения Andre не копируются.
+
+`run.json` хранит exit code и длительность каждого скрипта; `*.stdout.log` — traceback
+и сообщения. `Rec` сохраняет JSON после каждого шага; ошибки JS/WebDriver не превращаются
+в данные, ошибки `extra`, скриншота, консоли и клика учитываются как FAIL.
+PASS здесь означает отсутствие этих ошибок исполнения. Многие старые сценарии
+сохраняют значения `extra` без assert: это не автоматический sign-off всех 272 строк
+реестра. Зависшие скрипты получают exit 124 через 360 секунд; следующий сценарий
+продолжает ту же сессию, поэтому зависимый результат следует оценивать с учётом каскада.
+
+`REPORT-0b6.md` содержит SHA, итог smoke, статистику шагов, новые API-пробелы и
+ограничения. Полные скриншоты/сырые логи остаются в папке прогона на HP.

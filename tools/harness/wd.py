@@ -7,7 +7,7 @@ UI = os.path.normpath(os.path.join(HERE, '..', '..', 'ui'))
 A = os.environ.get('TN_AUDIT_DIR') or os.environ.get('A') or '/home/andrey-hp/desktop-audit'
 # папка данных приложения внутри отдельного HOME: тест-сборка пишет в «TrophyNavigatorTest»
 WORK = A + '/home/Документы/' + os.environ.get('TN_WORKDIR_NAME', 'TrophyNavigatorTest')
-BASE = os.environ.get('TN_WEBDRIVER', 'http://127.0.0.1:4455')
+BASE = os.environ.get('TN_WEBDRIVER', 'http://127.0.0.1:' + os.environ.get('TN_WEBDRIVER_PORT', '4455'))
 def req(method, path, body=None, timeout=120):
     data = json.dumps(body).encode() if body is not None else None
     r = urllib.request.Request(BASE + path, data=data, method=method, headers={'Content-Type': 'application/json'})
@@ -24,7 +24,10 @@ class S:
         open(A+'/logs/sid', 'w').write(self.sid)
     def c(self, m, p, b=None, t=120):
         r = req(m, f'/session/{self.sid}{p}', b, t)
-        return r.get('value') if isinstance(r, dict) else r
+        value = r.get('value') if isinstance(r, dict) else r
+        if isinstance(value, dict) and value.get('error'):
+            raise RuntimeError(value['error'] + ': ' + str(value.get('message', '')))
+        return value
     def js(self, script, *args, t=120):
         return self.c('POST', '/execute/sync', {'script': script, 'args': list(args)}, t)
     def ajs(self, script, *args, t=120):
@@ -42,7 +45,8 @@ class S:
     def quit(self):
         return req('DELETE', f'/session/{self.sid}')
 def xshot(name):
-    subprocess.run(f'xwd -root -display :99 -silent | convert xwd:- {A}/shots/{name}.png', shell=True)
+    display = os.environ.get('DISPLAY', ':99')
+    subprocess.run(f'xwd -root -display {display} -silent | convert xwd:- {A}/shots/{name}.png', shell=True)
 def xdo(*args):
     return subprocess.run(['xdotool', *args], capture_output=True, text=True).stdout
 
@@ -59,7 +63,11 @@ def rec(area, element, where, promise, status, evidence='', fix='', note=''):
 def session(new=False):
     if not new and os.path.exists(A + '/logs/sid'):
         s = S(open(A + '/logs/sid').read().strip())
-        if isinstance(s.js('return 1'), int):
+        try:
+            alive = s.js('return 1') == 1
+        except RuntimeError:
+            alive = False
+        if alive:
             tn_install(s)                                   # идемпотентно: в живой странице уже стоит
             return s
     if os.path.exists(A + '/logs/sid'):
@@ -78,6 +86,8 @@ def session(new=False):
 def tn_install(s):
     """window.__tnTest (в чистую 0.9.34 без tn-test-api.js — из ui/ этой ветки), прокладка API-GAPS и __tnh."""
     if s.js("return !!window.__tnTest") is not True:
+        if STRICT:
+            raise RuntimeError('TN_STRICT requires native __tnTest in the tested binary')
         for f in ('tn-geo.js', 'tn-test-api.js'):
             s.js(open(os.path.join(UI, f), encoding='utf-8').read())
         GAPS['injected'] = True
@@ -90,7 +100,15 @@ def tn_install(s):
     GAPS.update(engine=s.js("return __tnTest.engine"), version=s.js("return __tnTest.VERSION"), strict=STRICT)
     return GAPS
 def kill_app():
-    subprocess.run('pkill -f "[d]esktop-audit/app/v.*/usr/bin/trophy-navigator-desktop"', shell=True)
+    # Kill only a test application with our isolated HOME, never another audit or Andre.
+    for pid in os.listdir('/proc'):
+        if not pid.isdigit(): continue
+        try:
+            env = open('/proc/' + pid + '/environ', 'rb').read().split(b'\0')
+            cmd = open('/proc/' + pid + '/cmdline', 'rb').read()
+            if ('HOME=' + A + '/home').encode() in env and b'trophy-navigator-desktop' in cmd:
+                os.kill(int(pid), 15)
+        except (OSError, PermissionError): pass
 
 STATE_JS = r'''
 const vis = el => !!el && !el.hidden && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden' && (el.offsetWidth || el.offsetHeight);
@@ -172,23 +190,37 @@ class Rec:
     def __init__(self, s, prefix): self.s, self.prefix, self.items, self.n = s, prefix, [], 0
     def __call__(self, label, fn=None, wait=0.8, extra=None, shot=True):
         err = None
+        click_start = len(CLICKLOG)
         try:
             r = fn() if fn else None
         except Exception as e:
             r = None; err = repr(e)
         time.sleep(wait)
-        a = st(self.s)
+        try:
+            a = st(self.s)
+        except Exception as e:
+            a = {}
+            err = err or repr(e)
         if extra:
             try: a['extra'] = self.s.js(extra)
-            except Exception as e: a['extra'] = 'ERR ' + repr(e)
+            except Exception as e:
+                a['extra'] = 'ERR ' + repr(e)
+                err = err or repr(e)
         name = f'{self.prefix}-{self.n:02d}'; self.n += 1
-        if shot: self.s.shot(name)
+        if shot:
+            try: self.s.shot(name)
+            except Exception as e: err = err or repr(e)
         a.update({'label': label, 'shot': name if shot else '', 'ret': r, 'pyerr': err, 'gaps': GAPS.get('installed', [])})
+        a['click_errors'] = CLICKLOG[click_start:]
+        a['status'] = 'FAIL' if err or a.get('errors') or a['click_errors'] else 'PASS'
+        a['strict'] = STRICT
         self.items.append(a)
+        self.save()
         print(name, label, '|', a.get('modals'), a.get('menus'), a.get('mode'), 'cnt', a.get('wp'), a.get('trk'), a.get('rte'), '| T', a.get('toasts'), '| E', a.get('errors'), '| I', [x for x in a.get('ipc', []) if not x.startswith('fs.exists')][:5], '| N', [x for x in a.get('net', []) if 'tile' not in x and 'ipc://' not in x][:3], '| X', json.dumps(a.get('extra'), ensure_ascii=False)[:400] if extra else '')
         return a
     def save(self):
-        json.dump(self.items, open(f'{A}/logs/{self.prefix}.json', 'w'), ensure_ascii=False, indent=1)
+        with open(f'{A}/logs/{self.prefix}.json', 'w') as out:
+            json.dump(self.items, out, ensure_ascii=False, indent=1)
 
 def winoff(s):
     # смещение вьюпорта относительно экрана Xvfb

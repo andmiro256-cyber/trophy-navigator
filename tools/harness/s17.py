@@ -27,7 +27,7 @@ s.js(CLEAN)
 # линейка
 R('линейка: 3 точки', lambda: (focus_map(s), key(s, 'm'), wd.xclick(s, 500, 500), wd.xclick(s, 700, 500), wd.xclick(s, 700, 650)), extra="return document.getElementById('ruler-panel').innerText.replace(/\\s+/g,' ')")
 R('линейка: ↩', lambda: click(s, '#ruler-panel [onclick="undoRulerPoint()"]'), extra="return document.getElementById('ruler-panel').innerText.replace(/\\s+/g,' ')")
-R('линейка: 〜 В трек', lambda: click(s, '#ruler-track-btn'), extra="return [__tnTest.stats().tracks, tracks.at(-1).name, tracks.at(-1).points.length, currentMode]")
+R('линейка: 〜 В трек', lambda: click(s, '#ruler-track-btn'), extra="return [__tnTest.stats().tracks, __tnh.track(-1).name, __tnh.track(-1).points, currentMode]")
 R('линейка: Очистить', lambda: (focus_map(s), key(s, 'm'), wd.xclick(s, 500, 500), wd.xclick(s, 600, 500), click(s, '#ruler-panel [onclick="clearRuler()"]')), extra="return document.getElementById('ruler-panel').innerText.replace(/\\s+/g,' ')")
 R('линейка: ✕', lambda: click(s, '#ruler-panel [onclick="setMode(\'hand\')"]'), extra="return [currentMode, getComputedStyle(document.getElementById('ruler-panel')).display]")
 # карта: зум, Z, Обзор, виджеты
