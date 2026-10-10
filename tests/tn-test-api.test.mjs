@@ -60,3 +60,36 @@ test('stats и entities — нейтральные числа и id, без об
 test('подключено в странице: tn-geo.js → tn-model.js → tn-map.js → tn-map-leaflet.js → tn-test-api.js', () => {
   assert.match(html, /<script src="tn-geo\.js"><\/script>\n<script src="tn-model\.js"><\/script>\n<script src="tn-map\.js"><\/script>\n<script src="tn-map-leaflet\.js"><\/script>\n<script src="tn-test-api\.js"><\/script>/);
 });
+
+test('VERSION 2: G0 набор точки из marker._setId, G1 поля записей', () => {
+  assert.equal(T.VERSION, 2);
+  T._setHost({
+    waypoints: () => [{ wpData: { id: 'wp_s', name: 'S', lat: 0, lng: 0, radius: 0, desc: 'd', icon: '⬤', color: '#f00', num: 3 }, _setId: 7 }],
+  });
+  const w = T.entities().wp[0];
+  assert.equal(w.setId, 7, 'G0: набор не теряется');
+  assert.equal(JSON.stringify([w.desc, w.icon, w.color, w.num]), JSON.stringify(['d', '⬤', '#f00', 3]));
+  const t = T.entities().track[0];
+  assert.ok('color' in t && 'width' in t);
+});
+
+test('G2 геометрия с разрывами, G3 выбор, G8 событие уходит объекту, выбранному pick', () => {
+  const fired = [];
+  const poly = {};
+  T._setHost({
+    waypoints: () => [],
+    tracks: () => [{ id: 1, name: 'T', polyline: poly, points: [{ lat: 0, lng: 0 }, { lat: 0, lng: 0.2 }, { lat: 0.1, lng: 0.2 }], pointsData: [{}, {}, { seg: 1 }] }],
+    routes: () => [],
+    selection: () => ({ wp: null, track: 'trk_1', route: null }),
+  });
+  const g = T.geometry('trk_1');
+  assert.equal(g.kind, 'track'); assert.equal(g.points.length, 3); assert.equal(JSON.stringify(g.breaks), '[2]');
+  assert.equal(T.geometry('nope'), null);
+  assert.equal(T.selection().track, 'trk_1');
+  T._setBridge({ ...bridge, dispatchAt: (target, pt, type) => { fired.push([target === poly, type]); return true; } });
+  const r = T.dispatchAt({ x: 100, y: 0 }, 'contextmenu', { kinds: ['track'] });
+  assert.equal(r.dispatched, true); assert.equal(r.id, 'trk_1');
+  assert.equal(JSON.stringify(fired), JSON.stringify([[true, 'contextmenu']]));
+  assert.equal(T.dispatchAt({ x: 900, y: 900 }), null, 'мимо — ничего');
+  T._setBridge(bridge);
+});
