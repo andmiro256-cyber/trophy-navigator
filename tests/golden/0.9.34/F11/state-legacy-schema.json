@@ -1,0 +1,230 @@
+{
+  "version": 1,
+  "savedAt": "2026-01-02T03:04:05.000Z",
+  "localStorageCompact": false,
+  "map": {
+    "center": {
+      "lat": 55.75,
+      "lng": 37.62
+    },
+    "zoom": 10,
+    "layer": "OpenStreetMap"
+  },
+  "counters": {
+    "wpCounter": 3,
+    "trackIdCounter": 2,
+    "routeIdCounter": 2,
+    "waypointSetIdCounter": 2
+  },
+  "waypointSets": [
+    {
+      "id": 1,
+      "name": "audit-ozi",
+      "visible": true
+    }
+  ],
+  "activeSetId": 1,
+  "waypoints": [
+    {
+      "id": "wp-mjwaid1k-5dacfnim",
+      "lat": 59.9,
+      "lng": 30.3,
+      "name": "КП Север",
+      "desc": "Описание, ёжик",
+      "icon": "⬤",
+      "color": "#ff0000",
+      "radius": 75,
+      "num": 1,
+      "setId": 1,
+      "createdAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "syncedAt": null
+    },
+    {
+      "id": "wp-mjwaid1k-z5q070as",
+      "lat": 59.901,
+      "lng": 30.302,
+      "name": "КП Юг",
+      "desc": "Лесная дорога",
+      "icon": "⬤",
+      "color": "#00ff00",
+      "radius": 125,
+      "num": 2,
+      "setId": 1,
+      "createdAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "syncedAt": null
+    }
+  ],
+  "tracks": [
+    {
+      "id": 1,
+      "name": "Трек ёжика",
+      "color": "#ff0000",
+      "width": 3,
+      "pointSize": 3,
+      "points": [
+        {
+          "lat": 59.9,
+          "lng": 30.3
+        },
+        {
+          "lat": 59.9005,
+          "lng": 30.301
+        },
+        {
+          "lat": 59.901,
+          "lng": 30.302
+        }
+      ],
+      "pointsData": [
+        {
+          "ele": 10,
+          "time": "2026-08-09T08:00:00+00:00"
+        },
+        {
+          "ele": 10.99998780800039,
+          "time": "2026-08-09T08:00:10+00:00"
+        },
+        {
+          "ele": 12.000006095999805,
+          "time": "2026-08-09T08:00:20+00:00"
+        }
+      ],
+      "visible": true,
+      "createdAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "syncedAt": null
+    }
+  ],
+  "routes": [
+    {
+      "id": 1,
+      "name": "Маршрут ёжика",
+      "color": "#ff0000",
+      "width": 3,
+      "dashArray": "8 4",
+      "points": [
+        {
+          "lat": 59.9,
+          "lng": 30.3
+        },
+        {
+          "lat": 59.901,
+          "lng": 30.302
+        }
+      ],
+      "labels": [
+        "КП Север",
+        "КП Юг"
+      ],
+      "pointRadii": [
+        75,
+        125
+      ],
+      "pointWaypointIds": [
+        "wp-mjwaid1k-5dacfnim",
+        "wp-mjwaid1k-z5q070as"
+      ],
+      "visible": true,
+      "createdAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "syncedAt": null
+    }
+  ],
+  "settings": {
+    "defaultRadius": 30,
+    "colorWpt": "#df7a4a",
+    "trackColorMode": "fixed",
+    "colorTrack": "#4adf7a",
+    "routeColorMode": "fixed",
+    "colorRoute": "#4a8adf",
+    "colorRadiusFill": "#4a8adf",
+    "colorRadiusStroke": "#4a8adf",
+    "radiusOpacity": 15,
+    "colorOsrm": "#4a8adf",
+    "colorSearch": "#4a8adf",
+    "iconSize": 16,
+    "trackWidth": 3,
+    "liveMarkerSize": 3,
+    "liveLabelSize": 3,
+    "theme": "dark"
+  },
+  "gpxFiles": [],
+  "loadedSourceFiles": [
+    {
+      "id": "src-mjwaid1k-zpx6aa3o",
+      "key": "wpt::audit-ozi.wpt",
+      "name": "audit-ozi.wpt",
+      "path": null,
+      "format": "wpt",
+      "importedAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "entityCounts": {
+        "waypoints": 2,
+        "tracks": 0,
+        "routes": 0
+      },
+      "entityIds": {
+        "waypoints": [
+          "wp-mjwaid1k-5dacfnim",
+          "wp-mjwaid1k-z5q070as"
+        ],
+        "tracks": [],
+        "routes": [],
+        "gpxFiles": []
+      }
+    },
+    {
+      "id": "src-mjwaid1k-vmfsnjgt",
+      "key": "plt::audit-ozi.plt",
+      "name": "audit-ozi.plt",
+      "path": null,
+      "format": "plt",
+      "importedAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "entityCounts": {
+        "waypoints": 0,
+        "tracks": 1,
+        "routes": 0
+      },
+      "entityIds": {
+        "waypoints": [],
+        "tracks": [
+          "1"
+        ],
+        "routes": [],
+        "gpxFiles": []
+      }
+    },
+    {
+      "id": "src-mjwaid1k-ktu9cq2z",
+      "key": "rte::audit-ozi.rte",
+      "name": "audit-ozi.rte",
+      "path": null,
+      "format": "rte",
+      "importedAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "entityCounts": {
+        "waypoints": 0,
+        "tracks": 0,
+        "routes": 1
+      },
+      "entityIds": {
+        "waypoints": [],
+        "tracks": [],
+        "routes": [
+          "1"
+        ],
+        "gpxFiles": []
+      }
+    }
+  ]
+}

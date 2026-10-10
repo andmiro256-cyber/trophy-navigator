@@ -1,0 +1,190 @@
+{
+  "version": 1,
+  "savedAt": "2026-01-02T03:04:05.000Z",
+  "localStorageCompact": false,
+  "map": {
+    "center": {
+      "lat": 55.75030364449042,
+      "lng": 37.61993408203126
+    },
+    "zoom": 10,
+    "layer": "OpenStreetMap",
+    "offline": [],
+    "stack": {
+      "version": 1,
+      "base": {
+        "raster": {
+          "brightness": 0,
+          "contrast": 0,
+          "saturation": 0
+        }
+      },
+      "items": []
+    }
+  },
+  "counters": {
+    "wpCounter": 3,
+    "trackIdCounter": 4,
+    "routeIdCounter": 1,
+    "waypointSetIdCounter": 2
+  },
+  "waypointSets": [
+    {
+      "id": 1,
+      "name": "undo",
+      "visible": true
+    }
+  ],
+  "activeSetId": 1,
+  "waypoints": [
+    {
+      "id": "wp-mjwaid1k-z5q070as",
+      "lat": 59.91,
+      "lng": 30.31,
+      "name": "Оставить",
+      "desc": "Fixture F5",
+      "icon": "⬤",
+      "color": "#df7a4a",
+      "radius": 75,
+      "num": 2,
+      "setId": 1,
+      "createdAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "syncedAt": null
+    }
+  ],
+  "tracks": [
+    {
+      "id": 2,
+      "name": "Undo track (1)",
+      "color": "#4adf7a",
+      "width": 3,
+      "pointSize": 3,
+      "points": [
+        {
+          "lat": 59.9,
+          "lng": 30.3
+        },
+        {
+          "lat": 59.902024360718464,
+          "lng": 30.303039550781254
+        },
+        {
+          "lat": 59.902,
+          "lng": 30.304
+        },
+        {
+          "lat": 59.903,
+          "lng": 30.306
+        }
+      ],
+      "pointsData": [
+        {},
+        {
+          "course": 45.085131799743124
+        },
+        {
+          "course": 45.08426921485966
+        },
+        {
+          "course": 45.083406595250096
+        }
+      ],
+      "visible": true,
+      "createdAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "syncedAt": null
+    },
+    {
+      "id": 3,
+      "name": "Undo track (2)",
+      "color": "#4adf7a",
+      "width": 3,
+      "pointSize": 3,
+      "points": [
+        {
+          "lat": 59.903,
+          "lng": 30.306
+        },
+        {
+          "lat": 59.904,
+          "lng": 30.308
+        },
+        {
+          "lat": 59.905,
+          "lng": 30.31
+        },
+        {
+          "lat": 59.906,
+          "lng": 30.312
+        }
+      ],
+      "pointsData": [
+        {
+          "course": 45.083406595250096
+        },
+        {
+          "course": 45.08254394039591
+        },
+        {
+          "course": 45.08168125145079
+        },
+        {
+          "course": 45.080818527775534
+        }
+      ],
+      "visible": true,
+      "createdAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "syncedAt": null
+    }
+  ],
+  "routes": [],
+  "settings": {
+    "defaultRadius": 30,
+    "colorWpt": "#df7a4a",
+    "trackColorMode": "fixed",
+    "colorTrack": "#4adf7a",
+    "routeColorMode": "fixed",
+    "colorRoute": "#4a8adf",
+    "colorRadiusFill": "#4a8adf",
+    "colorRadiusStroke": "#4a8adf",
+    "radiusOpacity": 15,
+    "colorOsrm": "#4a8adf",
+    "colorSearch": "#4a8adf",
+    "iconSize": 16,
+    "trackWidth": 3,
+    "liveMarkerSize": 3,
+    "liveLabelSize": 3,
+    "theme": "dark"
+  },
+  "gpxFiles": [],
+  "loadedSourceFiles": [
+    {
+      "id": "src-mjwaid1k-zpx6aa3o",
+      "key": "gpx::undo.gpx",
+      "name": "undo.gpx",
+      "path": null,
+      "format": "gpx",
+      "importedAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "entityCounts": {
+        "waypoints": 0,
+        "tracks": 1,
+        "routes": 0
+      },
+      "entityIds": {
+        "waypoints": [],
+        "tracks": [
+          "1"
+        ],
+        "routes": [],
+        "gpxFiles": []
+      }
+    }
+  ]
+}

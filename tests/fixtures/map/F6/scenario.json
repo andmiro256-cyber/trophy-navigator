@@ -1,0 +1,23 @@
+{
+  "id": "F6",
+  "description": "Пересечение ±180°, исходные долготы экспорта неизменны",
+  "imports": [
+    {
+      "file": "antimeridian.gpx",
+      "loader": "loadGPXTracks"
+    }
+  ],
+  "actions": [],
+  "assertions": {
+    "tracks": 1,
+    "trackPointCounts": [
+      4
+    ],
+    "longitudes": [
+      179.9,
+      179.95,
+      -179.95,
+      -179.9
+    ]
+  }
+}

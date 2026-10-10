@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">
+  <wpt lat="59.910000" lon="30.310000">
+    <name>Оставить</name>
+    <desc>Fixture F5</desc>
+    <sym>⬤</sym>
+    <extensions>
+      <tnd:color>#df7a4a</tnd:color>
+      <tnd:radius>75</tnd:radius>
+    </extensions>
+  </wpt>
+  <wpt lat="59.900000" lon="30.300000">
+    <name>Удалить</name>
+    <desc>Fixture F5</desc>
+    <sym>⬤</sym>
+    <extensions>
+      <tnd:color>#df7a4a</tnd:color>
+      <tnd:radius>50</tnd:radius>
+    </extensions>
+  </wpt>
+</gpx>

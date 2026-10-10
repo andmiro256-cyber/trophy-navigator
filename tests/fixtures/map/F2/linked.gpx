@@ -1,0 +1,125 @@
+<?xml version='1.0' encoding='utf-8'?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext" version="1.1" creator="TND regression fixtures">
+  <wpt lat="59.9000000" lon="30.3000000">
+    <name>КП1</name>
+    <desc>Fixture F2</desc>
+    <extensions>
+      <tnd:radius>50</tnd:radius>
+    </extensions>
+  </wpt>
+  <wpt lat="59.9010000" lon="30.3020000">
+    <name>КП2</name>
+    <desc>Fixture F2</desc>
+    <extensions>
+      <tnd:radius>75</tnd:radius>
+    </extensions>
+  </wpt>
+  <wpt lat="59.9020000" lon="30.3040000">
+    <name>КП3</name>
+    <desc>Fixture F2</desc>
+    <extensions>
+      <tnd:radius>100</tnd:radius>
+    </extensions>
+  </wpt>
+  <trk>
+    <name>Linked RR</name>
+    <trkseg>
+      <trkpt lat="59.9000000" lon="30.3000000">
+        <ele>10.000</ele>
+        <time>2026-08-09T08:00:00Z</time>
+      </trkpt>
+      <trkpt lat="59.9001000" lon="30.3002000">
+        <ele>11.000</ele>
+        <time>2026-08-09T08:00:10Z</time>
+      </trkpt>
+      <trkpt lat="59.9002000" lon="30.3004000">
+        <ele>12.000</ele>
+        <time>2026-08-09T08:00:20Z</time>
+      </trkpt>
+      <trkpt lat="59.9003000" lon="30.3006000">
+        <ele>13.000</ele>
+        <time>2026-08-09T08:00:30Z</time>
+      </trkpt>
+      <trkpt lat="59.9004000" lon="30.3008000">
+        <ele>14.000</ele>
+        <time>2026-08-09T08:00:40Z</time>
+      </trkpt>
+      <trkpt lat="59.9005000" lon="30.3010000">
+        <ele>15.000</ele>
+        <time>2026-08-09T08:00:50Z</time>
+      </trkpt>
+      <trkpt lat="59.9006000" lon="30.3012000">
+        <ele>16.000</ele>
+        <time>2026-08-09T08:01:00Z</time>
+      </trkpt>
+      <trkpt lat="59.9007000" lon="30.3014000">
+        <ele>17.000</ele>
+        <time>2026-08-09T08:01:10Z</time>
+      </trkpt>
+      <trkpt lat="59.9008000" lon="30.3016000">
+        <ele>18.000</ele>
+        <time>2026-08-09T08:01:20Z</time>
+      </trkpt>
+      <trkpt lat="59.9009000" lon="30.3018000">
+        <ele>19.000</ele>
+        <time>2026-08-09T08:01:30Z</time>
+      </trkpt>
+      <trkpt lat="59.9010000" lon="30.3020000">
+        <ele>20.000</ele>
+        <time>2026-08-09T08:01:40Z</time>
+      </trkpt>
+      <trkpt lat="59.9011000" lon="30.3022000">
+        <ele>21.000</ele>
+        <time>2026-08-09T08:01:50Z</time>
+      </trkpt>
+      <trkpt lat="59.9012000" lon="30.3024000">
+        <ele>22.000</ele>
+        <time>2026-08-09T08:02:00Z</time>
+      </trkpt>
+      <trkpt lat="59.9013000" lon="30.3026000">
+        <ele>23.000</ele>
+        <time>2026-08-09T08:02:10Z</time>
+      </trkpt>
+      <trkpt lat="59.9014000" lon="30.3028000">
+        <ele>24.000</ele>
+        <time>2026-08-09T08:02:20Z</time>
+      </trkpt>
+      <trkpt lat="59.9015000" lon="30.3030000">
+        <ele>25.000</ele>
+        <time>2026-08-09T08:02:30Z</time>
+      </trkpt>
+      <trkpt lat="59.9016000" lon="30.3032000">
+        <ele>26.000</ele>
+        <time>2026-08-09T08:02:40Z</time>
+      </trkpt>
+      <trkpt lat="59.9017000" lon="30.3034000">
+        <ele>27.000</ele>
+        <time>2026-08-09T08:02:50Z</time>
+      </trkpt>
+      <trkpt lat="59.9018000" lon="30.3036000">
+        <ele>28.000</ele>
+        <time>2026-08-09T08:03:00Z</time>
+      </trkpt>
+      <trkpt lat="59.9019000" lon="30.3038000">
+        <ele>29.000</ele>
+        <time>2026-08-09T08:03:10Z</time>
+      </trkpt>
+      <trkpt lat="59.9020000" lon="30.3040000">
+        <ele>30.000</ele>
+        <time>2026-08-09T08:03:20Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+  <rte>
+    <name>F2 route</name>
+    <rtept lat="59.9000000" lon="30.3000000">
+      <name>КП1</name>
+    </rtept>
+    <rtept lat="59.9010000" lon="30.3020000">
+      <name>КП2</name>
+    </rtept>
+    <rtept lat="59.9020000" lon="30.3040000">
+      <name>КП3</name>
+    </rtept>
+  </rte>
+</gpx>

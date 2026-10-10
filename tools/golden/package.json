@@ -1,0 +1,1 @@
+{"name":"tnd-golden","private":true,"type":"module","scripts":{"generate":"node run.mjs"},"dependencies":{"playwright-core":"1.56.1"}}

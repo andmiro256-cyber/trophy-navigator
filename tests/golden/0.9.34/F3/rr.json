@@ -1,0 +1,143 @@
+{
+  "hits": [
+    {
+      "cpIdx": 0,
+      "label": "КП1",
+      "trackIdx": 0,
+      "dist": 0,
+      "radius": 50,
+      "time": "2026-08-09T08:00:00.000Z",
+      "hit": true
+    },
+    {
+      "cpIdx": 1,
+      "label": "КП2",
+      "trackIdx": 75,
+      "dist": 0,
+      "radius": 75,
+      "time": "2026-08-09T08:12:30.000Z",
+      "hit": true
+    },
+    {
+      "cpIdx": 2,
+      "label": "КП3",
+      "trackIdx": 150,
+      "dist": 0,
+      "radius": 100,
+      "time": "2026-08-09T08:25:00.000Z",
+      "hit": true
+    },
+    {
+      "cpIdx": 3,
+      "label": "КП4",
+      "trackIdx": 225,
+      "dist": 0,
+      "radius": 125,
+      "time": "2026-08-09T08:37:30.000Z",
+      "hit": true
+    },
+    {
+      "cpIdx": 4,
+      "label": "КП5",
+      "trackIdx": 300,
+      "dist": 0,
+      "radius": 150,
+      "time": "2026-08-09T08:50:00.000Z",
+      "hit": true
+    }
+  ],
+  "overall": {
+    "dist": 834.8426999649835,
+    "totalTime": 3000,
+    "moveTime": 3000,
+    "stopTime": 0,
+    "stops": [],
+    "avgSpeed": 0.27828089998832783,
+    "moveSpeed": 0.27828089998832783,
+    "maxSpeed": 0.2782899537143553,
+    "elevGain": 24.999,
+    "elevLoss": 21.747999999999998,
+    "efficiency": 99.99999979336359,
+    "straightDist": 834.8426982398944
+  },
+  "segments": [
+    {
+      "num": 1,
+      "fromLabel": "КП1",
+      "toLabel": "КП2",
+      "fromIdx": 0,
+      "toIdx": 75,
+      "dist": 208.71578472762675,
+      "totalTime": 750,
+      "moveTime": 750,
+      "stopTime": 0,
+      "stops": [],
+      "avgSpeed": 0.278287712970169,
+      "moveSpeed": 0.278287712970169,
+      "maxSpeed": 0.2782899537143553,
+      "elevGain": 4.998999999999999,
+      "elevLoss": 7.856999999999999,
+      "efficiency": 99.99999998708846,
+      "straightDist": 208.71578470067834
+    },
+    {
+      "num": 2,
+      "fromLabel": "КП2",
+      "toLabel": "КП3",
+      "fromIdx": 75,
+      "toIdx": 150,
+      "dist": 208.71237820565793,
+      "totalTime": 750,
+      "moveTime": 750,
+      "stopTime": 0,
+      "stops": [],
+      "avgSpeed": 0.27828317094087723,
+      "moveSpeed": 0.27828317094087723,
+      "maxSpeed": 0.2782854116544365,
+      "elevGain": 9.690000000000001,
+      "elevLoss": 2.1419999999999995,
+      "efficiency": 99.99999998708776,
+      "straightDist": 208.7123781787085
+    },
+    {
+      "num": 3,
+      "fromLabel": "КП3",
+      "toLabel": "КП4",
+      "fromIdx": 150,
+      "toIdx": 225,
+      "dist": 208.70897173025855,
+      "totalTime": 750,
+      "moveTime": 750,
+      "stopTime": 0,
+      "stops": [],
+      "avgSpeed": 0.27827862897367805,
+      "moveSpeed": 0.27827862897367805,
+      "maxSpeed": 0.27828086965660254,
+      "elevGain": 0.4710000000000001,
+      "elevLoss": 10,
+      "efficiency": 99.99999998708701,
+      "straightDist": 208.70897170330798
+    },
+    {
+      "num": 4,
+      "fromLabel": "КП4",
+      "toLabel": "КП5",
+      "fromIdx": 225,
+      "toIdx": 300,
+      "dist": 208.7055653014401,
+      "totalTime": 750,
+      "moveTime": 750,
+      "stopTime": 0,
+      "stops": [],
+      "avgSpeed": 0.2782740870685868,
+      "moveSpeed": 0.2782740870685868,
+      "maxSpeed": 0.27827632772086897,
+      "elevGain": 9.838999999999999,
+      "elevLoss": 1.7489999999999988,
+      "efficiency": 99.99999998708633,
+      "straightDist": 208.70556527448855
+    }
+  ],
+  "raceTimeSec": 3000,
+  "missedCPs": []
+}

@@ -1,0 +1,20 @@
+{
+  "id": "F1",
+  "description": "Нулевые координаты WP и пересечение экватора/нулевого меридиана",
+  "imports": [
+    {
+      "file": "zeros.gpx",
+      "loader": "loadGPXWaypoints"
+    },
+    {
+      "file": "zeros.gpx",
+      "loader": "loadGPXTracks"
+    }
+  ],
+  "actions": [],
+  "assertions": {
+    "waypoints": 3,
+    "tracks": 1,
+    "zeroCoordinatesPreserved": true
+  }
+}
