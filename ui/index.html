@@ -6484,7 +6484,7 @@ function buildGPXWithData(selWaypoints, selTracks, selRoutes) {
     gpx += `<extensions><tnd:color>${escapeXml(d.color || '#df7a4a')}</tnd:color><tnd:radius>${d.radius || 0}</tnd:radius></extensions>`;  // theme-check: data
     gpx += '</wpt>\n';
   });
-  selTracks.forEach(t => {
+  tnTrackRecs(selTracks).forEach(t => {
     gpx += `<trk><name>${escapeXml(t.name)}</name><extensions><tnd:color>${escapeXml(t.color || '#4a8adf')}</tnd:color><tnd:width>${Number(t.width) || 3}</tnd:width><tnd:pointSize>${Number(t.pointSize ?? 3)}</tnd:pointSize></extensions><trkseg>`;  // theme-check: data
     t.points.forEach((p, i) => {
       if (isTrackSegStart(t, i)) gpx += '</trkseg><trkseg>';
@@ -6498,7 +6498,7 @@ function buildGPXWithData(selWaypoints, selTracks, selRoutes) {
     });
     gpx += '</trkseg></trk>';
   });
-  selRoutes.forEach(r => {
+  tnRouteRecs(selRoutes).forEach(r => {
     gpx += `<rte><name>${escapeXml(r.name)}</name><extensions><tnd:color>${escapeXml(r.color || '#4a8adf')}</tnd:color><tnd:width>${Number(r.width) || 3}</tnd:width><tnd:dashArray>${escapeXml(r.dashArray || '')}</tnd:dashArray></extensions>`;  // theme-check: data
     r.points.forEach((p, i) => {
       const radius = Number(r.pointRadii?.[i]) || 0;
@@ -7367,6 +7367,20 @@ document.addEventListener('keydown', event => {
 // ТРЕКИ
 // ─────────────────────────────────────────────
 let tracks = [], trackIdCounter = 1;
+// Модель треков (MapLibre 0б.4, шаг 1 — чтение): записи без объектов Leaflet (polyline, markers),
+// id 'trk_<n>', прежний числовой id — rawId. Не собралась — старый путь с предупреждением.
+function tnTrackRec(t) {
+  const { polyline, markers, markerMap, ...rest } = t;
+  return { ...rest, id: window.TnModel.entityId('track', t.id), rawId: t.id };
+}
+function tnTrackRecs(list = tracks) {
+  let ok = false;
+  try {
+    tnModel.reset('track', tracks.map(tnTrackRec));
+    ok = tnModel.ids('track').length === tracks.length;
+  } catch (e) { console.warn('Модель треков не собрана, читаю треки напрямую:', e?.message || e); }
+  return list.map(t => (ok && tnModel.get('track', window.TnModel.entityId('track', t.id))) || tnTrackRec(t));
+}
 let currentTrackDraw = null;
 let currentTrackSnapshot = null;
 let currentTrackEdit = null;
@@ -8595,7 +8609,7 @@ function saveTracksGPX() {
   downloadText('tracks.gpx', 'application/gpx+xml', () => {
     validateExportCoordinates({ tracks });
     let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">';
-    tracks.forEach(t => {
+    tnTrackRecs().forEach(t => {
       gpx += `<trk><name>${escapeXml(t.name)}</name><extensions><tnd:color>${escapeXml(t.color || '#4a8adf')}</tnd:color><tnd:width>${Number(t.width) || 3}</tnd:width><tnd:pointSize>${Number(t.pointSize ?? 3)}</tnd:pointSize></extensions><trkseg>`;  // theme-check: data
       t.points.forEach((p, i) => {
         if (isTrackSegStart(t, i)) gpx += '</trkseg><trkseg>';
@@ -8662,7 +8676,7 @@ function saveTracksPLT() {
   if (tracks.length === 0) { showToast('Нет треков для сохранения'); return; }
   downloadText('tracks.plt', 'text/plain', () => {
     validateExportCoordinates({ tracks });
-    const exportTracks = tracks.map(track => ({
+    const exportTracks = tnTrackRecs().map(track => ({
       track,
       points: track.points.map((point, index) => ({
         point: parseTrackLatLng(point?.lat, point?.lng),
@@ -8903,6 +8917,20 @@ function onTrackSpeedChange(val) {
 // МАРШРУТЫ
 // ─────────────────────────────────────────────
 let routes = [], routeIdCounter = 1;
+// Модель маршрутов по КП (MapLibre 0б.4, шаг 1 — чтение): записи без слоёв Leaflet, id 'rte_<n>', rawId.
+function tnRouteRec(r) {
+  const isLayer = v => !!v && typeof v === 'object' && (v._leaflet_id !== undefined || (window.L && v instanceof L.Layer));
+  const rest = Object.fromEntries(Object.entries(r).filter(([k, v]) => k !== 'polyline' && !isLayer(v)));
+  return { ...rest, id: window.TnModel.entityId('route', r.id), rawId: r.id };
+}
+function tnRouteRecs(list = routes) {
+  let ok = false;
+  try {
+    tnModel.reset('route', routes.map(tnRouteRec));
+    ok = tnModel.ids('route').length === routes.length;
+  } catch (e) { console.warn('Модель маршрутов не собрана, читаю маршруты напрямую:', e?.message || e); }
+  return list.map(r => (ok && tnModel.get('route', window.TnModel.entityId('route', r.id))) || tnRouteRec(r));
+}
 let selectedRouteId = null;
 // Импортированные GPX файлы (хранятся для синхронизации)
 let importedGpxFiles = [];
@@ -9553,7 +9581,7 @@ function saveRoutesGPX() {
   downloadText('routes.gpx', 'application/gpx+xml', () => {
     validateExportCoordinates({ routes });
     let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">';
-    routes.forEach(r => {
+    tnRouteRecs().forEach(r => {
       gpx += `<rte><name>${escapeXml(r.name)}</name><extensions><tnd:color>${escapeXml(r.color || '#4a8adf')}</tnd:color><tnd:width>${Number(r.width) || 3}</tnd:width><tnd:dashArray>${escapeXml(r.dashArray || '')}</tnd:dashArray></extensions>`;  // theme-check: data
       r.points.forEach((p, i) => {
         const radius = Number(r.pointRadii?.[i]) || 0;
@@ -9583,7 +9611,7 @@ function saveRoutesRTE() {
       'Reserved 1',
       'Reserved 2'
     ];
-    routes.forEach((r, idx) => {
+    tnRouteRecs().forEach((r, idx) => {
       rows.push(`R,${idx},${csvField(r.name)},,${hexToOziColor(r.color)}`);
       r.points.forEach((p, i) => rows.push(`W,${idx},${i + 1},${i + 1},${csvField(r.labels?.[i] || `КП${i+1}`)},${p.lat.toFixed(6)},${p.lng.toFixed(6)}`));
     });
@@ -11692,10 +11720,9 @@ function collectState(options = {}) {
       source: d.source || 'desktop',
       syncedAt: d.syncedAt || null
     })),
-    tracks: tracks.filter(t => !t.isNew).map(t => {
-      ensureTrackMeta(t, { touch: false });
+    tracks: (tracks.forEach(t => { if (!t.isNew) ensureTrackMeta(t, { touch: false }); }), tnTrackRecs(tracks.filter(t => !t.isNew))).map(t => {
       return {
-        id: t.id,
+        id: t.rawId,
         name: t.name,
         color: t.color,
         width: t.width,
@@ -11709,10 +11736,9 @@ function collectState(options = {}) {
         syncedAt: t.syncedAt || null
       };
     }),
-    routes: routes.filter(r => !r.isNew && r.points?.length >= 2).map(r => {
-      ensureRouteMeta(r, { touch: false });
+    routes: (routes.forEach(r => { if (!r.isNew && r.points?.length >= 2) ensureRouteMeta(r, { touch: false }); }), tnRouteRecs(routes.filter(r => !r.isNew && r.points?.length >= 2))).map(r => {
       return {
-        id: r.id,
+        id: r.rawId,
         name: r.name,
         color: r.color,
         width: r.width,

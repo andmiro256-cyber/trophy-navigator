@@ -27,14 +27,16 @@ test('точки в модели — простые {lat,lng}: L.LatLng-подо
   assert.equal(M.has('track', 'trk_2'), false, 'запись с мусором не добавлена');
 });
 
-test('pointsData выравнивается по точкам и не делит объекты с вызывающим', () => {
+test('pointsData — как есть (длина не меняется, нет массива — нет и в записи) и не делит объекты с вызывающим', () => {
   const M = TnModel.create();
   const pd = [{ ele: 1 }];
   M.add('track', { id: 'trk_1', points: [{ lat: 1, lng: 1 }, { lat: 2, lng: 2 }], pointsData: pd });
   const t = M.get('track', 'trk_1');
-  assert.equal(t.pointsData.length, 2);
+  assert.equal(t.pointsData.length, 1, 'collectState пишет pointsData дословно — длину не выравниваем');
   pd[0].ele = 999;
   assert.equal(t.pointsData[0].ele, 1);
+  M.add('track', { id: 'trk_2', points: [{ lat: 1, lng: 1 }] });
+  assert.equal(M.get('track', 'trk_2').pointsData, undefined);
 });
 
 test('события: add/update/remove/reorder/reset с generation; повтор id — ошибка', () => {
@@ -92,4 +94,17 @@ test('index.html, шаг 1 (чтение): выгрузки WP и collectState �
   assert.equal((html.match(/tnWaypointRecs\(list\)\.forEach\(d => \{/g) || []).length, 2, 'WPT и GPX активного набора');
   assert.match(html, /tnWaypointRecs\(selWaypoints\)\.forEach\(d => \{/);
   assert.match(html, /waypoints: \(waypoints\.forEach\(m => ensureWaypointMeta\(m, \{ touch: false \}\)\), tnWaypointRecs\(\)\)\.map\(d => \(\{/);
+});
+
+test('index.html, шаг 1 (чтение): треки и маршруты — записи модели без слоёв Leaflet во всех выгрузках и collectState', async () => {
+  const fs = await import('node:fs');
+  const html = fs.readFileSync(new URL('../ui/index.html', import.meta.url), 'utf8');
+  assert.match(html, /function tnTrackRec\(t\) \{\n  const \{ polyline, markers, markerMap, \.\.\.rest \} = t;/);
+  assert.match(html, /tracks: \(tracks\.forEach\(t => \{ if \(!t\.isNew\) ensureTrackMeta\(t, \{ touch: false \}\); \}\), tnTrackRecs\(tracks\.filter\(t => !t\.isNew\)\)\)\.map\(t => \{\n      return \{\n        id: t\.rawId,/);
+  assert.match(html, /const exportTracks = tnTrackRecs\(\)\.map\(track => \(\{/);
+  assert.match(html, /tnTrackRecs\(selTracks\)\.forEach\(t => \{/);
+  assert.match(html, /function tnRouteRec\(r\)/);
+  assert.match(html, /tnRouteRecs\(\)\.forEach\(\(r, idx\) => \{/);
+  assert.match(html, /tnRouteRecs\(selRoutes\)\.forEach\(r => \{/);
+  assert.match(html, /tnRouteRecs\(routes\.filter\(r => !r\.isNew && r\.points\?\.length >= 2\)\)\)\.map\(r => \{\n      return \{\n        id: r\.rawId,/);
 });
