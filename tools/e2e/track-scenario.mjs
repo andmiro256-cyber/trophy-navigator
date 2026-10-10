@@ -17,7 +17,10 @@ const midOf = async (ti, i) => {
   const [ax, ay] = await screenOf(ev, a), [bx, by] = await screenOf(ev, b);
   return [Math.round((ax + bx) / 2), Math.round((ay + by) / 2)];
 };
-const snap = () => ev(() => ({
+// Окна точек трека: Leaflet иногда засчитывает лишний клик после двойного щелчка или перетаскивания вершины,
+// и окно открывается с задержкой — так ведёт себя и чистая версия. Поэтому окна в снимок попадают только там,
+// где они и есть предмет проверки (шаг 2), иначе прогоны одной версии расходятся.
+const snap = (withPopups = false) => ev(withPopups => ({
   tracks: tracks.map(t => ({ name: t.name, n: t.points.length, segs: (t.pointsData || []).filter((d, i) => i > 0 && d && d.seg).length,
     first: [+t.points[0].lat.toFixed(6), +t.points[0].lng.toFixed(6)], last: [+t.points[t.points.length - 1].lat.toFixed(6), +t.points[t.points.length - 1].lng.toFixed(6)],
     onMap: !!t.polyline && map.hasLayer(t.polyline), visible: t.visible !== false, markersOnMap: (t.markers || []).filter(m => map.hasLayer(m)).length })),
@@ -25,8 +28,8 @@ const snap = () => ev(() => ({
   menus: ['ctx-menu', 'ctx-menu-map', 'ctx-menu-track'].filter(id => document.getElementById(id).classList.contains('open')),
   modals: [...document.querySelectorAll('.modal-overlay.active')].map(m => m.id),
   toast: (document.getElementById('toast')?.textContent || '').trim(),
-  popups: [...document.querySelectorAll('.leaflet-popup')].map(p => p.className.replace(/\s*leaflet-zoom-animated/, '')),
-}));
+  ...(withPopups ? { popups: [...document.querySelectorAll('.leaflet-popup')].map(p => p.className.replace(/\s*leaflet-zoom-animated/, '')) } : {}),
+}), withPopups);
 const R = {};
 
 // 1. загрузка плана из кусков (GPX с несколькими trkseg); точки трека ещё ни разу не показывались
@@ -40,7 +43,7 @@ R.s1_load = await snap();
 
 // 2. клик по линии плана между точками — попап точки или окно треков
 { const [x, y] = await midOf(0, M); R.s2_target = await ev(([x, y]) => document.elementFromPoint(x, y)?.tagName, [x, y]); await page.mouse.click(x, y); await page.waitForTimeout(300); }
-R.s2_click = await snap();
+R.s2_click = await snap(true);
 await closeModals(); await ev(() => { map.closePopup(); });
 
 // 3. правый клик по линии → меню трека; «Разбить» вне правки — отказ с подсказкой
