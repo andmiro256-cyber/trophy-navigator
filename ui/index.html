@@ -7023,6 +7023,9 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('#ctx-menu') || e.target.closest('#ctx-menu-map') || e.target.closest('#ctx-menu-track')) return;
   closeCtxMenu();
 });
+// Флаг «ПКМ обработан объектом» живёт одно событие: объекты на холсте (трек, точки трека) останавливают
+// всплытие, и сброс ниже до них не доходил — следующий ПКМ по пустой карте терялся (0.9.35)
+document.addEventListener('contextmenu', () => { ctxHandledByMarker = false; }, true);
 map.getContainer().addEventListener('contextmenu', e => {
   e.preventDefault();
   // Если ПКМ уже обработан маркером — не показываем меню карты

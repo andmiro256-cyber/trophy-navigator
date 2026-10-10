@@ -95,3 +95,11 @@ test('install идемпотентен и помечает контейнер с
   b._onClick({ type: 'click' });
   assert.equal(log.length, 1, 'одна доставка, без двойной обёртки');
 });
+
+test('флаг «ПКМ обработан объектом» сбрасывается в начале каждого contextmenu (фаза перехвата)', () => {
+  // объекты на холсте останавливают всплытие — без сброса до них следующий ПКМ по пустой карте терялся
+  const reset = html.indexOf("document.addEventListener('contextmenu', () => { ctxHandledByMarker = false; }, true);");
+  const mapCtx = html.indexOf("map.getContainer().addEventListener('contextmenu'");
+  assert.ok(reset > 0 && reset < mapCtx, 'сброс в capture на document стоит перед обработчиком меню карты');
+  assert.match(html.slice(mapCtx, mapCtx + 300), /if \(ctxHandledByMarker\) \{ ctxHandledByMarker = false; return; \}/);
+});
