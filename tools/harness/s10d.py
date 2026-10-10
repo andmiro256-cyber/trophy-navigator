@@ -1,0 +1,20 @@
+import wd, time, os
+from wd import click, dlg, CLEAN, setv
+s = wd.session(); R = wd.Rec(s, 's10d')
+MAPS = wd.A + '/home/Документы/TrophyNavigatorTest/maps/'
+openo = lambda: (wd.open_by(s, '#toolbar button[title^="Офлайн карты"]', 'modal-offline'), click(s, '#modal-offline .tab-btn[aria-controls="tab-offline-list"]'))
+s.js("map.setView([43.215, 44.665], 13, {animate:false})"); time.sleep(1)
+R('toggle on', lambda: (openo(), click(s, '#offline-maps-list [onclick^="toggleOfflineMap"]')), wait=2, extra="return [document.getElementById('offline-maps-list').innerText.replace(/\\s+/g,' ').slice(0,200), typeof offlineMaps!=='undefined' ? Object.keys(offlineMaps) : null, currentBaseLayerName, document.getElementById('current-layer-name').textContent]")
+R('opacity slider', lambda: setv(s, '#offline-maps-list input[type=range]', '50'), extra="return [...document.querySelectorAll('#offline-maps-list input[type=range]')].map(i=>i.value)", shot=False)
+R('layers modal: 📦 Скачанные карты', lambda: (wd.open_by(s, '#btn-map-layer', 'modal-layers')), wait=1, extra="return [getComputedStyle(document.getElementById('offline-layers-section')).display, document.getElementById('offline-layers-list').innerText.replace(/\\s+/g,' ').slice(0,200), [...document.querySelectorAll('#offline-layers-list [onclick], #offline-layers-list input')].map(e=>(e.getAttribute('onclick')||e.getAttribute('onchange')||e.getAttribute('oninput')||'').slice(0,60))]")
+R('toggle off', lambda: (openo(), click(s, '#offline-maps-list [onclick^="toggleOfflineMap"]')), wait=1, extra="return [document.getElementById('offline-maps-list').innerText.replace(/\\s+/g,' ').slice(0,200), currentBaseLayerName]")
+R('Загрузить файл: Подключить', lambda: (click(s, '#modal-offline .tab-btn[aria-controls="tab-offline-load"]'), wd.q(s, wd.A + '/home/Загрузки/ext-map.sqlitedb'), click(s, '#tab-offline-load .btn-primary')), wait=2, extra="return [document.getElementById('offline-maps-list').innerText.replace(/\\s+/g,' ').slice(0,300)]")
+R('Загрузить файл: Скопировать в папку', lambda: (openo(), click(s, '#modal-offline .tab-btn[aria-controls="tab-offline-load"]'), wd.q(s, wd.A + '/home/Загрузки/ext-map.sqlitedb'), click(s, '#tab-offline-load .btn-secondary')), wait=2, extra="return [document.getElementById('offline-maps-list').innerText.replace(/\\s+/g,' ').slice(0,300)]")
+print('FILES', os.listdir(MAPS))
+R('dropzone click', lambda: (openo(), click(s, '#modal-offline .tab-btn[aria-controls="tab-offline-load"]'), wd.q(s, None), click(s, '#offline-map-dropzone')), wait=1, extra="return null")
+R('bad file (.gpx renamed)', lambda: (wd.q(s, wd.A + '/home/Загрузки/audit-route.gpx'), click(s, '#tab-offline-load .btn-primary')), wait=2, extra="return [document.getElementById('offline-maps-list').innerText.replace(/\\s+/g,' ').slice(0,300)]")
+R('delete 🗑 (first)', lambda: (openo(), click(s, '#offline-maps-list [onclick^="deleteOfflineMap"]')), wait=0.8, extra="return [document.getElementById('modal-dialog').classList.contains('open'), document.getElementById('modal-dialog-message').innerText.slice(0,200)]")
+if s.js("return document.getElementById('modal-dialog').classList.contains('open')"): R('delete confirm', lambda: dlg(s), wait=1.5, extra="return document.getElementById('offline-maps-list').innerText.replace(/\\s+/g,' ').slice(0,300)")
+print('FILES', os.listdir(MAPS), os.path.exists(wd.A + '/home/Загрузки/ext-map.sqlitedb'))
+s.js(CLEAN)
+R.save()
