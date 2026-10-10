@@ -4,11 +4,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>🧭 Trophy Navigator Desktop v0.9.34</title>
+  <title>🧭 Trophy Navigator Desktop v0.9.36</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="leaflet.css"/>
 <link rel="stylesheet" href="theme.css"/>
 <script src="leaflet.js"></script>
+<script src="tn-canvas-stack.js"></script>
 <script src="trophynav-maps-core.js"></script>
 <script src="smooth-zoom.js"></script>
 <script src="trophynav-symbols.js"></script>
@@ -1542,7 +1543,7 @@
   <span title="Зум карты">z<span class="highlight" id="sb-zoom">—</span></span>
   <span title="Режим"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-navigation"/></svg><span class="highlight" id="sb-mode">Обзор</span></span>
   <span title="Активный слой"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-layers-o"/></svg><span class="highlight" id="sb-layer">OpenStreetMap</span></span>
-  <span id="app-version-label" class="app-version">Trophy Navigator · v0.9.34</span>
+  <span id="app-version-label" class="app-version">Trophy Navigator · v0.9.36</span>
 </div>
 
 <div id="ruler-panel">
@@ -2525,7 +2526,7 @@
       <!-- TrophyNav Maps: векторные карты областей (ui/trophynav-maps.js) -->
       <div class="layer-section-title tnmaps-title-row" data-sec="tnmaps" style="margin-top:8px">
         <span>TrophyNav Maps</span>
-        <button type="button" class="tnmaps-link" onclick="window.TrophyNavMaps?.openWindow()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-cloud-download"/></svg>Карты областей</button>
+        <button type="button" class="tnmaps-link" id="tnmaps-open-link" onclick="window.TrophyNavMaps?.openWindow()"><svg class="tn-ico tn-ico-t" aria-hidden="true"><use href="#tn-i-cloud-download"/></svg>Карты областей</button>
       </div>
       <div id="tnmaps-layers"></div>
 
@@ -7069,6 +7070,9 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('#ctx-menu') || e.target.closest('#ctx-menu-map') || e.target.closest('#ctx-menu-track')) return;
   closeCtxMenu();
 });
+// Флаг «ПКМ обработан объектом» живёт одно событие: объекты на холсте (трек, точки трека) останавливают
+// всплытие, и сброс ниже до них не доходил — следующий ПКМ по пустой карте терялся (0.9.35)
+document.addEventListener('contextmenu', () => { ctxHandledByMarker = false; }, true);
 tnMap.getContainer().addEventListener('contextmenu', e => {
   e.preventDefault();
   // Если ПКМ уже обработан маркером — не показываем меню карты
@@ -11649,10 +11653,10 @@ function tauriInvoke(command, args = {}) {
   return invoke(command, args);
 }
 
-let appDisplayVersion = '0.9.34';
+let appDisplayVersion = '0.9.36';
 
 function getCurrentAppVersion() {
-  return normalizeVersion(appDisplayVersion || document.getElementById('about-version')?.textContent || '0.9.34');
+  return normalizeVersion(appDisplayVersion || document.getElementById('about-version')?.textContent || '0.9.36');
 }
 
 function setDisplayedAppVersion(version) {
@@ -15159,7 +15163,7 @@ ${missedCPs.length > 0 ? `<p>Пропущенные КП: ${escapeHtml(missedCPs
       <!-- Информация -->
       <div style="background:var(--bg-sunken);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--card-stroke)">
-          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:var(--text-primary)">0.9.34</span>
+          <span style="color:var(--text-muted)">Версия</span><span id="about-version" style="color:var(--text-primary)">0.9.36</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--card-stroke)">
           <span style="color:var(--text-muted)">Платформа</span><span style="color:var(--text-primary)" id="about-platform">—</span>

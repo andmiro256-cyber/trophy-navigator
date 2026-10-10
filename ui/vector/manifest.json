@@ -1,0 +1,58 @@
+{
+ "version": 19,
+ "minAppVersionCode": 423,
+ "files": {
+  "sprites/osm-liberty.json": {
+   "sha256": "9390b86669fd775b9b20fe5ef71b9245e0000ccf9fdaa64ddd04b6f0cdf7a2e6",
+   "size": 22071
+  },
+  "sprites/osm-liberty.png": {
+   "sha256": "b37ad15ed5c3017a7bc529c45a720ebad31cf6685410576d19be06f26c74b3c2",
+   "size": 83565
+  },
+  "sprites/osm-liberty@2x.json": {
+   "sha256": "a14440881571fadecf6d3ff77febe8399ee99ff8cd63122ff86fe77915ff627e",
+   "size": 22165
+  },
+  "sprites/osm-liberty@2x.png": {
+   "sha256": "74ea79c7728a0d0956ff639d9bb63a0de07ffba0366895346752ada5c4be840b",
+   "size": 202001
+  },
+  "style-liberty.json": {
+   "sha256": "11944f589f2c2a61bf6ac82f80f8749b3023de0672b5db92f97de1adabd4004b",
+   "size": 63569
+  },
+  "theme-contrast.json": {
+   "sha256": "0705d70fb0fc16055a3ee5c208bbcc47003487f0f86b530b3085036e196547d1",
+   "size": 6784
+  },
+  "theme-offroad.json": {
+   "sha256": "08b2b81fcbbad90d5cf97b8f11af605e40f09db4c788f7e6e7040d1512b9b82c",
+   "size": 63654
+  },
+  "theme-topo.json": {
+   "sha256": "05e8ac1e332f5f24f246b393d945c75c590e77233af92e1a132532f14831c385",
+   "size": 50893
+  }
+ },
+ "themes": [
+  {
+   "id": "normal",
+   "title": "Базовая"
+  },
+  {
+   "id": "contrast",
+   "title": "Яркая"
+  },
+  {
+   "id": "topo",
+   "title": "Топо"
+  },
+  {
+   "id": "offroad",
+   "title": "Офф",
+   "overview": false,
+   "requires": "outdoor"
+  }
+ ]
+}

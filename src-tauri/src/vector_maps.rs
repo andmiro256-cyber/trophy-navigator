@@ -3,7 +3,7 @@
 //! Отдельный типизированный путь, растровые офлайн-карты (`read_offline_tile`) его не используют:
 //! - протокол `tnmap://` отдаёт MVT-тайлы из `<id>.mbtiles` (gzip распаковывается здесь, без надежды на
 //!   `Content-Encoding` у WebView), PNG рельефа из `<id>.dem.mbtiles` / `<id>.slope.mbtiles` и файлы стиля
-//!   (стиль, темы, спрайты, шрифты) из встроенной папки `ui/vector/`;
+//!   (стиль, темы, спрайты, шрифты) из пакета стиля с сервера (`style_pack.rs`) или встроенной папки `ui/vector/`;
 //! - каталог `https://trophynav.ru/maps/v1/maps.json` с копией в рабочей папке на случай без сети;
 //! - загрузка с докачкой, SHA-256 и атомарной заменой: недокачанный или битый файл картой не становится,
 //!   а старая карта остаётся рабочей до самой замены.
@@ -428,6 +428,10 @@ fn serve_route<R: Runtime>(app: &AppHandle<R>, route: Route) -> Response<Vec<u8>
             } else {
                 MVT
             };
+            // Пакет стиля с сервера (style_pack.rs) важнее встроенных файлов
+            if let Some(bytes) = crate::style_pack::read_asset(&rel) {
+                return respond(StatusCode::OK, mime, bytes);
+            }
             match app.asset_resolver().get(format!("vector/{rel}")) {
                 Some(asset) => respond(StatusCode::OK, mime, asset.bytes),
                 // Диапазона глифов нет в комплекте (редкие символы): пустой ответ — просто без этих букв

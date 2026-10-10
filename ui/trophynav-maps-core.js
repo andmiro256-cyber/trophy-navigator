@@ -74,6 +74,27 @@
   const DEFAULT_THEME = 'contrast';
   const normalizeTheme = id => (THEMES.some(t => t.id === id) ? id : DEFAULT_THEME);
 
+  /**
+   * 0.9.36: список тем — из манифеста пакета стиля с сервера ({id, title, relief?}). Массив меняется на месте:
+   * THEMES/RELIEF_THEMES уже розданы. Пустой или битый список не применяется; «Базовая» есть всегда.
+   */
+  function setThemes(list) {
+    if (!Array.isArray(list)) return false;
+    const seen = new Set();
+    const next = list.filter(t => isObj(t) && /^[a-z0-9_-]{1,32}$/.test(String(t.id)) && typeof t.title === 'string'
+      && t.title.trim() && !seen.has(t.id) && seen.add(t.id))
+      .map(t => ({ id: String(t.id), title: t.title.trim().slice(0, 24), relief: t.relief }));
+    if (!next.length) return false;
+    if (!seen.has('normal')) next.unshift({ id: 'normal', title: 'Базовая' });
+    next.forEach(t => {
+      if (t.relief === true) RELIEF_THEMES.add(t.id);
+      else if (t.relief === false) RELIEF_THEMES.delete(t.id);
+      delete t.relief;
+    });
+    THEMES.splice(0, THEMES.length, ...next);
+    return true;
+  }
+
   // ─── Значки на карте (VectorPoiFilter.kt) ───
   const POI_GROUPS = [
     { id: 'auto', title: '⛽ Заправки и авто', classes: ['fuel', 'car', 'parking', 'bicycle'] },
@@ -486,17 +507,20 @@
   }
   // source-layer «outdoor» (данные TrophyNav: тропы, болота, горизонтали, природные подписи) — по классу
   const OUTDOOR_LINE_ROAD = new Set(['track', 'path', 'ford_way', 'winter_road', 'track_detected', 'boardwalk', 'bridge',
-    'cutline', 'abandoned_railway', 'narrow_gauge']);
-  const OUTDOOR_COVER = new Set(['wetland', 'scrub', 'clearcut', 'peat', 'quarry', 'dam_area']);
-  const OUTDOOR_WATER = new Set(['ditch', 'dam']);
-  const OUTDOOR_TERRAIN = new Set(['ravine', 'cliff', 'earth_bank']);
-  const OUTDOOR_WATER_LABEL = new Set(['bay_label', 'lake_label', 'waterway_label', 'rapids_label', 'sea_label']);
+    'cutline', 'abandoned_railway', 'narrow_gauge', 'old_road']);
+  // 10.10 (пакет v19): поляны, кустарник WorldCover, вырубки по снимкам, лесополосы, значки малых болот
+  const OUTDOOR_COVER = new Set(['wetland', 'scrub', 'clearcut', 'peat', 'quarry', 'dam_area', 'glade', 'scrub_wc',
+    'clearcut_s2', 'tree_row', 'wetland_small']);
+  const OUTDOOR_WATER = new Set(['ditch', 'dam', 'stream', 'stream_dem']);
+  const OUTDOOR_TERRAIN = new Set(['ravine', 'cliff', 'earth_bank', 'valley_dem']);
+  const OUTDOOR_WATER_LABEL = new Set(['bay_label', 'lake_label', 'waterway_label', 'rapids_label', 'sea_label',
+    'stream_dem', 'river_point']);
   const OUTDOOR_PLACE_LABEL = new Set(['island_label', 'cape_label', 'ridge_label', 'valley_label', 'pass_label',
-    'valley_point', 'range_label', 'forest_label', 'wetland_label', 'locality']);
+    'valley_point', 'range_label', 'forest_label', 'wetland_label', 'locality', 'compartment']);
   const OUTDOOR_POI = new Set(['survey_point', 'ranger', 'fire_water', 'bridge_point', 'spring', 'water', 'shelter',
     'hunting_stand', 'viewpoint', 'camp_site', 'picnic', 'tower']);
   const OUTDOOR_RELIEF = new Set(['contour', 'cliff', 'embankment']);
-  const OUTDOOR_POWER = new Set(['power', 'power_minor', 'power_tower', 'power_pole']);
+  const OUTDOOR_POWER = new Set(['power', 'power_minor', 'power_tower', 'power_pole', 'pipeline']);
 
   function classifyOutdoor(layer) {
     const classes = [...filterClasses(layer.filter)];
@@ -513,6 +537,7 @@
       if (classes.includes('peak_gn')) return 'peak';
       if (some(OUTDOOR_POI)) return 'poi';
       if (some(OUTDOOR_LINE_ROAD)) return 'road-label';   // подписи зимников, мостов, узкоколеек
+      if (all(OUTDOOR_COVER)) return 'landcover';         // значки малых болот, подписи вырубок
       return 'unknown';
     }
     if (layer.type === 'fill') return all(OUTDOOR_COVER) ? 'landcover' : 'unknown';
@@ -573,7 +598,7 @@
 
   const api = {
     STACK_GROUPS, filterClasses, classifyLayer, roadsLabelsStyle, ROADS_LABELS_GROUPS,
-    applyThemeLayers, THEMES, RELIEF_THEMES, DEFAULT_THEME, normalizeTheme,
+    applyThemeLayers, THEMES, RELIEF_THEMES, DEFAULT_THEME, normalizeTheme, setThemes,
     POI_GROUPS, POI_ALL, POI_LAYERS, parsePoi, formatPoi, poiSummary, poiCondition, combineFilter, applyPoiFilter,
     DEFAULT_RELIEF, normalizeRelief, scalePaint, applyRelief, dropLayersWithoutSource, applyBuildings,
     buildStyle, requiredAppImages,
