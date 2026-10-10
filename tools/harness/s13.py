@@ -29,7 +29,7 @@ R('Проверить (заглушка pull пустой)', lambda: (s.js("wind
 R('  requests', None, wait=0.1, extra=NET, shot=False)
 R('Отправить (заглушка 200, только точки)', lambda: (s.js("window.__audit.net.length=0"), click(s, '#sync-cb-tracks'), click(s, '#sync-cb-routes'), click(s, '#sync-cb-gpx'), click(s, '#modal-sync button[onclick="syncPush()"]')), wait=2.5, extra="return [document.getElementById('sync-status-text').textContent, document.getElementById('sync-last-time').textContent]")
 R('  requests', None, wait=0.1, extra="return window.__audit.net.filter(r=>r.blocked).map(r=>[r.method, r.url, (r.bodySnippet||'').slice(0,200), r.body])", shot=False)
-R('Загрузить (заглушка пустой)', lambda: (s.js("window.__audit.net.length=0"), click(s, '#modal-sync button[onclick="syncPull()"]')), wait=2.5, extra="return [document.getElementById('sync-server-info').innerText.slice(0,200), waypoints.length, tracks.length, routes.length]")
+R('Загрузить (заглушка пустой)', lambda: (s.js("window.__audit.net.length=0"), click(s, '#modal-sync button[onclick="syncPull()"]')), wait=2.5, extra="return [document.getElementById('sync-server-info').innerText.slice(0,200), __tnTest.stats().wp, __tnTest.stats().tracks, __tnTest.stats().routes]")
 R('  requests', None, wait=0.1, extra=NET, shot=False)
 R('Закрыть', lambda: click(s, '#modal-sync .btn-row .btn-secondary'), extra="return document.getElementById('modal-sync').classList.contains('open')")
 R.save()

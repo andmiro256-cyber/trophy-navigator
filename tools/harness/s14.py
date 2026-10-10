@@ -11,7 +11,7 @@ s.js("""const now=arguments[0]; window.__audit.netStub = (url, method) => {
   return null; }""", now_ms)
 LS = "const sb=document.getElementById('live-sidebar'); return [sb.classList.value, getComputedStyle(sb).display, sb.getBoundingClientRect().x, document.getElementById('live-header-text')?.textContent, document.getElementById('live-devices-list').innerText.replace(/\\s+/g,' ').slice(0,200)]"
 R('Live (email привязан, заглушка)', lambda: click(s, '#btn-live'), wait=4, extra=LS)
-R('device click → zoom', lambda: click(s, '#live-devices-list [onclick^="liveZoomTo"]'), wait=1.5, extra="return [map.getCenter().lat.toFixed(3), map.getCenter().lng.toFixed(3), map.getZoom()]")
+R('device click → zoom', lambda: click(s, '#live-devices-list [onclick^="liveZoomTo"]'), wait=1.5, extra="return [__tnTest.getView().center.lat.toFixed(3), __tnTest.getView().center.lng.toFixed(3), __tnTest.getView().zoom]")
 R('status select', lambda: s.js("const e=document.getElementById('live-status-select'); if(e.options.length>1){e.selectedIndex=1; e.dispatchEvent(new Event('change'))} return [...e.options].map(o=>o.text)"), wait=1, extra="return [...document.getElementById('live-status-select').options].map(o=>o.text)")
 R('group select', lambda: s.js("const e=document.getElementById('live-group-select'); return [...e.options].map(o=>o.text)"), extra="return [...document.getElementById('live-group-select').options].map(o=>o.text)", shot=False)
 for t, lbl in [('Сообщения','messages'),('Группы','groups'),('Хвост моих устройств','trails'),('Показать всех','showall'),('Свернуть','collapse'),('Развернуть','expand')]:

@@ -1,9 +1,9 @@
 import wd, time, os
 from wd import click, dlg, CLEAN, setv
 s = wd.session(); R = wd.Rec(s, 's10d')
-MAPS = wd.A + '/home/Документы/TrophyNavigatorTest/maps/'
+MAPS = wd.WORK + '/maps/'
 openo = lambda: (wd.open_by(s, '#toolbar button[title^="Офлайн карты"]', 'modal-offline'), click(s, '#modal-offline .tab-btn[aria-controls="tab-offline-list"]'))
-s.js("map.setView([43.215, 44.665], 13, {animate:false})"); time.sleep(1)
+s.js("__tnTest.setView({center:{lat:43.215,lng:44.665},zoom:13})"); time.sleep(1)
 R('toggle on', lambda: (openo(), click(s, '#offline-maps-list [onclick^="toggleOfflineMap"]')), wait=2, extra="return [document.getElementById('offline-maps-list').innerText.replace(/\\s+/g,' ').slice(0,200), typeof offlineMaps!=='undefined' ? Object.keys(offlineMaps) : null, currentBaseLayerName, document.getElementById('current-layer-name').textContent]")
 R('opacity slider', lambda: setv(s, '#offline-maps-list input[type=range]', '50'), extra="return [...document.querySelectorAll('#offline-maps-list input[type=range]')].map(i=>i.value)", shot=False)
 R('layers modal: 📦 Скачанные карты', lambda: (wd.open_by(s, '#btn-map-layer', 'modal-layers')), wait=1, extra="return [getComputedStyle(document.getElementById('offline-layers-section')).display, document.getElementById('offline-layers-list').innerText.replace(/\\s+/g,' ').slice(0,200), [...document.querySelectorAll('#offline-layers-list [onclick], #offline-layers-list input')].map(e=>(e.getAttribute('onclick')||e.getAttribute('onchange')||e.getAttribute('oninput')||'').slice(0,60))]")

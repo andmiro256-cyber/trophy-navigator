@@ -1,7 +1,13 @@
+# Харнесс аудита TN Desktop: WebKitWebDriver (W3C) + настоящая мышь xdotool в Xvfb. Карта — только через
+# window.__tnTest (план MapLibre v3, 0б.6): Leaflet напрямую сценарии не трогают (tests/harness-no-leaflet.test.mjs).
 import json, urllib.request, base64, time, os, subprocess
-A = os.path.expanduser('~/desktop-audit') if os.path.exists(os.path.expanduser('~/desktop-audit')) else '/home/andrey-hp/desktop-audit'
-A = '/home/andrey-hp/desktop-audit'
-BASE = 'http://127.0.0.1:4455'
+HERE = os.path.dirname(os.path.abspath(__file__))
+UI = os.path.normpath(os.path.join(HERE, '..', '..', 'ui'))
+# рабочая папка прогона (app/, home/, logs/, shots/); env.sh экспортирует A. ~ здесь не годится: env.sh подменяет HOME
+A = os.environ.get('TN_AUDIT_DIR') or os.environ.get('A') or '/home/andrey-hp/desktop-audit'
+# папка данных приложения внутри отдельного HOME: тест-сборка пишет в «TrophyNavigatorTest»
+WORK = A + '/home/Документы/' + os.environ.get('TN_WORKDIR_NAME', 'TrophyNavigatorTest')
+BASE = os.environ.get('TN_WEBDRIVER', 'http://127.0.0.1:4455')
 def req(method, path, body=None, timeout=120):
     data = json.dumps(body).encode() if body is not None else None
     r = urllib.request.Request(BASE + path, data=data, method=method, headers={'Content-Type': 'application/json'})
@@ -40,7 +46,12 @@ def xshot(name):
 def xdo(*args):
     return subprocess.run(['xdotool', *args], capture_output=True, text=True).stdout
 
-HOOKS = open(A + '/hooks.js').read() if os.path.exists(A + '/hooks.js') else ''
+HOOKS = open(HERE + '/hooks.js', encoding='utf-8').read()
+GAPS_JS = open(HERE + '/tn-gaps.js', encoding='utf-8').read()
+HARNESS_JS = open(HERE + '/tn-harness.js', encoding='utf-8').read()
+# TN_STRICT=1 — без прокладки tn-gaps.js: недостающий метод __tnTest роняет шаг (так гоняется MapLibre-адаптер)
+STRICT = os.environ.get('TN_STRICT') == '1'
+GAPS = {}
 RESULTS = A + '/logs/results.jsonl'
 def rec(area, element, where, promise, status, evidence='', fix='', note=''):
     with open(RESULTS, 'a') as f:
@@ -48,7 +59,9 @@ def rec(area, element, where, promise, status, evidence='', fix='', note=''):
 def session(new=False):
     if not new and os.path.exists(A + '/logs/sid'):
         s = S(open(A + '/logs/sid').read().strip())
-        if isinstance(s.js('return 1'), int): return s
+        if isinstance(s.js('return 1'), int):
+            tn_install(s)                                   # идемпотентно: в живой странице уже стоит
+            return s
     if os.path.exists(A + '/logs/sid'):
         req('DELETE', '/session/' + open(A + '/logs/sid').read().strip())
         time.sleep(1)
@@ -56,10 +69,26 @@ def session(new=False):
     s = S()
     for _ in range(30):
         time.sleep(1)
-        if s.js("return document.readyState==='complete' && !!window.map") is True: break
+        if s.js("return document.readyState==='complete'") is True: break
     time.sleep(3)
     print('hooks', s.js(HOOKS))
+    print('tnTest', tn_install(s))
     return s
+
+def tn_install(s):
+    """window.__tnTest (в чистую 0.9.34 без tn-test-api.js — из ui/ этой ветки), прокладка API-GAPS и __tnh."""
+    if s.js("return !!window.__tnTest") is not True:
+        for f in ('tn-geo.js', 'tn-test-api.js'):
+            s.js(open(os.path.join(UI, f), encoding='utf-8').read())
+        GAPS['injected'] = True
+    for _ in range(15):
+        if s.js("try { return __tnTest.size().x > 0 } catch (e) { return false }") is True: break
+        time.sleep(1)
+    if not STRICT:
+        GAPS.update(s.js(GAPS_JS) or {})
+    s.js(HARNESS_JS)
+    GAPS.update(engine=s.js("return __tnTest.engine"), version=s.js("return __tnTest.VERSION"), strict=STRICT)
+    return GAPS
 def kill_app():
     subprocess.run('pkill -f "[d]esktop-audit/app/v.*/usr/bin/trophy-navigator-desktop"', shell=True)
 
@@ -70,7 +99,7 @@ o.modals = [...document.querySelectorAll('.modal-overlay.open, .modal-overlay[st
 o.menus = ['ctx-menu','ctx-menu-map','ctx-menu-track','toolbar-more-menu'].filter(id => vis(document.getElementById(id)));
 o.panels = ['live-sidebar','race-report-panel','ruler-panel','track-controls','route-controls','track-player-panel','route-build-panel','track-build-panel','onboarding-overlay','search-results','area-select-panel'].filter(id => vis(document.getElementById(id)));
 try { o.mode = currentMode; } catch(e) {}
-try { o.wp = waypoints.length; o.trk = tracks.length; o.rte = routes.length; } catch(e) {}
+try { const c = __tnTest.stats(); o.wp = c.wp; o.trk = c.tracks; o.rte = c.routes; } catch(e) {}
 try { o.layer = currentBaseLayerName; } catch(e) {}
 const A = window.__audit; if (A) { o.toasts = A.toasts.slice(); o.errors = A.errors.slice(); o.ipc = A.ipc.map(r => r.cmd + (r.err ? ' ERR ' + r.err : '') + (r.stub !== undefined ? ' STUB' : '')); o.net = A.net.map(r => r.method + ' ' + r.url + (r.blocked ? ' BLOCKED' : '')); A.dump(true); }
 return o;
@@ -111,7 +140,17 @@ def key(s, k, mods=()):
     s.c('DELETE', '/actions'); time.sleep(0.5)
 def esc(s): key(s, '')
 def latlng_xy(s, lat, lng):
-    return s.js('const p = map.latLngToContainerPoint([arguments[0], arguments[1]]); const r = document.getElementById("map").getBoundingClientRect(); return [p.x + r.left, p.y + r.top];', lat, lng)
+    return s.js("return __tnh.xy({lat: arguments[0], lng: arguments[1]})", lat, lng)
+# вид карты: extra=wd.V + "return [v.center.lat.toFixed(3), v.zoom]"
+V = "const v = __tnTest.getView(); "
+def ctl(s, name):
+    """CSS-селектор кнопки карты (zoomIn, zoomOut, zoomLevel, hand, threeD, container) — API-GAPS G7."""
+    return s.js("return __tnTest.controls()[arguments[0]]", name)
+def popsel(s):
+    """CSS-селектор корня открытого попапа карты — API-GAPS G6."""
+    return s.js("return __tnTest.popup().selector")
+def setview(s, lat, lng, zoom):
+    return s.js("__tnTest.setView({center: {lat: arguments[0], lng: arguments[1]}, zoom: arguments[2]})", lat, lng, zoom)
 
 CLEAN = "try{closeAllModals();}catch(e){} try{setMode('hand')}catch(e){} try{closeToolbarMore()}catch(e){} try{closeCtxMenu()}catch(e){} try{dialogCancel()}catch(e){}"
 def dlg(s, text=None, ok=True, wait=0.8):
@@ -144,7 +183,7 @@ class Rec:
             except Exception as e: a['extra'] = 'ERR ' + repr(e)
         name = f'{self.prefix}-{self.n:02d}'; self.n += 1
         if shot: self.s.shot(name)
-        a.update({'label': label, 'shot': name if shot else '', 'ret': r, 'pyerr': err})
+        a.update({'label': label, 'shot': name if shot else '', 'ret': r, 'pyerr': err, 'gaps': GAPS.get('installed', [])})
         self.items.append(a)
         print(name, label, '|', a.get('modals'), a.get('menus'), a.get('mode'), 'cnt', a.get('wp'), a.get('trk'), a.get('rte'), '| T', a.get('toasts'), '| E', a.get('errors'), '| I', [x for x in a.get('ipc', []) if not x.startswith('fs.exists')][:5], '| N', [x for x in a.get('net', []) if 'tile' not in x and 'ipc://' not in x][:3], '| X', json.dumps(a.get('extra'), ensure_ascii=False)[:400] if extra else '')
         return a
@@ -213,4 +252,4 @@ def closewins(s, main):
         if h != main: s.c('POST', '/window', {'handle': h}); s.c('DELETE', '/window')
     s.c('POST', '/window', {'handle': main})
 def ll_xy(s, lat, lng):
-    return s.js("const p=map.latLngToContainerPoint([arguments[0],arguments[1]]); const r=document.getElementById('map').getBoundingClientRect(); return [p.x+r.left, p.y+r.top]", lat, lng)
+    return latlng_xy(s, lat, lng)

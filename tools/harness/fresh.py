@@ -4,7 +4,7 @@ r = wd.req('POST', '/session', {'capabilities': {'alwaysMatch': {'webkitgtk:brow
 sid = r['value']['sessionId']; s = wd.S(sid)
 for i in range(20):
     time.sleep(1)
-    if s.js("return document.readyState==='complete' && !!window.map") is True: break
+    if s.js("return document.readyState==='complete'") is True: break
 time.sleep(4)
 print(s.js("return [!!document.getElementById('onboarding-overlay'), document.getElementById('onboarding-overlay')?.innerText.replace(/\\s+/g,' ').slice(0,300), Object.keys(localStorage), document.title]"))
 s.shot('fresh-start')

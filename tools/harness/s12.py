@@ -18,8 +18,8 @@ def setall():
 R('set all values', setall, extra=VALS)
 R('Сохранить', lambda: click(s, '#modal-settings .btn-primary'), wait=1.5, extra="const st=JSON.parse(localStorage.getItem('tnd-state')||'{}').settings||{}; return st")
 # эффекты
-R('effect: new WP radius/color/icon size', lambda: (focus_map(s), key(s, 'w'), wd.xclick(s, 700, 600), s.js("setMode('hand')")), extra="const m=waypoints[waypoints.length-1]; const ic=m._icon; return [m.wpData.radius, m.wpData.color, ic && ic.style.width, ic && ic.offsetWidth, m.wpCircle && m.wpCircle.options.fillColor, m.wpCircle && m.wpCircle.options.color, m.wpCircle && m.wpCircle.options.fillOpacity]")
-R('effect: new track color/width', lambda: (focus_map(s), key(s, 't'), wd.xclick(s, 500, 500), wd.xclick(s, 600, 500), wd.xclick(s, 650, 520, double=True)), extra="const t=tracks[tracks.length-1]; return [t.name, t.color, t.width, t.polyline && t.polyline.options.weight]")
+R('effect: new WP radius/color/icon size', lambda: (focus_map(s), key(s, 'w'), wd.xclick(s, 700, 600), s.js("setMode('hand')")), extra="const w=__tnh.wp(-1), st=__tnTest.style(w.id), r=st.radius; return [w.radius, w.color, st.iconCss, st.iconPx, r && r.fill, r && r.stroke, r && r.fillOpacity]")
+R('effect: new track color/width', lambda: (focus_map(s), key(s, 't'), wd.xclick(s, 500, 500), wd.xclick(s, 600, 500), wd.xclick(s, 650, 520, double=True)), extra="const t=__tnh.track(-1); return [t.name, t.color, t.width, __tnTest.style(t.id).width]")
 R('effect: coord format in statusbar', lambda: wd.xdo('mousemove', '800', '450'), extra="return [document.getElementById('sb-coords')?.textContent, document.querySelector('[data-widget=coords] .tn-widget-value')?.textContent]")
 R('effect: units (track km?)', None, extra="return [...document.querySelectorAll('.tn-widget-caption')].map(e=>e.textContent).concat([document.getElementById('ruler-panel')?.innerText.slice(0,40)])")
 # кэш

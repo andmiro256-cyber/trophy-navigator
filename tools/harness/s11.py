@@ -2,7 +2,7 @@ import wd, time, os
 from wd import click, dlg, CLEAN, setv
 s = wd.session(); R = wd.Rec(s, 's11')
 s.js(CLEAN); wd.st(s)
-VEC = wd.A + '/home/Документы/TrophyNavigatorTest/maps/vector/'
+VEC = wd.WORK + '/maps/vector/'
 openl = lambda: wd.open_by(s, '#btn-map-layer', 'modal-layers')
 W = "const o=document.getElementById('modal-tnmaps'); return o ? [o.classList.contains('open'), o.querySelector('[data-tnmaps-status]')?.textContent, o.querySelectorAll('.tnmaps-item').length, o.querySelector('[data-tnmaps-dir]')?.textContent, [...o.querySelectorAll('.tnmaps-group')].map(g=>g.textContent)] : null"
 R('layers: TrophyNav Maps section', openl, wait=1.5, extra="return document.getElementById('tnmaps-layers').innerText.slice(0,200)")
@@ -24,7 +24,7 @@ for i in range(120):
 print('download took', int(time.time()-t0))
 R('after download', None, wait=1, extra="return [[...document.querySelectorAll('#modal-tnmaps .tnmaps-item')].map(e=>e.innerText.replace(/\\s+/g,' ').slice(0,200)), document.querySelector('#modal-tnmaps [data-tnmaps-dir]')?.textContent]")
 print('VEC', [(f, os.path.getsize(VEC+f)) for f in os.listdir(VEC)])
-R('Показать', lambda: click(s, '#modal-tnmaps [data-tnmaps-act="show"]'), wait=6, extra="return [currentBaseLayerName, document.getElementById('current-layer-name').textContent, map.getCenter().lat.toFixed(3), map.getZoom(), document.querySelectorAll('.maplibregl-canvas, canvas.maplibregl-canvas').length]")
+R('Показать', lambda: click(s, '#modal-tnmaps [data-tnmaps-act="show"]'), wait=6, extra="return [currentBaseLayerName, document.getElementById('current-layer-name').textContent, __tnTest.getView().center.lat.toFixed(3), __tnTest.getView().zoom, __tnTest.layers().filter(l=>l.kind==='tnmaps').map(l=>[l.name, l.visible])]")
 R('layers: controls (theme/relief/poi/3D)', lambda: openl(), wait=2, extra="return [document.getElementById('tnmaps-layers').innerText.replace(/\\s+/g,' ').slice(0,400), [...document.querySelectorAll('#tnmaps-layers button, #tnmaps-layers input')].map(e=>(e.dataset.tnmapsTheme||e.dataset.tnmapsRelief||(e.hasAttribute('data-tnmaps-3d')?'3d':'')||(e.hasAttribute('data-tnmaps-strength')?'strength':'')||(e.dataset.tnmapsPoi||'')||(e.hasAttribute('data-tnmaps-poi-toggle')?'poi-toggle':'')||(e.hasAttribute('data-tnmaps-poi-all')?'poi-all':'')||e.innerText.trim().slice(0,20)))]")
 themes = s.js("return [...document.querySelectorAll('#tnmaps-layers [data-tnmaps-theme]')].map(e=>e.dataset.tnmapsTheme)") or []
 for th in themes:

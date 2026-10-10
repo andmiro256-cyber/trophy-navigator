@@ -2,7 +2,7 @@ import wd, time
 from wd import click, dlg, CLEAN, setv, key, focus_map
 s = wd.session(); R = wd.Rec(s, 's16')
 s.js(CLEAN); wd.st(s)
-s.js("map.setView([43.20, 44.80], 12, {animate:false})"); time.sleep(1.5)
+s.js("__tnTest.setView({center:{lat:43.20,lng:44.80},zoom:12})"); time.sleep(1.5)
 openr = lambda: wd.open_by(s, '#toolbar button[title="Маршрут по дорогам"]', 'modal-routing')
 RI = "return [document.getElementById('route-from-input').value, document.getElementById('route-to-input').value, document.getElementById('route-draft-status')?.innerText, document.getElementById('routing-distance')?.textContent, document.getElementById('routing-duration')?.textContent, getComputedStyle(document.getElementById('routing-info')).display, document.getElementById('modal-routing').innerText.replace(/\\s+/g,' ').slice(-250)]"
 R('open', openr, extra=RI)
@@ -11,7 +11,7 @@ R('B на карте 📍', lambda: (openr(), click(s, '#route-pick-b'), wd.xcli
 R('⇅ поменять', lambda: (openr(), click(s, '#modal-routing [onclick="swapRouteEndpoints()"]')), extra=RI)
 R('Построить (OSRM)', lambda: click(s, '#modal-routing [onclick="calculateOsrmRoute()"]'), wait=6, extra=RI)
 R('  alternatives/saved list', None, wait=0.1, extra="return [...document.querySelectorAll('#modal-routing button, #modal-routing [onclick]')].map(e=>(e.innerText||e.title).trim().slice(0,30)+' :: '+(e.getAttribute('onclick')||'').slice(0,50))", shot=False)
-R('сохранить как маршрут/трек?', lambda: click(s, '#modal-routing .routing-route-btn'), wait=1.5, extra="return [routes.length, tracks.length, [...document.querySelectorAll('.modal-overlay.open')].map(e=>e.id)]")
+R('сохранить как маршрут/трек?', lambda: click(s, '#modal-routing .routing-route-btn'), wait=1.5, extra="return [__tnTest.stats().routes, __tnTest.stats().tracks, [...document.querySelectorAll('.modal-overlay.open')].map(e=>e.id)]")
 R('Очистить', lambda: (openr(), click(s, '#modal-routing [onclick="clearOsrmRoute()"]')), extra=RI)
 R('адрес: Назрань → Магас (Nominatim)', lambda: (setv(s, '#route-from-input', 'Назрань'), setv(s, '#route-to-input', 'Магас'), click(s, '#modal-routing [onclick="calculateOsrmRoute()"]')), wait=8, extra=RI)
 R('Esc during pick', lambda: (click(s, '#route-pick-a'), focus_map(s), key(s, '')), extra="return [typeof routePickMode!=='undefined'?routePickMode:null, getComputedStyle(document.getElementById('route-pick-hint')).display]")
@@ -23,8 +23,8 @@ R('ctx menu shows undo route?', lambda: (s.js(CLEAN), wd.xclick(s, 900, 800, but
 s.js(CLEAN)
 # поиск
 R('search: "Магас"', lambda: (click(s, '#search-input'), setv(s, '#search-input', 'Магас'), key(s, '')), wait=4, extra="return [getComputedStyle(document.getElementById('search-results')).display, document.getElementById('search-results').innerText.replace(/\\s+/g,' ').slice(0,300), [...document.querySelectorAll('#search-results [onclick], #search-results button')].map(e=>(e.innerText||e.title).trim().slice(0,20)+' :: '+(e.getAttribute('onclick')||'').slice(0,40))]")
-R('search: click result', lambda: click(s, '#search-results .search-result, #search-results > div'), wait=2, extra="return [map.getCenter().lat.toFixed(3), map.getCenter().lng.toFixed(3), map.getZoom()]")
-R('search: coords "43.1 44.9"', lambda: (setv(s, '#search-input', '43.1 44.9'), key(s, '')), wait=3, extra="return [document.getElementById('search-results').innerText.replace(/\\s+/g,' ').slice(0,200), map.getCenter().lat.toFixed(3)]")
+R('search: click result', lambda: click(s, '#search-results .search-result, #search-results > div'), wait=2, extra="return [__tnTest.getView().center.lat.toFixed(3), __tnTest.getView().center.lng.toFixed(3), __tnTest.getView().zoom]")
+R('search: coords "43.1 44.9"', lambda: (setv(s, '#search-input', '43.1 44.9'), key(s, '')), wait=3, extra="return [document.getElementById('search-results').innerText.replace(/\\s+/g,' ').slice(0,200), __tnTest.getView().center.lat.toFixed(3)]")
 R('search: ✕ clear', lambda: click(s, '#search-clear'), extra="return [document.getElementById('search-input').value, getComputedStyle(document.getElementById('search-results')).display]")
 R('search: nonsense', lambda: (setv(s, '#search-input', 'зззщщщфывапролдж'), key(s, '')), wait=4, extra="return document.getElementById('search-results').innerText.replace(/\\s+/g,' ').slice(0,200)")
 s.js("clearSearch()"); s.js(CLEAN)

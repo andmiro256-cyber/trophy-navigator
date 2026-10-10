@@ -1,8 +1,8 @@
 import wd, time, os
 from wd import click, dlg, CLEAN, setv
 s = wd.session(); R = wd.Rec(s, 's10c')
-MAPS = wd.A + '/home/Документы/TrophyNavigatorTest/maps/'
-s.js(CLEAN); s.js("try{cancelAreaSelect()}catch(e){}"); s.js("map.setView([43.17, 44.82], 12, {animate:false})"); time.sleep(1.5)
+MAPS = wd.WORK + '/maps/'
+s.js(CLEAN); s.js("try{cancelAreaSelect()}catch(e){}"); s.js("__tnTest.setView({center:{lat:43.17,lng:44.82},zoom:12})"); time.sleep(1.5)
 wd.open_by(s, '#toolbar button[title^="Офлайн карты"]', 'modal-offline')
 click(s, '#modal-offline .tab-btn[aria-controls="tab-offline-download"]'); click(s, '#tab-offline-download .btn-primary')
 for x, y in [(250, 250), (450, 250), (450, 420), (250, 420)]: wd.xclick(s, x, y, wait=0.4)

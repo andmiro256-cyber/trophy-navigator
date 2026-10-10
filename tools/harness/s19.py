@@ -2,15 +2,15 @@ import wd, time, os
 from wd import click, dlg, CLEAN, setv, key, focus_map
 s = wd.session(); R = wd.Rec(s, 's19')
 s.js(CLEAN); s.js("try{ if(currentTrackDraw) cancelTrackDraw(); }catch(e){}"); wd.st(s)
-VEC = wd.A + '/home/Документы/TrophyNavigatorTest/maps/vector/'
+VEC = wd.WORK + '/maps/vector/'
 # быстрый клик по точке на карте
 def lwp():
-    s.js("const m=waypoints.find(m=>m.wpData.lat>40); map.setView(m.getLatLng(), 15, {animate:false})"); time.sleep(1.5)
-    p = s.js("const m=waypoints.find(m=>m.wpData.lat>40); const p=map.latLngToContainerPoint(m.getLatLng()); const r=document.getElementById('map').getBoundingClientRect(); return [p.x+r.left, p.y+r.top]")
+    s.js("__tnh.go(__tnh.wpWhere(w=>w.lat>40), 15)"); time.sleep(1.5)
+    p = s.js("return __tnh.xy(__tnh.wpWhere(w=>w.lat>40))")
     wd.xclick(s, p[0], p[1])
-R('ЛКМ по точке → быстрое переименование', lwp, extra="const p=document.querySelector('.leaflet-popup'); return p ? p.innerText.replace(/\\s+/g,' ').slice(0,120) : null")
-R('  Сохранить новое имя', lambda: (setv(s, '.leaflet-popup input', 'WP-быстро'), click(s, '.leaflet-popup .btn-primary, .leaflet-popup button')), extra="return [waypoints.some(m=>m.wpData.name==='WP-быстро'), !!document.querySelector('.leaflet-popup')]")
-R('  Свойства из попапа', lambda: (lwp(), click(s, '.leaflet-popup button:last-child')), extra="return [...document.querySelectorAll('.modal-overlay.open')].map(e=>e.id)")
+R('ЛКМ по точке → быстрое переименование', lwp, extra="const p=__tnTest.popup(); return p.open ? p.text.replace(/\\s+/g,' ').slice(0,120) : null")
+R('  Сохранить новое имя', lambda: (lambda P: (setv(s, P + ' input', 'WP-быстро'), click(s, P + ' .btn-primary, ' + P + ' button')))(wd.popsel(s)), extra="return [__tnTest.entities().wp.some(w=>w.name==='WP-быстро'), __tnTest.popup().open]")
+R('  Свойства из попапа', lambda: (lwp(), click(s, wd.popsel(s) + ' button:last-child')), extra="return [...document.querySelectorAll('.modal-overlay.open')].map(e=>e.id)")
 s.js(CLEAN)
 # перетаскивание окна за заголовок
 def dragwin():
@@ -34,8 +34,8 @@ def kpdrag():
 R('КП: перетаскивание в списке', kpdrag, wait=1, extra="return routes[0].labels")
 s.js(CLEAN)
 # 📦 Скачанные карты в окне слоёв
-R('слои: 📦 Скачанные карты — вкл', lambda: (s.js("map.setView([43.215, 44.665], 13, {animate:false})"), wd.open_by(s, '#btn-map-layer', 'modal-layers'), click(s, '#offline-layers-list input[type=checkbox]')), wait=3, extra="return [Object.values(offlineMaps).map(e=>[e.name, !!e.layer && map.hasLayer(e.layer)]), window.__audit.toasts.slice(-2)]")
-R('слои: 📦 — выкл', lambda: click(s, '#offline-layers-list input[type=checkbox]'), wait=1.5, extra="return Object.values(offlineMaps).map(e=>[e.name, !!e.layer && map.hasLayer(e.layer)])")
+R('слои: 📦 Скачанные карты — вкл', lambda: (s.js("__tnTest.setView({center:{lat:43.215,lng:44.665},zoom:13})"), wd.open_by(s, '#btn-map-layer', 'modal-layers'), click(s, '#offline-layers-list input[type=checkbox]')), wait=3, extra="return [__tnh.offline(), window.__audit.toasts.slice(-2)]")
+R('слои: 📦 — выкл', lambda: click(s, '#offline-layers-list input[type=checkbox]'), wait=1.5, extra="return __tnh.offline()")
 s.js(CLEAN)
 # Live share окна
 R('Live: окно «📄 GPX» (поделиться)', lambda: (click(s, '#btn-live'), time.sleep(2), click(s, '#live-sidebar [title="Сообщения"]'), click(s, '#modal-live-messages button[onclick*="Share"], #modal-live-messages button:nth-last-child(2)')), wait=1.5, extra="const m=[...document.querySelectorAll('.modal-overlay.open')].pop(); return m ? [m.id, m.innerText.replace(/\\s+/g,' ').slice(0,250)] : null")

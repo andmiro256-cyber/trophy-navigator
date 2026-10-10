@@ -1,15 +1,15 @@
 import wd, time
 from wd import click, dlg, CLEAN, setv, key, focus_map
 s = wd.session(); R = wd.Rec(s, 's10')
-s.js("try{cancelAreaSelect()}catch(e){} try{map.closePopup()}catch(e){}")
+s.js("try{cancelAreaSelect()}catch(e){} try{__tnTest.closePopup()}catch(e){}")
 s.js(CLEAN); wd.st(s)
-MAPS = wd.A + '/home/Документы/TrophyNavigatorTest/maps/'
+MAPS = wd.WORK + '/maps/'
 openo = lambda: wd.open_by(s, '#toolbar button[title^="Офлайн карты"]', 'modal-offline')
 R('open offline', openo, wait=1.5, extra="return [document.getElementById('offline-maps-list').innerText.slice(0,200), getComputedStyle(document.getElementById('offline-maps-empty')).display]")
 for tab, lbl in [('tab-offline-download','Скачать'),('tab-offline-load','Загрузить файл'),('tab-offline-list','Мои карты')]:
     R('tab ' + lbl, lambda tab=tab: click(s, f'#modal-offline .tab-btn[aria-controls="{tab}"]'), extra=f"return document.getElementById('{tab}').classList.contains('active')")
 R('🔄 Обновить список', lambda: click(s, '#tab-offline-list .btn-secondary'), wait=1, extra="return document.getElementById('offline-maps-list').innerText.slice(0,200)")
-s.js("map.setView([43.17, 44.82], 12, {animate:false})"); time.sleep(1.5)
+s.js("__tnTest.setView({center:{lat:43.17,lng:44.82},zoom:12})"); time.sleep(1.5)
 R('📍 Выделить область', lambda: (click(s, '#modal-offline .tab-btn[aria-controls="tab-offline-download"]'), click(s, '#tab-offline-download .btn-primary')), extra="return [document.querySelectorAll('.modal-overlay.open').length, getComputedStyle(document.getElementById('polygon-toolbar')).display, document.getElementById('pt-count').textContent]")
 R('area: 2 pts (Готово disabled?)', lambda: (wd.xclick(s, 300, 300), wd.xclick(s, 420, 300)), extra="return [document.getElementById('pt-count').textContent, document.getElementById('btn-polygon-done').disabled]")
 R('area: 3rd + 4th pt', lambda: (wd.xclick(s, 420, 380), wd.xclick(s, 300, 380)), extra="return [document.getElementById('pt-count').textContent, document.getElementById('btn-polygon-done').disabled]")

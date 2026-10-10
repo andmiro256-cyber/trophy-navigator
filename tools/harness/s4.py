@@ -2,7 +2,7 @@ import wd, json, time, os, subprocess
 s = wd.session()
 H = wd.A + '/home'
 DL = H + '/Загрузки/'
-EX = H + '/Документы/TrophyNavigatorTest/audit-export/'
+EX = wd.WORK + '/audit-export/'
 os.makedirs(EX, exist_ok=True)
 CLEAN = "try{closeAllModals();}catch(e){} try{setMode('hand')}catch(e){} try{closeToolbarMore()}catch(e){} try{closeCtxMenu()}catch(e){}"
 s.js(CLEAN); wd.st(s)
@@ -24,10 +24,10 @@ def step(label, text, path=None, wait=2.0, extra=None):
     out.append({'label': label, 'btn': text, 'found': ok, 'path': path, 'after': a, 'shot': shot})
     print(label, ok, a.get('wp'), a.get('trk'), a.get('rte'), a.get('modals'), a.get('toasts'), a.get('errors'), [x for x in a.get('ipc', [])][:6])
 step('cancel-dialog', '📥 GPX файл', None)
-step('load-wpt', '📥 Точки (.wpt)', DL + 'audit-ozi.wpt', extra="return waypoints.slice(-6).map(m=>[m.wpData.name, m.wpData.desc, m.wpData.radius, m.wpData.color])")
-step('load-plt', '📥 Треки (.plt)', DL + 'audit-ozi.plt', extra="const t=tracks[tracks.length-1]; return [t.name, t.points.length, (t.pointsData||[]).slice(0,2)]")
-step('load-rte', '📥 Маршруты (.rte)', DL + 'audit-ozi.rte', extra="const r=routes[routes.length-1]; return [r.name, r.points.length, r.labels, r.pointWaypointIds, r.pointRadii]")
-step('load-gpx', '📥 GPX файл', DL + 'audit-all.gpx', extra="return [waypoints.length, tracks.map(t=>[t.name,t.points.length,(t.pointsData||[]).length]), routes.map(r=>[r.name,r.points.length])]")
+step('load-wpt', '📥 Точки (.wpt)', DL + 'audit-ozi.wpt', extra="return __tnTest.entities().wp.slice(-6).map(w=>[w.name, w.desc, w.radius, w.color])")
+step('load-plt', '📥 Треки (.plt)', DL + 'audit-ozi.plt', extra="const t=tracks.at(-1); return [t.name, t.points.length, (t.pointsData||[]).slice(0,2)]")
+step('load-rte', '📥 Маршруты (.rte)', DL + 'audit-ozi.rte', extra="const r=routes.at(-1); return [r.name, r.points.length, r.labels, r.pointWaypointIds, r.pointRadii]")
+step('load-gpx', '📥 GPX файл', DL + 'audit-all.gpx', extra="return [__tnTest.stats().wp, tracks.map(t=>[t.name,t.points.length,(t.pointsData||[]).length]), routes.map(r=>[r.name,r.points.length])]")
 # Загружено → Обновить
 s.js(CLEAN); wd.click(s, '#toolbar button[title^="Сохранить / Загрузить"]')
 wd.click(s, '#modal-files button.btn-secondary[onclick*=renderLoadedSourceFiles]')
