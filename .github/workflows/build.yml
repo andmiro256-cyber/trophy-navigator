@@ -409,8 +409,9 @@ jobs:
           appimage = entry("APPIMAGE_SIG", f"{site}/trophy-navigator-desktop_{version}_amd64.AppImage")
           deb = entry("DEB_SIG", f"{site}/trophy-navigator-desktop_{version}_amd64.deb")
           nsis = entry("NSIS_SIG", f"{site}/trophy-navigator-desktop_{version}_x64-setup.exe")
-          mac_arm = entry("MACOS_ARM64_SIG", f"{gh}/Trophy.Navigator.Desktop_{version}_aarch64.app.tar.gz")
-          mac_x64 = entry("MACOS_X64_SIG", f"{gh}/Trophy.Navigator.Desktop_{version}_x64.app.tar.gz")
+          # Mac и MSI — тоже с trophynav.ru: GitHub из России открывается ненадёжно (Андрей 10.10)
+          mac_arm = entry("MACOS_ARM64_SIG", f"{site}/trophy-navigator-desktop_{version}_aarch64.app.tar.gz")
+          mac_x64 = entry("MACOS_X64_SIG", f"{site}/trophy-navigator-desktop_{version}_x64.app.tar.gz")
 
           platforms = {
               "linux-x86_64": appimage,
@@ -427,7 +428,7 @@ jobs:
               print("::error::linux-x86_64-deb would hand the deb to the unsafe plugin installer of DEB 0.9.22-0.9.25", file=sys.stderr)
               sys.exit(1)
           if env.get("MSI_ASSET_NAME") and env.get("MSI_SIG", "").strip():
-              platforms["windows-x86_64-msi"] = entry("MSI_SIG", f"{gh}/{env['MSI_ASSET_NAME']}")
+              platforms["windows-x86_64-msi"] = entry("MSI_SIG", f"{site}/trophy-navigator-desktop_{version}_x64.msi")
           else:
               print("::warning::MSI updater artifact not found; MSI installs fall back to NSIS")
 
@@ -500,6 +501,8 @@ jobs:
           APPIMAGE_FILE: release-assets/${{ steps.assets.outputs.appimage_asset_name }}
           NSIS_FILE: release-assets/${{ steps.assets.outputs.nsis_asset_name }}
           DEB_FILE: release-assets/Trophy.Navigator.Desktop_${{ steps.version.outputs.version }}_amd64.deb
+          MSI_FILE: release-assets/${{ steps.assets.outputs.msi_asset_name }}
+          MSI_ASSET_NAME: ${{ steps.assets.outputs.msi_asset_name }}
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
@@ -510,9 +513,18 @@ jobs:
           DEPLOY_SSH_KEY="${UPDATES_DEPLOY_SSH_KEY:-}"
           DEPLOY_PATH="${RELEASE_DEPLOY_PATH}"
           PUBLIC_RELEASE_DIR="/var/www/trophy-site/releases"
-          PUBLIC_APPIMAGE_PATH="${PUBLIC_RELEASE_DIR}/trophy-navigator-desktop_${RELEASE_VERSION}_amd64.AppImage"
-          PUBLIC_NSIS_PATH="${PUBLIC_RELEASE_DIR}/trophy-navigator-desktop_${RELEASE_VERSION}_x64-setup.exe"
-          PUBLIC_DEB_PATH="${PUBLIC_RELEASE_DIR}/trophy-navigator-desktop_${RELEASE_VERSION}_amd64.deb"
+          V="${RELEASE_VERSION}"
+          # Файл выпуска → публичное имя на trophynav.ru/releases (кнопки сайта и манифест обновлений)
+          PUBLIC_FILES=(
+            "${APPIMAGE_FILE}|trophy-navigator-desktop_${V}_amd64.AppImage"
+            "${NSIS_FILE}|trophy-navigator-desktop_${V}_x64-setup.exe"
+            "${DEB_FILE}|trophy-navigator-desktop_${V}_amd64.deb"
+            "release-assets/Trophy.Navigator.Desktop_${V}_aarch64.dmg|trophy-navigator-desktop_${V}_aarch64.dmg"
+            "release-assets/Trophy.Navigator.Desktop_${V}_x64.dmg|trophy-navigator-desktop_${V}_x64.dmg"
+            "release-assets/Trophy.Navigator.Desktop_${V}_aarch64.app.tar.gz|trophy-navigator-desktop_${V}_aarch64.app.tar.gz"
+            "release-assets/Trophy.Navigator.Desktop_${V}_x64.app.tar.gz|trophy-navigator-desktop_${V}_x64.app.tar.gz"
+          )
+          if [ -n "${MSI_ASSET_NAME:-}" ]; then PUBLIC_FILES+=("${MSI_FILE}|trophy-navigator-desktop_${V}_x64.msi"); fi
 
           if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_USER" ] || [ -z "$DEPLOY_SSH_KEY" ] || [ -z "${UPDATES_DEPLOY_KNOWN_HOSTS:-}" ]; then
             echo "::error::Missing dedicated UPDATES_DEPLOY_* settings. Legacy deploy fallback is forbidden."
@@ -529,10 +541,11 @@ jobs:
             *) echo "::error::Unexpected updater manifest path: $DEPLOY_PATH"; exit 1 ;;
           esac
 
-          if [ ! -s "$MANIFEST_FILE" ] || [ ! -s "$APPIMAGE_FILE" ] || [ ! -s "$NSIS_FILE" ] || [ ! -s "$DEB_FILE" ]; then
-            echo "::error::Release manifest or public updater assets are missing."
-            exit 1
-          fi
+          if [ ! -s "$MANIFEST_FILE" ]; then echo "::error::Release manifest is missing."; exit 1; fi
+          for pair in "${PUBLIC_FILES[@]}"; do
+            src="${pair%%|*}"
+            if [ ! -s "$src" ]; then echo "::error::Public release asset is missing: $src"; exit 1; fi
+          done
 
           install -m 700 -d ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
@@ -542,14 +555,13 @@ jobs:
 
           DEPLOY_DIR="$(dirname "$DEPLOY_PATH")"
           MANIFEST_TMP="${DEPLOY_PATH}.tmp-${GITHUB_RUN_ID}"
-          APPIMAGE_TMP="${PUBLIC_APPIMAGE_PATH}.tmp-${GITHUB_RUN_ID}"
-          NSIS_TMP="${PUBLIC_NSIS_PATH}.tmp-${GITHUB_RUN_ID}"
-          DEB_TMP="${PUBLIC_DEB_PATH}.tmp-${GITHUB_RUN_ID}"
           REMOTE="${DEPLOY_USER}@${DEPLOY_HOST}"
+          TMP_SUFFIX=".tmp-${GITHUB_RUN_ID}"
+          REMOTE_TMPS="'${MANIFEST_TMP}'"
+          for pair in "${PUBLIC_FILES[@]}"; do REMOTE_TMPS="${REMOTE_TMPS} '${PUBLIC_RELEASE_DIR}/${pair##*|}${TMP_SUFFIX}'"; done
 
           cleanup_remote() {
-            ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$REMOTE" \
-              "rm -f '${MANIFEST_TMP}' '${APPIMAGE_TMP}' '${NSIS_TMP}' '${DEB_TMP}'" || true
+            ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$REMOTE" "rm -f ${REMOTE_TMPS}" || true
           }
           trap cleanup_remote EXIT
 
@@ -557,22 +569,23 @@ jobs:
             "test '${DEPLOY_DIR}' = '/var/www/updates' && test -w '${DEPLOY_DIR}' && test -w '${PUBLIC_RELEASE_DIR}'"
 
           scp -P "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$MANIFEST_FILE" "$REMOTE:$MANIFEST_TMP"
-          scp -P "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$APPIMAGE_FILE" "$REMOTE:$APPIMAGE_TMP"
-          scp -P "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$NSIS_FILE" "$REMOTE:$NSIS_TMP"
-          scp -P "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$DEB_FILE" "$REMOTE:$DEB_TMP"
-
-          APPIMAGE_SHA="$(sha256sum "$APPIMAGE_FILE" | awk '{print $1}')"
-          NSIS_SHA="$(sha256sum "$NSIS_FILE" | awk '{print $1}')"
-          DEB_SHA="$(sha256sum "$DEB_FILE" | awk '{print $1}')"
+          CHECKS=""
+          INSTALLS=""
+          for pair in "${PUBLIC_FILES[@]}"; do
+            src="${pair%%|*}"; name="${pair##*|}"
+            dst="${PUBLIC_RELEASE_DIR}/${name}"
+            scp -P "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$src" "$REMOTE:${dst}${TMP_SUFFIX}"
+            CHECKS="${CHECKS}$(sha256sum "$src" | awk '{print $1}')  ${dst}${TMP_SUFFIX}\n"
+            INSTALLS="${INSTALLS} && install -m 644 '${dst}${TMP_SUFFIX}' '${dst}'"
+          done
+          # Сначала все суммы сходятся — только потом файлы получают публичные имена
           ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$REMOTE" \
-            "printf '%s  %s\n' '${APPIMAGE_SHA}' '${APPIMAGE_TMP}' '${NSIS_SHA}' '${NSIS_TMP}' '${DEB_SHA}' '${DEB_TMP}' | sha256sum -c - >/dev/null && install -m 644 '${APPIMAGE_TMP}' '${PUBLIC_APPIMAGE_PATH}' && install -m 644 '${NSIS_TMP}' '${PUBLIC_NSIS_PATH}' && install -m 644 '${DEB_TMP}' '${PUBLIC_DEB_PATH}'"
+            "printf '${CHECKS}' | sha256sum -c - >/dev/null ${INSTALLS}"
 
-          curl --fail --silent --show-error --retry 5 --retry-delay 3 --head \
-            "https://trophynav.ru/releases/trophy-navigator-desktop_${RELEASE_VERSION}_amd64.AppImage" >/dev/null
-          curl --fail --silent --show-error --retry 5 --retry-delay 3 --head \
-            "https://trophynav.ru/releases/trophy-navigator-desktop_${RELEASE_VERSION}_x64-setup.exe" >/dev/null
-          curl --fail --silent --show-error --retry 5 --retry-delay 3 --head \
-            "https://trophynav.ru/releases/trophy-navigator-desktop_${RELEASE_VERSION}_amd64.deb" >/dev/null
+          for pair in "${PUBLIC_FILES[@]}"; do
+            curl --fail --silent --show-error --retry 5 --retry-delay 3 --head \
+              "https://trophynav.ru/releases/${pair##*|}" >/dev/null
+          done
 
           # Manifest публикуется последним: updater никогда не увидит URL ещё не выложенных файлов.
           ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$REMOTE" \
