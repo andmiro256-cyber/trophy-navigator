@@ -3872,6 +3872,8 @@ const wpRender = {
   },
   moveCircle: (m, latlng) => { if (m.wpCircle) m.wpCircle.setLatLng(latlng); },
   updateIcon: m => { m.setIcon(makeDivIcon(m.wpData)); },
+  /** Можно ли тянуть точку мышью (замок объектов, «Переместить» из меню). */
+  setDraggable: (m, on) => { if (m.dragging) on ? m.dragging.enable() : m.dragging.disable(); },
 };
 
 function makeWaypointMarkerOptions(data) {
@@ -4374,11 +4376,7 @@ function toggleLock() {
   btn.classList.toggle('active', objectsLocked);
   btn.classList.toggle('status-bad', objectsLocked);
   // Обновить draggable на всех waypoint маркерах
-  waypoints.forEach(m => {
-    if (m.dragging) {
-      objectsLocked ? m.dragging.disable() : m.dragging.enable();
-    }
-  });
+  waypoints.forEach(m => wpRender.setDraggable(m, !objectsLocked));
   showToast(objectsLocked ? '🔒 Объекты заблокированы' : '🔓 Объекты разблокированы');
 }
 
@@ -7041,7 +7039,7 @@ async function ctxAction(action) {
   if (action === 'props') showWptPopup(target);
   else if (action === 'move') {
     if (objectsLocked) { showToast('🔒 Объекты заблокированы'); return; }
-    if (target.dragging) target.dragging.enable();
+    wpRender.setDraggable(target, true);
     tnMap.panTo(target.getLatLng());
     showToast('Перетащите точку в нужное место');
   }

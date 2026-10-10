@@ -63,6 +63,9 @@ test('WP: круг радиуса и иконка — только внутри 
   assert.match(html, /function createWaypointMarker\(wpData, o = \{\}\)/);
   assert.match(html, /function onWaypointMarkerEvent\(type, marker, originalEvent = null, latlng = null\)/);
   assert.equal((html.match(/makeWaypointMarkerOptions\(/g) || []).length, 2, 'определение + один вызов');
+  // перетаскивание WP включается только через wpRender.setDraggable (карта — map.dragging — не в счёт)
+  assert.doesNotMatch(outside, /\b(?!map\b)\w+\.dragging\.(enable|disable)\(/);
+  assert.match(html, /waypoints\.forEach\(m => wpRender\.setDraggable\(m, !objectsLocked\)\);/);
 });
 
 test('треки: линия трека — только внутри trackRender; события линии — в onTrackLineEvent', () => {

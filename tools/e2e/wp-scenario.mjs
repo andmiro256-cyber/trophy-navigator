@@ -117,6 +117,17 @@ R.s8_hidden = await snap();
 await ev(() => toggleAllWorkObjectsVisible()); await page.waitForTimeout(200);
 R.s8_shown = await snap();
 
+// 8б. замок объектов: точку не утащить; снять замок — «Переместить» из меню и перетащить
+const dragWp = async (i, dx, dy) => { const [x, y] = await wpScreen(i); await page.mouse.move(x, y); await page.mouse.down(); await page.mouse.move(x + dx, y + dy, { steps: 8 }); await page.mouse.up(); await page.waitForTimeout(300); };
+await ev(() => toggleLock());
+await dragWp(0, 50, -30);
+R.s8b_locked = (await snap()).wp.map(w => [w.lat, w.lng]);
+await ev(() => toggleLock());
+{ const [x, y] = await wpScreen(0); await page.mouse.click(x, y, { button: 'right' }); await page.waitForTimeout(250); }
+await ev(() => ctxAction('move')); await page.waitForTimeout(200);
+await dragWp(0, 50, -30);
+R.s8b_moved = (await snap()).wp.map(w => [w.lat, w.lng]);
+
 // 9. очистить все рабочие данные
 await ev(() => clearAllDataConfirmed()); await page.waitForTimeout(300);
 R.s9_cleared = await snap();
