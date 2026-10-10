@@ -3899,6 +3899,53 @@ function getDefaultRadius() {
   return Number.isFinite(v) && v >= 0 ? v : 30;
 }
 
+/**
+ * Маркер WP (MapLibre 0б.5: отрисовка WP — одно место). Leaflet-обработчики только переводят события маркера
+ * в onWaypointMarkerEvent — логика приложения там; MapLibre-адаптер будет звать тот же обработчик.
+ * o.latlng / o.optionsFrom — как было при восстановлении состояния (иконка из исходной записи).
+ */
+function createWaypointMarker(wpData, o = {}) {
+  const marker = L.marker(o.latlng || L.latLng(wpData.lat, wpData.lng), makeWaypointMarkerOptions(o.optionsFrom || wpData));
+  marker.wpData = wpData;
+  marker.addTo(map);
+  refreshWaypoint(marker, { touch: false });
+  marker.on('contextmenu', e => {
+    L.DomEvent.stop(e);
+    if (e.originalEvent) { e.originalEvent.preventDefault(); e.originalEvent.stopPropagation(); }
+    onWaypointMarkerEvent('contextmenu', marker, e.originalEvent);
+  });
+  marker.on('click', e => {
+    L.DomEvent.stop(e);
+    if (e.originalEvent) e.originalEvent.stopPropagation();
+    onWaypointMarkerEvent('click', marker, e.originalEvent);
+  });
+  marker.on('dragstart', () => onWaypointMarkerEvent('dragstart', marker));
+  marker.on('drag', () => onWaypointMarkerEvent('drag', marker, null, marker.getLatLng()));
+  marker.on('dragend', () => onWaypointMarkerEvent('dragend', marker));
+  return marker;
+}
+
+/** События точки WP — независимо от движка: click, contextmenu, dragstart, drag (latlng), dragend. */
+function onWaypointMarkerEvent(type, marker, originalEvent = null, latlng = null) {
+  if (type === 'contextmenu') { showCtxMenu(originalEvent, marker); return; }
+  if (type === 'click') {
+    if (isRouteCaptureMode()) {
+      addRoutePoint(marker.getLatLng(), marker.wpData.name, { radius: marker.wpData.radius, waypointId: marker.wpData.id });
+      return;
+    }
+    openQuickRename(marker);
+    return;
+  }
+  if (type === 'dragstart') { marker.closePopup(); return; }
+  if (type === 'drag') {
+    marker.wpData.lat = latlng.lat;
+    marker.wpData.lng = latlng.lng;
+    if (marker.wpCircle) marker.wpCircle.setLatLng(latlng);
+    return;
+  }
+  if (type === 'dragend') { refreshWaypoint(marker); updateWptTable(); }
+}
+
 function addWaypoint(latlng, nameHint, extra = {}) {
   ensureWorkObjectsVisibleForEditing();
   const name = nameHint || ('wp'+wpCounter);
@@ -3919,39 +3966,7 @@ function addWaypoint(latlng, nameHint, extra = {}) {
     source: extra.source || 'desktop',
     syncedAt: extra.syncedAt || null
   };
-  const marker = L.marker(latlng, makeWaypointMarkerOptions(wpData));
-  marker.wpData = wpData;
-  marker.addTo(map);
-  refreshWaypoint(marker, { touch: false });
-  marker.on('contextmenu', e => {
-    L.DomEvent.stop(e);
-    if (e.originalEvent) { e.originalEvent.preventDefault(); e.originalEvent.stopPropagation(); }
-    showCtxMenu(e.originalEvent, marker);
-  });
-  marker.on('click', e => {
-    L.DomEvent.stop(e);
-    if (e.originalEvent) e.originalEvent.stopPropagation();
-    if (isRouteCaptureMode()) {
-      addRoutePoint(marker.getLatLng(), marker.wpData.name, {
-        radius: marker.wpData.radius,
-        waypointId: marker.wpData.id
-      });
-      return;
-    }
-    openQuickRename(marker);
-  });
-  marker.on('dragstart', () => {
-    marker.closePopup();
-  });
-  marker.on('drag', () => {
-    marker.wpData.lat = marker.getLatLng().lat;
-    marker.wpData.lng = marker.getLatLng().lng;
-    if (marker.wpCircle) marker.wpCircle.setLatLng(marker.getLatLng());
-  });
-  marker.on('dragend', () => {
-    refreshWaypoint(marker);
-    updateWptTable();
-  });
+  const marker = createWaypointMarker(wpData);
   waypoints.push(marker);
   const set = ensureActiveSet();
   if (set) set.waypoints.push(marker);
@@ -12483,8 +12498,7 @@ function applyState(state) {
     state.waypoints.forEach(wp => {
       const latlng = L.latLng(wp.lat, wp.lng);
       wpCounter = Math.max(wpCounter, (wp.num || 0) + 1);
-      const marker = L.marker(latlng, makeWaypointMarkerOptions(wp));
-      marker.wpData = {
+      const marker = createWaypointMarker({
         id: wp.id || null,
         name: wp.name, desc: wp.desc || '', icon: wp.icon || '⬤',
         color: wp.color, radius: wp.radius || 0,
@@ -12493,14 +12507,7 @@ function applyState(state) {
         updatedAt: wp.updatedAt || null,
         source: wp.source || 'desktop',
         syncedAt: wp.syncedAt || null
-      };
-      marker.addTo(map);
-      refreshWaypoint(marker, { touch: false });
-      marker.on('contextmenu', e => { L.DomEvent.stop(e); if (e.originalEvent) { e.originalEvent.preventDefault(); e.originalEvent.stopPropagation(); } showCtxMenu(e.originalEvent, marker); });
-      marker.on('click', e => { L.DomEvent.stop(e); if (e.originalEvent) e.originalEvent.stopPropagation(); if (isRouteCaptureMode()) { addRoutePoint(marker.getLatLng(), marker.wpData.name, { radius: marker.wpData.radius, waypointId: marker.wpData.id }); return; } openQuickRename(marker); });
-      marker.on('dragstart', () => { marker.closePopup(); });
-      marker.on('drag', () => { marker.wpData.lat = marker.getLatLng().lat; marker.wpData.lng = marker.getLatLng().lng; if (marker.wpCircle) marker.wpCircle.setLatLng(marker.getLatLng()); });
-      marker.on('dragend', () => { refreshWaypoint(marker); updateWptTable(); });
+      }, { latlng, optionsFrom: wp });
       waypoints.push(marker);
       const targetSetId = wp.setId;
       marker._setId = targetSetId;
