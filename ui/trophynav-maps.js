@@ -1099,6 +1099,45 @@
     renderWindow();
   }
 
+  // ─── пакет стиля с сервера (0.9.36, style_pack.rs) ───
+  // Без сети проверка тихо не проходит: работает скачанный ранее пакет или встроенный — офлайн всё на месте.
+  const STYLEPACK_INTERVAL_MS = 30 * 60 * 1000;
+  const stylePack = { version: 0, checking: false };
+
+  function applyPackInfo(info) {
+    if (!info) return;
+    stylePack.version = Number(info.version) || 0;
+    Core.setThemes(info.themes);
+  }
+
+  async function checkStylePack() {
+    if (stylePack.checking || navigator.onLine === false) return;
+    stylePack.checking = true;
+    try {
+      const info = await invoke('tnmaps_stylepack_check');
+      if (!info?.activated) return;
+      applyPackInfo(info);
+      Object.keys(assetCache).forEach(k => delete assetCache[k]);
+      // Тема, которой в новом пакете нет, — на тему по умолчанию
+      Object.keys(state.theme).forEach(id => { state.theme[id] = Core.normalizeTheme(state.theme[id]); });
+      state.activeLayer?.reloadStyle();
+      renderLayerSection();
+      renderWindow();
+      console.info(`TrophyNav Maps: пакет стиля v${stylePack.version} с сервера`);
+    } catch (e) {
+      console.info('TrophyNav Maps: пакет стиля не проверен —', e?.message || e);
+    } finally {
+      stylePack.checking = false;
+    }
+  }
+
+  async function initStylePack() {
+    try { applyPackInfo(await invoke('tnmaps_stylepack_info')); } catch (e) { console.warn('TrophyNav Maps: пакет стиля', e); }
+    checkStylePack();
+    window.addEventListener('online', checkStylePack);
+    setInterval(checkStylePack, STYLEPACK_INTERVAL_MS);
+  }
+
   // ─── запуск ───
   function init() {
     injectCss();
@@ -1122,7 +1161,9 @@
     }
     window.__TAURI__?.event?.listen?.('tnmaps-download', onDownloadEvent);
     if (window.__TAURI_INTERNALS__) {
-      const local = refreshLocal().then(renderLayerSection).catch(() => {});
+      // Список тем пакета — до первой сборки стиля, иначе сохранённая тема из пакета сбросилась бы
+      const pack = initStylePack();
+      const local = pack.then(refreshLocal).then(renderLayerSection).catch(() => {});
       // Названия областей для списка и строки состояния (тихо, без окна)
       const catalog = loadCatalog().then(() => { renderLayerSection(); window.updateBaseLayerStatusText?.(); });
       Promise.all([local, catalog]).then(fetchOverviewOnce);

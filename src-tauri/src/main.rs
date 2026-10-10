@@ -15,9 +15,10 @@ use tauri_plugin_updater::{Update, UpdaterExt};
 
 mod gpu_env;
 mod pinch;
+mod places;
+mod style_pack;
 mod vector_maps;
 mod voice;
-mod places;
 
 const MAX_TILE_BYTES: u64 = 2 * 1024 * 1024;
 const OFFLINE_DOWNLOAD_BATCH_SIZE: u64 = 250;
@@ -1799,6 +1800,8 @@ fn main() {
             vector_maps::tnmaps_cancel,
             vector_maps::tnmaps_delete,
             vector_maps::tnmaps_places,
+            style_pack::tnmaps_stylepack_info,
+            style_pack::tnmaps_stylepack_check,
             voice::voice_status,
             voice::voice_download_model,
             voice::voice_start,
@@ -1812,6 +1815,7 @@ fn main() {
         )
         .setup(|app| {
             vector_maps::init(app.handle());
+            style_pack::init(app.handle());
             voice::init(app.handle());
             // Щипок тачпада зумит карту, а не страницу (Linux, WebKitGTK)
             #[cfg(target_os = "linux")]
