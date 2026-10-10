@@ -57,6 +57,6 @@ test('stats и entities — нейтральные числа и id, без об
   assert.ok(!JSON.stringify(e).includes('wpData'));
 });
 
-test('подключено в странице после tn-geo.js', () => {
-  assert.match(html, /<script src="tn-geo\.js"><\/script>\n<script src="tn-test-api\.js"><\/script>/);
+test('подключено в странице: tn-geo.js → tn-model.js → tn-test-api.js', () => {
+  assert.match(html, /<script src="tn-geo\.js"><\/script>\n<script src="tn-model\.js"><\/script>\n<script src="tn-test-api\.js"><\/script>/);
 });

@@ -23,6 +23,7 @@
 <script src="tn-section-order.js"></script>
 <!-- переход на MapLibre (план v3, этап 0б): геофункции без Leaflet и нейтральный тестовый API -->
 <script src="tn-geo.js"></script>
+<script src="tn-model.js"></script>
 <script src="tn-test-api.js"></script>
 <script src="tn-server.js"></script>
 <style>
@@ -2875,6 +2876,24 @@ document.addEventListener('keydown', e => {
 // ТОЧКИ
 // ─────────────────────────────────────────────
 let waypoints = [], wpCounter = 1, activeWaypoint = null;
+// Модель данных вне движка карты (переход на MapLibre, план v3 R1, пакет 0б.4). Шаг 1 — чтение: записи WP
+// собираются из маркеров в момент чтения, выгрузки и состояние читают модель; запись через модель и рендер
+// из неё — следующие шаги. Не собралась (битая точка, повтор id) — старый путь с предупреждением, без потерь.
+const tnModel = window.TnModel.create();
+function tnSyncWaypointModel() {
+  try {
+    tnModel.reset('wp', waypoints.map(m => ({ ...m.wpData, setId: m._setId })));
+    return tnModel.ids('wp').length === waypoints.length;
+  } catch (e) {
+    console.warn('Модель WP не собрана, читаю маркеры напрямую:', e?.message || e);
+    return false;
+  }
+}
+/** Записи WP модели в порядке маркеров markers (по умолчанию все). */
+function tnWaypointRecs(markers = waypoints) {
+  const ok = tnSyncWaypointModel();
+  return markers.map(m => (ok && tnModel.get('wp', m.wpData.id)) || { ...m.wpData, setId: m._setId });
+}
 const wpColors = ['#4a8adf','#df4a4a','#4adf7a','#dfdf4a','#df7a4a','#7a4adf','#4adfe0','#df4adf'];  // theme-check: data
 
 // ─── UNDO стек ───
@@ -6319,8 +6338,7 @@ function saveWaypointsWPT() {
       'Reserved 2',
       'Reserved 3'
     ];
-    list.forEach(m => {
-      const d = m.wpData;
+    tnWaypointRecs(list).forEach(d => {
       rows.push([
         d.num,
         csvField(d.name),
@@ -6357,8 +6375,7 @@ function saveWaypointsGPX() {
   downloadText(fname, 'application/gpx+xml', () => {
     validateExportCoordinates({ waypoints: list });
     let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">\n';
-    list.forEach(m => {
-      const d = m.wpData;
+    tnWaypointRecs(list).forEach(d => {
       gpx += `  <wpt lat="${d.lat.toFixed(6)}" lon="${d.lng.toFixed(6)}">\n`;
       gpx += `    <name>${escapeXml(d.name)}</name>\n`;
       if (d.desc) gpx += `    <desc>${escapeXml(d.desc)}</desc>\n`;
@@ -6459,8 +6476,7 @@ function saveAllGPX() {
 
 function buildGPXWithData(selWaypoints, selTracks, selRoutes) {
   let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="TND" xmlns="http://www.topografix.com/GPX/1/1" xmlns:tnd="http://trophy-nav.ru/gpx/ext">\n';
-  selWaypoints.forEach(m => {
-    const d = m.wpData;
+  tnWaypointRecs(selWaypoints).forEach(d => {
     gpx += `<wpt lat="${d.lat.toFixed(6)}" lon="${d.lng.toFixed(6)}">`;
     gpx += `<name>${escapeXml(d.name)}</name>`;
     if (d.desc) gpx += `<desc>${escapeXml(d.desc)}</desc>`;
@@ -11660,25 +11676,22 @@ function collectState(options = {}) {
     counters: { wpCounter, trackIdCounter, routeIdCounter, waypointSetIdCounter },
     waypointSets: waypointSets.map(s => ({ id: s.id, name: s.name, visible: s.visible })),
     activeSetId,
-    waypoints: waypoints.map(m => {
-      ensureWaypointMeta(m, { touch: false });
-      return {
-        id: m.wpData.id,
-        lat: m.wpData.lat,
-        lng: m.wpData.lng,
-        name: m.wpData.name,
-        desc: m.wpData.desc,
-        icon: m.wpData.icon?.length > 2 ? garminToEmoji(m.wpData.icon) : m.wpData.icon,
-        color: m.wpData.color,
-        radius: m.wpData.radius,
-        num: m.wpData.num,
-        setId: m._setId,
-        createdAt: m.wpData.createdAt || null,
-        updatedAt: m.wpData.updatedAt || null,
-        source: m.wpData.source || 'desktop',
-        syncedAt: m.wpData.syncedAt || null
-      };
-    }),
+    waypoints: (waypoints.forEach(m => ensureWaypointMeta(m, { touch: false })), tnWaypointRecs()).map(d => ({
+      id: d.id,
+      lat: d.lat,
+      lng: d.lng,
+      name: d.name,
+      desc: d.desc,
+      icon: d.icon?.length > 2 ? garminToEmoji(d.icon) : d.icon,
+      color: d.color,
+      radius: d.radius,
+      num: d.num,
+      setId: d.setId,
+      createdAt: d.createdAt || null,
+      updatedAt: d.updatedAt || null,
+      source: d.source || 'desktop',
+      syncedAt: d.syncedAt || null
+    })),
     tracks: tracks.filter(t => !t.isNew).map(t => {
       ensureTrackMeta(t, { touch: false });
       return {

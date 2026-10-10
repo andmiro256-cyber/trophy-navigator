@@ -83,3 +83,13 @@ test('ошибка подписчика не ломает модель и ост
   assert.equal(got, 1);
   assert.equal(M.list('wp').length, 1);
 });
+
+test('index.html, шаг 1 (чтение): выгрузки WP и collectState читают записи модели, со страховкой старым путём', async () => {
+  const fs = await import('node:fs');
+  const html = fs.readFileSync(new URL('../ui/index.html', import.meta.url), 'utf8');
+  assert.match(html, /const tnModel = window\.TnModel\.create\(\);/);
+  assert.match(html, /function tnWaypointRecs\(markers = waypoints\)/);
+  assert.equal((html.match(/tnWaypointRecs\(list\)\.forEach\(d => \{/g) || []).length, 2, 'WPT и GPX активного набора');
+  assert.match(html, /tnWaypointRecs\(selWaypoints\)\.forEach\(d => \{/);
+  assert.match(html, /waypoints: \(waypoints\.forEach\(m => ensureWaypointMeta\(m, \{ touch: false \}\)\), tnWaypointRecs\(\)\)\.map\(d => \(\{/);
+});
