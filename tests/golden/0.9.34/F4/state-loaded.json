@@ -1,0 +1,204 @@
+{
+  "version": 1,
+  "savedAt": "2026-01-02T03:04:05.000Z",
+  "localStorageCompact": false,
+  "map": {
+    "center": {
+      "lat": 55.75030364449042,
+      "lng": 37.61993408203126
+    },
+    "zoom": 10,
+    "layer": "OpenStreetMap",
+    "offline": [],
+    "stack": {
+      "version": 1,
+      "base": {
+        "raster": {
+          "brightness": 0,
+          "contrast": 0,
+          "saturation": 0
+        }
+      },
+      "items": []
+    }
+  },
+  "counters": {
+    "wpCounter": 3,
+    "trackIdCounter": 3,
+    "routeIdCounter": 1,
+    "waypointSetIdCounter": 3
+  },
+  "waypointSets": [
+    {
+      "id": 1,
+      "name": "visible",
+      "visible": true
+    },
+    {
+      "id": 2,
+      "name": "hidden",
+      "visible": true
+    }
+  ],
+  "activeSetId": 2,
+  "waypoints": [
+    {
+      "id": "wp-mjwaid1k-5dacfnim",
+      "lat": 59.9,
+      "lng": 30.3,
+      "name": "Видимая WP",
+      "desc": "Fixture F4",
+      "icon": "⬤",
+      "color": "#df7a4a",
+      "radius": 50,
+      "num": 1,
+      "setId": 1,
+      "createdAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "syncedAt": null
+    },
+    {
+      "id": "wp-mjwaid1k-zpx6aa3o",
+      "lat": 59.92,
+      "lng": 30.32,
+      "name": "Скрытая WP",
+      "desc": "Fixture F4",
+      "icon": "⬤",
+      "color": "#df7a4a",
+      "radius": 50,
+      "num": 2,
+      "setId": 2,
+      "createdAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "syncedAt": null
+    }
+  ],
+  "tracks": [
+    {
+      "id": 1,
+      "name": "Visible",
+      "color": "#4adf7a",
+      "width": 3,
+      "pointSize": 3,
+      "points": [
+        {
+          "lat": 59.9,
+          "lng": 30.3
+        },
+        {
+          "lat": 59.91,
+          "lng": 30.31
+        }
+      ],
+      "pointsData": [
+        {},
+        {
+          "course": 26.626473911101982
+        }
+      ],
+      "visible": true,
+      "createdAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "syncedAt": null
+    },
+    {
+      "id": 2,
+      "name": "Hidden",
+      "color": "#4adf7a",
+      "width": 3,
+      "pointSize": 3,
+      "points": [
+        {
+          "lat": 59.92,
+          "lng": 30.32
+        },
+        {
+          "lat": 59.93,
+          "lng": 30.33
+        }
+      ],
+      "pointsData": [
+        {},
+        {
+          "course": 26.61264274039894
+        }
+      ],
+      "visible": true,
+      "createdAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "syncedAt": null
+    }
+  ],
+  "routes": [],
+  "settings": {
+    "defaultRadius": 30,
+    "colorWpt": "#df7a4a",
+    "trackColorMode": "fixed",
+    "colorTrack": "#4adf7a",
+    "routeColorMode": "fixed",
+    "colorRoute": "#4a8adf",
+    "colorRadiusFill": "#4a8adf",
+    "colorRadiusStroke": "#4a8adf",
+    "radiusOpacity": 15,
+    "colorOsrm": "#4a8adf",
+    "colorSearch": "#4a8adf",
+    "iconSize": 16,
+    "trackWidth": 3,
+    "liveMarkerSize": 3,
+    "liveLabelSize": 3,
+    "theme": "dark"
+  },
+  "gpxFiles": [],
+  "loadedSourceFiles": [
+    {
+      "id": "src-mjwaid1k-z5q070as",
+      "key": "gpx::visible.gpx",
+      "name": "visible.gpx",
+      "path": null,
+      "format": "gpx",
+      "importedAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "entityCounts": {
+        "waypoints": 0,
+        "tracks": 1,
+        "routes": 0
+      },
+      "entityIds": {
+        "waypoints": [],
+        "tracks": [
+          "1"
+        ],
+        "routes": [],
+        "gpxFiles": []
+      }
+    },
+    {
+      "id": "src-mjwaid1k-vmfsnjgt",
+      "key": "gpx::hidden.gpx",
+      "name": "hidden.gpx",
+      "path": null,
+      "format": "gpx",
+      "importedAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "entityCounts": {
+        "waypoints": 0,
+        "tracks": 1,
+        "routes": 0
+      },
+      "entityIds": {
+        "waypoints": [],
+        "tracks": [
+          "2"
+        ],
+        "routes": [],
+        "gpxFiles": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+[
+  {
+    "op": "hideWaypointSet",
+    "status": "executed"
+  },
+  {
+    "op": "hideTrack",
+    "status": "executed"
+  }
+]

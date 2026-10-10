@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "savedAt": "2026-01-02T03:04:05.000Z",
+  "localStorageCompact": false,
+  "map": {
+    "center": {
+      "lat": 55.75030364449042,
+      "lng": 37.61993408203126
+    },
+    "zoom": 10,
+    "layer": "OpenStreetMap"
+  },
+  "counters": {
+    "wpCounter": 1,
+    "trackIdCounter": 2,
+    "routeIdCounter": 1,
+    "waypointSetIdCounter": 1
+  },
+  "waypointSets": [],
+  "activeSetId": null,
+  "waypoints": [],
+  "tracks": [
+    {
+      "id": 1,
+      "name": "Antimeridian",
+      "color": "#4adf7a",
+      "width": 3,
+      "pointSize": 3,
+      "points": [
+        {
+          "lat": 10,
+          "lng": 179.9
+        },
+        {
+          "lat": 10.01,
+          "lng": 179.95
+        },
+        {
+          "lat": 10.02,
+          "lng": -179.95
+        },
+        {
+          "lat": 10.03,
+          "lng": -179.9
+        }
+      ],
+      "pointsData": [
+        {},
+        {
+          "course": 78.51567731091592
+        },
+        {
+          "course": 84.19294757632326
+        },
+        {
+          "course": 78.51497981471408
+        }
+      ],
+      "visible": true,
+      "createdAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "syncedAt": null
+    }
+  ],
+  "routes": [],
+  "settings": {
+    "defaultRadius": 30,
+    "colorWpt": "#df7a4a",
+    "trackColorMode": "fixed",
+    "colorTrack": "#4adf7a",
+    "routeColorMode": "fixed",
+    "colorRoute": "#4a8adf",
+    "colorRadiusFill": "#4a8adf",
+    "colorRadiusStroke": "#4a8adf",
+    "radiusOpacity": 15,
+    "colorOsrm": "#4a8adf",
+    "colorSearch": "#4a8adf",
+    "iconSize": 16,
+    "trackWidth": 3,
+    "liveMarkerSize": 3,
+    "liveLabelSize": 3,
+    "theme": "dark"
+  },
+  "gpxFiles": [],
+  "loadedSourceFiles": [
+    {
+      "id": "src-mjwaid1k-5dacfnim",
+      "key": "gpx::antimeridian.gpx",
+      "name": "antimeridian.gpx",
+      "path": null,
+      "format": "gpx",
+      "importedAt": "2026-01-02T03:04:05.000Z",
+      "updatedAt": "2026-01-02T03:04:05.000Z",
+      "source": "desktop",
+      "entityCounts": {
+        "waypoints": 0,
+        "tracks": 1,
+        "routes": 0
+      },
+      "entityIds": {
+        "waypoints": [],
+        "tracks": [
+          "1"
+        ],
+        "routes": [],
+        "gpxFiles": []
+      }
+    }
+  ]
+}
