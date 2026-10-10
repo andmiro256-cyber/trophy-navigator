@@ -23,7 +23,7 @@ mod voice;
 const MAX_TILE_BYTES: u64 = 2 * 1024 * 1024;
 const OFFLINE_DOWNLOAD_BATCH_SIZE: u64 = 250;
 const OFFLINE_TILE_CACHE_LIMIT: usize = 4;
-const MANUAL_UPDATE_URL: &str = "https://trophynav.ru/desktop.html#download";
+const MANUAL_UPDATE_URL: &str = "https://trophynav.ru/download.html#download";
 static OFFLINE_DOWNLOAD_CANCELLED: AtomicBool = AtomicBool::new(false);
 static OFFLINE_TILE_CACHE: OnceLock<Mutex<OfflineTileCache>> = OnceLock::new();
 

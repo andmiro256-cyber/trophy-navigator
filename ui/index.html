@@ -13561,7 +13561,7 @@ async function checkForUpdates(silent = false) {
     status.style.color = 'var(--warning-text)';
     if (!update.canAutoInstall || !pendingUpdateRid) {
       pendingUpdateRid = null;
-      pendingManualUpdateUrl = update.manualDownloadUrl || 'https://trophynav.ru/desktop.html#download';
+      pendingManualUpdateUrl = update.manualDownloadUrl || 'https://trophynav.ru/download.html#download';
       setUpdateStatus('new', `Доступна версия ${pendingUpdateVersion}${published ? ` от ${published}` : ''}${notes} Для этой Linux-установки обновление ставится вручную.`);
       setManualUpdateButton(pendingManualUpdateUrl);
     } else {
@@ -14414,7 +14414,7 @@ function waitForFirstPaint() {
         const ver = normalizeVersion(update.version);
         const notes = update.body || 'Улучшения и исправления';
         if (!update.canAutoInstall || !update.rid) {
-          const manualUrl = update.manualDownloadUrl || 'https://trophynav.ru/desktop.html#download';
+          const manualUrl = update.manualDownloadUrl || 'https://trophynav.ru/download.html#download';
           const openDownload = await tndConfirm(
             `Доступна новая версия ${ver}.\n\n${notes}\n\nДля этой Linux-установки обновление ставится вручную: скачать новую версию со страницы загрузки.`,
             'Обновление', 'Открыть страницу'

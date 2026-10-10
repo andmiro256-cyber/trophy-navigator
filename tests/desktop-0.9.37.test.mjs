@@ -197,3 +197,8 @@ test('0.9.37: не мельче 10 px; метка «есть новое» жёл
   assert.equal(conf.bundle.windows.wix.language, 'ru-RU');
   assert.deepEqual(conf.bundle.windows.nsis.languages, ['Russian']);
 });
+
+test('0.9.37: ручное обновление ведёт на download.html (desktop.html устарела, Андрей 10.10)', () => {
+  assert.doesNotMatch(html, /desktop\.html/);
+  assert.match(read('../src-tauri/src/main.rs'), /MANUAL_UPDATE_URL: &str = "https:\/\/trophynav\.ru\/download\.html#download"/);
+});
