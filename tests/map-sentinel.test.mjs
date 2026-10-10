@@ -50,3 +50,17 @@ test('события карты и контейнер: только через t
   assert.match(html, /tnMap\.on\('dblclick', e => \{\n  e\.stop\(\);/);
   assert.match(html, /dlPolygonClickOff = tnMap\.on\('click', onPolygonClick\);/);
 });
+
+test('WP: круг радиуса и иконка — только внутри wpRender; маркер WP создаётся в одном месте', () => {
+  const a = html.indexOf('const wpRender = {');
+  const b = html.indexOf('\n};\n', a) + 4;
+  assert.ok(a > 0 && b > a);
+  const outside = html.slice(0, a) + html.slice(b);
+  assert.doesNotMatch(outside, /wpCircle/, 'круг радиуса WP — деталь отрисовки, снаружи wpRender его нет');
+  assert.doesNotMatch(outside, /\.setIcon\(makeDivIcon\(/, 'иконка WP — wpRender.updateIcon');
+  assert.match(html, /function wpRadiusStyle\(d\)/);
+  assert.ok((html.match(/wpRender\.(show|hide|showMarker|hideMarker|showCircle|hideCircle|isShown|isCircleShown|hasCircle|updateCircle|moveCircle|updateIcon)\(/g) || []).length >= 20);
+  assert.match(html, /function createWaypointMarker\(wpData, o = \{\}\)/);
+  assert.match(html, /function onWaypointMarkerEvent\(type, marker, originalEvent = null, latlng = null\)/);
+  assert.equal((html.match(/makeWaypointMarkerOptions\(/g) || []).length, 2, 'определение + один вызов');
+});

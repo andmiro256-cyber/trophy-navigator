@@ -2916,8 +2916,7 @@ function undoLastAction() {
   const action = undoStack.pop();
   if (action.type === 'addWaypoint') {
     const m = action.marker;
-    if (m.wpCircle) map.removeLayer(m.wpCircle);
-    map.removeLayer(m);
+    wpRender.hide(m);
     waypoints = waypoints.filter(w => w !== m);
     waypointSets.forEach(s => { s.waypoints = s.waypoints.filter(w => w !== m); });
     updateWptTable();
@@ -2939,8 +2938,8 @@ function undoLastAction() {
     }
   } else if (action.type === 'deleteWaypoint') {
     const m = action.marker;
-    m.addTo(map);
-    if (m.wpCircle && action.hadCircle) updateWaypointCircle(m);
+    wpRender.showMarker(m);
+    if (wpRender.hasCircle(m) && action.hadCircle) updateWaypointCircle(m);
     waypoints.push(m);
     const set = waypointSets.find(s => s.id === m._setId);
     if (set) set.waypoints.push(m);
@@ -3023,11 +3022,9 @@ function toggleSetVisibility(id) {
   set.visible = !set.visible;
   set.waypoints.forEach(m => {
     if (set.visible) {
-      m.addTo(map);
-      if (m.wpCircle) m.wpCircle.addTo(map);
+      wpRender.show(m);
     } else {
-      map.removeLayer(m);
-      if (m.wpCircle) map.removeLayer(m.wpCircle);
+      wpRender.hide(m);
     }
   });
   updateSetSelector();
@@ -3039,8 +3036,7 @@ async function deleteWaypointSet(id) {
   if (!set) return;
   if (!await tndConfirmDanger(`Удалить набор "${set.name}" и все его ${set.waypoints.length} точек?`)) return;
   set.waypoints.forEach(m => {
-    if (m.wpCircle) map.removeLayer(m.wpCircle);
-    m.remove();
+    wpRender.hide(m);
     waypoints = waypoints.filter(w => w !== m);
   });
   waypointSets = waypointSets.filter(s => s.id !== id);
@@ -3817,6 +3813,35 @@ function makeDivIcon(data) {
   });
 }
 
+/**
+ * Отрисовка WP (MapLibre 0б.5): единственное место, где маркер точки и круг её радиуса показываются и
+ * прячутся на карте Leaflet. MapLibre-адаптер реализует то же через слои wp/wpRadius.
+ */
+const wpRender = {
+  isShown: m => map.hasLayer(m),
+  isCircleShown: m => !!m.wpCircle && map.hasLayer(m.wpCircle),
+  showMarker: m => { m.addTo(map); },
+  hideMarker: m => { map.removeLayer(m); },
+  showCircle: m => { if (m.wpCircle) m.wpCircle.addTo(map); },
+  hideCircle: m => { if (m.wpCircle) map.removeLayer(m.wpCircle); },
+  show(m) { wpRender.showMarker(m); wpRender.showCircle(m); },
+  hide(m) { wpRender.hideCircle(m); wpRender.hideMarker(m); },
+  hasCircle: m => !!m.wpCircle,
+  /** Круг радиуса заново по данным и настройкам (радиус 0 — без круга). */
+  updateCircle(m) {
+    if (m.wpCircle) { map.removeLayer(m.wpCircle); m.wpCircle = null; }
+    if (m.wpData.radius > 0) {
+      const st = wpRadiusStyle(m.wpData);
+      m.wpCircle = L.circle(m.getLatLng(), {
+        radius: st.radius, color: st.stroke, weight: 1, opacity: 0.75, fillColor: st.fill, fillOpacity: st.fillOpacity,
+        pane: 'waypointRadius', interactive: false, bubblingMouseEvents: false
+      }).addTo(map);
+    }
+  },
+  moveCircle: (m, latlng) => { if (m.wpCircle) m.wpCircle.setLatLng(latlng); },
+  updateIcon: m => { m.setIcon(makeDivIcon(m.wpData)); },
+};
+
 function makeWaypointMarkerOptions(data) {
   return {
     draggable: !objectsLocked,
@@ -3828,32 +3853,21 @@ function makeWaypointMarkerOptions(data) {
   };
 }
 
-function updateWaypointCircle(marker) {
-  if (marker.wpCircle) {
-    map.removeLayer(marker.wpCircle);
-    marker.wpCircle = null;
-  }
-  if (marker.wpData.radius > 0) {
-    const rStroke = document.getElementById('setting-color-radius-stroke')?.value || marker.wpData.color;
-    const rFill = document.getElementById('setting-color-radius-fill')?.value || marker.wpData.color;
-    const rOpacity = (parseInt(document.getElementById('setting-radius-opacity')?.value) || 15) / 100;
-    marker.wpCircle = L.circle(marker.getLatLng(), {
-      radius: marker.wpData.radius,
-      color: rStroke,
-      weight: 1,
-      opacity: 0.75,
-      fillColor: rFill,
-      fillOpacity: rOpacity,
-      pane: 'waypointRadius',
-      interactive: false,
-      bubblingMouseEvents: false
-    }).addTo(map);
-  }
+/** Стиль круга радиуса WP из настроек — не зависит от движка (MapLibre возьмёт его для слоя wpRadius). */
+function wpRadiusStyle(d) {
+  return {
+    radius: d.radius,
+    stroke: document.getElementById('setting-color-radius-stroke')?.value || d.color,
+    fill: document.getElementById('setting-color-radius-fill')?.value || d.color,
+    fillOpacity: (parseInt(document.getElementById('setting-radius-opacity')?.value) || 15) / 100,
+  };
 }
+
+function updateWaypointCircle(marker) { wpRender.updateCircle(marker); }
 
 function refreshWaypoint(marker, options = {}) {
   ensureWaypointMeta(marker, { touch: options.touch !== false });
-  marker.setIcon(makeDivIcon(marker.wpData));
+  wpRender.updateIcon(marker);
   marker.wpData.lat = marker.getLatLng().lat;
   marker.wpData.lng = marker.getLatLng().lng;
   updateWaypointCircle(marker);
@@ -3907,7 +3921,7 @@ function getDefaultRadius() {
 function createWaypointMarker(wpData, o = {}) {
   const marker = L.marker(o.latlng || L.latLng(wpData.lat, wpData.lng), makeWaypointMarkerOptions(o.optionsFrom || wpData));
   marker.wpData = wpData;
-  marker.addTo(map);
+  wpRender.showMarker(marker);
   refreshWaypoint(marker, { touch: false });
   marker.on('contextmenu', e => {
     L.DomEvent.stop(e);
@@ -3940,7 +3954,7 @@ function onWaypointMarkerEvent(type, marker, originalEvent = null, latlng = null
   if (type === 'drag') {
     marker.wpData.lat = latlng.lat;
     marker.wpData.lng = latlng.lng;
-    if (marker.wpCircle) marker.wpCircle.setLatLng(latlng);
+    wpRender.moveCircle(marker, latlng);
     return;
   }
   if (type === 'dragend') { refreshWaypoint(marker); updateWptTable(); }
@@ -7014,9 +7028,8 @@ async function ctxAction(action) {
     await openWaypointMarkerMap(target, action.slice(4));
   }
   else if (action === 'delete') {
-    const hadCircle = !!target.wpCircle;
-    if (target.wpCircle) map.removeLayer(target.wpCircle);
-    map.removeLayer(target);
+    const hadCircle = wpRender.hasCircle(target);
+    wpRender.hide(target);
     waypoints = waypoints.filter(m => m !== target);
     waypointSets.forEach(s => { s.waypoints = s.waypoints.filter(m => m !== target); });
     pushUndo({ type: 'deleteWaypoint', marker: target, hadCircle });
@@ -9713,8 +9726,7 @@ function deleteSelectedWaypoints() {
   const toRemove = new Set();
   waypoints.forEach((m, i) => {
     if (!indices.has(i)) return;
-    if (m.wpCircle) map.removeLayer(m.wpCircle);
-    m.remove();
+    wpRender.hide(m);
     toRemove.add(m);
   });
   waypoints = waypoints.filter((_, i) => !indices.has(i));
@@ -9730,8 +9742,7 @@ async function clearAllWaypoints() {
   if (!await tndConfirmDanger(`Удалить ${list.length} точек${activeSet ? ` из набора "${activeSet.name}"` : ''}?`)) return;
   const toRemove = new Set(list);
   list.forEach(m => {
-    if (m.wpCircle) map.removeLayer(m.wpCircle);
-    m.remove();
+    wpRender.hide(m);
   });
   waypoints = waypoints.filter(m => !toRemove.has(m));
   if (activeSet) activeSet.waypoints = [];
@@ -12007,7 +12018,7 @@ function hideAllWorkObjects() {
     ...dlPolygonMarkers
   ].filter(Boolean);
   const snapshot = {
-    waypoints: waypoints.map(marker => ({ marker, visible: map.hasLayer(marker), circleVisible: !!marker.wpCircle && map.hasLayer(marker.wpCircle) })),
+    waypoints: waypoints.map(marker => ({ marker, visible: wpRender.isShown(marker), circleVisible: wpRender.isCircleShown(marker) })),
     tracks: tracks.map(track => ({ track, visible: !!track.polyline && map.hasLayer(track.polyline) })),
     routes: routes.map(route => ({ route, visible: !!route.polyline && map.hasLayer(route.polyline) })),
     osrm: osrmState.items.map(route => ({
@@ -12027,8 +12038,8 @@ function hideAllWorkObjects() {
     return;
   }
   snapshot.waypoints.forEach(item => {
-    if (item.visible) map.removeLayer(item.marker);
-    if (item.circleVisible) map.removeLayer(item.marker.wpCircle);
+    if (item.visible) wpRender.hideMarker(item.marker);
+    if (item.circleVisible) wpRender.hideCircle(item.marker);
   });
   snapshot.tracks.forEach(item => {
     if (item.visible) map.removeLayer(item.track.polyline);
@@ -12051,8 +12062,8 @@ function showAllWorkObjects() {
   workObjectsVisibilitySnapshot = null;
   snapshot.waypoints.forEach(item => {
     if (!waypoints.includes(item.marker)) return;
-    if (item.visible) item.marker.addTo(map);
-    if (item.circleVisible && item.marker.wpCircle) item.marker.wpCircle.addTo(map);
+    if (item.visible) wpRender.showMarker(item.marker);
+    if (item.circleVisible) wpRender.showCircle(item.marker);
   });
   snapshot.tracks.forEach(item => {
     if (!tracks.includes(item.track) || !item.track.polyline) return;
@@ -12117,7 +12128,7 @@ function clearCurrentData() {
   undoStack.length = 0;
   resetWorkObjectsVisibilityState();
   // Remove all waypoints from map
-  waypoints.forEach(m => { if (m.wpCircle) map.removeLayer(m.wpCircle); m.remove(); });
+  waypoints.forEach(m => wpRender.hide(m));
   waypoints = [];
   waypointSets.forEach(s => { s.waypoints = []; });
   waypointSets = [];
@@ -12162,8 +12173,7 @@ function removeWaypointList(list) {
   const toRemove = new Set((list || []).filter(Boolean));
   if (toRemove.size === 0) return 0;
   toRemove.forEach(marker => {
-    if (marker.wpCircle) map.removeLayer(marker.wpCircle);
-    marker.remove();
+    wpRender.hide(marker);
   });
   waypoints = waypoints.filter(marker => !toRemove.has(marker));
   waypointSets.forEach(set => {
@@ -12516,7 +12526,7 @@ function applyState(state) {
     });
     wpCounter = state.counters?.wpCounter || Math.max(wpCounter, 1);
     waypointSets.forEach(s => {
-      if (!s.visible) s.waypoints.forEach(m => { m.remove(); if (m.wpCircle) map.removeLayer(m.wpCircle); });
+      if (!s.visible) s.waypoints.forEach(m => wpRender.hide(m));
     });
     updateWptTable();
   }
