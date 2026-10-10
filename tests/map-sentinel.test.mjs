@@ -64,3 +64,16 @@ test('WP: круг радиуса и иконка — только внутри 
   assert.match(html, /function onWaypointMarkerEvent\(type, marker, originalEvent = null, latlng = null\)/);
   assert.equal((html.match(/makeWaypointMarkerOptions\(/g) || []).length, 2, 'определение + один вызов');
 });
+
+test('треки: линия трека — только внутри trackRender; события линии — в onTrackLineEvent', () => {
+  const a = html.indexOf('const trackRender = {');
+  const b = html.indexOf('\n};\n', a) + 4;
+  assert.ok(a > 0 && b > a);
+  const outside = html.slice(0, a) + html.slice(b);
+  assert.doesNotMatch(outside, /\b(track|t|originalTrack|currentTrackDraw)\.polyline\b|item\.track\.polyline/,
+    'линия трека — деталь отрисовки: снаружи только trackRender.*');
+  assert.doesNotMatch(outside, /createTrackPolylineLayer\((?!points, options)/, 'линия трека создаётся только trackRender.create');
+  assert.doesNotMatch(html, /function bindTrackPolyline/);
+  assert.match(html, /function onTrackLineEvent\(type, track, latlng = null, originalEvent = null\)/);
+  assert.ok((html.match(/trackRender\.(has|isShown|create|show|hide|sync|setStyle|bringToFront|remove|bounds)\(/g) || []).length >= 30);
+});

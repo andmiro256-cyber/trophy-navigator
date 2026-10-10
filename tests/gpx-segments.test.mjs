@@ -23,7 +23,9 @@ test('GPX: все trkseg трека — один трек, начало куск
   assert.match(html, /const segNodes = xmlDescendantsByLocalName\(trk, 'trkseg'\);/);
   assert.match(html, /flat\.pointsData\.push\(si > 0 && k === 0 && flat\.points\.length \? \{ \.\.\.seg\.pointsData\[k\], seg: 1 \} : seg\.pointsData\[k\]\);/);
   assert.doesNotMatch(html, /chainTrackSegments|— часть \$\{/);
-  assert.match(html, /t\.pointsData = pointsData;\n    if \(t\.polyline\) t\.polyline\.setLatLngs\(trackLatLngs\(t\)\);/);
+  assert.match(html, /t\.pointsData = pointsData;\n    trackRender\.sync\(t\);/);
+  // trackRender.sync по умолчанию — куски трека (trackLatLngs), иначе разрывы склеятся прямыми
+  assert.match(html, /sync\(t, latlngs = trackLatLngs\(t\)\) \{ if \(t\?\.polyline\) t\.polyline\.setLatLngs\(latlngs\); \}/);
   assert.match(html, /pointsData\[i\]\.speed == null && !pointsData\[i\]\.seg/);
 });
 

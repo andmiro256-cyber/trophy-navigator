@@ -2746,6 +2746,44 @@ function createTrackPolylineLayer(points, options = {}) {
     smoothFactor: options.smoothFactor ?? 1.5
   });
 }
+
+/**
+ * Отрисовка линии трека (MapLibre 0б.5): единственное место, где линия трека создаётся, показывается, прячется,
+ * меняет геометрию и стиль на карте Leaflet. События линии идут в onTrackLineEvent — он от движка не зависит.
+ * MapLibre-адаптер реализует то же через источник и слой треков (этап 2).
+ */
+const trackRender = {
+  has: t => !!t?.polyline,
+  isShown: t => !!t?.polyline && map.hasLayer(t.polyline),
+  /** Линия по точкам трека (latlngs — явно, если нужна другая геометрия); show — сразу на карту. */
+  create(t, { show = true, latlngs = t.points } = {}) {
+    t.polyline = createTrackPolylineLayer(latlngs, { color: t.color, weight: t.width });
+    if (show) t.polyline.addTo(map);
+    trackRender.bind(t);
+  },
+  show: t => { if (t?.polyline && !map.hasLayer(t.polyline)) t.polyline.addTo(map); },
+  hide: t => { if (t?.polyline && map.hasLayer(t.polyline)) map.removeLayer(t.polyline); },
+  /** Геометрия заново: по умолчанию куски трека (trackLatLngs), у рисуемого трека — плоский список точек. */
+  sync(t, latlngs = trackLatLngs(t)) { if (t?.polyline) t.polyline.setLatLngs(latlngs); },
+  setStyle(t, style) { if (t?.polyline) t.polyline.setStyle(style); },
+  bringToFront: t => { t?.polyline?.bringToFront(); },
+  remove(t) {
+    if (!t?.polyline) return;
+    t.polyline.off?.();
+    if (map.hasLayer(t.polyline)) map.removeLayer(t.polyline);
+    t.polyline = null;
+  },
+  bounds: t => t?.polyline?.getBounds?.() || null,
+  /** События линии Leaflet → onTrackLineEvent; клик и ПКМ дальше линии не идут. */
+  bind(t) {
+    if (!t?.polyline || t.polyline._trackBound) return;
+    t.polyline._trackBound = true;
+    t.polyline.on('mousemove', e => onTrackLineEvent('mousemove', t, e.latlng));
+    t.polyline.on('mouseout', () => onTrackLineEvent('mouseout', t));
+    t.polyline.on('click', e => { L.DomEvent.stop(e); onTrackLineEvent('click', t, e.latlng, e.originalEvent); });
+    t.polyline.on('contextmenu', e => { L.DomEvent.stop(e); onTrackLineEvent('contextmenu', t, e.latlng, e.originalEvent); });
+  },
+};
 // Pane для тайловых оверлеев — выше базового слоя (tilePane=200), ниже маркеров (overlayPane=400)
 map.createPane('offlineTiles');
 map.getPane('offlineTiles').style.zIndex = 210;
@@ -2927,7 +2965,7 @@ function undoLastAction() {
     if (t && t.points.length > 0) {
       t.points.pop();
       if (t.pointsData) t.pointsData.pop();
-      if (t.polyline) t.polyline.setLatLngs(trackLatLngs(t));
+      trackRender.sync(t);
       syncTrackMarkers(t);
       updateTrackBuildPanel(t);
       showToast('↩ Отменено: точка трека');
@@ -2967,15 +3005,8 @@ function undoLastAction() {
       const insertIndex = Number.isInteger(action.originalIndex) ? Math.min(Math.max(action.originalIndex, 0), tracks.length) : tracks.length;
       tracks.splice(insertIndex, 0, originalTrack);
     }
-    if (!originalTrack.polyline) {
-      originalTrack.polyline = createTrackPolylineLayer(originalTrack.points, {
-        color: originalTrack.color,
-        weight: originalTrack.width
-      }).addTo(map);
-      bindTrackPolyline(originalTrack);
-    } else if (originalTrack.visible !== false && !map.hasLayer(originalTrack.polyline)) {
-      originalTrack.polyline.addTo(map);
-    }
+    if (!trackRender.has(originalTrack)) trackRender.create(originalTrack);
+    else if (originalTrack.visible !== false) trackRender.show(originalTrack);
     syncTrackMarkers(originalTrack);
     selectedTrackId = originalTrack.id;
     updateTrackList();
@@ -6942,7 +6973,7 @@ async function ctxTrackAction(action) {
     }
     // Обновляем _trackIdx для оставшихся маркеров
     track.markers?.forEach((m, i) => { m._trackIdx = i; });
-    if (track.polyline) track.polyline.setLatLngs(trackLatLngs(track));
+    trackRender.sync(track);
     syncTrackMarkers(track);
     closeTrackPointPopup();
     if (currentTrackEdit?.track?.id === track.id) currentTrackEdit.selectedPointIdx = null;
@@ -7578,14 +7609,14 @@ function setTrackPanelState(mode, track) {
 }
 
 function setTrackEditingVisualState(track, editing) {
-  if (!track?.polyline) return;
-  track.polyline.setStyle({
+  if (!trackRender.has(track)) return;
+  trackRender.setStyle(track, {
     color: track.color,
     weight: editing ? Math.max(track.width + 1, 4) : track.width,
     opacity: editing ? 1 : 0.85,
     dashArray: editing ? '10 6' : null
   });
-  if (editing) track.polyline.bringToFront();
+  if (editing) trackRender.bringToFront(track);
 }
 
 function restoreTrackGeometry(track, snapshot) {
@@ -7598,16 +7629,8 @@ function restoreTrackGeometry(track, snapshot) {
   if (snapshot.color) track.color = snapshot.color;
   if (Number.isFinite(snapshot.width)) track.width = snapshot.width;
   if (Number.isFinite(snapshot.pointSize)) track.pointSize = snapshot.pointSize;
-  if (track.polyline) {
-    track.polyline.setLatLngs(trackLatLngs(track));
-  } else if (track.points.length > 0) {
-    track.polyline = createTrackPolylineLayer(track.points, {
-      color: track.color,
-      weight: track.width
-    });
-    if (track.visible !== false) track.polyline.addTo(map);
-    bindTrackPolyline(track);
-  }
+  if (trackRender.has(track)) trackRender.sync(track);
+  else if (track.points.length > 0) trackRender.create(track, { show: track.visible !== false });
   setTrackEditingVisualState(track, isTrackEditActive(track));
   syncTrackMarkers(track);
   if (isTrackDrawActive(track) || isTrackEditActive(track)) updateTrackBuildPanel(track);
@@ -7623,11 +7646,7 @@ function removeTrackObject(track) {
   stopTrackPlayerForTrack(track.id);
   if (rrData?.track?.id === track.id) rrClose();
   closeTrackPointPopup();
-  if (track.polyline) {
-    track.polyline.off?.();
-    if (map.hasLayer(track.polyline)) map.removeLayer(track.polyline);
-    track.polyline = null;
-  }
+  trackRender.remove(track);
   removeTrackMarkers(track);
   tracks = tracks.filter(item => item !== track);
 }
@@ -7718,7 +7737,7 @@ function beginTrackPointDrag(track, idx, options = {}) {
     const marker = getTrackMarker(track, idx);
     if (marker) marker.setLatLng(latlng);
     track.points[idx] = latlng;
-    if (track.polyline) track.polyline.setLatLngs(trackLatLngs(track));
+    trackRender.sync(track);
     moved = true;
   };
   const onUp = () => {
@@ -7959,7 +7978,7 @@ function findTrackNearPoint(latlng, maxPx = TRACK_GRAB_RADIUS_PX) {
   let best = null;
   for (const track of tracks) {
     if (!track || track.visible === false || !track.points || track.points.length < 2) continue;
-    const trackBounds = track.polyline?.getBounds?.();
+    const trackBounds = trackRender.bounds(track);
     if (trackBounds?.isValid?.() && !trackBounds.pad(0.05).contains(latlng)) continue;
     const points = track.points;
     for (let i = 0; i < points.length - 1; i++) {
@@ -8036,41 +8055,39 @@ function closeTrackPointPopup() {
   if (trackPointPopup && tnMap.isPopupOpen(trackPointPopup)) tnMap.closePopup(trackPointPopup);
 }
 
-function bindTrackPolyline(track) {
-  if (!track?.polyline || track.polyline._trackBound) return;
-  track.polyline._trackBound = true;
-  track.polyline.on('mousemove', e => {
-    const hit = findNearestTrackPointHit(track, e.latlng);
+/** События линии трека (наведение, клик, ПКМ) — не зависят от движка: их зовёт trackRender.bind. */
+function onTrackLineEvent(type, track, latlng = null, originalEvent = null) {
+  if (type === 'mousemove') {
+    const hit = findNearestTrackPointHit(track, latlng);
     if (hit) showTrackPointHoverTooltip(track, hit.idx);
     else closeTrackPointHoverTooltip();
-  });
-  track.polyline.on('mouseout', closeTrackPointHoverTooltip);
-  track.polyline.on('click', e => {
-    L.DomEvent.stop(e);
+    return;
+  }
+  if (type === 'mouseout') { closeTrackPointHoverTooltip(); return; }
+  if (type === 'click') {
     if (isTrackEditActive(track)) {
-      insertTrackPointAtSegment(track, e.latlng);
+      insertTrackPointAtSegment(track, latlng);
       return;
     }
-    const hit = findNearestTrackPointHit(track, e.latlng);
+    const hit = findNearestTrackPointHit(track, latlng);
     if (hit) {
       showTrackPointPopup(track, hit.idx, hit.point);
       return;
     }
     selectTrackById(track.id);
     openModal('modal-tracks');
-  });
-  track.polyline.on('contextmenu', e => {
-    L.DomEvent.stop(e);
+    return;
+  }
+  if (type === 'contextmenu') {
     // Найти ближайшую точку трека
-    const clickLatLng = e.latlng;
     let minDist = Infinity, closestIdx = 0;
     track.points.forEach((p, i) => {
-      const d = TnGeo.distance(clickLatLng, p);
+      const d = TnGeo.distance(latlng, p);
       if (d < minDist) { minDist = d; closestIdx = i; }
     });
     const marker = getTrackMarker(track, closestIdx);
-    showTrackPointCtxMenu(e.originalEvent, track, closestIdx, marker, clickLatLng);
-  });
+    showTrackPointCtxMenu(originalEvent, track, closestIdx, marker, latlng);
+  }
 }
 
 function createTrackFromPoints(points, name, options = {}) {
@@ -8079,8 +8096,6 @@ function createTrackFromPoints(points, name, options = {}) {
   if (Number.isInteger(options.id)) trackIdCounter = Math.max(trackIdCounter, options.id + 1);
   const color = options.color || getNewObjectColor('track', id, trackPalette);
   const width = options.width || getDefaultTrackWidth();
-  const polyline = createTrackPolylineLayer(points, { color, weight: width });
-  if (options.visible !== false) polyline.addTo(map);
   const pointSize = options.pointSize ?? 3;
   const track = {
     id,
@@ -8090,7 +8105,7 @@ function createTrackFromPoints(points, name, options = {}) {
     pointSize,
     points: [...points],
     pointsData: [],
-    polyline,
+    polyline: null,
     visible: options.visible !== false,
     markers: [],
     createdAt: options.createdAt || null,
@@ -8098,8 +8113,8 @@ function createTrackFromPoints(points, name, options = {}) {
     source: options.source || 'desktop',
     syncedAt: options.syncedAt || null
   };
+  trackRender.create(track, { show: options.visible !== false, latlngs: points });
   ensureTrackMeta(track, { touch: false });
-  bindTrackPolyline(track);
   syncTrackMarkers(track);
   tracks.push(track);
   return track;
@@ -8144,15 +8159,8 @@ function addTrackPoint(latlng) {
   if (!currentTrackDraw.pointsData) currentTrackDraw.pointsData = [];
   currentTrackDraw.pointsData.push({});
   touchTrack(currentTrackDraw);
-  if (currentTrackDraw.polyline) {
-    currentTrackDraw.polyline.setLatLngs(currentTrackDraw.points);
-  } else {
-    currentTrackDraw.polyline = createTrackPolylineLayer(currentTrackDraw.points, {
-      color: currentTrackDraw.color,
-      weight: currentTrackDraw.width
-    }).addTo(map);
-    bindTrackPolyline(currentTrackDraw);
-  }
+  if (trackRender.has(currentTrackDraw)) trackRender.sync(currentTrackDraw, currentTrackDraw.points);
+  else trackRender.create(currentTrackDraw);
   syncTrackMarkers(currentTrackDraw);
   updateTrackBuildPanel(currentTrackDraw);
   pushUndo({ type: 'addTrackPoint', track: currentTrackDraw });
@@ -8166,7 +8174,7 @@ function removeDuplicateTrackDoubleClickPoint() {
   if (TnGeo.screenDistance(previous, last) > 6) return false;
   track.points.pop();
   if (track.pointsData?.length) track.pointsData.pop();
-  if (track.polyline) track.polyline.setLatLngs(trackLatLngs(track));
+  trackRender.sync(track);
   syncTrackMarkers(track);
   for (let i = undoStack.length - 1; i >= 0; i--) {
     const action = undoStack[i];
@@ -8288,7 +8296,7 @@ function updateCurrentTrackBuildStyle() {
   const width = parseInt(document.getElementById('track-build-width')?.value, 10) || track.width || 3;
   track.color = color;
   track.width = width;
-  if (track.polyline) track.polyline.setStyle({ color, weight: width });
+  trackRender.setStyle(track, { color, weight: width });
   syncTrackMarkers(track);
   const widthVal = document.getElementById('track-build-width-val');
   if (widthVal) widthVal.textContent = width + 'px';
@@ -8332,7 +8340,7 @@ function insertTrackPointIntoSegment(track, latlng, options = {}) {
   track.points.splice(insertIndex, 0, latlng);
   if (!track.pointsData) track.pointsData = [];
   track.pointsData.splice(insertIndex, 0, {});
-  if (track.polyline) track.polyline.setLatLngs(trackLatLngs(track));
+  trackRender.sync(track);
   if (currentTrackEdit?.track?.id === track.id) currentTrackEdit.selectedPointIdx = insertIndex;
   syncTrackMarkers(track);
   return insertIndex;
@@ -8356,7 +8364,7 @@ function startTrackEdit() {
   ensureWorkObjectsVisibleForEditing();
   if (track.visible === false) {
     track.visible = true;
-    if (track.polyline && !map.hasLayer(track.polyline)) track.polyline.addTo(map);
+    trackRender.show(track);
   }
   currentTrackEdit = {
     track,
@@ -8482,7 +8490,7 @@ function previewTrackProps() {
   const color = document.getElementById('track-color-input').value;
   const width = parseInt(document.getElementById('track-width-input').value, 10) || t.width;
   const pointSize = parseInt(document.getElementById('track-point-size-input').value, 10);
-  if (t.polyline) t.polyline.setStyle({ color, weight: width });
+  trackRender.setStyle(t, { color, weight: width });
   (t.markers || []).forEach(marker => marker.setStyle({
     color,
     fillColor: color,
@@ -8495,7 +8503,7 @@ function revertTrackPropsPreview() {
   const t = tracks.find(track => track.id === trackPropsPreviewId);
   trackPropsPreviewId = null;
   if (!t) return;
-  if (t.polyline) t.polyline.setStyle({ color: t.color, weight: t.width });
+  trackRender.setStyle(t, { color: t.color, weight: t.width });
   syncTrackMarkers(t);
   setTrackEditingVisualState(t, isTrackEditActive(t));
 }
@@ -8508,7 +8516,7 @@ function applyTrackProps() {
   t.width = parseInt(document.getElementById('track-width-input').value);
   const newPointSize = parseInt(document.getElementById('track-point-size-input').value);
   t.pointSize = newPointSize;
-  if (t.polyline) t.polyline.setStyle({ color: t.color, weight: t.width });
+  trackRender.setStyle(t, { color: t.color, weight: t.width });
   syncTrackMarkers(t);
   if (t.markers?.length > 0) {
     const radius = canEditTrackGeometry(t) ? Math.max(newPointSize, 5) : newPointSize;
@@ -8541,7 +8549,7 @@ function reverseSelectedTrack() {
       return segAt.has(nPts - i) ? { ...rest, seg: 1 } : rest;
     });
   }
-  if (t.polyline) t.polyline.setLatLngs(trackLatLngs(t));
+  trackRender.sync(t);
   syncTrackMarkers(t);
   touchTrack(t);
   if (currentTrackDraw?.id === t.id) {
@@ -8577,17 +8585,17 @@ function deleteSelectedTrack() {
 }
 function toggleTrackVisible(id) {
   const t = tracks.find(t => t.id === id);
-  if (!t || !t.polyline) return;
+  if (!t || !trackRender.has(t)) return;
   if (currentTrackDraw?.id === id || currentTrackEdit?.track?.id === id) {
     showToast('Сначала завершите редактирование трека');
     return;
   }
   t.visible = !t.visible;
   if (t.visible) {
-    t.polyline.addTo(map);
+    trackRender.show(t);
     syncTrackMarkers(t);
   } else {
-    map.removeLayer(t.polyline);
+    trackRender.hide(t);
     removeTrackMarkers(t);
   }
   updateTrackList();
@@ -8815,7 +8823,7 @@ function loadGPXTracks(text, fname, options = {}) {
       }
     }
     t.pointsData = pointsData;
-    if (t.polyline) t.polyline.setLatLngs(trackLatLngs(t));
+    trackRender.sync(t);
     importedTracks.push(t);
     importedTrackIds.push(String(t.id));
     count++;
@@ -12006,7 +12014,7 @@ function hideAllWorkObjects() {
   ].filter(Boolean);
   const snapshot = {
     waypoints: waypoints.map(marker => ({ marker, visible: wpRender.isShown(marker), circleVisible: wpRender.isCircleShown(marker) })),
-    tracks: tracks.map(track => ({ track, visible: !!track.polyline && map.hasLayer(track.polyline) })),
+    tracks: tracks.map(track => ({ track, visible: trackRender.isShown(track) })),
     routes: routes.map(route => ({ route, visible: !!route.polyline && map.hasLayer(route.polyline) })),
     osrm: osrmState.items.map(route => ({
       route,
@@ -12029,7 +12037,7 @@ function hideAllWorkObjects() {
     if (item.circleVisible) wpRender.hideCircle(item.marker);
   });
   snapshot.tracks.forEach(item => {
-    if (item.visible) map.removeLayer(item.track.polyline);
+    if (item.visible) trackRender.hide(item.track);
     removeTrackMarkers(item.track);
   });
   snapshot.routes.forEach(item => { if (item.visible) map.removeLayer(item.route.polyline); });
@@ -12053,9 +12061,9 @@ function showAllWorkObjects() {
     if (item.circleVisible) wpRender.showCircle(item.marker);
   });
   snapshot.tracks.forEach(item => {
-    if (!tracks.includes(item.track) || !item.track.polyline) return;
+    if (!tracks.includes(item.track) || !trackRender.has(item.track)) return;
     if (item.visible) {
-      item.track.polyline.addTo(map);
+      trackRender.show(item.track);
       syncTrackMarkers(item.track);
     }
   });
@@ -12122,7 +12130,7 @@ function clearCurrentData() {
   wpCounter = 1;
   // Remove all tracks from map
   tracks.forEach(t => {
-    if (t.polyline) map.removeLayer(t.polyline);
+    trackRender.hide(t);
     removeTrackMarkers(t);
   });
   tracks = [];
@@ -12543,7 +12551,7 @@ function applyState(state) {
       });
       track.pointsData = pointsData;
       if (!track.visible) {
-        if (track.polyline) map.removeLayer(track.polyline);
+        trackRender.hide(track);
         if (track.markers) track.markers.forEach(m => map.removeLayer(m));
       }
     });
