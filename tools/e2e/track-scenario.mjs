@@ -49,6 +49,12 @@ R.s3_menu = await snap();
 await page.evaluate(() => ctxTrackAction('split')); await page.waitForTimeout(300);
 R.s3_splitOutsideEdit = await snap();
 
+// 3в. следующий ПКМ по пустому месту карты — снова меню карты (флаг «обработано объектом» не залипает)
+await ev(() => closeCtxMenu());
+{ const [x, y] = at(0.5, 0.2); await page.mouse.click(x, y, { button: "right" }); await page.waitForTimeout(250); }
+R.s3c_emptyAfterTrackMenu = (await snap()).menus;
+await ev(() => closeCtxMenu());
+
 // 3б. правка плана: клик по линии — вставка точки; ПКМ по линии → «Разбить здесь»; выход из правки
 await ev(() => { selectTrackById(tracks[0].id); startTrackEdit(); }); await closeModals();
 { const [x, y] = await midOf(0, M); await page.mouse.click(x, y); await page.waitForTimeout(300); }
