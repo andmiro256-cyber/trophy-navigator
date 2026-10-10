@@ -50,3 +50,16 @@ test('события карты и контейнер: только через t
   assert.match(html, /tnMap\.on\('dblclick', e => \{\n  e\.stop\(\);/);
   assert.match(html, /dlPolygonClickOff = tnMap\.on\('click', onPolygonClick\);/);
 });
+
+test('WP: показ/скрытие маркера и круга радиуса — только через wpRender (кроме самого круга в updateWaypointCircle)', () => {
+  assert.match(html, /const wpRender = \{/);
+  const bad = html.split('\n').filter(l => /map\.(removeLayer|hasLayer)\((m|marker|target|item\.marker)(\.wpCircle)?\)|\.wpCircle\.addTo\(map\)/.test(l)
+    && !/^\s*(isShown|isCircleShown|showMarker|hideMarker|showCircle|hideCircle):/.test(l)
+    && !/^\s*map\.removeLayer\(marker\.wpCircle\);$/.test(l)
+    && !/if \(map\.hasLayer\(marker\)\) map\.removeLayer\(marker\);/.test(l)   // точки трека (track.markers) — своя подсистема
+    && !/^\s*if \(marker\) map\.removeLayer\(marker\);$/.test(l));            // маркер точки трека в правке
+  assert.deepEqual(bad, []);
+  assert.match(html, /function createWaypointMarker\(wpData, o = \{\}\)/);
+  assert.match(html, /function onWaypointMarkerEvent\(type, marker, originalEvent = null, latlng = null\)/);
+  assert.equal((html.match(/L\.marker\([^)]*makeWaypointMarkerOptions/g) || []).length, 1, 'маркер WP создаётся в одном месте');
+});
