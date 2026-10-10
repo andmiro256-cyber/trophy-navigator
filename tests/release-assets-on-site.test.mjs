@@ -21,3 +21,12 @@ test('выкладка: установщики Mac (.dmg) и файлы обно
   assert.match(wf, /sha256sum -c - >\/dev\/null \$\{INSTALLS\}/);
   assert.ok(wf.indexOf('for pair in "${PUBLIC_FILES[@]}"; do\n            curl') < wf.indexOf('# Manifest публикуется последним'));
 });
+
+test('сборки Windows и Mac — только по тегу выпуска или вручную; Linux проверяет каждый push в main', () => {
+  const COND = "if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'";
+  const job = name => { const a = wf.indexOf(`\n  ${name}:\n`); const b = wf.indexOf('\n  build-', a + 5); return wf.slice(a, b < 0 ? wf.indexOf('\n  release:', a) : b); };
+  assert.ok(job('build-windows').includes(COND), 'Windows');
+  assert.ok(job('build-macos').includes(COND), 'Mac');
+  assert.ok(!job('build-linux').includes('if:'), 'Linux — всегда');
+  assert.match(wf, /on:\n  push:\n    branches: \[main\]\n    tags: \['v\*'\]/);
+});

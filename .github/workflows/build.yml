@@ -8,6 +8,9 @@ on:
 
 jobs:
   build-windows:
+    # Закрытый репозиторий: минута Mac на GitHub считается за 10, Windows — за 2. Полная сборка — только для
+    # выпуска (тег) или вручную; при push в main проверяет сборку один Linux (Андрей 10.10)
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -213,6 +216,9 @@ jobs:
 
   build-macos:
     name: build-macos-${{ matrix.arch }}
+    # Закрытый репозиторий: минута Mac на GitHub считается за 10, Windows — за 2. Полная сборка — только для
+    # выпуска (тег) или вручную; при push в main проверяет сборку один Linux (Андрей 10.10)
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
